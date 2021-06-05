@@ -166,7 +166,7 @@ initcells!(y,box,lc)
 f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
 # We have to define our own reduce function here
-function reduce(output_threaded})
+function reduce_mind(output_threaded})
   mind = output_threaded[1]
   for i in 2:Threads.nthreads()
     if output_threaded[i][3] < mind[3]
@@ -180,7 +180,7 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce)
+mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind)
 ```
 
 The example above can be run with `CellList.test5()`. 
