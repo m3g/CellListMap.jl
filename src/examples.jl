@@ -2,7 +2,7 @@
 # In this test we compute the average displacement of the x coordinates of the atoms
 # Expected to be nearly zero in average
 #              
-function test1(N=100_000)
+function test1(;N=100_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -21,7 +21,11 @@ function test1(N=100_000)
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
 
-  avg_dx = (N/(N*(N-1)/2)) * map_pairwise((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box,lc)
+  avg_dx = (N/(N*(N-1)/2)) * map_pairwise(
+    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
+    0.,x,box,lc,
+    parallel=parallel
+  )
   return avg_dx
 
 end
@@ -30,7 +34,7 @@ end
 # In this test we compute the histogram of distances, expected to follow the
 # function f(f) = ρ(4/3)π(r[i+1]^3 - r[i]^3) with ρ being the density of the system.
 #
-function test2(N=100_000)
+function test2(;N=100_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -58,8 +62,12 @@ function test2(N=100_000)
   hist = zeros(Int,10)
 
   # Run pairwise computation
-  hist = map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
-  return (N/(N*(N-1)/2)) * hist
+  hist = (N/(N*(N-1)/2)) * map_pairwise(
+    (x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),
+    hist,x,box,lc,
+    parallel=parallel
+  )
+  return hist
 
 end
 
@@ -68,7 +76,7 @@ end
 # has a different mass. In this case, the closure is used to pass the masses to the
 # function that computes the potential.
 #
-function test3(N=100_000)
+function test3(;N=100_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -95,7 +103,11 @@ function test3(N=100_000)
   end
 
   # Run pairwise computation
-  u = map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc)
+  u = map_pairwise(
+    (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
+    0.0,x,box,lc,
+    parallel=parallel
+  )
   return u
 
 end
@@ -105,7 +117,7 @@ end
 # has a different mass. In this case, the closure is used to pass the masses and
 # the force vector to the function that computes the potential.
 #
-function test4(N=100_000)
+function test4(;N=100_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -138,7 +150,11 @@ function test4(N=100_000)
   forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
   # Run pairwise computation
-  forces = map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc)
+  forces = map_pairwise(
+    (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
+    forces,x,box,lc,
+    parallel=parallel
+  )
   return forces
 
 end
@@ -146,7 +162,7 @@ end
 #
 # In this test we compute the minimum distance between two independent sets of particles
 #
-function test5(;N1=1_500,N2=1_500_000)
+function test5(;N1=1_500,N2=1_500_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -166,7 +182,7 @@ function test5(;N1=1_500,N2=1_500_000)
   # Function that keeps the minimum distance
   f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
-  # We have to define our own reduce function here
+  # We have to define our own reduce function here (for the parallel version)
   function reduce_mind(output_threaded)
     mind = output_threaded[1]
     for i in 2:nthreads()
@@ -181,7 +197,7 @@ function test5(;N1=1_500,N2=1_500_000)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind)
+  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel)
   return mind
 
 end
@@ -190,7 +206,7 @@ end
 # In this test we compute the minimum distance between two independent sets of particles,
 # more or less without periodic conditions
 #
-function test6(;N1=1_500,N2=1_500_000)
+function test6(;N1=1_500,N2=1_500_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [1.2,1.2,1.2]
@@ -210,7 +226,7 @@ function test6(;N1=1_500,N2=1_500_000)
   # Function that keeps the minimum distance
   f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
-  # We have to define our own reduce function here
+  # We have to define our own reduce function here (for the parallel version)
   function reduce_mind(output_threaded)
     mind = output_threaded[1]
     for i in 2:Threads.nthreads()
@@ -225,7 +241,7 @@ function test6(;N1=1_500,N2=1_500_000)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind)
+  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel)
   return mind
 
 end
