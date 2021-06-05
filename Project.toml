@@ -3,8 +3,16 @@ uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
 version = "0.1.0"
 
+[deps]
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
 [compat]
 julia = "1"
+DocStringExtensions = "0.8"
+Parameters = "0.12"
+StaticArrays = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
