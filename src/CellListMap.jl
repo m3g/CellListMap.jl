@@ -650,19 +650,19 @@ end
 #
 # In this test we compute the minimum distance between two independent sets of particles
 #
-function test5(;N1=1_500,N2=1_500_000)
+function test6(;N1=1_500,N2=1_500_000)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
-  cutoff = 10.
+  sides = [1.2,1.2,1.2]
+  cutoff = 0.01
   box = Box(sides,cutoff)
 
   # Initialize auxiliary linked lists (largest set!)
   lc = LinkedLists(N2)
 
   # Particle positions
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
-  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
+  x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
+  y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
 
   # Initializing linked cells with these positions (largest set!)
   initcells!(y,box,lc)  
@@ -673,7 +673,7 @@ function test5(;N1=1_500,N2=1_500_000)
   # We have to define our own reduce function here
   function reduce(output_threaded::Vector{Tuple{Int,Int,Float64}})
     mind = output_threaded[1]
-    for i in 2:nthreads()
+    for i in 2:Threads.nthreads()
       if output_threaded[i][3] < mind[3]
         mind = output_threaded[i]
       end
