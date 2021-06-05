@@ -1,8 +1,8 @@
-using CellLists
+using CellListMap
 using StaticArrays
 using Test
 
-@testset "CellLists.jl" begin
+@testset "CellListMap.jl" begin
 
   # Number of particles, sides and cutoff
   N = 2000
@@ -23,7 +23,7 @@ using Test
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
 
   @test abs(map_pairwise((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box,lc)) ≈
-        abs(CellLists.map_naive((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
+        abs(CellListMap.map_naive((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
 
   # Function to be evalulated for each pair: build distance histogram
   function build_histogram!(x,y,d2,hist)
@@ -36,7 +36,7 @@ using Test
   hist = zeros(Int,10)
   hist2 = zeros(Int,10)
   @test map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc) ≈
-        CellLists.map_naive((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist2,x,box)
+        CellListMap.map_naive((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist2,x,box)
 
   # Function to be evalulated for each pair: build distance histogram
   function potential(x,y,i,j,d2,u,mass)
@@ -48,7 +48,7 @@ using Test
 
   # Run pairwise computation
   @test map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc) ≈
-        CellLists.map_naive((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box)
+        CellListMap.map_naive((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box)
 
   # Function to be evalulated for each pair: build distance histogram
   function calc_forces!(x,y,i,j,d2,mass,forces)
@@ -66,6 +66,6 @@ using Test
 
   # Run pairwise computation
   @test map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc) ≈
-        CellLists.map_naive((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces2,x,box)
+        CellListMap.map_naive((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces2,x,box)
 
 end
