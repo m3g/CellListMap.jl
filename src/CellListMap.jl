@@ -668,10 +668,10 @@ function test6(;N1=1_500,N2=1_500_000)
   initcells!(y,box,lc)  
 
   # Function that keeps the minimum distance
-  f(x,y,i,j,d2,mind) = d2 < mind[3] ? mind = (i,j,d2) : mind
+  f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
   # We have to define our own reduce function here
-  function reduce(output_threaded::Vector{Tuple{Int,Int,Float64}})
+  function reduce_mind(output_threaded)
     mind = output_threaded[1]
     for i in 2:Threads.nthreads()
       if output_threaded[i][3] < mind[3]
@@ -685,7 +685,7 @@ function test6(;N1=1_500,N2=1_500_000)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce)
+  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind)
   return mind
 
 end

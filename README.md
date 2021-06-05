@@ -163,10 +163,10 @@ y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 initcells!(y,box,lc)
 
 # Function that keeps the minimum distance
-f(x,y,i,j,d2,mind) = d2 < mind[3] ? mind = (i,j,d2) : mind
+f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
 # We have to define our own reduce function here
-function reduce(output_threaded::Vector{Tuple{Int,Int,Float64}})
+function reduce(output_threaded})
   mind = output_threaded[1]
   for i in 2:Threads.nthreads()
     if output_threaded[i][3] < mind[3]
