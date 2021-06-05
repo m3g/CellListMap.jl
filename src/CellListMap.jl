@@ -72,12 +72,13 @@ Box{3, Float64}([250.0, 250.0, 250.0], [50, 50, 50], [5.0, 5.0, 5.0], 2, 10.0)
   l::SVector{N,T}
   lcell::Int
   cutoff::T
+  cutoff_sq::T
 end
 function Box(sides::SVector{N,T}, cutoff, lcell::Int=2) where {N,T<:Float64}
   # Compute the number of cells in each dimension
   nc = SVector{N,Int}(max.(1,trunc.(Int,sides/(cutoff/lcell))))
   l = SVector{N,T}(sides ./ nc)
-  return Box{N,T}(sides,nc,l,lcell,cutoff)
+  return Box{N,T}(sides,nc,l,lcell,cutoff,cutoff^2)
 end
 function Box(sides::AbstractVector{T}, cutoff, lcell::Int=2) where T 
   N =length(sides)
@@ -369,11 +370,18 @@ The example above can be run with `CellLists.test3()`.
 
 
 """
-map_pairwise(
+function map_pairwise(
   f::Function, output, 
   x::AbstractVector,
-  box::Box{N,T}, lc::LinkedLists; reduce::Function=reduce,
-) where {N,T} = map_pairwise(f,output,x,x,box,lc;self=true,reduce=reduce)
+  box::Box{N,T}, lc::LinkedLists; reduce::Function=reduce, parallel::Bool=true
+) where {N,T}  
+  if parallel
+    output = map_pairwise_parallel(f,output,x,x,box,lc;self=true,reduce=reduce)
+  else
+    output = map_pairwise_serial(f,output,x,x,box,lc;self=true,reduce=reduce)
+  end
+  return output
+end
 
 """
 
@@ -389,51 +397,37 @@ The same as the function `map_pairwise` that receives a single vector `x`, but t
 """
 function map_pairwise(
   f::Function, output, 
+  x::AbstractVector, y::AbstractVector,
+  box::Box{N,T}, lc::LinkedLists; reduce::Function=reduce, parallel::Bool=true
+) where {N,T}  
+  if parallel
+    output = map_pairwise_parallel(f,output,x,y,box,lc;self=true,reduce=reduce)
+  else
+    output = map_pairwise_serial(f,output,x,y,box,lc;self=true,reduce=reduce)
+  end
+  return output
+end
+
+#
+# Parallel version
+#
+function map_pairwise_parallel(
+  f::Function, output, 
   x::AbstractVector, y::AbstractVector, 
   box::Box{N,T}, lc::LinkedLists; 
-  self=false, reduce::Function=reduce,
+  self=false, reduce::Function=reduce
 ) where {N,T}
 
-  @unpack sides, nc, lcell, cutoff = box
   output_threaded = [ output ]
   for i in 2:nthreads()
     push!(output_threaded,deepcopy(output))
   end
-  cutoff2 = cutoff^2
+
   @threads for i in eachindex(x)
     it = threadid()
-    xᵢ = x[i]
-    # Check the cell of this atom
-    ipc, jpc, kpc = particle_cell(xᵢ,box)
-    # Loop over vicinal cells to compute distances to solvent atoms, and
-    # add data to dc structure (includes current cell)
-    @inbounds for ic in ipc-lcell:ipc+lcell
-      for jc in jpc-lcell:jpc+lcell
-        for kc in kpc-lcell:kpc+lcell
-          # Wrap cell if needed
-          iw, jw, kw = wrap_cell(nc,ic,jc,kc)
-          # get linear index of this cell
-          icell = cell_linear_index(nc,iw,jw,kw) 
-          # cycle over the atoms of this cell
-          j = lc.firstatom[icell]
-          while j > 0
-            # skip same particle and repeated
-            if self && j >= i 
-              j = lc.nextatom[j]
-              continue
-            end
-            # Wrap particle j relative to particle xᵢ
-            yⱼ = wrapone(y[j],sides,xᵢ)
-            d2 = sq_distance(xᵢ,yⱼ)
-            if d2 <= cutoff2
-              output_threaded[it] = f(xᵢ,yⱼ,i,j,d2,output_threaded[it])
-            end
-            j = lc.nextatom[j]
-          end
-        end
-      end
-    end
+    output_threaded[it] = inner_map_loop(f,output_threaded[it],i,x[i],y,box,lc,self)
   end
+
   output = reduce(output_threaded)
   return output
 end
@@ -442,18 +436,56 @@ end
 # Functions to reduce the output of common options (vectors of numbers 
 # and vectors of vectors)
 #
-function reduce(output_threaded::Vector{<:Number}) 
-  output = output_threaded[1]
-  @inbounds for i in 2:nthreads()
-    output = output + output_threaded[i]
+reduce(output_threaded::Vector{<:Number}) = sum(output_threaded)
+reduce(output_threaded::Vector{<:AbstractVector}) = sum(output_threaded)
+
+#
+# Serial version
+#
+function map_pairwise_serial(
+  f::Function, output, 
+  x::AbstractVector, y::AbstractVector, 
+  box::Box{N,T}, lc::LinkedLists; 
+  self=false, reduce::Function=reduce
+) where {N,T}
+
+  for i in eachindex(x)
+    output = inner_map_loop(f,output,i,x[i],y,box,lc,self)
   end
   return output
 end
 
-function reduce(output_threaded::Vector{<:AbstractVector}) 
-  output = output_threaded[1]
-  @inbounds for i in 2:nthreads()
-    output .= output .+ output_threaded[i]
+function inner_map_loop(f,output,i,xᵢ,y,box,lc,self)
+  @unpack sides, nc, lcell, cutoff_sq = box
+  # Check the cell of this atom
+  ipc, jpc, kpc = particle_cell(xᵢ,box)
+  # Loop over vicinal cells to compute distances to solvent atoms, and
+  # add data to dc structure (includes current cell)
+  for ic in ipc-lcell:ipc+lcell
+    for jc in jpc-lcell:jpc+lcell
+      for kc in kpc-lcell:kpc+lcell
+        # Wrap cell if needed
+        iw, jw, kw = wrap_cell(nc,ic,jc,kc)
+        # get linear index of this cell
+        icell = cell_linear_index(nc,iw,jw,kw) 
+        # cycle over the atoms of this cell
+        j = lc.firstatom[icell]
+        while j > 0
+          # skip same particle and repeated
+          if self && j >= i 
+            j = lc.nextatom[j]
+            continue
+          end
+          # Wrap particle j relative to particle xᵢ
+          yⱼ = wrapone(y[j],sides,xᵢ)
+          d2 = sq_distance(xᵢ,yⱼ)
+          if d2 <= cutoff_sq
+            output = f(xᵢ,yⱼ,i,j,d2,output)
+          end
+          j = lc.nextatom[j]
+        end
+      end
+    end
   end
   return output
 end
@@ -462,13 +494,13 @@ end
 # Function that uses the naive algorithm, for testing
 #
 function map_naive(f,output,x,box)
-  cutoff2 = box.cutoff^2
+  @unpack sides, cutoff_sq = box
   for i in 1:length(x)-1
     xᵢ = x[i]
     for j in i+1:length(x)
-      xⱼ = wrapone(x[j],box.sides,xᵢ)
+      xⱼ = wrapone(x[j],sides,xᵢ)
       d2 = sq_distance(xᵢ,xⱼ) 
-      if d2 <= cutoff2
+      if d2 <= cutoff_sq
         output = f(xᵢ,xⱼ,i,j,d2,output)
       end
     end
@@ -476,6 +508,9 @@ function map_naive(f,output,x,box)
   return output
 end
 
+#
+# Test examples
+#
 include("./examples.jl")
 
 end # module
