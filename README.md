@@ -77,7 +77,7 @@ end;
 
 # Initialize (and preallocate) the histogram
 hist = zeros(Int,10);
-normalization = N / (N*(N-1)/2) # number of particles / number of pairs
+normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation
 hist = normalization * map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
