@@ -219,7 +219,7 @@ Given the dimension `N` of the system, return the periodic cell which correspond
 it, if the cell is outside the main box.
 
 """
-function wrap_cell(nc::SVector{N,Int}, indexes::Int...) where N
+@inline function wrap_cell(nc::SVector{N,Int}, indexes::Int...) where N
   cell_indexes = ntuple(N) do i
     ind = indexes[i]
     if ind < 1
@@ -395,9 +395,9 @@ function map_pairwise(
   box::Box{N,T}, lc::LinkedLists; self::Bool=false, reduce::Function=reduce, parallel::Bool=true
 ) where {N,T}  
   if parallel
-    output = map_pairwise_parallel(f,output,x,y,box,lc;self=self,reduce=reduce)
+    output = map_pairwise_parallel((x,y,i,j,d2,output)->f(x,y,i,j,d2,output),output,x,y,box,lc;self=self,reduce=reduce)
   else
-    output = map_pairwise_serial(f,output,x,y,box,lc;self=self)
+    output = map_pairwise_serial((x,y,i,j,d2,output)->f(x,y,i,j,d2,output),output,x,y,box,lc;self=self)
   end
   return output
 end
