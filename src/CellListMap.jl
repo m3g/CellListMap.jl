@@ -263,7 +263,11 @@ julia> lc.firstatom
 ```
 
 """
-function initcells!(x::AbstractVector{<:AbstractVector}, box::Box{N,T}, lc::LinkedLists) where {N,T}
+function initcells!(
+  x::AbstractVector{<:AbstractVector}, 
+  box::Box{N,T}, lc::LinkedLists;
+  parallel=true
+) where {N,T}
 
   # Count the number of boxes and checks if there is a problem with dimensions
   nboxes = prod(box.nc)
@@ -271,18 +275,36 @@ function initcells!(x::AbstractVector{<:AbstractVector}, box::Box{N,T}, lc::Link
     resize!(lc.firstatom,nboxes)
   end
 
-  # Reset arrays
-  for i in 1:nboxes
-    lc.firstatom[i] = 0
-  end
-  @. lc.nextatom = 0
- 
-  # Initialize cell, firstatom and nexatom
-  for iat in eachindex(x)
-    ic, jc, kc = particle_cell(x[iat],box)
-    icell = cell_linear_index(box.nc,ic,jc,kc)
-    lc.nextatom[iat] = lc.firstatom[icell]
-    lc.firstatom[icell] = iat
+  if parallel
+    # Reset arrays
+    @threads for i in 1:nboxes
+      lc.firstatom[i] = 0
+    end
+    @threads for i in eachindex(lc.nextatom)
+      lc.nextatom[i] = 0
+    end
+    # Initialize cell, firstatom and nexatom
+    @threads for iat in eachindex(x)
+      ic, jc, kc = particle_cell(x[iat],box)
+      icell = cell_linear_index(box.nc,ic,jc,kc)
+      lc.nextatom[iat] = lc.firstatom[icell]
+      lc.firstatom[icell] = iat
+    end
+  else
+    # Reset arrays
+    for i in 1:nboxes
+      lc.firstatom[i] = 0
+    end
+    for i in eachindex(lc.nextatom)
+      lc.nextatom[i] = 0
+    end
+    # Initialize cell, firstatom and nexatom
+    for iat in eachindex(x)
+      ic, jc, kc = particle_cell(x[iat],box)
+      icell = cell_linear_index(box.nc,ic,jc,kc)
+      lc.nextatom[iat] = lc.firstatom[icell]
+      lc.firstatom[icell] = iat
+    end
   end
 
   return nothing
