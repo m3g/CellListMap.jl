@@ -10,22 +10,24 @@ It allows the computation of any quantity from the pairs that are within the des
 julia> ] add https://github.com/m3g/CellListMap.jl
 ```
 
-## Examples:
+## Overview
+
+The main function is `map_parwise`: 
 
 ```
 map_pairwise(f::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
 ```
 
-The function will run over every pair of particles which are closer than `box.cutoff` and compute
-the Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the cutoff, a function `f` of the coordinates
+This function will run over every pair of particles which are closer than `box.cutoff` and compute
+the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
+in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
 of the two particles will be computed. 
 
 This function `f` receives six arguments as input: 
 ```
 f(x,y,i,j,d2,output)
 ```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the   first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise` must be always of the form:
+Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise` must be always of the form:
 ```
 function f(x,y,i,j,d2,output)
   # compute 
@@ -36,9 +38,13 @@ and the user can define more or less parameters using closures, as shown in the 
 
 Parallel calculations are the default if more than one thread is available. Use `parallel=false` as an optional argument to `map_pairwise` to run the serial version instead.
 
+## Examples
+
+The full code of the examples described here is available at the [examples.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples.jl) file. 
+
 ### Mean difference of `x` coordinates 
 
-Computing the mean difference in `x` position between random particles, remembering the the number of pairs of `n` particles is `n(n-1)/2`. The closure is used to remove the indexes and the distance of the atoms from the parameters of the input function, as they are not needed in this case.
+Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the atoms from the parameters of the input function, as they are not needed in this case.
 
 ```julia
 using CellListMap
@@ -97,9 +103,7 @@ The example above can be run with `CellListMap.test2()`.
 
 ### Gravitational potential
 
-In this test we compute the "gravitational potential", assigning to each particle
-a different mass. In this case, the closure is used to pass the masses to the
-function that computes the potential.
+In this test we compute the "gravitational potential", assigning to each particle a different mass. In this case, the closure is used to pass the masses to the function that computes the potential.
 
 ```julia
 # masses
@@ -149,10 +153,7 @@ The example above can be run with `CellListMap.test4()`.
 
 ### Compute minimum distance between two sets of particles
 
-Here we compute the minimum distance between two sets of points, using the linked
-lists. The distance and the indexes are stored in a tuple, and a reducing method
-has to be defined for that tuple to run the caculation.  The function does not need
-the coordinates of the points, only their distance and indexes.
+Here we compute the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
 
 ```julia
 # Number of particles, sides and cutoff
@@ -196,6 +197,6 @@ mind = map_pairwise(
 )
 ```
 
-The example above can be run with `CellList.test5()`. 
+The example above can be run with `CellListMap.test5()`. 
 
 
