@@ -23,7 +23,7 @@ the (squared) Euclidean distance between the particles, considering the periodic
 in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
 of the two particles will be computed. 
 
-This function `f` receives six arguments as input: 
+The function `f` receives six arguments as input: 
 ```
 f(x,y,i,j,d2,output)
 ```
