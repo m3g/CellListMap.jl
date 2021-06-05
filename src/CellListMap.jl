@@ -412,10 +412,7 @@ function map_pairwise_parallel(
   self=false, reduce::Function=reduce
 ) where {N,T}
 
-  output_threaded = [ output ]
-  for i in 2:nthreads()
-    push!(output_threaded,deepcopy(output))
-  end
+  output_threaded = [ deepcopy(output) for i in 1:nthreads() ]
 
   @threads for i in eachindex(x)
     it = threadid()
