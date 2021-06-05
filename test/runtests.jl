@@ -69,4 +69,12 @@ using Test
   @test map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),copy(forces),x,box,lc,parallel=true) ≈ naive
   @test map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),copy(forces),x,box,lc,parallel=false) ≈ naive
 
+  # Compute some properteis of disjoint sets 
+  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  initcells!(y,box,lc)
+
+  naive = CellListMap.map_naive_two((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
+  @test map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box,lc,parallel=true) ≈ naive
+  @test map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box,lc,parallel=false) ≈ naive
+
 end
