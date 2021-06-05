@@ -22,8 +22,9 @@ using Test
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
 
-  @test abs(map_pairwise((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box,lc)) ≈
-        abs(CellListMap.map_naive((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
+  naive = abs(CellListMap.map_naive((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
+  @test abs(map_pairwise((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box,lc,parallel=true)) ≈ naive
+  @test abs(map_pairwise((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box,lc,parallel=false)) ≈ naive
 
   # Function to be evalulated for each pair: build distance histogram
   function build_histogram!(x,y,d2,hist)
@@ -33,10 +34,9 @@ using Test
     return hist
   end
 
-  hist = zeros(Int,10)
-  hist2 = zeros(Int,10)
-  @test map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc) ≈
-        CellListMap.map_naive((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist2,x,box)
+  naive = CellListMap.map_naive((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),zeros(Int,10),x,box)
+  @test map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),zeros(Int,10),x,box,lc,parallel=true) ≈ naive
+  @test map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),zeros(Int,10),x,box,lc,parallel=false) ≈ naive
 
   # Function to be evalulated for each pair: build distance histogram
   function potential(x,y,i,j,d2,u,mass)
@@ -47,8 +47,9 @@ using Test
   mass = rand(N)
 
   # Run pairwise computation
-  @test map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc) ≈
-        CellListMap.map_naive((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box)
+  naive = CellListMap.map_naive((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box)
+  @test map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc,parallel=true) ≈ naive
+  @test map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc,parallel=false) ≈ naive
 
   # Function to be evalulated for each pair: build distance histogram
   function calc_forces!(x,y,i,j,d2,mass,forces)
@@ -62,10 +63,10 @@ using Test
 
   # forces
   forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
-  forces2 = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
   # Run pairwise computation
-  @test map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc) ≈
-        CellListMap.map_naive((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces2,x,box)
+  naive = CellListMap.map_naive((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),copy(forces),x,box)
+  @test map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),copy(forces),x,box,lc,parallel=true) ≈ naive
+  @test map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),copy(forces),x,box,lc,parallel=false) ≈ naive
 
 end

@@ -82,7 +82,7 @@ function Box(sides::SVector{N,T}, cutoff, lcell::Int=2) where {N,T<:Float64}
 end
 function Box(sides::AbstractVector{T}, cutoff, lcell::Int=2) where T 
   N =length(sides)
-  Box(SVector{N,Float64}(sides), cutoff, lcell)
+  return Box(SVector{N,Float64}(sides), cutoff, lcell)
 end
 
 """
@@ -378,7 +378,7 @@ function map_pairwise(
   if parallel
     output = map_pairwise_parallel(f,output,x,x,box,lc;self=true,reduce=reduce)
   else
-    output = map_pairwise_serial(f,output,x,x,box,lc;self=true,reduce=reduce)
+    output = map_pairwise_serial(f,output,x,x,box,lc;self=true)
   end
   return output
 end
@@ -403,7 +403,7 @@ function map_pairwise(
   if parallel
     output = map_pairwise_parallel(f,output,x,y,box,lc;self=true,reduce=reduce)
   else
-    output = map_pairwise_serial(f,output,x,y,box,lc;self=true,reduce=reduce)
+    output = map_pairwise_serial(f,output,x,y,box,lc;self=true)
   end
   return output
 end
@@ -446,7 +446,7 @@ function map_pairwise_serial(
   f::Function, output, 
   x::AbstractVector, y::AbstractVector, 
   box::Box{N,T}, lc::LinkedLists; 
-  self=false, reduce::Function=reduce
+  self=false
 ) where {N,T}
 
   for i in eachindex(x)
@@ -455,6 +455,9 @@ function map_pairwise_serial(
   return output
 end
 
+#
+# Inner loop that runs over cells for each index of the `x` vector. 
+#
 function inner_map_loop(f,output,i,xᵢ,y,box,lc,self)
   @unpack sides, nc, lcell, cutoff_sq = box
   # Check the cell of this atom
