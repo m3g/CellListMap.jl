@@ -180,7 +180,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   initcells!(y,box,lc)  
 
   # Function that keeps the minimum distance
-  f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
+  f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
   # We have to define our own reduce function here (for the parallel version)
   function reduce_mind(output_threaded)
@@ -197,7 +197,10 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel)
+  mind = map_pairwise(
+    (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
+    mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
+  )
   return mind
 
 end
@@ -224,7 +227,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   initcells!(y,box,lc)  
 
   # Function that keeps the minimum distance
-  f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
+  f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
   # We have to define our own reduce function here (for the parallel version)
   function reduce_mind(output_threaded)
@@ -241,7 +244,10 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel)
+  mind = map_pairwise(
+    (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
+    mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
+  )
   return mind
 
 end

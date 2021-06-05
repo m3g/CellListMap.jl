@@ -151,7 +151,8 @@ The example above can be run with `CellListMap.test4()`.
 
 Here we compute the minimum distance between two sets of points, using the linked
 lists. The distance and the indexes are stored in a tuple, and a reducing method
-has to be defined for that tuple to run the caculation. 
+has to be defined for that tuple to run the caculation.  The function does not need
+the coordinates of the points, only their distance and indexes.
 
 ```julia
 # Number of particles, sides and cutoff
@@ -172,7 +173,7 @@ y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 initcells!(y,box,lc)
 
 # Function that keeps the minimum distance
-f(x,y,i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
+f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
 # We have to define our own reduce function here
 function reduce_mind(output_threaded})
@@ -189,7 +190,10 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = map_pairwise(f,mind,x,y,box,lc;reduce=reduce_mind)
+mind = map_pairwise( 
+  (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
+  mind,x,y,box,lc;reduce=reduce_mind
+)
 ```
 
 The example above can be run with `CellList.test5()`. 
