@@ -212,14 +212,14 @@ end
 """
 
 ```
-wrap_cell(nc::SVector{N,T}, indexes...) where {N,T}
+wrap_cell(nc::SVector{N,Int}, indexes::Int...) where N
 ```
 
-Given the `N` indexes of a cell, return the periodic cell which correspondst to
+Given the dimension `N` of the system, return the periodic cell which correspondst to
 it, if the cell is outside the main box.
 
 """
-function wrap_cell(nc::SVector{N,T}, indexes::Int...) where {N,T}
+function wrap_cell(nc::SVector{N,Int}, indexes::Int...) where N
   cell_indexes = ntuple(N) do i
     ind = indexes[i]
     if ind < 1
@@ -419,7 +419,10 @@ function map_pairwise_parallel(
 
   @threads for i in eachindex(x)
     it = threadid()
-    output_threaded[it] = inner_map_loop(f,output_threaded[it],i,x[i],y,box,lc,self)
+    output_threaded[it] = inner_map_loop(
+      (x,y,i,j,d2,output) -> f(x,y,i,j,d2,output),
+      output_threaded[it],i,x[i],y,box,lc,self
+    )
   end
 
   output = reduce(output_threaded)
@@ -444,7 +447,10 @@ function map_pairwise_serial(
 ) where {N,T}
 
   for i in eachindex(x)
-    output = inner_map_loop(f,output,i,x[i],y,box,lc,self)
+    output = inner_map_loop(
+      (x,y,i,j,d2,output) -> f(x,y,i,j,d2,output),
+      output,i,x[i],y,box,lc,self
+    )
   end
   return output
 end
@@ -452,7 +458,7 @@ end
 #
 # Inner loop that runs over cells for each index of the `x` vector. 
 #
-function inner_map_loop(f,output,i,xᵢ,y,box,lc,self)
+function inner_map_loop(f::Function,output,i,xᵢ,y,box::Box{N,T},lc,self) where {N,T}
   @unpack sides, nc, lcell, cutoff_sq = box
   # Check the cell of this atom
   ipc, jpc, kpc = particle_cell(xᵢ,box)
