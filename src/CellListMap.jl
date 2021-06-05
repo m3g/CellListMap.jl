@@ -394,7 +394,7 @@ function map_pairwise(
   x::AbstractVector, y::AbstractVector,
   box::Box{N,T}, lc::LinkedLists; self::Bool=false, reduce::Function=reduce, parallel::Bool=true
 ) where {N,T}  
-  if parallel
+  if parallel && nthreads() > 1
     output = map_pairwise_parallel((x,y,i,j,d2,output)->f(x,y,i,j,d2,output),output,x,y,box,lc;self=self,reduce=reduce)
   else
     output = map_pairwise_serial((x,y,i,j,d2,output)->f(x,y,i,j,d2,output),output,x,y,box,lc;self=self)
