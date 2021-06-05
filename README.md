@@ -118,9 +118,6 @@ In the following example, we update a force vector of for all particles.
 # masses
 mass = rand(N)
 
-# forces
-forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
-
 # Function to be evalulated for each pair: build distance histogram
 function calc_forces!(x,y,i,j,d2,mass,forces)
   G = 9.8*mass[i]*mass[j]/d2
@@ -130,6 +127,9 @@ function calc_forces!(x,y,i,j,d2,mass,forces)
   forces[j] = forces[j] + df
   return forces
 end
+
+# Initialize and preallocate forces
+forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
 # Run pairwise computation
 forces = map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc)
@@ -176,7 +176,7 @@ function reduce_mind(output_threaded})
   return (mind[1],mind[2],sqrt(mind[3]))
 end
 
-# Result
+# Initial value
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
