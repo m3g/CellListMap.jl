@@ -370,18 +370,12 @@ The example above can be run with `CellLists.test3()`.
 
 
 """
-function map_pairwise(
+map_pairwise(
   f::Function, output, 
   x::AbstractVector,
   box::Box{N,T}, lc::LinkedLists; reduce::Function=reduce, parallel::Bool=true
-) where {N,T}  
-  if parallel
-    output = map_pairwise_parallel(f,output,x,x,box,lc;self=true,reduce=reduce)
-  else
-    output = map_pairwise_serial(f,output,x,x,box,lc;self=true)
-  end
-  return output
-end
+) where {N,T} =
+  map_pairwise(f,output,x,x,box,lc;self=true, reduce=reduce, parallel=parallel)
 
 """
 
@@ -398,12 +392,12 @@ The same as the function `map_pairwise` that receives a single vector `x`, but t
 function map_pairwise(
   f::Function, output, 
   x::AbstractVector, y::AbstractVector,
-  box::Box{N,T}, lc::LinkedLists; reduce::Function=reduce, parallel::Bool=true
+  box::Box{N,T}, lc::LinkedLists; self::Bool=false, reduce::Function=reduce, parallel::Bool=true
 ) where {N,T}  
   if parallel
-    output = map_pairwise_parallel(f,output,x,y,box,lc;self=true,reduce=reduce)
+    output = map_pairwise_parallel(f,output,x,y,box,lc;self=self,reduce=reduce)
   else
-    output = map_pairwise_serial(f,output,x,y,box,lc;self=true)
+    output = map_pairwise_serial(f,output,x,y,box,lc;self=self)
   end
   return output
 end
