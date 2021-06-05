@@ -54,8 +54,10 @@ function test2(N=100_000)
     return hist
   end
 
-  # Run pairwise computation
+  # Preallocate and initialize histogram
   hist = zeros(Int,10)
+
+  # Run pairwise computation
   hist = map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
   return (N/(N*(N-1)/2)) * hist
 
@@ -119,9 +121,6 @@ function test4(N=100_000)
   # masses
   mass = rand(N)
 
-  # forces
-  forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
-
   # Initializing linked cells with these positions
   initcells!(x,box,lc)  
 
@@ -134,6 +133,9 @@ function test4(N=100_000)
     forces[j] = forces[j] + df
     return forces
   end
+
+  # Preallocate and initialize forces
+  forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
   # Run pairwise computation
   forces = map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc)
@@ -175,7 +177,7 @@ function test5(;N1=1_500,N2=1_500_000)
     return (mind[1],mind[2],sqrt(mind[3]))
   end 
 
-  # Result
+  # Initialize
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
@@ -219,7 +221,7 @@ function test6(;N1=1_500,N2=1_500_000)
     return (mind[1],mind[2],sqrt(mind[3]))
   end 
 
-  # Result
+  # Initialize 
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
