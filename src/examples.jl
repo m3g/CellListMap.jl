@@ -213,7 +213,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [1.2,1.2,1.2]
-  cutoff = 0.01
+  cutoff = 0.02
   box = Box(sides,cutoff)
 
   # Initialize auxiliary linked lists (largest set!)
