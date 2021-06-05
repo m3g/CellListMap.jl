@@ -237,7 +237,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
         mind = output_threaded[i]
       end
     end
-    return (mind[1],mind[2],sqrt(mind[3]))
+    return mind
   end 
 
   # Initialize 
@@ -248,7 +248,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
   )
-  return mind
+  return (mind[1],mind[2],sqrt(mind[3]))
 
 end
 
