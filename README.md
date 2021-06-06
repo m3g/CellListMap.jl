@@ -177,7 +177,7 @@ initcells!(y,box,lc)
 f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
 # We have to define our own reduce function here
-function reduce_mind(output_threaded})
+function reduce_mind(output_threaded)
   mind = output_threaded[1]
   for i in 2:Threads.nthreads()
     if output_threaded[i][3] < mind[3]
