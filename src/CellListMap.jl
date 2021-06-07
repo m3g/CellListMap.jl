@@ -26,22 +26,17 @@ julia> lc = LinkedLists(100_000)
 LinkedLists{100000}
   firstatom: Array{Int64}((100000,)) [0, 0, 0, 0, 0, 0, 0, 0, 0, 0  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   nextatom: Array{Int64}((100000,)) [0, 0, 0, 0, 0, 0, 0, 0, 0, 0  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  icell: Array{Int64}((100000,)) [0, 0, 0, 0, 0, 0, 0, 0, 0, 0  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 ```
 
 """  
 @with_kw struct LinkedLists{N}
-  firstatom::Vector{Int}
-  nextatom::Vector{Int}
-  icell::Vector{Int}
+  firstatom::Vector{Int} = zeros(Int,N)
+  nextatom::Vector{Int} = zeros(Int,N)
+  icell::Vector{Int} = zeros(Int,N)
 end
-function LinkedLists(N::Int) 
-  return LinkedLists{N}(
-    zeros(Int,N), # firstatom (actual required size is nc1*nc2*nc*3
-    zeros(Int,N), # nextatom
-    zeros(Int,N), # cell of each atom (auxiliar array to parallelize cell initialization)
-  )
-end
+LinkedLists(N::Int) = LinkedLists{N}()
 
 """
 
@@ -62,29 +57,33 @@ julia> cutoff = 10.;
 julia> box = Box(sides,cutoff)
 
 julia> box = Box(sides,cutoff)
-Box{3, Float64}([250.0, 250.0, 250.0], [50, 50, 50], [5.0, 5.0, 5.0], 2, 10.0)
+Box{3, Int64, Float64, Float64}
+  sides: SVector{3, Int64}
+  nc: SVector{3, Int64}
+  l: SVector{3, Float64}
+  lcell: Int64 2
+  cutoff: Float64 10.0
+  cutoff_sq: Float64 100.0
 
 ```
 
 
 """
-@with_kw struct Box{N,T<:Float64}
-  sides::SVector{N,T}
+@with_kw struct Box{N,T1,T2,T3}
+  sides::SVector{N,T1}
   nc::SVector{N,Int}
-  l::SVector{N,T}
+  l::SVector{N,T2}
   lcell::Int
-  cutoff::T
-  cutoff_sq::T
+  cutoff::T3
+  cutoff_sq::T3
 end
-function Box(sides::SVector{N,T}, cutoff, lcell::Int=2) where {N,T<:Float64}
+function Box(sides::AbstractVector{T1}, cutoff::T2, lcell::Int=2) where {T1,T2}
+  N = length(sides)
+  T = promote_type(T1,T2)
   # Compute the number of cells in each dimension
   nc = SVector{N,Int}(max.(1,trunc.(Int,sides/(cutoff/lcell))))
   l = SVector{N,T}(sides ./ nc)
-  return Box{N,T}(sides,nc,l,lcell,cutoff,cutoff^2)
-end
-function Box(sides::AbstractVector{T}, cutoff, lcell::Int=2) where T 
-  N =length(sides)
-  return Box(SVector{N,Float64}(sides), cutoff, lcell)
+  return Box(SVector{N,T1}(sides),nc,l,lcell,cutoff,cutoff^2)
 end
 
 """
@@ -120,14 +119,14 @@ Function to compute Euclidean distances between two n-dimensional vectors.
 """
 
 ```
-particle_cell(x::AbstractVector{T}, box::Box{N,T}) where {N,T}
+particle_cell(x::AbstractVector{T}, box::Box{N,T1,T2,T3}) where {N,T,T1,T2,T3}
 ```
 
 Returns the coordinates of the cell to which a particle belongs, given its coordinates
 and the sides of the periodic box (for arbitrary dimension N).
 
 """
-function particle_cell(x::AbstractVector{T}, box::Box{N,T}) where {N,T}
+function particle_cell(x::AbstractVector{T}, box::Box{N,T1,T2,T3}) where {N,T,T1,T2,T3}
   # Wrap to origin
   xwrapped = wrapone(x,box.sides)
   return ntuple(i -> floor(Int,(xwrapped[i]+box.sides[i]/2)/box.l[i])+1, N)
@@ -148,34 +147,32 @@ cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} =
 
 """
 ```
-icell1D(nc::SVector{N,Int}, i, j, k) where N
+icell1D(nc::SVector{N,Int}, indexes::Int...) where N
 ```
 Returns the index of the cell, in the 1D representation, from its cartesian coordinates.
 
 """
-cell_linear_index(nc::SVector{N,Int}, indexes...) where {N} =
+cell_linear_index(nc::SVector{N,Int}, indexes::Int...) where {N} =
   LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indexes[i],N)...]
 
 """
 
 ```
-function wrap!(x::AbstractVector{T}, sides::T, center::T) where T <: AbstractVector
+function wrap!(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
 ```
 
 Functions that wrap the coordinates They modify the coordinates of the input vector.  
 Wrap to a given center of coordinates
 
 """
-function wrap!(x::AbstractVector{T}, 
-               sides::T, 
-               center::T) where T <: AbstractVector
+function wrap!(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
   for i in eachindex(x)
     x[i] = wrapone(x[i],sides,center)
   end
   return nothing
 end
 
-@inline function wrapone(x::T, sides::T, center::T) where T <: AbstractVector
+@inline function wrapone(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
   s = @. (x-center)%sides
   s = @. wrapx(s,sides) + center
   return s
@@ -193,19 +190,20 @@ end
 """
 
 ```
-wrap!(x::AbstractVector{T}, sides::T) where T <: AbstractVector
+wrap!(x::AbstractVector, sides::AbstractVector)
 ```
+
 Wrap to origin (slightly cheaper).
 
 """
-function wrap!(x::AbstractVector{T}, sides::T) where T <: AbstractVector
+function wrap!(x::AbstractVector, sides::AbstractVector)
   for i in eachindex(x)
     x[i] = wrapone(x[i],sides)
   end
   return nothing
 end
 
-@inline function wrapone(x::T, sides::T) where T <: AbstractVector
+@inline function wrapone(x::AbstractVector, sides::AbstractVector)
   s = @. x%sides
   s = @. wrapx(s,sides)
   return s
@@ -237,8 +235,9 @@ end
 """
 
 ```
-initlists!(x::AbstractVector{T}, box::Box, lc::LinkedLists) where T
+initlists!(x::AbstractVector{<:AbstractVector}, box::Box, lc::LinkedLists)
 ```
+
 Function that initializes the linked cells by computing to each cell each atom
 belongs and filling up the firstatom and nexatom arrays.
 Modifies the data in the lc structure
@@ -267,9 +266,9 @@ julia> lc.firstatom
 """
 function initlists!(
   x::AbstractVector{<:AbstractVector}, 
-  box::Box{N,T}, lc::LinkedLists;
+  box::Box, lc::LinkedLists;
   parallel=true
-) where {N,T}
+) 
 
   # Count the number of boxes and checks if there is a problem with dimensions
   nboxes = prod(box.nc)
@@ -319,7 +318,7 @@ end
 """
 
 ```
-map_pairwise!(f!::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
+map_pairwise!(f!::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
@@ -401,12 +400,12 @@ The example above can be run with `CellLists.test3()`.
 map_pairwise!(
   f!::Function, output, 
   x::AbstractVector,
-  box::Box{N,T}, lc::LinkedLists; 
+  box::Box, lc::LinkedLists; 
   # Parallellization options
   parallel::Bool=true,
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
   reduce::Function=reduce
-) where {N,T} =
+) =
   map_pairwise!(f!,output,x,x,box,lc; self=true, 
     parallel=parallel,
     output_threaded=output_threaded,
@@ -418,8 +417,8 @@ map_pairwise!(
 ``
 map_pairwise!(f!::Function, output, 
   x::AbstractVector, y::AbstractVector, 
-  box::Box{N,T}, lc::LinkedLists
-) where {N,T}
+  box::Box, lc::LinkedLists
+)
 ```
 
 The same as the function `map_pairwise!`, but to compute interactions between two disjoint sets of particles `x` and `y`. 
@@ -428,12 +427,12 @@ The same as the function `map_pairwise!`, but to compute interactions between tw
 function map_pairwise!(
   f!::Function, output, 
   x::AbstractVector, y::AbstractVector,
-  box::Box{N,T}, lc::LinkedLists; self::Bool=false, 
+  box::Box, lc::LinkedLists; self::Bool=false, 
   # Parallelization options
   parallel::Bool=true,
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
   reduce::Function=reduce
-) where {N,T}  
+)
   if parallel && nthreads() > 1
     output = map_pairwise_parallel!(
       (x,y,i,j,d2,output)->f!(x,y,i,j,d2,output),
@@ -453,11 +452,11 @@ end
 function map_pairwise_parallel!(
   f!::Function, output, 
   x::AbstractVector, y::AbstractVector, 
-  box::Box{N,T}, lc::LinkedLists; 
+  box::Box, lc::LinkedLists; 
   self=false, 
   output_threaded=output_threaded,
   reduce::Function=reduce
-) where {N,T}
+)
 
   @threads for i in eachindex(x)
     it = threadid()
@@ -484,9 +483,9 @@ reduce(output_threaded::Vector{<:AbstractVector}) = sum(output_threaded)
 function map_pairwise_serial!(
   f!::Function, output, 
   x::AbstractVector, y::AbstractVector, 
-  box::Box{N,T}, lc::LinkedLists; 
+  box::Box, lc::LinkedLists; 
   self=false
-) where {N,T}
+)
 
   for i in eachindex(x)
     output = inner_map_loop!(
@@ -500,7 +499,7 @@ end
 #
 # Inner loop that runs over cells for each index of the `x` vector. 
 #
-function inner_map_loop!(f!::Function,output,i,xᵢ,y,box::Box{N,T},lc,self) where {N,T}
+function inner_map_loop!(f!::Function,output,i,xᵢ,y,box::Box,lc,self)
   @unpack sides, nc, lcell, cutoff_sq = box
   # Check the cell of this atom
   ipc, jpc, kpc = particle_cell(xᵢ,box)

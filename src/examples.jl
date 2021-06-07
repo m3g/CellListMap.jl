@@ -8,7 +8,7 @@ function test1(;N=100_000,parallel=true)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
-  cutoff = 10.
+  cutoff = 10
   box = Box(sides,cutoff)
 
   # Initialize auxiliary linked lists
