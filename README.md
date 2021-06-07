@@ -4,6 +4,12 @@ Maps a function to be computed pairwise using cell lists. For computing short-ra
 
 It allows the computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
+## Contents
+
+### Installation
+
+1. [Installation](#installation)
+
 ## Installation
 
 ```julia
