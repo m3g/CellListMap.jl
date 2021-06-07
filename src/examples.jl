@@ -190,7 +190,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
   # We have to define our own reduce function here (for the parallel version)
-  function reduce_mind(output_threaded)
+  function reduce_mind(output,output_threaded)
     mind = output_threaded[1]
     for i in 2:nthreads()
       if output_threaded[i][3] < mind[3]
@@ -206,7 +206,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   # Run pairwise computation
   mind = map_pairwise!(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
-    mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
+    mind,x,y,box,lc;reduce=reduce_mind, parallel=parallel
   )
   return (mind[1],mind[2],sqrt(mind[3]))
 
@@ -238,7 +238,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
   # We have to define our own reduce function here (for the parallel version)
-  function reduce_mind(output_threaded)
+  function reduce_mind(output,output_threaded)
     mind = output_threaded[1]
     for i in 2:Threads.nthreads()
       if output_threaded[i][3] < mind[3]

@@ -9,7 +9,14 @@ It allows the computation of any quantity from the pairs that are within the des
 1. [Installation](#installation)
 2. [Overview](#overview)
 3. [Examples](#examples)
-  1. [Mean difference of coordinates](#mean-difference-of-coordinates) 
+      1. [Mean difference of coordinates](#mean-difference-of-coordinates) 
+      2. [Histogram of distances](#histogram-of-distances) 
+      3. [Gravitational potential](#gravitational-potential) 
+      4. [Gravitational force](#gravitational-force) 
+      5. [Nearest neighbour](#nearest-neighbour) 
+4. [Parallelization splitting and reduction](#parallelization-splitting-and-reduction)
+      1. [Preallocating auxiliary arrays](#preallocating-auxiliary-arrays) 
+      2. [Custom reduction functions](#custom-reduction-functions) 
 
 ## Installation
 
@@ -22,21 +29,21 @@ julia> ] add https://github.com/m3g/CellListMap.jl
 The main function is `map_parwise!`: 
 
 ```
-map_pairwise!(f!::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
+map_pairwise!(f::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
 the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f!` of the coordinates
+in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
 of the two particles will be computed. 
 
-The function `f!` receives six arguments as input: 
+The function `f` receives six arguments as input: 
 ```
-f!(x,y,i,j,d2,output)
+f(x,y,i,j,d2,output)
 ```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f!` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f!` because many times it is used for the desired computation. Thus, the function `f!` that is passed to `map_pairwise!` must be always of the form:
+Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise!` must be always of the form:
 ```
-function f!(x,y,i,j,d2,output)
+function f(x,y,i,j,d2,output)
   # update output
   return output
 end
@@ -158,9 +165,9 @@ forces = map_pairwise!((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,force
 
 The example above can be run with `CellListMap.test4()`. 
 
-### Compute minimum distance between two sets of particles
+### Nearest neighbour
 
-Here we compute the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
+Here we compute the indexes of the atoms that satisfiy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
 
 ```julia
 # Number of particles, sides and cutoff
@@ -184,14 +191,14 @@ initlists!(y,box,lc)
 f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
 # We have to define our own reduce function here
-function reduce_mind(output_threaded)
+function reduce_mind(output,output_threaded)
   mind = output_threaded[1]
   for i in 2:Threads.nthreads()
     if output_threaded[i][3] < mind[3]
       mind = output_threaded[i]
     end
   end
-  return (mind[1],mind[2],sqrt(mind[3]))
+  return (mind[1],mind[2],mind[3])
 end
 
 # Initial value
@@ -205,5 +212,70 @@ mind = map_pairwise!(
 ```
 
 The example above can be run with `CellListMap.test5()`. 
+
+## Parallelization splitting and reduction
+
+The parallel execution requires the splitting of the computation among threads, obviously. Thus, the output variable must be split and then reduced to avoid concurrency. To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function. 
+
+By default, we define (here `using Base.Threads`):
+```julia
+output_threaded = [ deepcopy(output) for i in 1:nthreads() ]
+```
+and, for scalars and vectors, the reduction is just the sum of the output per thread:
+```julia
+reduce(output::Number,output_threaded) = sum(output_threaded)
+function reduce(output::Vector,output_threaded) 
+  for i in 1:nthreads()
+     @. output += output_threaded[i] 
+  end
+  return output
+end
+```
+
+### Preallocating auxiliary arrays
+
+Note, however, that `output_threaded` is defined on the call to `map_pairwise!`. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:
+```julia
+forces = zeros(SVector{3,Float64},N)
+forces_threaded = [ deepcopy(forces) for i in 1:nthreads() ]
+for i in 1:nsteps
+  map_pairwise!(f, forces, x, box, lc, output_threaded=forces_threaded)
+  # work with the final forces vector
+  ...
+  # Reset forces_threaded
+  for i in 1:nthreads()
+    @. forces_threaded[i] = zero(SVector{3,Float64}) 
+  end
+end
+```
+In this case, the `forces` vector will be updated by the default reduction method.
+
+### Custom reduction functions
+
+In some cases, as in the [Nearest neighbour](#nearest-neighbour) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
+```julia
+mind = map_pairwise!( 
+  (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,x,y,box,lc;
+  reduce=reduce_mind
+)
+```
+where here the `reduce` function is set to be the custom function that keeps the tuple associated to the minimum distance obtained between threads:
+```julia
+function reduce_mind(output,output_threaded)
+  mind = output_threaded[1]
+  for i in 2:Threads.nthreads()
+    if output_threaded[i][3] < mind[3]
+      mind = output_threaded[i]
+    end
+  end
+  return (mind[1],mind[2],mind[3])
+end
+```
+This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.  
+
+
+
+
+
 
 

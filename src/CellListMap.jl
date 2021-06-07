@@ -318,19 +318,19 @@ end
 """
 
 ```
-map_pairwise!(f!::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
+map_pairwise!(f::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
 the Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the cutoff, a function `f!` of the coordinates
+in the `Box` structure. If the distance is smaller than the cutoff, a function `f` of the coordinates
 of the two particles will be computed. 
 
-The function `f!` receives six arguments as input: 
+The function `f` receives six arguments as input: 
 ```
-f!(x,y,i,j,d2,output)
+f(x,y,i,j,d2,output)
 ```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f!` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed internally for comparison with the `cutoff`, and is passed to the `f!` because many times it is used for the desired computation. 
+Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. 
 
 ## Example
 
@@ -398,7 +398,7 @@ The example above can be run with `CellLists.test3()`.
 
 """
 map_pairwise!(
-  f!::Function, output, 
+  f::Function, output, 
   x::AbstractVector,
   box::Box, lc::LinkedLists; 
   # Parallellization options
@@ -406,7 +406,7 @@ map_pairwise!(
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
   reduce::Function=reduce
 ) =
-  map_pairwise!(f!,output,x,x,box,lc; self=true, 
+  map_pairwise!(f,output,x,x,box,lc; self=true, 
     parallel=parallel,
     output_threaded=output_threaded,
     reduce=reduce
@@ -415,7 +415,7 @@ map_pairwise!(
 """
 
 ``
-map_pairwise!(f!::Function, output, 
+map_pairwise!(f::Function, output, 
   x::AbstractVector, y::AbstractVector, 
   box::Box, lc::LinkedLists
 )
@@ -425,7 +425,7 @@ The same as the function `map_pairwise!`, but to compute interactions between tw
 
 """
 function map_pairwise!(
-  f!::Function, output, 
+  f::Function, output, 
   x::AbstractVector, y::AbstractVector,
   box::Box, lc::LinkedLists; self::Bool=false, 
   # Parallelization options
@@ -435,13 +435,13 @@ function map_pairwise!(
 )
   if parallel && nthreads() > 1
     output = map_pairwise_parallel!(
-      (x,y,i,j,d2,output)->f!(x,y,i,j,d2,output),
+      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
       output,x,y,box,lc;self=self,
       output_threaded=output_threaded,
       reduce=reduce
     )
   else
-    output = map_pairwise_serial!((x,y,i,j,d2,output)->f!(x,y,i,j,d2,output),output,x,y,box,lc;self=self)
+    output = map_pairwise_serial!((x,y,i,j,d2,output)->f(x,y,i,j,d2,output),output,x,y,box,lc;self=self)
   end
   return output
 end
@@ -450,7 +450,7 @@ end
 # Parallel version
 #
 function map_pairwise_parallel!(
-  f!::Function, output, 
+  f::Function, output, 
   x::AbstractVector, y::AbstractVector, 
   box::Box, lc::LinkedLists; 
   self=false, 
@@ -461,12 +461,12 @@ function map_pairwise_parallel!(
   @threads for i in eachindex(x)
     it = threadid()
     output_threaded[it] = inner_map_loop!(
-      (x,y,i,j,d2,output) -> f!(x,y,i,j,d2,output),
+      (x,y,i,j,d2,output) -> f(x,y,i,j,d2,output),
       output_threaded[it],i,x[i],y,box,lc,self
     )
   end
 
-  output = reduce(output_threaded)
+  output = reduce(output,output_threaded)
   return output
 end
 
@@ -474,14 +474,19 @@ end
 # Functions to reduce the output of common options (vectors of numbers 
 # and vectors of vectors)
 #
-reduce(output_threaded::Vector{<:Number}) = sum(output_threaded)
-reduce(output_threaded::Vector{<:AbstractVector}) = sum(output_threaded)
+reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
+function reduce(output::AbstractVector, output_threaded::AbstractVector{<:AbstractVector}) 
+  for i in 1:nthreads()
+    @. output += output_threaded[i]
+  end
+  return output
+end
 
 #
 # Serial version
 #
 function map_pairwise_serial!(
-  f!::Function, output, 
+  f::Function, output, 
   x::AbstractVector, y::AbstractVector, 
   box::Box, lc::LinkedLists; 
   self=false
@@ -489,7 +494,7 @@ function map_pairwise_serial!(
 
   for i in eachindex(x)
     output = inner_map_loop!(
-      (x,y,i,j,d2,output) -> f!(x,y,i,j,d2,output),
+      (x,y,i,j,d2,output) -> f(x,y,i,j,d2,output),
       output,i,x[i],y,box,lc,self
     )
   end
@@ -499,7 +504,7 @@ end
 #
 # Inner loop that runs over cells for each index of the `x` vector. 
 #
-function inner_map_loop!(f!::Function,output,i,xᵢ,y,box::Box,lc,self)
+function inner_map_loop!(f::Function,output,i,xᵢ,y,box::Box,lc,self)
   @unpack sides, nc, lcell, cutoff_sq = box
   # Check the cell of this atom
   ipc, jpc, kpc = particle_cell(xᵢ,box)
@@ -524,7 +529,7 @@ function inner_map_loop!(f!::Function,output,i,xᵢ,y,box::Box,lc,self)
           yⱼ = wrapone(y[j],sides,xᵢ)
           d2 = sq_distance(xᵢ,yⱼ)
           if d2 <= cutoff_sq
-            output = f!(xᵢ,yⱼ,i,j,d2,output)
+            output = f(xᵢ,yⱼ,i,j,d2,output)
           end
           j = lc.nextatom[j]
         end
@@ -537,7 +542,7 @@ end
 #
 # Function that uses the naive algorithm, for testing
 #
-function map_naive!(f!,output,x,box)
+function map_naive!(f,output,x,box)
   @unpack sides, cutoff_sq = box
   for i in 1:length(x)-1
     xᵢ = x[i]
@@ -545,7 +550,7 @@ function map_naive!(f!,output,x,box)
       xⱼ = wrapone(x[j],sides,xᵢ)
       d2 = sq_distance(xᵢ,xⱼ) 
       if d2 <= cutoff_sq
-        output = f!(xᵢ,xⱼ,i,j,d2,output)
+        output = f(xᵢ,xⱼ,i,j,d2,output)
       end
     end
   end
@@ -555,7 +560,7 @@ end
 #
 # Function that uses the naive algorithm, for testing
 #
-function map_naive_two!(f!,output,x,y,box)
+function map_naive_two!(f,output,x,y,box)
   @unpack sides, cutoff_sq = box
   for i in 1:length(x)
     xᵢ = x[i]
@@ -563,7 +568,7 @@ function map_naive_two!(f!,output,x,y,box)
       yⱼ = wrapone(y[j],sides,xᵢ)
       d2 = sq_distance(xᵢ,yⱼ) 
       if d2 <= cutoff_sq
-        output = f!(xᵢ,yⱼ,i,j,d2,output)
+        output = f(xᵢ,yⱼ,i,j,d2,output)
       end
     end
   end
