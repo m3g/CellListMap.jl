@@ -21,7 +21,7 @@ function test1(;N=100_000,parallel=true)
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
 
-  avg_dx = (N/(N*(N-1)/2)) * map_pairwise(
+  avg_dx = (N/(N*(N-1)/2)) * map_pairwise!(
     (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
     0.,x,box,lc,
     parallel=parallel
@@ -62,7 +62,7 @@ function test2(;N=100_000,parallel=true)
   hist = zeros(Int,10)
 
   # Run pairwise computation
-  hist = (N/(N*(N-1)/2)) * map_pairwise(
+  hist = (N/(N*(N-1)/2)) * map_pairwise!(
     (x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),
     hist,x,box,lc,
     parallel=parallel
@@ -103,7 +103,7 @@ function test3(;N=100_000,parallel=true)
   end
 
   # Run pairwise computation
-  u = map_pairwise(
+  u = map_pairwise!(
     (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
     0.0,x,box,lc,
     parallel=parallel
@@ -150,7 +150,7 @@ function test4(;N=100_000,parallel=true)
   forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
   # Run pairwise computation
-  forces = map_pairwise(
+  forces = map_pairwise!(
     (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
     forces,x,box,lc,
     parallel=parallel
@@ -197,7 +197,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(
+  mind = map_pairwise!(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
   )
@@ -244,7 +244,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   mind = ( 0, 0, +Inf )
 
   # Run pairwise computation
-  mind = map_pairwise(
+  mind = map_pairwise!(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
   )
