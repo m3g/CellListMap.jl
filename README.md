@@ -6,9 +6,10 @@ It allows the computation of any quantity from the pairs that are within the des
 
 ## Contents
 
-### Installation
-
 1. [Installation](#installation)
+2. [Overview](#overview)
+3. [Examples](#examples)
+  1. [Mean difference of coordinates](#mean-difference-of-coordinates) 
 
 ## Installation
 
@@ -48,7 +49,7 @@ Parallel calculations are the default if more than one thread is available. Use 
 
 The full code of the examples described here is available at the [examples.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples.jl) file. 
 
-### Mean difference of `x` coordinates 
+### Mean difference of coordinates 
 
 Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the atoms from the parameters of the input function, as they are not needed in this case.
 
