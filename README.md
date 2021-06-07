@@ -2,7 +2,7 @@
 
 Maps a function to be computed pairwise using cell lists. For computing short-ranged particle interactions or other properties, considering orthorhombic (for the moment) periodic boundary conditions.
 
-It allows the computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise` function. 
+It allows the computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
 ## Installation
 
@@ -12,31 +12,31 @@ julia> ] add https://github.com/m3g/CellListMap.jl
 
 ## Overview
 
-The main function is `map_parwise`: 
+The main function is `map_parwise!`: 
 
 ```
-map_pairwise(f::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
+map_pairwise!(f!::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
 the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
+in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f!` of the coordinates
 of the two particles will be computed. 
 
-The function `f` receives six arguments as input: 
+The function `f!` receives six arguments as input: 
 ```
-f(x,y,i,j,d2,output)
+f!(x,y,i,j,d2,output)
 ```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise` must be always of the form:
+Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f!` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f!` because many times it is used for the desired computation. Thus, the function `f!` that is passed to `map_pairwise!` must be always of the form:
 ```
-function f(x,y,i,j,d2,output)
-  # compute 
+function f!(x,y,i,j,d2,output)
+  # update output
   return output
 end
 ```
 and the user can define more or less parameters using closures, as shown in the examples.
 
-Parallel calculations are the default if more than one thread is available. Use `parallel=false` as an optional argument to `map_pairwise` to run the serial version instead.
+Parallel calculations are the default if more than one thread is available. Use `parallel=false` as an optional argument to `map_pairwise!` to run the serial version instead.
 
 ## Examples
 
@@ -95,7 +95,7 @@ hist = zeros(Int,10);
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation
-hist = normalization * map_pairwise((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
+hist = normalization * map_pairwise!((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
 
 ```
 
@@ -117,7 +117,7 @@ function potential(x,y,i,j,d2,u,mass)
 end
 
 # Run pairwise computation
-u = map_pairwise((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc)
+u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc)
 ```
 
 The example above can be run with `CellListMap.test3()`. 
@@ -145,7 +145,7 @@ end
 forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
 # Run pairwise computation
-forces = map_pairwise((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc)
+forces = map_pairwise!((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc)
 
 ```
 
@@ -191,7 +191,7 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = map_pairwise( 
+mind = map_pairwise!( 
   (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
   mind,x,y,box,lc;reduce=reduce_mind
 )
