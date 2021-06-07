@@ -28,7 +28,7 @@ julia> ] add https://github.com/m3g/CellListMap.jl
 
 The main function is `map_parwise!`: 
 
-```
+```julia
 map_pairwise!(f::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
 ```
 
@@ -38,11 +38,11 @@ in the `Box` structure. If the distance is smaller than the (squared) cutoff, a 
 of the two particles will be computed. 
 
 The function `f` receives six arguments as input: 
-```
+```julia
 f(x,y,i,j,d2,output)
 ```
 Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise!` must be always of the form:
-```
+```julia
 function f(x,y,i,j,d2,output)
   # update output
   return output
@@ -95,7 +95,6 @@ Computing the histogram of the distances between particles (considering the same
 we use a closure to remove the indexes of the atoms from the computation, because they are not needed. The distance, on the other side, is needed in this example:
 
 ```julia
-
 # Function that accumulates the histogram of distances
 function build_histogram!(x,y,d2,hist)
   d = sqrt(d2)
@@ -141,7 +140,6 @@ The example above can be run with `CellListMap.test3()`.
 In the following example, we update a force vector of for all particles.
 
 ```julia
-
 # masses
 const mass = rand(N)
 
