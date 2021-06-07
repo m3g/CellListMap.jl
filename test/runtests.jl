@@ -4,6 +4,14 @@ using Test
 
 @testset "CellListMap.jl" begin
 
+  if Threads.nthreads() == 1
+    println("""
+
+       WARNING: Ideally, run a multi-threaded test to check the parallel versions.
+
+    """)
+  end
+
   # Number of particles, sides and cutoff
   N = 2000
   sides = [250,250,250]
@@ -76,5 +84,13 @@ using Test
   naive = CellListMap.map_naive_two!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
   @test map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box,lc,parallel=true) ≈ naive
   @test map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box,lc,parallel=false) ≈ naive
+
+  # Test the examples, to check further if the parallelization didn't break something
+  @test CellListMap.test1(parallel=true) ≈ CellListMap.test1(parallel=false)
+  @test CellListMap.test2(parallel=true) ≈ CellListMap.test2(parallel=false)
+  @test CellListMap.test3(parallel=true) ≈ CellListMap.test3(parallel=false)
+  @test CellListMap.test4(parallel=true) ≈ CellListMap.test4(parallel=false)
+  @test count(CellListMap.test5(parallel=true) .≈ CellListMap.test5(parallel=false)) == 3
+  @test count(CellListMap.test6(parallel=true) .≈ CellListMap.test6(parallel=false)) == 3
 
 end

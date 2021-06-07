@@ -33,11 +33,13 @@ LinkedLists{100000}
 @with_kw struct LinkedLists{N}
   firstatom::Vector{Int}
   nextatom::Vector{Int}
+  icell::Vector{Int}
 end
 function LinkedLists(N::Int) 
   return LinkedLists{N}(
     zeros(Int,N), # firstatom (actual required size is nc1*nc2*nc*3
     zeros(Int,N), # nextatom
+    zeros(Int,N), # cell of each atom (auxiliar array to parallelize cell initialization)
   )
 end
 
@@ -275,7 +277,6 @@ function initcells!(
     resize!(lc.firstatom,nboxes)
   end
 
-parallel=false
   if parallel
     # Reset arrays
     @threads for i in 1:nboxes
@@ -287,9 +288,12 @@ parallel=false
     # Initialize cell, firstatom and nexatom
     @threads for iat in eachindex(x)
       ic, jc, kc = particle_cell(x[iat],box)
-      icell = cell_linear_index(box.nc,ic,jc,kc)
-      lc.nextatom[iat] = lc.firstatom[icell]
-      lc.firstatom[icell] = iat
+      lc.icell[iat] = cell_linear_index(box.nc,ic,jc,kc)
+    end
+    # This cannot be parallelizad, at least not easily
+    for iat in eachindex(x)
+      lc.nextatom[iat] = lc.firstatom[lc.icell[iat]]
+      lc.firstatom[lc.icell[iat]] = iat
     end
   else
     # Reset arrays
@@ -305,6 +309,7 @@ parallel=false
       icell = cell_linear_index(box.nc,ic,jc,kc)
       lc.nextatom[iat] = lc.firstatom[icell]
       lc.firstatom[icell] = iat
+      lc.icell[iat] = icell
     end
   end
 

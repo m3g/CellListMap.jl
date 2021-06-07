@@ -19,7 +19,7 @@ function test1(;N=100_000,parallel=true)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initializing linked cells with these positions
-  initcells!(x,box,lc)  
+  initcells!(x,box,lc,parallel=parallel)  
 
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
@@ -52,7 +52,7 @@ function test2(;N=100_000,parallel=true)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initializing linked cells with these positions
-  initcells!(x,box,lc)  
+  initcells!(x,box,lc,parallel=parallel)  
 
   # Function to be evalulated for each pair: build distance histogram
   function build_histogram!(x,y,d2,hist) 
@@ -98,7 +98,7 @@ function test3(;N=100_000,parallel=true)
   mass = rand(N)
 
   # Initializing linked cells with these positions
-  initcells!(x,box,lc)  
+  initcells!(x,box,lc,parallel=parallel)  
 
   # Function to be evalulated for each pair: build distance histogram
   function potential(x,y,i,j,d2,u,mass) 
@@ -140,7 +140,7 @@ function test4(;N=100_000,parallel=true)
   mass = rand(N)
 
   # Initializing linked cells with these positions
-  initcells!(x,box,lc)  
+  initcells!(x,box,lc,parallel=parallel)  
 
   # Function to be evalulated for each pair: build distance histogram
   function calc_forces!(x,y,i,j,d2,mass,forces) 
@@ -184,7 +184,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 
   # Initializing linked cells with these positions (largest set!)
-  initcells!(y,box,lc)  
+  initcells!(y,box,lc,parallel=parallel)  
 
   # Function that keeps the minimum distance
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
@@ -197,7 +197,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
         mind = output_threaded[i]
       end
     end
-    return (mind[1],mind[2],sqrt(mind[3]))
+    return mind
   end 
 
   # Initialize
@@ -208,7 +208,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
   )
-  return mind
+  return (mind[1],mind[2],sqrt(mind[3]))
 
 end
 
@@ -232,7 +232,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
 
   # Initializing linked cells with these positions (largest set!)
-  initcells!(y,box,lc)  
+  initcells!(y,box,lc,parallel=parallel)  
 
   # Function that keeps the minimum distance
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
