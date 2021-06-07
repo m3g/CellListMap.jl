@@ -25,7 +25,7 @@ using Test
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initializing linked cells with these positions
-  initcells!(x,box,lc)
+  initlists!(x,box,lc)
 
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
@@ -79,7 +79,7 @@ using Test
 
   # Compute some properteis of disjoint sets 
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-  initcells!(y,box,lc)
+  initlists!(y,box,lc)
 
   naive = CellListMap.map_naive_two!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
   @test map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box,lc,parallel=true) ≈ naive

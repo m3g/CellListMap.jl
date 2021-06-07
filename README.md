@@ -62,7 +62,7 @@ box = Box(sides,cutoff)
 x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ]
 
 # Initialize cells (must be updated if positions change)
-initcells!(x,box,lc)
+initlists!(x,box,lc)
 
 # Function to be evaluated from positions 
 f(x,y,sum_dx) = sum_dx + x[1] - y[1] 
@@ -171,7 +171,7 @@ x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
 y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 
 # Initializing linked cells with these positions (largest set!)
-initcells!(y,box,lc)
+initlists!(y,box,lc)
 
 # Function that keeps the minimum distance
 f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind

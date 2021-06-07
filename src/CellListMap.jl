@@ -5,7 +5,7 @@ using Parameters
 using StaticArrays
 using DocStringExtensions
 
-export LinkedLists, Box, initcells!
+export LinkedLists, Box, initlists!
 export map_pairwise!
 
 """
@@ -237,7 +237,7 @@ end
 """
 
 ```
-initcells!(x::AbstractVector{T}, box::Box, lc::LinkedLists) where T
+initlists!(x::AbstractVector{T}, box::Box, lc::LinkedLists) where T
 ```
 Function that initializes the linked cells by computing to each cell each atom
 belongs and filling up the firstatom and nexatom arrays.
@@ -252,7 +252,7 @@ julia> box = Box([250,250,250],10);
 
 julia> x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:100_000 ];
 
-julia> initcells!(x,box,lc)
+julia> initlists!(x,box,lc)
 
 julia> lc.firstatom
 125000-element Vector{Int64}:
@@ -265,7 +265,7 @@ julia> lc.firstatom
 ```
 
 """
-function initcells!(
+function initlists!(
   x::AbstractVector{<:AbstractVector}, 
   box::Box{N,T}, lc::LinkedLists;
   parallel=true
@@ -346,7 +346,7 @@ julia> box = Box([250,250,250],10);
 
 julia> x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ];
 
-julia> initcells!(x,box,lc)
+julia> initlists!(x,box,lc)
 
 julia> f(x,y,sum_dx) = sum_dx + x[1] - y[1] 
 
