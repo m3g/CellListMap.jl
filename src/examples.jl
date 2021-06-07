@@ -1,3 +1,5 @@
+import Random
+
 #
 # In this test we compute the average displacement of the x coordinates of the atoms
 # Expected to be nearly zero in average
@@ -13,6 +15,7 @@ function test1(;N=100_000,parallel=true)
   lc = LinkedLists(N)
 
   # Particle positions
+  Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initializing linked cells with these positions
@@ -45,6 +48,7 @@ function test2(;N=100_000,parallel=true)
   lc = LinkedLists(N)
 
   # Particle positions
+  Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initializing linked cells with these positions
@@ -87,6 +91,7 @@ function test3(;N=100_000,parallel=true)
   lc = LinkedLists(N)
 
   # Particle positions
+  Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # masses
@@ -128,6 +133,7 @@ function test4(;N=100_000,parallel=true)
   lc = LinkedLists(N)
 
   # Particle positions
+  Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # masses
@@ -173,6 +179,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   lc = LinkedLists(N2)
 
   # Particle positions
+  Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 
@@ -220,6 +227,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   lc = LinkedLists(N2)
 
   # Particle positions
+  Random.seed!(321)
   x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
   y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
 

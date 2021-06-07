@@ -275,6 +275,7 @@ function initcells!(
     resize!(lc.firstatom,nboxes)
   end
 
+parallel=false
   if parallel
     # Reset arrays
     @threads for i in 1:nboxes
