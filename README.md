@@ -30,7 +30,7 @@ julia> ] add https://github.com/m3g/CellListMap.jl
 The main function is `map_parwise!`: 
 
 ```julia
-map_pairwise!(f::Function,output,x::AbstractVector,box::Box{N,T},lc::LinkedLists) where {N,T}
+map_pairwise!(f::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
