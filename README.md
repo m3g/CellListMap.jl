@@ -13,7 +13,8 @@ It allows the fast computation of any quantity from the pairs that are within th
       2. [Histogram of distances](#histogram-of-distances) 
       3. [Gravitational potential](#gravitational-potential) 
       4. [Gravitational force](#gravitational-force) 
-      5. [Nearest neighbour](#nearest-neighbour) 
+      5. [Nearest neighbor](#nearest-neighbor) 
+      6. [Neighbor list](#neighbor-list) 
 4. [Parallelization splitting and reduction](#parallelization-splitting-and-reduction)
       1. [Preallocating auxiliary arrays](#preallocating-auxiliary-arrays) 
       2. [Custom reduction functions](#custom-reduction-functions) 
@@ -163,9 +164,9 @@ forces = map_pairwise!((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,force
 
 The example above can be run with `CellListMap.test4()`. 
 
-### Nearest neighbour
+### Nearest neighbor
 
-Here we compute the indexes of the atoms that satisfiy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
+Here we compute the indexes of the atoms that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
 
 ```julia
 # Number of particles, sides and cutoff
@@ -211,9 +212,9 @@ mind = map_pairwise!(
 
 The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points it is a faster method than usual ball-tree methods. 
 
-### Neighbour list
+### Neighbor list
 
-In this example we compute the complete neighbour list, of all pairs of atoms which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the atoms and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
+In this example we compute the complete neighbor list, of all pairs of atoms which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the atoms and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
 
 ```julia
 # Function to be evalulated for each pair: push pair if d<cutoff
@@ -287,7 +288,7 @@ In this case, the `forces` vector will be updated by the default reduction metho
 
 ### Custom reduction functions
 
-In some cases, as in the [Nearest neighbour](#nearest-neighbour) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
+In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
 ```julia
 mind = map_pairwise!( 
   (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,x,y,box,lc;
