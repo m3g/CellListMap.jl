@@ -92,5 +92,8 @@ using Test
   @test CellListMap.test4(parallel=true) ≈ CellListMap.test4(parallel=false)
   @test count(CellListMap.test5(parallel=true) .≈ CellListMap.test5(parallel=false)) == 3
   @test count(CellListMap.test6(parallel=true) .≈ CellListMap.test6(parallel=false)) == 3
+  pairs1 = CellListMap.test7(parallel=true)
+  pairs2 = CellListMap.test7(parallel=false)
+  @test count([ count(pairs1[i] .≈ pairs2[i]) == 3 for i in 1:length(pairs1) ]) == length(pairs1)
 
 end

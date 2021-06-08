@@ -211,6 +211,43 @@ mind = map_pairwise!(
 
 The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points it is a faster method than usual ball-tree methods. 
 
+### Neighbour list
+
+In this example we compute the complete neighbour list, of all pairs of atoms which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the atoms and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
+
+```julia
+# Function to be evalulated for each pair: push pair if d<cutoff
+function push_pair!(i,j,d2,pairs,cutoff)
+  d = sqrt(d2)
+  if d < cutoff
+    push!(pairs,(i,j,d))
+  end
+  return pairs
+end
+
+# Reduction function
+function reduce_pairs(pairs,pairs_threaded)
+  pairs = pairs_threaded[1]
+  for i in 2:nthreads()
+    append!(pairs,pairs_threaded[i])
+  end
+  return pairs
+end
+
+# Initialize output
+pairs = Tuple{Int,Int,Float64}[]
+
+# Run pairwise computation
+pairs = map_pairwise!(
+  (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs,cutoff),
+  pairs,x,box,lc,
+  reduce=reduce_pairs,
+  parallel=parallel
+)
+```
+
+The full example can be run with `CellListMap.test7()`. 
+
 ## Parallelization splitting and reduction
 
 The parallel execution requires the splitting of the computation among threads, obviously. Thus, the output variable must be split and then reduced to avoid concurrency. To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function. 

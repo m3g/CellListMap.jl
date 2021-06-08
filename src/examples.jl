@@ -142,7 +142,7 @@ function test4(;N=100_000,parallel=true)
   # Initializing linked cells with these positions
   initlists!(x,box,lc,parallel=parallel)  
 
-  # Function to be evalulated for each pair: build distance histogram
+  # Function to be evalulated for each pair
   function calc_forces!(x,y,i,j,d2,mass,forces) 
     G = 9.8*mass[i]*mass[j]/d2
     d = sqrt(d2)
@@ -276,6 +276,62 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
     mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
   )
   return (mind[1],mind[2],sqrt(mind[3]))
+
+end
+
+#
+# In this test we compute the complete neighbour list of particles, meaning all the pairs
+# that are within the cutoff distance
+#
+function test7(;N=100_000,parallel=true)
+
+  # Number of particles, sides and cutoff
+  sides = [250,250,250]
+  cutoff = 10.
+  box = Box(sides,cutoff)
+
+  # Initialize auxiliary linked lists
+  lc = LinkedLists(N)
+
+  # Particle positions
+  Random.seed!(321)
+  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+
+  # masses
+  mass = rand(N)
+
+  # Initializing linked cells with these positions
+  initlists!(x,box,lc,parallel=parallel)  
+
+  # Function to be evalulated for each pair: push pair if d<cutoff
+  function push_pair!(i,j,d2,pairs,cutoff) 
+    d = sqrt(d2)
+    if d < cutoff
+      push!(pairs,(i,j,d))
+    end
+    return pairs
+  end
+
+  # Reduction function
+  function reduce_pairs(pairs,pairs_threaded)
+    pairs = pairs_threaded[1]
+    for i in 2:nthreads()
+      append!(pairs,pairs_threaded[i])
+    end
+    return pairs
+  end
+
+  # Initialize output
+  pairs = Tuple{Int,Int,Float64}[]
+
+  # Run pairwise computation
+  pairs = map_pairwise!(
+    (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs,cutoff),
+    pairs,x,box,lc,
+    reduce=reduce_pairs,
+    parallel=parallel
+  )
+  return pairs
 
 end
 
