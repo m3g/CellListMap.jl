@@ -22,7 +22,7 @@ It allows the fast computation of any quantity from the pairs that are within th
 ## Installation
 
 ```julia
-julia> ] add https://github.com/m3g/CellListMap.jl
+julia> ] add CellListMap
 ```
 
 ## Overview
