@@ -1,8 +1,8 @@
 # CellListMap.jl
 
-Maps a function to be computed pairwise using cell lists. For computing short-ranged particle interactions or other properties, considering orthorhombic (for the moment) periodic boundary conditions.
+This package is for computing short-ranged particle interactions or any other property that is dependent on the distances between pairs of particles, within a cutoff. It maps a function to be computed pairwise using cell lists using, for the moment, orthorhombic periodic boundary conditions. Parallel and serial implementations can be used. 
 
-It allows the computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
+It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
 ## Contents
 
@@ -209,7 +209,7 @@ mind = map_pairwise!(
 )
 ```
 
-The example above can be run with `CellListMap.test5()`. 
+The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points it is a faster method than usual ball-tree methods. 
 
 ## Parallelization splitting and reduction
 

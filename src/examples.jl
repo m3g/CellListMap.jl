@@ -214,22 +214,41 @@ end
 
 #
 # In this test we compute the minimum distance between two independent sets of particles,
-# more or less without periodic conditions
+# without periodic conditions
 #
 function test6(;N1=1_500,N2=1_500_000,parallel=true)
-
-  # Number of particles, sides and cutoff
-  sides = [1.2,1.2,1.2]
-  cutoff = 0.02
-  box = Box(sides,cutoff)
-
-  # Initialize auxiliary linked lists (largest set!)
-  lc = LinkedLists(N2)
 
   # Particle positions
   Random.seed!(321)
   x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
   y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
+
+  # Boundaries
+  xmin = [ +Inf, +Inf, +Inf ]
+  xmax = [ -Inf, -Inf, -Inf ]
+  for v in x
+    @. xmin = min(xmin,v)
+    @. xmax = max(xmax,v)
+  end
+  for v in y
+    @. xmin = min(xmin,v)
+    @. xmax = max(xmax,v)
+  end
+   
+  # Obtain one upper bound for dmin by computing one distance for each element
+  # of the smallest vector
+  cutoff = +Inf
+  for v in x
+    iy = rand(1:N2)
+    cutoff = min(CellListMap.distance(v,y[iy]),cutoff)
+  end 
+   
+  # Define box sides
+  sides = (xmax - xmin) .+ cutoff
+  box = Box(sides,cutoff)
+
+  # Initialize auxiliary linked lists (largest set!)
+  lc = LinkedLists(N2)
 
   # Initializing linked cells with these positions (largest set!)
   initlists!(y,box,lc,parallel=parallel)  
