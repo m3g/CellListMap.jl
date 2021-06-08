@@ -29,12 +29,16 @@ julia> ] add https://github.com/m3g/CellListMap.jl
 
 The main function is `map_parwise!`: 
 
+If the analysis is performed on the pairs of a single vector `x` (`n*(n-1)/2` pairs), the function can be called with:
 ```julia
 map_pairwise!(f::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
 ```
+while if two distinct sets of points are provided (`n*m` pairs), it is called with:
+```julia
+map_pairwise!(f::Function,output,x::AbstractVector,y::AbstractVector,box::Box,lc::LinkedLists)
+```
 
-This function will run over every pair of particles which are closer than `box.cutoff` and compute
-the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
+These functions will run over every pair of particles which are closer than `box.cutoff` and compute the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
 in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
 of the two particles will be computed. 
 
