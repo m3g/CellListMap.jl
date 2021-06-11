@@ -18,6 +18,7 @@ It allows the fast computation of any quantity from the pairs that are within th
 4. [Parallelization splitting and reduction](#parallelization-splitting-and-reduction)
       1. [Preallocating auxiliary arrays](#preallocating-auxiliary-arrays) 
       2. [Custom reduction functions](#custom-reduction-functions) 
+5. [Citation](#citation)
 
 ## Installation
 
@@ -313,7 +314,13 @@ end
 ```
 This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.  
 
+## Citation
 
+If you use this software and need to cite it, please use the following reference:
+
+Martínez, Leandro. (2021, June 11). CellListMap.jl: Flexible implementation of cell lists to map the calculations of short-ranged particle-pair dependent functions, such as forces, energies, neighbor lists, etc. Zenodo. http://doi.org/10.5281/zenodo.4927541
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4927541.svg)](https://doi.org/10.5281/zenodo.4927541)
 
 
 
