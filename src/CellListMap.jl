@@ -5,48 +5,15 @@ using Parameters
 using StaticArrays
 using DocStringExtensions
 
-export LinkedLists, Box, initlists!
+export CellLists, CellLists!, Box
 export map_pairwise!
-
-"""
-
-```
-LinkedLists(N)
-```
-
-Structure that contains the vectors storing the first particle and next particle of the linked
-cells. To be initialized with the number of particles.
-
-## Example
-
-```julia-repl
-julia> lc = LinkedLists(100_000)
-
-julia> lc = LinkedLists(100_000)
-LinkedLists{100000}
-  firstatom: Array{Int64}((100000,)) [0, 0, 0, 0, 0, 0, 0, 0, 0, 0  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  nextatom: Array{Int64}((100000,)) [0, 0, 0, 0, 0, 0, 0, 0, 0, 0  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  icell: Array{Int64}((100000,)) [0, 0, 0, 0, 0, 0, 0, 0, 0, 0  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-```
-
-"""  
-@with_kw struct LinkedLists{N}
-  firstatom::Vector{Int} = zeros(Int,N)
-  nextatom::Vector{Int} = zeros(Int,N)
-  icell::Vector{Int} = zeros(Int,N)
-end
-LinkedLists(N::Int) = LinkedLists{N}()
-
 
 """
 
 $(TYPEDEF)
 
 Structure that contains some data required to compute the linked cells. To
-be initialized with the box size and cutoff. An optional parameter `lcell` 
-can be provided as the last argument to define the cell size relative to the
-cutoff (default 2, meaning half of the cutoff).
+be initialized with the box size and cutoff. 
 
 ## Example
 
@@ -62,30 +29,27 @@ Box{3}
   sides: SVector{3, Int64}
   nc: SVector{3, Int64}
   l: SVector{3, Float64}
-  lcell: Int64 2
   cutoff: Float64 10.0
   cutoff_sq: Float64 100.0
 
 ```
-
 
 """
 Base.@kwdef struct Box{N,T}
   sides::SVector{N,T}
   nc::SVector{N,Int}
   cell_side::SVector{N,T}
-  lcell::Int
   cutoff::T
   cutoff_sq::T
 end
-function Box(sides::AbstractVector, cutoff, lcell::Int, T::DataType)
+function Box(sides::AbstractVector, cutoff, T::DataType)
   N = length(sides)
-  nc = SVector{N,Int}(max.(1,trunc.(Int,sides/(cutoff/lcell))))
+  nc = SVector{N,Int}(max.(1,trunc.(Int,sides/cutoff)))
   l = SVector{N,T}(sides ./ nc)
-  return Box{N,T}(SVector{N,T}(sides),nc,l,lcell,cutoff,cutoff^2)
+  return Box{N,T}(SVector{N,T}(sides),nc,l,cutoff,cutoff^2)
 end
-Box(sides::AbstractVector,cutoff;lcell=Int=2,T::DataType=Float64) =
-  Box(sides,cutoff,lcell,T)
+Box(sides::AbstractVector,cutoff;T::DataType=Float64) =
+  Box(sides,cutoff,T)
 
 """
 
@@ -103,6 +67,21 @@ end
 
 """
 
+$(TYPEDEF)
+
+Structure that contains the cell lists information.
+
+"""
+Base.@kwdef struct CellLists{N,T}
+  ncwp::Vector{Int} # One-element vector to contain the mutable number of cells with particles
+  cwp::Vector{Int} # Indexes of the unique cells With Particles
+  ncp::Vector{Int} # Number of cell particles
+  fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
+  np::Vector{AtomWithIndex{N,T}} # Next particle of cell
+end
+
+"""
+
 ```
 CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
 ```
@@ -112,25 +91,35 @@ or particle coordinates (as `SVector`s) and a `Box`, which contain the size ofth
 system, cutoff, etc.  
 
 """
-Base.@kwdef struct CellLists{N,T}
-  ncwp::Int # Number of cells with particles
-  cwp::Vector{Int} # Indexes of the unique cells With Particles
-  ncp::Vector{Int} # Number of cell particles
-  fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
-  np::Vector{AtomWithIndex{N,T}} # Next particle of cell
-end
-
-function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
-  #
-  # Initialize the list with the first particle (just to avoid redundant testing of empty arrays)
-  #
+function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T} 
   number_of_particles = length(x)
   number_of_cells = prod(box.nc)
-  ncwp = 0
+  ncwp = zeros(Int,1)
   cwp = zeros(Int,number_of_cells)
   ncp = zeros(Int,number_of_cells)
   fp = fill(AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))),number_of_cells)
   np = fill(AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))),number_of_particles)
+  cl = CellLists{N,T}(ncwp,cwp,ncp,fp,np)
+  return CellLists!(x,box,cl)
+end
+
+"""
+
+```
+CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellLists{N,T}) where {N,T}
+```
+
+Function that will update a previously allocated `CellList` structure, given new updated
+particle positions, for example.
+
+"""
+function CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl::CellLists{N,T}) where {N,T}
+  @unpack ncwp, cwp, ncp, fp, np = cl
+  ncwp[1] = 0
+  fill!(cwp,0)
+  fill!(ncp,0)
+  fill!(fp,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))))
+  fill!(np,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))) 
 
   # Initialize cell, firstatom and nexatom
   for (ip,xip) in pairs(x)
@@ -138,8 +127,8 @@ function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
     icell_cartesian = particle_cell(xip,box)
     icell = cell_linear_index(box.nc,icell_cartesian)
     if fp[icell].index == 0
-      ncwp += 1
-      cwp[ncwp] = icell
+      ncwp[1] += 1
+      cwp[ncwp[1]] = icell
       ncp[icell] = 1
     else
       ncp[icell] += 1
@@ -148,7 +137,7 @@ function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
     fp[icell] = p
   end
 
-  return CellLists{N,T}(ncwp,cwp,ncp,fp,np)
+  return cl
 end
 
 """
@@ -303,89 +292,6 @@ end
 """
 
 ```
-initlists!(x::AbstractVector{<:AbstractVector}, box::Box, lc::LinkedLists)
-```
-
-Function that initializes the linked cells by computing to each cell each atom
-belongs and filling up the firstatom and nexatom arrays.
-Modifies the data in the lc structure
-
-## Example
-
-```julia-repl
-julia> lc = LinkedLists(100_000);
-
-julia> box = Box([250,250,250],10);
-
-julia> x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:100_000 ];
-
-julia> initlists!(x,box,lc)
-
-julia> lc.firstatom
-125000-element Vector{Int64}:
- 51137
- 62998
-     ⋮
- 41753
- 53909
-
-```
-
-"""
-function initlists!(
-  x::AbstractVector{<:AbstractVector}, 
-  box::Box, lc::LinkedLists;
-  parallel=true
-) 
-
-  # Count the number of boxes and checks if there is a problem with dimensions
-  nboxes = prod(box.nc)
-  if length(lc.firstatom) < nboxes
-    resize!(lc.firstatom,nboxes)
-  end
-
-  if parallel
-    # Reset arrays
-    @threads for i in 1:nboxes
-      lc.firstatom[i] = 0
-    end
-    @threads for i in eachindex(lc.nextatom)
-      lc.nextatom[i] = 0
-    end
-    # Initialize cell, firstatom and nexatom
-    @threads for iat in eachindex(x)
-      icell_cartesian = particle_cell(x[iat],box)
-      lc.icell[iat] = cell_linear_index(box.nc,icell_cartesian)
-    end
-    # This cannot be parallelizad, at least not easily
-    for iat in eachindex(x)
-      lc.nextatom[iat] = lc.firstatom[lc.icell[iat]]
-      lc.firstatom[lc.icell[iat]] = iat
-    end
-  else
-    # Reset arrays
-    for i in 1:nboxes
-      lc.firstatom[i] = 0
-    end
-    for i in eachindex(lc.nextatom)
-      lc.nextatom[i] = 0
-    end
-    # Initialize cell, firstatom and nexatom
-    for iat in eachindex(x)
-      icell_cartesian = particle_cell(x[iat],box)
-      icell = cell_linear_index(box.nc,icell_cartesian)
-      lc.nextatom[iat] = lc.firstatom[icell]
-      lc.firstatom[icell] = iat
-      lc.icell[iat] = icell
-    end
-  end
-
-  return nothing
-end
-
-"""
-
-```
 map_pairwise!(f::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
 ```
 
@@ -407,19 +313,17 @@ Computing the mean difference in `x` position between random particles, remember
 ```julia-repl
 julia> n = 100_000;
 
-julia> lc = LinkedLists(n);
-
 julia> box = Box([250,250,250],10);
 
 julia> x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ];
 
-julia> initlists!(x,box,lc)
+julia> cl = CellLists(x,box);
 
 julia> f(x,y,sum_dx) = sum_dx + x[1] - y[1] 
 
 julia> normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
-julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, x, box, lc)
+julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, x, box, cl)
 
 ```
 
@@ -438,7 +342,7 @@ julia> hist = zeros(Int,10);
 
 julia> normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
-julia> hist = normalization * map_pairwise!((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
+julia> hist = normalization * map_pairwise!((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,cl)
 
 ```
 
@@ -458,83 +362,141 @@ function potential(x,y,i,j,d2,u,mass)
 end
 
 # Run pairwise computation
-u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc)
+u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,cl)
 ```
 
 The example above can be run with `CellLists.test3()`.
 
 
 """
-map_pairwise!(
-  f::Function, output, 
-  x::AbstractVector,
-  box::Box, lc::LinkedLists; 
-  # Parallellization options
-  parallel::Bool=true,
-  output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
-  reduce::Function=reduce
-) =
-  map_pairwise!(f,output,x,x,box,lc; self=true, 
-    parallel=parallel,
-    output_threaded=output_threaded,
-    reduce=reduce
-  )
-
-"""
-
-``
-map_pairwise!(f::Function, output, 
-  x::AbstractVector, y::AbstractVector, 
-  box::Box, lc::LinkedLists
-)
-```
-
-The same as the function `map_pairwise!`, but to compute interactions between two disjoint sets of particles `x` and `y`. 
-
-"""
 function map_pairwise!(
   f::Function, output, 
-  x::AbstractVector, y::AbstractVector,
-  box::Box, lc::LinkedLists; self::Bool=false, 
+  x::AbstractVector,
+  box::Box, cl::CellLists;
   # Parallelization options
   parallel::Bool=true,
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
   reduce::Function=reduce
 )
   if parallel && nthreads() > 1
-    output = map_pairwise_parallel!(
+    output = map_pairwise_parallel_self!(
       (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
-      output,x,y,box,lc;self=self,
+      output,x,box,cl;
       output_threaded=output_threaded,
       reduce=reduce
     )
   else
-    output = map_pairwise_serial!((x,y,i,j,d2,output)->f(x,y,i,j,d2,output),output,x,y,box,lc;self=self)
+    output = map_pairwise_serial_self!(
+      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
+      output,x,box,cl
+    )
   end
   return output
 end
 
-#
-# Parallel version
-#
-function map_pairwise_parallel!(
+function map_pairwise_serial_self!(
   f::Function, output, 
-  x::AbstractVector, y::AbstractVector, 
-  box::Box, lc::LinkedLists; 
-  self=false, 
+  x::AbstractVector,
+  box::Box, cl::CellLists
+)
+  for icell in 1:cl.ncwp[1]
+    output = inner_loop!(
+      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
+      box,icell,cl,output
+    ) 
+  end 
+  return output
+end
+
+function map_pairwise_parallel_self!(
+  f::Function, output, 
+  x::AbstractVector,
+  box::Box, cl::CellLists;
   output_threaded=output_threaded,
   reduce::Function=reduce
 )
 
-  @threads for i in eachindex(x)
+  # loop over cells that contain particles
+  @threads for icell in 1:cl.ncwp[1]
     it = threadid()
-    output_threaded[it] = inner_map_loop!(
-      (x,y,i,j,d2,output) -> f(x,y,i,j,d2,output),
-      output_threaded[it],i,x[i],y,box,lc,self
-    )
-  end
+    output_threaded[it] = inner_loop!(
+      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
+      box,icell,cl,output_threaded[it]
+    ) 
+  end 
 
   output = reduce(output,output_threaded)
+  return output
+end
+
+function inner_loop!(f,box,icell,cl,output)
+  @unpack sides, nc, cutoff_sq = box
+  ic = cl.cwp[icell]
+  ic_cartesian = cell_cartesian_indices(nc,ic)
+
+  # loop over list of non-repeated particles of cell ic
+  pᵢ = cl.fp[ic]
+  for incp in 1:cl.ncp[ic]-1
+    i = pᵢ.index
+    xpᵢ = pᵢ.coordinates
+    pⱼ = cl.np[pᵢ.index] 
+    for jncp in incp+1:cl.ncp[ic]
+      j = pⱼ.index
+      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      d2 = distance_sq(xpᵢ,xpⱼ)
+      if d2 <= cutoff_sq
+        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+      end
+      pⱼ = cl.np[pⱼ.index]
+    end
+    pᵢ = cl.np[pᵢ.index]
+  end
+
+  # cells that share faces
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0, 0)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1, 0)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0, 0,+1)))
+
+  # Interactions of cells that share axes
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1, 0)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,+1)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1, 0)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,-1)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,+1)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,-1)))
+
+  # Interactions of cells that share vertices
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,+1)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,-1)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,+1)))
+  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,-1)))
+
+  return output
+end
+
+function cell_output!(f,box,ic,cl,output,jc_cartesian)
+  @unpack sides, nc, cutoff_sq = box
+  jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
+  jc = cell_linear_index(nc,jc_cartesian_wrapped)
+
+  # loop over list of non-repeated particles of cell ic
+  pᵢ = cl.fp[ic]
+  for _ in 1:cl.ncp[ic]
+    i = pᵢ.index
+    xpᵢ = pᵢ.coordinates
+    pⱼ = cl.fp[jc]
+    for _ in 1:cl.ncp[jc]
+      j = pⱼ.index
+      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      d2 = distance_sq(xpᵢ,xpⱼ)
+      if d2 <= cutoff_sq
+        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+      end
+      pⱼ = cl.np[pⱼ.index]
+    end
+    pᵢ = cl.np[pᵢ.index]
+  end
+
   return output
 end
 
@@ -546,63 +508,6 @@ reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
 function reduce(output::AbstractVector, output_threaded::AbstractVector{<:AbstractVector}) 
   for i in 1:nthreads()
     @. output += output_threaded[i]
-  end
-  return output
-end
-
-#
-# Serial version
-#
-function map_pairwise_serial!(
-  f::Function, output, 
-  x::AbstractVector, y::AbstractVector, 
-  box::Box, lc::LinkedLists; 
-  self=false
-)
-
-  for i in eachindex(x)
-    output = inner_map_loop!(
-      (x,y,i,j,d2,output) -> f(x,y,i,j,d2,output),
-      output,i,x[i],y,box,lc,self
-    )
-  end
-  return output
-end
-
-#
-# Inner loop that runs over cells for each index of the `x` vector. 
-#
-function inner_map_loop!(f::Function,output,i,xᵢ,y,box::Box,lc,self)
-  @unpack sides, nc, lcell, cutoff_sq = box
-  # Check the cell of this atom
-  ipc, jpc, kpc = particle_cell(xᵢ,box)
-  # Loop over vicinal cells to compute distances to solvent atoms, and
-  # add data to dc structure (includes current cell)
-  for ic in ipc-lcell:ipc+lcell
-    for jc in jpc-lcell:jpc+lcell
-      for kc in kpc-lcell:kpc+lcell
-        # Wrap cell if needed
-        icell_cartesian = wrap_cell(nc,(ic,jc,kc))
-        # get linear index of this cell
-        icell = cell_linear_index(nc,icell_cartesian) 
-        # cycle over the atoms of this cell
-        j = lc.firstatom[icell]
-        while j > 0
-          # skip same particle and repeated
-          if self && j >= i 
-            j = lc.nextatom[j]
-            continue
-          end
-          # Wrap particle j relative to particle xᵢ
-          yⱼ = wrapone(y[j],sides,xᵢ)
-          d2 = distance_sq(xᵢ,yⱼ)
-          if d2 <= cutoff_sq
-            output = f(xᵢ,yⱼ,i,j,d2,output)
-          end
-          j = lc.nextatom[j]
-        end
-      end
-    end
   end
   return output
 end
@@ -640,140 +545,6 @@ function map_naive_two!(f,output,x,y,box)
       end
     end
   end
-  return output
-end
-
-#
-# Serial version
-#
-function map_pairwise_serial!(
-  f::Function, output, 
-  x::AbstractVector,
-  box::Box, cl::CellLists
-)
-
-  @unpack sides, nc, lcell, cutoff_sq = box
-
-  # Iterator over all vicinal cells, not including the central one
-  neighbour_cells = CartesianIndices((-lcell:lcell, -lcell:lcell, -lcell:lcell))
-
-  # loop over cells that contain particles
-  for i in 1:cl.ncwp
-    ic = cl.cwp[i]
-    ic_cartesian = cell_cartesian_indices(nc,ic)
-
-    # loop over neighbouring cells of this cell
-    for jc_cartesian in neighbour_cells
-      jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian+ic_cartesian)
-      jc = cell_linear_index(nc,jc_cartesian_wrapped)
-
-      # loop over list of particles of cell ic
-      pᵢ = cl.fp[ic]
-      for _ in 1:cl.ncp[ic]
-        i = pᵢ.index
-        xpᵢ = pᵢ.coordinates
-        pⱼ = cl.fp[jc]
-        # loop over particles of cell jc
-        for _ in 1:cl.ncp[jc]
-          j = pⱼ.index
-          if i > j
-            xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
-            d2 = distance_sq(xpᵢ,xpⱼ)
-            if d2 <= cutoff_sq
-              output = f(xpᵢ,xpⱼ,i,j,d2,output)
-            end
-          end
-          pⱼ = cl.np[pⱼ.index]
-        end
-        pᵢ = cl.np[pᵢ.index]
-      end
-
-    end # neighbouring cells
-  end # cells that contain particles
-
-  return output
-end
-
-function map_pairwise_serial_half!(
-  f::Function, output, 
-  x::AbstractVector,
-  box::Box, cl::CellLists
-)
-
-  @unpack sides, nc, cutoff_sq = box
-
-  # loop over cells that contain particles
-  for i in 1:cl.ncwp
-    ic = cl.cwp[i]
-    ic_cartesian = cell_cartesian_indices(nc,ic)
-
-    # loop over list of non-repeated particles of cell ic
-    pᵢ = cl.fp[ic]
-    for incp in 1:cl.ncp[ic]-1
-      i = pᵢ.index
-      xpᵢ = pᵢ.coordinates
-      pⱼ = cl.np[pᵢ.index] 
-      for jncp in incp+1:cl.ncp[ic]
-        j = pⱼ.index
-        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
-        d2 = distance_sq(xpᵢ,xpⱼ)
-        if d2 <= cutoff_sq
-          output = f(xpᵢ,xpⱼ,i,j,d2,output)
-        end
-        pⱼ = cl.np[pⱼ.index]
-      end
-      pᵢ = cl.np[pᵢ.index]
-    end
-
-    # cells that share faces
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0, 0)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1, 0)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0, 0,+1)))
-
-    # Interactions of cells that share axes
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1, 0)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,+1)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1, 0)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,-1)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,+1)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,-1)))
-
-    # Interactions of cells that share vertices
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,+1)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,-1)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,+1)))
-    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,-1)))
-
-  end # cells that contain particles
-
-  return output
-end
-
-function cell_output!(f,box,ic,cl,output,jc_cartesian)
-
-  @unpack sides, nc, cutoff_sq = box
-
-  jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
-  jc = cell_linear_index(nc,jc_cartesian_wrapped)
-
-  # loop over list of non-repeated particles of cell ic
-  pᵢ = cl.fp[ic]
-  for _ in 1:cl.ncp[ic]
-    i = pᵢ.index
-    xpᵢ = pᵢ.coordinates
-    pⱼ = cl.fp[jc]
-    for _ in 1:cl.ncp[jc]
-      j = pⱼ.index
-      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
-      d2 = distance_sq(xpᵢ,xpⱼ)
-      if d2 <= cutoff_sq
-        output = f(xpᵢ,xpⱼ,i,j,d2,output)
-      end
-      pⱼ = cl.np[pⱼ.index]
-    end
-    pᵢ = cl.np[pᵢ.index]
-  end
-
   return output
 end
 
