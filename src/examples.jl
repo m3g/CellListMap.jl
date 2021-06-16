@@ -518,7 +518,7 @@ function florpi_new(;N=100_000,cd=true)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
 
-  box = Box(Lbox, r_max)
+  box = Box(Lbox, r_max, lcell=2)
   cl = CellLists(positions,box)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
   

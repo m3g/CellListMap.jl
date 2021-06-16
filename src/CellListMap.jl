@@ -670,12 +670,12 @@ function map_pairwise_serial!(
       # loop over list of particles of cell ic
       pᵢ = cl.fp[ic]
       for _ in 1:cl.ncp[ic]
+        i = pᵢ.index
+        xpᵢ = pᵢ.coordinates
         pⱼ = cl.fp[jc]
         for _ in 1:cl.ncp[jc]
-          if pᵢ.index > pⱼ.index
-            i = pᵢ.index
-            j = pⱼ.index
-            xpᵢ = pᵢ.coordinates
+          j = pⱼ.index
+          if i > j
             xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
             d2 = distance_sq(xpᵢ,xpⱼ)
             if d2 <= cutoff_sq
