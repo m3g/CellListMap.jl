@@ -33,6 +33,81 @@ function test1(;N=100_000,parallel=true)
 
 end
 
+function test1_new(;N=100_000,parallel=true)
+
+  # Number of particles, sides and cutoff
+  sides = [250,250,250]
+  cutoff = 10
+  box = Box(sides,cutoff)
+
+  # Particle positions
+  Random.seed!(321)
+  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+
+  # Initialize cell lists
+  cl = CellLists(x,box)
+
+  # Function to be evalulated for each pair: sum of displacements on x
+  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
+
+  avg_dx = (N/(N*(N-1)/2)) * map_pairwise_serial!(
+    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
+    0.,x,box,cl,
+  )
+  return avg_dx
+
+end
+
+function test1_new2(;N=100_000,parallel=true)
+
+  # Number of particles, sides and cutoff
+  sides = [250,250,250]
+  cutoff = 10
+  box = Box(sides,cutoff)
+
+  # Particle positions
+  Random.seed!(321)
+  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+
+  # Initialize cell lists
+  cl = CellLists(x,box)
+
+  # Function to be evalulated for each pair: sum of displacements on x
+  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
+
+  avg_dx = (N/(N*(N-1)/2)) * map_pairwise_serial!(
+    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
+    0.,x,box,cl,
+  )
+  return avg_dx
+
+end
+
+function test1_naive(;N=100_000,parallel=true)
+
+  # Number of particles, sides and cutoff
+  sides = [250,250,250]
+  cutoff = 10
+  box = Box(sides,cutoff)
+
+  # Particle positions
+  Random.seed!(321)
+  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+
+  # Initialize cell lists
+  cl = CellLists(x,box)
+
+  # Function to be evalulated for each pair: sum of displacements on x
+  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
+
+  avg_dx = (N/(N*(N-1)/2)) * CellListMap.map_naive!(
+    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
+    0.,x,box
+  )
+  return avg_dx
+
+end
+
 #
 # In this test we compute the histogram of distances, expected to follow the
 # function f(f) = ρ(4/3)π(r[i+1]^3 - r[i]^3) with ρ being the density of the system.
@@ -40,7 +115,7 @@ end
 function test2(;N=100_000,parallel=true)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = SVector{3,Float64}(250,250,250)
   cutoff = 10.
   box = Box(sides,cutoff)
 
@@ -335,3 +410,129 @@ function test7(;N=100_000,parallel=true)
 
 end
 
+#
+# florpi
+#
+
+@inline dot(x::SVector{3,Float64},y::SVector{3,Float64}) = x[1]*y[1] + x[2]*y[2] + x[3]*y[3]
+
+function compute_pairwise_mean_cell_lists!(x,y,i,j,d2,hist,velocities, rbins,sides)
+    d = x - y
+    r = sqrt(d2)
+    ibin = searchsortedfirst(rbins, r) - 1
+    hist[1][ibin] += 1
+    hist[2][ibin] += dot(velocities[i]-velocities[j],d)/r
+    return hist
+end
+
+function florpi(;N=100_000,cd=true)
+  
+  function get_pairwise_velocity_radial_mean_cell_lists(
+          positions, velocities,
+          rbins,
+          boxsize, 
+          lc, box, n
+          )
+      positions = reshape(reinterpret(SVector{3,Float64},positions),n)
+      velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
+
+      initlists!(positions,box,lc)
+      hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
+      hist = map_pairwise!(
+              (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(x,y,i,j,d2,hist,velocities, rbins, boxsize),
+              hist, positions, box, lc,
+      )
+      n_pairs = hist[1]
+      mean_v_r = hist[2]
+      mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0]./n_pairs[n_pairs .> 0]
+      return mean_v_r
+  end
+
+  n_halos = N
+
+  println(" constant density = ", cd)
+  if cd
+    density = 10^5/250^3  # density of the original problem
+    boxsize = (n_halos / density)^(1/3)
+  else
+    boxsize = 250.
+  end
+  
+  Random.seed!(321)
+  Lbox = [boxsize,boxsize,boxsize]
+  positions = boxsize .* rand(Float64, 3, n_halos)
+  velocities = rand(Float64, 3, n_halos)
+  rbins = [0.,2.,4.,6.,8.,10.]
+  
+  n = size(positions)[2]
+  r_max = maximum(rbins)
+  lc = LinkedLists(n)
+  box = Box(Lbox, r_max)
+  
+  get_pairwise_velocity_radial_mean_cell_lists(
+    positions,
+    velocities,
+    rbins,
+    Lbox,
+    lc, box, n
+  )
+
+end
+
+function florpi_new(;N=100_000,cd=true)
+
+  function get_pairwise_velocity_radial_mean_cell_lists(
+          positions, velocities,
+          rbins,
+          boxsize, 
+          lc, box, n, hist
+          )
+      hist = map_pairwise_serial!(
+        (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(
+           x,y,i,j,d2,hist,velocities, rbins, boxsize
+        ),
+        hist, positions, box, lc,
+      )
+      return hist
+  end
+  
+  n_halos = N
+
+  println(" constant density = ", cd)
+  if cd
+    density = 10^5/250^3  # density of the original problem
+    boxsize = (n_halos / density)^(1/3)
+  else
+    boxsize = 250.
+  end
+  
+  Random.seed!(321)
+  Lbox = [boxsize,boxsize,boxsize]
+  positions = boxsize .* rand(Float64, 3, n_halos)
+  velocities = rand(Float64, 3, n_halos)
+  rbins = [0.,2.,4.,6.,8.,10.]
+  r_max = maximum(rbins)
+
+  n = size(positions)[2]
+  positions = reshape(reinterpret(SVector{3,Float64},positions),n)
+  velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
+
+
+  box = Box(Lbox, r_max)
+  cl = CellLists(positions,box)
+  hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
+  
+  get_pairwise_velocity_radial_mean_cell_lists(
+    positions,
+    velocities,
+    rbins,
+    Lbox,
+    cl, box, n, hist
+  )
+
+  n_pairs = hist[1]
+  mean_v_r = hist[2]
+  mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0]./n_pairs[n_pairs .> 0]
+  return mean_v_r
+
+end

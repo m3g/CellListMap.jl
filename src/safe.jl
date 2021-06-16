@@ -140,7 +140,7 @@ function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
     if fp[icell].index == 0
       ncwp += 1
       cwp[ncwp] = icell
-      ncp[icell] = 1
+      ncp[ncwp] = 1
     else
       ncp[icell] += 1
     end
@@ -661,25 +661,24 @@ function map_pairwise_serial!(
   for i in 1:cl.ncwp
     ic = cl.cwp[i]
     ic_cartesian = cell_cartesian_indices(nc,ic)
-
     # loop over neighbouring cells of this cell
     for jc_cartesian in neighbour_cells
       jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian+ic_cartesian)
       jc = cell_linear_index(nc,jc_cartesian_wrapped)
 
-      # loop over list of particles of cell ic
+      # loop over list of particles of these cells 
       pᵢ = cl.fp[ic]
-      for _ in 1:cl.ncp[ic]
+      #for _ in 1:cl.ncp[ic]-1
+      while pᵢ.index > 0
         pⱼ = cl.fp[jc]
-        for _ in 1:cl.ncp[jc]
+        while pⱼ.index > 0
+        #for _ in 1:cl.ncp[jc]-1 
           if pᵢ.index > pⱼ.index
-            i = pᵢ.index
-            j = pⱼ.index
             xpᵢ = pᵢ.coordinates
             xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
             d2 = distance_sq(xpᵢ,xpⱼ)
             if d2 <= cutoff_sq
-              output = f(xpᵢ,xpⱼ,i,j,d2,output)
+              output = f(xpᵢ,xpⱼ,pᵢ.index,pⱼ.index,d2,output)
             end
           end
           pⱼ = cl.np[pⱼ.index]
