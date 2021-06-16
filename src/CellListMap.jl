@@ -673,6 +673,7 @@ function map_pairwise_serial!(
         i = pᵢ.index
         xpᵢ = pᵢ.coordinates
         pⱼ = cl.fp[jc]
+        # loop over particles of cell jc
         for _ in 1:cl.ncp[jc]
           j = pⱼ.index
           if i > j
@@ -689,6 +690,89 @@ function map_pairwise_serial!(
 
     end # neighbouring cells
   end # cells that contain particles
+
+  return output
+end
+
+function map_pairwise_serial_half!(
+  f::Function, output, 
+  x::AbstractVector,
+  box::Box, cl::CellLists
+)
+
+  @unpack sides, nc, cutoff_sq = box
+
+  # loop over cells that contain particles
+  for i in 1:cl.ncwp
+    ic = cl.cwp[i]
+    ic_cartesian = cell_cartesian_indices(nc,ic)
+
+    # loop over list of non-repeated particles of cell ic
+    pᵢ = cl.fp[ic]
+    for incp in 1:cl.ncp[ic]-1
+      i = pᵢ.index
+      xpᵢ = pᵢ.coordinates
+      pⱼ = cl.np[pᵢ.index] 
+      for jncp in incp+1:cl.ncp[ic]
+        j = pⱼ.index
+        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+        d2 = distance_sq(xpᵢ,xpⱼ)
+        if d2 <= cutoff_sq
+          output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        end
+        pⱼ = cl.np[pⱼ.index]
+      end
+      pᵢ = cl.np[pᵢ.index]
+    end
+
+    # cells that share faces
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0, 0)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1, 0)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0, 0,+1)))
+
+    # Interactions of cells that share axes
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1, 0)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,+1)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1, 0)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,-1)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,+1)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,-1)))
+
+    # Interactions of cells that share vertices
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,+1)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,-1)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,+1)))
+    output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,-1)))
+
+  end # cells that contain particles
+
+  return output
+end
+
+function cell_output!(f,box,ic,cl,output,jc_cartesian)
+
+  @unpack sides, nc, cutoff_sq = box
+
+  jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
+  jc = cell_linear_index(nc,jc_cartesian_wrapped)
+
+  # loop over list of non-repeated particles of cell ic
+  pᵢ = cl.fp[ic]
+  for _ in 1:cl.ncp[ic]
+    i = pᵢ.index
+    xpᵢ = pᵢ.coordinates
+    pⱼ = cl.fp[jc]
+    for _ in 1:cl.ncp[jc]
+      j = pⱼ.index
+      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      d2 = distance_sq(xpᵢ,xpⱼ)
+      if d2 <= cutoff_sq
+        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+      end
+      pⱼ = cl.np[pⱼ.index]
+    end
+    pᵢ = cl.np[pᵢ.index]
+  end
 
   return output
 end

@@ -518,7 +518,64 @@ function florpi_new(;N=100_000,cd=true)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
 
-  box = Box(Lbox, r_max, lcell=2)
+  box = Box(Lbox, r_max, lcell=1)
+  cl = CellLists(positions,box)
+  hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
+  
+  get_pairwise_velocity_radial_mean_cell_lists(
+    positions,
+    velocities,
+    rbins,
+    Lbox,
+    cl, box, n, hist
+  )
+
+  n_pairs = hist[1]
+  mean_v_r = hist[2]
+  mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0]./n_pairs[n_pairs .> 0]
+  return mean_v_r
+
+end
+
+function florpi_new2(;N=100_000,cd=true)
+
+  function get_pairwise_velocity_radial_mean_cell_lists(
+          positions, velocities,
+          rbins,
+          boxsize, 
+          lc, box, n, hist
+          )
+      hist = map_pairwise_serial_half!(
+        (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(
+           x,y,i,j,d2,hist,velocities, rbins, boxsize
+        ),
+        hist, positions, box, lc,
+      )
+      return hist
+  end
+  
+  n_halos = N
+
+  if cd
+    density = 10^5/250^3  # density of the original problem
+    boxsize = (n_halos / density)^(1/3)
+  else
+    boxsize = 250.
+  end
+  
+  Random.seed!(321)
+  Lbox = [boxsize,boxsize,boxsize]
+  positions = boxsize .* rand(Float64, 3, n_halos)
+  velocities = rand(Float64, 3, n_halos)
+  rbins = [0.,2.,4.,6.,8.,10.]
+  r_max = maximum(rbins)
+
+  n = size(positions)[2]
+  positions = reshape(reinterpret(SVector{3,Float64},positions),n)
+  velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
+
+
+  box = Box(Lbox, r_max, lcell=1)
   cl = CellLists(positions,box)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
   
