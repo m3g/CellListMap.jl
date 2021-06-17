@@ -30,28 +30,6 @@ function test1(;N=100_000,parallel=true)
 
 end
 
-function test1_naive(;N=100_000,parallel=true)
-
-  # Number of particles, sides and cutoff
-  sides = [250,250,250]
-  cutoff = 10
-  box = Box(sides,cutoff)
-
-  # Particle positions
-  Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-
-  # Function to be evalulated for each pair: sum of displacements on x
-  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
-
-  avg_dx = (N/(N*(N-1)/2)) * CellListMap.map_naive!(
-    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
-    0.,x,box
-  )
-  return avg_dx
-
-end
-
 #
 # In this test we compute the histogram of distances, expected to follow the
 # function f(f) = ρ(4/3)π(r[i+1]^3 - r[i]^3) with ρ being the density of the system.
@@ -191,7 +169,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 
   # Initialize auxiliary linked lists (largest set!)
-  cl = CellList(x,y,box,parallel=parllel)
+  cl = CellList(x,y,box,parallel=parallel)
 
   # Function that keeps the minimum distance
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
@@ -407,3 +385,5 @@ function florpi(;N=100_000,cd=true,parallel=true)
   return mean_v_r
 
 end
+
+

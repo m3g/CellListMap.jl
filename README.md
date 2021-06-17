@@ -32,12 +32,13 @@ The main function is `map_parwise!`:
 
 If the analysis is performed on the pairs of a single vector `x` (`n*(n-1)/2` pairs), the function can be called with:
 ```julia
-map_pairwise!(f::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
+map_pairwise!(f::Function,output,box::Box,cl::CellList)
 ```
 while if two distinct sets of points are provided (`n*m` pairs), it is called with:
 ```julia
-map_pairwise!(f::Function,output,x::AbstractVector,y::AbstractVector,box::Box,lc::LinkedLists)
+map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
 ```
+where the `cl` variable contains the cell lists built from the coordinates of the system, and `box` contains the system box properties.
 
 These functions will run over every pair of particles which are closer than `box.cutoff` and compute the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
 in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
@@ -74,22 +75,21 @@ n = 100_000
 sides = [250,250,250]
 cutoff = 10
 
-# Initialize linked lists and box structures
-lc = LinkedLists(n)
-box = Box(sides,cutoff)
-
 # Particle positions
 x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ]
 
-# Initialize cells (must be updated if positions change)
-initlists!(x,box,lc)
+# Initialize linked lists and box structures
+box = Box(sides,cutoff)
+cl = CellList(x,box)
 
 # Function to be evaluated from positions 
-f(x,y,sum_dx) = sum_dx + x[1] - y[1] 
+f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
-# Run calculation
-avg_dx = normalization * map_parwise((x,y,i,j,d2,sum_dx) -> (x,y,sum_dx), 0.0, x, box, lc)
+# Run calculation (0.0 is the initial value)
+avg_dx = normalization * map_parwise(
+  (x,y,i,j,d2,sum_dx) -> (x,y,sum_dx), 0.0, box, cl 
+)
 
 ```
 
@@ -114,7 +114,10 @@ hist = zeros(Int,10);
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation
-hist = normalization * map_pairwise!((x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),hist,x,box,lc)
+hist = normalization * map_pairwise!(
+  (x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),
+  hist,box,cl
+)
 
 ```
 
@@ -136,7 +139,7 @@ function potential(x,y,i,j,d2,u,mass)
 end
 
 # Run pairwise computation
-u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,lc)
+u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,box,cl)
 ```
 
 The example above can be run with `CellListMap.test3()`. 
@@ -163,7 +166,10 @@ end
 forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
 # Run pairwise computation
-forces = map_pairwise!((x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),forces,x,box,lc)
+forces = map_pairwise!(
+  (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
+  forces,box,cl
+)
 
 ```
 
@@ -181,15 +187,12 @@ sides = [250,250,250]
 cutoff = 10.
 box = Box(sides,cutoff)
 
-# Initialize auxiliary linked lists (largest set!)
-lc = LinkedLists(N2)
-
 # Particle positions
 x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
 y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 
-# Initializing linked cells with these positions (largest set!)
-initlists!(y,box,lc)
+# Initialize auxiliary linked lists (largest set!)
+cl = CellList(x,y,box)
 
 # Function that keeps the minimum distance
 f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
@@ -211,7 +214,7 @@ mind = ( 0, 0, +Inf )
 # Run pairwise computation
 mind = map_pairwise!( 
   (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
-  mind,x,y,box,lc;reduce=reduce_mind
+  mind,box,cl;reduce=reduce_mind
 )
 ```
 
@@ -246,7 +249,7 @@ pairs = Tuple{Int,Int,Float64}[]
 # Run pairwise computation
 pairs = map_pairwise!(
   (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs,cutoff),
-  pairs,x,box,lc,
+  pairs,box,cl,
   reduce=reduce_pairs,
   parallel=parallel
 )
@@ -280,7 +283,7 @@ Note, however, that `output_threaded` is defined on the call to `map_pairwise!`.
 forces = zeros(SVector{3,Float64},N)
 forces_threaded = [ deepcopy(forces) for i in 1:nthreads() ]
 for i in 1:nsteps
-  map_pairwise!(f, forces, x, box, lc, output_threaded=forces_threaded)
+  map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
   # work with the final forces vector
   ...
   # Reset forces_threaded
@@ -296,7 +299,7 @@ In this case, the `forces` vector will be updated by the default reduction metho
 In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
 ```julia
 mind = map_pairwise!( 
-  (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,x,y,box,lc;
+  (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,box,cl;
   reduce=reduce_mind
 )
 ```
