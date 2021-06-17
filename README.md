@@ -312,7 +312,7 @@ The arrays containing the cell lists can be initialized only once, and then upda
 cl = CellList(x,box)
 for i in 1:nsteps
   x = ... # new coordinates
-  cl = CellLists!(x,box) # update cell lists (note the !)
+  cl = CellList!(x,box) # update cell lists (note the !)
 end
 ```
 
@@ -323,7 +323,7 @@ The procedure is identical if using two sets of coordinates, in which case, one 
 cl = CellList(x,y,box)
 for i in 1:nsteps
   x = ... # new coordinates
-  cl = CellLists!(x,y,box) # update cell lists (note the !)
+  cl = CellList!(x,y,box) # update cell lists (note the !)
 end
 ```
 
