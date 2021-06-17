@@ -5,7 +5,7 @@ using Parameters
 using StaticArrays
 using DocStringExtensions
 
-export CellLists, CellLists!, Box
+export CellList, CellList!, Box
 export map_pairwise!
 
 """
@@ -72,7 +72,7 @@ $(TYPEDEF)
 Structure that contains the cell lists information.
 
 """
-Base.@kwdef struct CellLists{N,T}
+Base.@kwdef struct CellList{N,T}
   ncwp::Vector{Int} # One-element vector to contain the mutable number of cells with particles
   cwp::Vector{Int} # Indexes of the unique cells With Particles
   ncp::Vector{Int} # Number of cell particles
@@ -82,24 +82,24 @@ end
 
 # Structure that will cointain the cell lists of two independent sets of
 # atoms for cross-computation of interactions
-struct CellListsPair{N,T}
-  small::CellLists{N,T}
-  large::CellLIsts{N,T}
+struct CellListPair{V,N,T}
+  small::V
+  large::CellList{N,T}
 end
   
 
 """
 
 ```
-CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
+CellList(x::AbstractVector{SVector{N,T}},box::Box{N};parallel=true) where {N,T}
 ```
 
-Function that will initialize a `CellLists` structure from scracth, given a vector
+Function that will initialize a `CellList` structure from scracth, given a vector
 or particle coordinates (as `SVector`s) and a `Box`, which contain the size ofthe
 system, cutoff, etc.  
 
 """
-function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T} 
+function CellList(x::AbstractVector{SVector{N,T}},box::Box{N};parallel=true) where {N,T} 
   number_of_particles = length(x)
   number_of_cells = prod(box.nc)
   ncwp = zeros(Int,1)
@@ -107,34 +107,34 @@ function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
   ncp = zeros(Int,number_of_cells)
   fp = fill(AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))),number_of_cells)
   np = fill(AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))),number_of_particles)
-  cl = CellLists{N,T}(ncwp,cwp,ncp,fp,np)
-  return CellLists!(x,box,cl)
+  cl = CellList{N,T}(ncwp,cwp,ncp,fp,np)
+  return CellList!(x,box,cl,parallel=parallel)
 end
 
 """
 
 ```
-CellLists(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
+CellList(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N};parallel=true) where {N,T}
 ```
 
-Function that will initialize a `CellListsPair` structure from scracth, given two vectors
-of particle coordinates and a `Box`, which contain the size ofthe
-system, cutoff, etc.  
+Function that will initialize a `CellListPair` structure from scracth, given two vectors
+of particle coordinates and a `Box`, which contain the size ofthe system, cutoff, etc. The cell lists
+will be constructed for the largest vector, and a reference to the smallest vector is annotated.
 
 """
-function CellLists(
+function CellList(
   x::AbstractVector{SVector{N,T}},
   y::AbstractVector{SVector{N,T}},
-  box::Box{N}
+  box::Box{N};
+  parallel=true
 ) where {N,T} 
 
-  x_cl = CellLists(x,box)
-  y_cl = CellLists(y,box)
-
   if length(x) <= length(y)
-    cl_pair = CellListsPair{N,T}(x_cl,y_cl)
+    y_cl = CellList(y,box)
+    cl_pair = CellListPair(x,y_cl,parallel=parallel)
   else
-    cl_pair = CellListsPair{N,T}(y_cl,x_cl)
+    x_cl = CellList(x,box)
+    cl_pair = CellListPair(y,x_cl,parallel=parallel)
   end
 
   return cl_pair
@@ -143,14 +143,14 @@ end
 """
 
 ```
-CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellLists{N,T}) where {N,T}
+CellList!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellList{N,T},parallel=true) where {N,T}
 ```
 
 Function that will update a previously allocated `CellList` structure, given new updated
 particle positions, for example.
 
 """
-function CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl::CellLists{N,T}) where {N,T}
+function CellList!(x::AbstractVector{SVector{N,T}},box::Box{N},cl::CellList{N,T},parallel=true) where {N,T}
   @unpack ncwp, cwp, ncp, fp, np = cl
   ncwp[1] = 0
   fill!(cwp,0)
@@ -158,6 +158,7 @@ function CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl::CellLists{N,
   fill!(fp,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))))
   fill!(np,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))) 
 
+#voltar
   # Initialize cell, firstatom and nexatom
   for (ip,xip) in pairs(x)
     p = AtomWithIndex(ip,xip)
@@ -180,26 +181,23 @@ end
 """
 
 ```
-CellLists!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N},cl:CellLists{N,T}) where {N,T}
+CellList!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N},cl:CellListPair,parallel=true) where {N,T}
 ```
 
-Function that will update a previously allocated `CellList2` structure, given new updated
-particle positions, for example.
+Function that will update a previously allocated `CellListPair` structure, given new updated particle positions, for example.
 
 """
-function CellLists!(
+function CellList!(
   x::AbstractVector{SVector{N,T}},
   y::AbstractVector{SVector{N,T}},
-  box::Box{N},cl::CellLists{N,T},
-  cl_pair::CellListPair{N,T},
+  box::Box{N},cl_pair::CellListPair;
+  parallel=true
 ) where {N,T}
 
   if length(x) <= length(y)
-    CellLists!(x,box,cl_pair.small)
-    CellLists!(y,box,cl_pair.large)
+    CellList!(y,box,cl_pair.large,parallel=parallel)
   else
-    CellLists!(x,box,cl_pair.large)
-    CellLists!(y,box,cl_pair.small)
+    CellList!(x,box,cl_pair.large,parallel=parallel)
   end
 
   return cl_pair
@@ -252,6 +250,7 @@ function particle_cell(x::AbstractVector, box::Box{N}) where N
   )
   return cell
 end
+
 """
 
 ```
@@ -356,7 +355,7 @@ end
 """
 
 ```
-map_pairwise!(f::Function,output,x::AbstractVector,box::Box,lc::LinkedLists)
+map_pairwise!(f::Function,output,box::Box,cl::CellList)
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
@@ -381,7 +380,7 @@ julia> box = Box([250,250,250],10);
 
 julia> x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ];
 
-julia> cl = CellLists(x,box);
+julia> cl = CellList(x,box);
 
 julia> f(x,y,sum_dx) = sum_dx + x[1] - y[1] 
 
@@ -429,71 +428,80 @@ end
 u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box,cl)
 ```
 
-The example above can be run with `CellLists.test3()`.
+The example above can be run with `CellListMap.test3()`.
 
 
 """
-function map_pairwise!(
-  f::Function, output, 
-  x::AbstractVector,
-  box::Box, cl::CellLists;
+function map_pairwise!(f::F, output, box::Box, cl::CellList; 
   # Parallelization options
   parallel::Bool=true,
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
   reduce::Function=reduce
-)
+) where {F} # Needed for specialization for this function (avoids some allocations)
   if parallel && nthreads() > 1
-    output = map_pairwise_parallel_self!(
-      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
-      output,x,box,cl;
+    output = map_pairwise_parallel_self!(f,output,box,cl;
       output_threaded=output_threaded,
       reduce=reduce
     )
   else
-    output = map_pairwise_serial_self!(
-      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
-      output,x,box,cl
-    )
+    output = map_pairwise_serial_self!(f,output,box,cl)
   end
   return output
 end
 
-function map_pairwise_serial_self!(
-  f::Function, output, 
-  x::AbstractVector,
-  box::Box, cl::CellLists
-)
+"""
+
+
+```
+map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
+```
+
+The same but to evaluate some function between pairs of the particles of the vectors.
+
+"""
+function map_pairwise!(f::F, output, box::Box, cl::CellListPair;
+  # Parallelization options
+  parallel::Bool=true,
+  output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
+  reduce::Function=reduce
+) where {F} # Needed for specialization for this function (avoids some allocations) 
+  if parallel && nthreads() > 1
+    output = map_pairwise_parallel!(f,output,box,cl;
+      output_threaded=output_threaded,
+      reduce=reduce
+    )
+  else
+    output = map_pairwise_serial!(f,output,box,cl)
+  end
+  return output
+end
+
+#
+# Serial version for self-pairwise computations
+#
+function map_pairwise_serial!(f::F, output, box::Box, cl::CellList) where {F}
   for icell in 1:cl.ncwp[1]
-    output = inner_loop!(
-      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
-      box,icell,cl,output
-    ) 
+    output = inner_loop!(f,box,icell,cl,output) 
   end 
   return output
 end
 
-function map_pairwise_parallel_self!(
-  f::Function, output, 
-  x::AbstractVector,
-  box::Box, cl::CellLists;
+#
+# Parallel version for self-pairwise computations
+#
+function map_pairwise_parallel!(f::F, output, box::Box, cl::CellList;
   output_threaded=output_threaded,
   reduce::Function=reduce
-)
-
-  # loop over cells that contain particles
+) where {F}
   @threads for icell in 1:cl.ncwp[1]
     it = threadid()
-    output_threaded[it] = inner_loop!(
-      (x,y,i,j,d2,output)->f(x,y,i,j,d2,output),
-      box,icell,cl,output_threaded[it]
-    ) 
+    output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
   end 
-
   output = reduce(output,output_threaded)
   return output
 end
 
-function inner_loop!(f,box,icell,cl,output)
+function inner_loop!(f,box,icell,cl::CellList,output)
   @unpack sides, nc, cutoff_sq = box
   ic = cl.cwp[icell]
   ic_cartesian = cell_cartesian_indices(nc,ic)
@@ -561,6 +569,55 @@ function cell_output!(f,box,ic,cl,output,jc_cartesian)
     pᵢ = cl.np[pᵢ.index]
   end
 
+  return output
+end
+
+#
+# Serial version for cross-interaction computations
+#
+function map_pairwise_serial!(f::F, output, box::Box, cl::CellListPair) where {F}
+  for i in eachindex(cl.small)
+    output = inner_loop!(f,output,i,box,cl)
+  end
+  return output
+end
+
+#
+# Parallel version for cross-interaction computations
+#
+function map_pairwise_parallel!(f::F, output, box::Box, cl::CellListPair;
+  output_threaded=output_threaded,
+  reduce::Function=reduce
+) where {F}
+  @threads for i in eachindex(cl.small)
+    it = threadid()
+    output_threaded[it] = inner_loop!(f,output_threaded[it],i,box,cl) 
+  end 
+  output = reduce(output,output_threaded)
+  return output
+end
+
+#
+# Inner loop of cross-interaction computations
+#
+function inner_loop!(f,i,box,cl::CellListPair,output)
+  @unpack sides, nc, cutoff_sq = box
+  xpᵢ = cl.small[i]
+  ic = particle_cell(pᵢ,box)
+  for neighbour_cells in CartesianIndices((-1:1, -1:1, -1:1))   
+    jc = wrap_cell(nc,neighbour_cells+ic_cartesian)
+    pⱼ = cl.large.fp[jc]
+    # loop over particles of cell jc
+    for _ in 1:cl.large.ncp[jc]
+      j = pⱼ.index
+      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      d2 = distance_sq(xpᵢ,xpⱼ)
+      if d2 <= cutoff_sq
+        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+      end
+      pⱼ = cl.np[pⱼ.index]
+    end                                   
+  end
   return output
 end
 

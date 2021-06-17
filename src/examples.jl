@@ -11,73 +11,20 @@ function test1(;N=100_000,parallel=true)
   cutoff = 10
   box = Box(sides,cutoff)
 
-  # Initialize auxiliary linked lists
-  lc = LinkedLists(N)
-
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
-  # Initializing linked cells with these positions
-  initlists!(x,box,lc,parallel=parallel)  
+  # Initialize auxiliary linked lists
+  cl = CellList(x,box,parallel=parallel)
 
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
 
   avg_dx = (N/(N*(N-1)/2)) * map_pairwise!(
     (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
-    0.,x,box,lc,
+    0.,box,cl,
     parallel=parallel
-  )
-  return avg_dx
-
-end
-
-function test1_new(;N=100_000,parallel=true)
-
-  # Number of particles, sides and cutoff
-  sides = [250,250,250]
-  cutoff = 10
-  box = Box(sides,cutoff)
-
-  # Particle positions
-  Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-
-  # Initialize cell lists
-  cl = CellLists(x,box)
-
-  # Function to be evalulated for each pair: sum of displacements on x
-  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
-
-  avg_dx = (N/(N*(N-1)/2)) * map_pairwise_serial!(
-    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
-    0.,x,box,cl,
-  )
-  return avg_dx
-
-end
-
-function test1_new2(;N=100_000,parallel=true)
-
-  # Number of particles, sides and cutoff
-  sides = [250,250,250]
-  cutoff = 10
-  box = Box(sides,cutoff)
-
-  # Particle positions
-  Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-
-  # Initialize cell lists
-  cl = CellLists(x,box)
-
-  # Function to be evalulated for each pair: sum of displacements on x
-  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
-
-  avg_dx = (N/(N*(N-1)/2)) * map_pairwise_serial!(
-    (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
-    0.,x,box,cl,
   )
   return avg_dx
 
@@ -93,9 +40,6 @@ function test1_naive(;N=100_000,parallel=true)
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-
-  # Initialize cell lists
-  cl = CellLists(x,box)
 
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + x[1] - y[1]
@@ -119,15 +63,12 @@ function test2(;N=100_000,parallel=true)
   cutoff = 10.
   box = Box(sides,cutoff)
 
-  # Initialize auxiliary linked lists
-  lc = LinkedLists(N)
-
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
-  # Initializing linked cells with these positions
-  initlists!(x,box,lc,parallel=parallel)  
+  # Initialize auxiliary linked lists
+  cl = CellList(x,box,parallel=parallel)
 
   # Function to be evalulated for each pair: build distance histogram
   function build_histogram!(x,y,d2,hist) 
@@ -143,7 +84,7 @@ function test2(;N=100_000,parallel=true)
   # Run pairwise computation
   hist = (N/(N*(N-1)/2)) * map_pairwise!(
     (x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),
-    hist,x,box,lc,
+    hist,box,cl,
     parallel=parallel
   )
   return hist
@@ -162,18 +103,15 @@ function test3(;N=100_000,parallel=true)
   cutoff = 10.
   box = Box(sides,cutoff)
 
-  # Initialize auxiliary linked lists
-  lc = LinkedLists(N)
-
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
+  # Initialize auxiliary linked lists
+  cl = CellList(x,box,parallel=parallel)
+
   # masses
   mass = rand(N)
-
-  # Initializing linked cells with these positions
-  initlists!(x,box,lc,parallel=parallel)  
 
   # Function to be evalulated for each pair: build distance histogram
   function potential(x,y,i,j,d2,u,mass) 
@@ -185,7 +123,7 @@ function test3(;N=100_000,parallel=true)
   # Run pairwise computation
   u = map_pairwise!(
     (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
-    0.0,x,box,lc,
+    0.0,box,cl,
     parallel=parallel
   )
   return u
@@ -204,9 +142,6 @@ function test4(;N=100_000,parallel=true)
   cutoff = 10.
   box = Box(sides,cutoff)
 
-  # Initialize auxiliary linked lists
-  lc = LinkedLists(N)
-
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
@@ -214,8 +149,8 @@ function test4(;N=100_000,parallel=true)
   # masses
   mass = rand(N)
 
-  # Initializing linked cells with these positions
-  initlists!(x,box,lc,parallel=parallel)  
+  # Initialize auxiliary linked lists
+  cl = CellList(x,box,parallel=parallel)
 
   # Function to be evalulated for each pair
   function calc_forces!(x,y,i,j,d2,mass,forces) 
@@ -233,7 +168,7 @@ function test4(;N=100_000,parallel=true)
   # Run pairwise computation
   forces = map_pairwise!(
     (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
-    forces,x,box,lc,
+    forces,box,cl,
     parallel=parallel
   )
   return forces
@@ -250,16 +185,13 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   cutoff = 10.
   box = Box(sides,cutoff)
 
-  # Initialize auxiliary linked lists (largest set!)
-  lc = LinkedLists(N2)
-
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
 
-  # Initializing linked cells with these positions (largest set!)
-  initlists!(y,box,lc,parallel=parallel)  
+  # Initialize auxiliary linked lists (largest set!)
+  cl = CellList(x,y,box,parallel=parllel)
 
   # Function that keeps the minimum distance
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
@@ -281,7 +213,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
   # Run pairwise computation
   mind = map_pairwise!(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
-    mind,x,y,box,lc;reduce=reduce_mind, parallel=parallel
+    mind,box,cl;reduce=reduce_mind, parallel=parallel
   )
   return (mind[1],mind[2],sqrt(mind[3]))
 
@@ -323,10 +255,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   box = Box(sides,cutoff)
 
   # Initialize auxiliary linked lists (largest set!)
-  lc = LinkedLists(N2)
-
-  # Initializing linked cells with these positions (largest set!)
-  initlists!(y,box,lc,parallel=parallel)  
+  cl = CellList(x,y,box,parallel=parallel)
 
   # Function that keeps the minimum distance
   f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
@@ -348,7 +277,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true)
   # Run pairwise computation
   mind = map_pairwise!(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
-    mind,x,y,box,lc;reduce=reduce_mind,parallel=parallel
+    mind,box,cl;reduce=reduce_mind,parallel=parallel
   )
   return (mind[1],mind[2],sqrt(mind[3]))
 
@@ -365,9 +294,6 @@ function test7(;N=100_000,parallel=true)
   cutoff = 10.
   box = Box(sides,cutoff)
 
-  # Initialize auxiliary linked lists
-  lc = LinkedLists(N)
-
   # Particle positions
   Random.seed!(321)
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
@@ -375,8 +301,8 @@ function test7(;N=100_000,parallel=true)
   # masses
   mass = rand(N)
 
-  # Initializing linked cells with these positions
-  initlists!(x,box,lc,parallel=parallel)  
+  # Initialize auxiliary linked lists
+  cl = CellList(x,box,parallel=parallel)
 
   # Function to be evalulated for each pair: push pair if d<cutoff
   function push_pair!(i,j,d2,pairs,cutoff) 
@@ -402,7 +328,7 @@ function test7(;N=100_000,parallel=true)
   # Run pairwise computation
   pairs = map_pairwise!(
     (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs,cutoff),
-    pairs,x,box,lc,
+    pairs,box,cl,
     reduce=reduce_pairs,
     parallel=parallel
   )
@@ -456,7 +382,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
   box = Box(Lbox, r_max)
-  cl = CellLists(positions,box)
+  cl = CellList(positions,box,parallel=parallel)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
   # Needs this to stabilize the type of velocities and hist, probably
@@ -465,7 +391,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
       (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(
          x,y,i,j,d2,hist,velocities,rbins,Lbox
       ),
-      hist, positions, box, cl,
+      hist, box, cl,
       reduce=reduce_hist,
       parallel=parallel
     )
