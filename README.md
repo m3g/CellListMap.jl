@@ -16,9 +16,11 @@ It allows the fast computation of any quantity from the pairs that are within th
       5. [Nearest neighbor](#nearest-neighbor) 
       6. [Neighbor list](#neighbor-list) 
 4. [Parallelization splitting and reduction](#parallelization-splitting-and-reduction)
-      1. [Preallocating auxiliary arrays](#preallocating-auxiliary-arrays) 
-      2. [Custom reduction functions](#custom-reduction-functions) 
-5. [Citation](#citation)
+      1. [Custom reduction functions](#custom-reduction-functions) 
+5. [Preallocating auxiliary arrays: threaded output and cell lists](#preallocating-auxiliary-arrays-threaded-output-and-cell-lists)
+      1. [Preallocating the cell lists](#preallocating-the-cell-lists)
+      2. [Preallocating threaded output auxiliary arrays](#preallocating-threaded-output-auxiliary-arrays) 
+6. [Citation](#citation)
 
 ## Installation
 
@@ -276,24 +278,6 @@ function reduce(output::Vector,output_threaded)
 end
 ```
 
-### Preallocating auxiliary arrays
-
-Note, however, that `output_threaded` is defined on the call to `map_pairwise!`. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:
-```julia
-forces = zeros(SVector{3,Float64},N)
-forces_threaded = [ deepcopy(forces) for i in 1:nthreads() ]
-for i in 1:nsteps
-  map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
-  # work with the final forces vector
-  ...
-  # Reset forces_threaded
-  for i in 1:nthreads()
-    @. forces_threaded[i] = zero(SVector{3,Float64}) 
-  end
-end
-```
-In this case, the `forces` vector will be updated by the default reduction method.
-
 ### Custom reduction functions
 
 In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
@@ -316,6 +300,51 @@ function reduce_mind(output,output_threaded)
 end
 ```
 This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.  
+
+## Preallocating auxiliary arrays: threaded output and cell lists
+
+### Preallocating the cell lists
+
+The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note, however, that the cell lists are dependent on the box properties. Thus, preallocation must be used when the box size does not change. For example:  
+
+```julia
+# Initialize cell lists with initial coordinates
+cl = CellList(x,box)
+for i in 1:nsteps
+  x = ... # new coordinates
+  cl = CellLists!(x,box) # update cell lists (note the !)
+end
+```
+
+The procedure is identical if using two sets of coordinates, in which case, one would do:
+
+```julia
+# Initialize cell lists with initial coordinates
+cl = CellList(x,y,box)
+for i in 1:nsteps
+  x = ... # new coordinates
+  cl = CellLists!(x,y,box) # update cell lists (note the !)
+end
+```
+
+### Preallocating threaded output auxiliary arrays
+
+On parallel runs, note that `output_threaded` is, by default, initialized on the call to `map_pairwise!`. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:
+```julia
+forces = zeros(SVector{3,Float64},N)
+forces_threaded = [ deepcopy(forces) for i in 1:nthreads() ]
+for i in 1:nsteps
+  map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
+  # work with the final forces vector
+  ...
+  # Reset forces_threaded
+  for i in 1:nthreads()
+    @. forces_threaded[i] = zero(SVector{3,Float64}) 
+  end
+end
+```
+In this case, the `forces` vector will be updated by the default reduction method.
+
 
 ## Citation
 
