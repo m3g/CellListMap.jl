@@ -83,8 +83,8 @@ end
 # Structure that will cointain the cell lists of two independent sets of
 # atoms for cross-computation of interactions
 struct CellListsPair{N,T}
-  small::CellLists{N,T}
-  large::CellLIsts{N,T}
+  cl_small::CellLists{N,T}
+  cl_large::CellLIsts{N,T}
 end
   
 
@@ -113,6 +113,8 @@ end
 
 """
 
+"""
+
 ```
 CellLists(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T}
 ```
@@ -122,25 +124,17 @@ of particle coordinates and a `Box`, which contain the size ofthe
 system, cutoff, etc.  
 
 """
-function CellLists(
-  x::AbstractVector{SVector{N,T}},
-  y::AbstractVector{SVector{N,T}},
-  box::Box{N}
-) where {N,T} 
-
-  x_cl = CellLists(x,box)
-  y_cl = CellLists(y,box)
-
-  if length(x) <= length(y)
-    cl_pair = CellListsPair{N,T}(x_cl,y_cl)
-  else
-    cl_pair = CellListsPair{N,T}(y_cl,x_cl)
-  end
-
-  return cl_pair
+function CellLists(x::AbstractVector{SVector{N,T}},box::Box{N}) where {N,T} 
+  number_of_particles = length(x)
+  number_of_cells = prod(box.nc)
+  ncwp = zeros(Int,1)
+  cwp = zeros(Int,number_of_cells)
+  ncp = zeros(Int,number_of_cells)
+  fp = fill(AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))),number_of_cells)
+  np = fill(AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))),number_of_particles)
+  cl = CellLists{N,T}(ncwp,cwp,ncp,fp,np)
+  return CellLists!(x,box,cl)
 end
-
-"""
 
 ```
 CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellLists{N,T}) where {N,T}
@@ -177,33 +171,6 @@ function CellLists!(x::AbstractVector{SVector{N,T}},box::Box{N},cl::CellLists{N,
   return cl
 end
 
-"""
-
-```
-CellLists!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N},cl:CellLists{N,T}) where {N,T}
-```
-
-Function that will update a previously allocated `CellList2` structure, given new updated
-particle positions, for example.
-
-"""
-function CellLists!(
-  x::AbstractVector{SVector{N,T}},
-  y::AbstractVector{SVector{N,T}},
-  box::Box{N},cl::CellLists{N,T},
-  cl_pair::CellListPair{N,T},
-) where {N,T}
-
-  if length(x) <= length(y)
-    CellLists!(x,box,cl_pair.small)
-    CellLists!(y,box,cl_pair.large)
-  else
-    CellLists!(x,box,cl_pair.large)
-    CellLists!(y,box,cl_pair.small)
-  end
-
-  return cl_pair
-end
 """
 
 ```
