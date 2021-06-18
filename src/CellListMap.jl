@@ -767,6 +767,7 @@ end
 # Test examples
 #
 include("./examples.jl")
+include("./halotools.jl")
 
 end # module
 
