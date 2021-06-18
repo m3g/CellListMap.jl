@@ -20,6 +20,7 @@ using Test
 
   # Particle positions
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box)
@@ -92,8 +93,7 @@ using Test
     copy(forces),box,cl,parallel=false
   ) ≈ naive
 
-  # Compute some properteis of disjoint sets 
-  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  # Compute some properties of disjoint sets 
   cl = CellList(x,y,box)
 
   naive = CellListMap.map_naive_two!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
@@ -107,15 +107,22 @@ using Test
   ) ≈ naive
 
   # Test the examples, to check further if the parallelization didn't break something
-  @test CellListMap.test1(parallel=true) ≈ CellListMap.test1(parallel=false)
-  @test CellListMap.test2(parallel=true) ≈ CellListMap.test2(parallel=false)
-  @test CellListMap.test3(parallel=true) ≈ CellListMap.test3(parallel=false)
-  @test CellListMap.test4(parallel=true) ≈ CellListMap.test4(parallel=false)
-  @test count(CellListMap.test5(parallel=true) .≈ CellListMap.test5(parallel=false)) == 3
-  @test count(CellListMap.test6(parallel=true) .≈ CellListMap.test6(parallel=false)) == 3
-  pairs1 = CellListMap.test7(parallel=true)
-  pairs2 = CellListMap.test7(parallel=false)
+  N = 100_000
+  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  @test CellListMap.test1(parallel=true,x=x) ≈ CellListMap.test1(parallel=false,x=x)
+  @test CellListMap.test2(parallel=true,x=x) ≈ CellListMap.test2(parallel=false,x=x)
+  @test CellListMap.test3(parallel=true,x=x) ≈ CellListMap.test3(parallel=false,x=x)
+  @test CellListMap.test4(parallel=true,x=x) ≈ CellListMap.test4(parallel=false,x=x)
+  @test count(CellListMap.test5(parallel=true,x=x,y=y) .≈ CellListMap.test5(parallel=false,x=x,y=y)) == 3
+
+  pairs1 = CellListMap.test7(parallel=true,x=x)
+  pairs2 = CellListMap.test7(parallel=false,x=x)
   @test count([ count(pairs1[i] .≈ pairs2[i]) == 3 for i in 1:length(pairs1) ]) == length(pairs1)
+
+  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
+  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
+  @test count(CellListMap.test6(parallel=true,x=x,y=y) .≈ CellListMap.test6(parallel=false,x=x,y=y)) == 3
 
   # Test resizing of the cell lists
   x = [ rand(SVector{3,Float64}) for i in 1:1000 ]

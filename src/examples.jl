@@ -1,10 +1,8 @@
 import Random
-
 #
 # In this test we compute the average displacement of the x coordinates of the atoms
-# Expected to be nearly zero in average
 #              
-function test1(;N=100_000,parallel=true)
+function test1(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -13,7 +11,9 @@ function test1(;N=100_000,parallel=true)
 
   # Particle positions
   Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  if x == nothing 
+    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  end
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box,parallel=parallel)
@@ -34,7 +34,7 @@ end
 # In this test we compute the histogram of distances, expected to follow the
 # function f(f) = ρ(4/3)π(r[i+1]^3 - r[i]^3) with ρ being the density of the system.
 #
-function test2(;N=100_000,parallel=true)
+function test2(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
   sides = SVector{3,Float64}(250,250,250)
@@ -43,7 +43,9 @@ function test2(;N=100_000,parallel=true)
 
   # Particle positions
   Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  if x == nothing 
+    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  end
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box,parallel=parallel)
@@ -74,7 +76,7 @@ end
 # has a different mass. In this case, the closure is used to pass the masses to the
 # function that computes the potential.
 #
-function test3(;N=100_000,parallel=true)
+function test3(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -83,13 +85,15 @@ function test3(;N=100_000,parallel=true)
 
   # Particle positions
   Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  if x == nothing 
+    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  end
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box,parallel=parallel)
 
   # masses
-  mass = rand(N)
+  mass = [ 5 * x[i][1] for i in 1:N ]
 
   # Function to be evalulated for each pair: build distance histogram
   function potential(x,y,i,j,d2,u,mass) 
@@ -113,7 +117,7 @@ end
 # has a different mass. In this case, the closure is used to pass the masses and
 # the force vector to the function that computes the potential.
 #
-function test4(;N=100_000,parallel=true)
+function test4(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -122,10 +126,12 @@ function test4(;N=100_000,parallel=true)
 
   # Particle positions
   Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  if x == nothing 
+    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  end
 
   # masses
-  mass = rand(N)
+  mass = [ 5 * x[i][1] for i in 1:N ]
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box,parallel=parallel)
@@ -156,7 +162,7 @@ end
 #
 # In this test we compute the minimum distance between two independent sets of particles
 #
-function test5(;N1=1_500,N2=1_500_000,parallel=true)
+function test5(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -165,8 +171,12 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true)
 
   # Particle positions
   Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
-  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
+  if x == nothing 
+    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
+  end
+  if y == nothing 
+    y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
+  end
 
   # Initialize auxiliary linked lists (largest set!)
   cl = CellList(x,y,box,parallel=parallel)
@@ -201,12 +211,16 @@ end
 # In this test we compute the minimum distance between two independent sets of particles,
 # without periodic conditions
 #
-function test6(;N1=1_500,N2=1_500_000,parallel=true)
+function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
   # Particle positions
   Random.seed!(321)
-  x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
-  y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
+  if x == nothing 
+    x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
+  end
+  if y == nothing 
+    y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
+  end
 
   # Boundaries
   xmin = [ +Inf, +Inf, +Inf ]
@@ -265,7 +279,7 @@ end
 # In this test we compute the complete neighbor list of particles, meaning all the pairs
 # that are within the cutoff distance
 #
-function test7(;N=100_000,parallel=true)
+function test7(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
   sides = [250,250,250]
@@ -274,10 +288,9 @@ function test7(;N=100_000,parallel=true)
 
   # Particle positions
   Random.seed!(321)
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-
-  # masses
-  mass = rand(N)
+  if x == nothing 
+    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  end
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box,parallel=parallel)
