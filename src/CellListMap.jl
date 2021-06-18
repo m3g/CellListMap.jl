@@ -6,7 +6,7 @@ using StaticArrays
 using DocStringExtensions
 
 export Box
-export CellList, CellList!
+export CellList, UpdateCellList!
 export map_pairwise!
 
 """
@@ -106,14 +106,14 @@ julia> cl = CellListMap.CellList(x,box);
 """
 function CellList(x::AbstractVector{SVector{N,T}},box::Box{N};parallel::Bool=true) where {N,T} 
   number_of_particles = length(x)
-  number_of_cells = prod(box.nc)
+  number_of_cells = ceil(Int,1.1*prod(box.nc)) # some margin in case of box size variations
   ncwp = zeros(Int,1)
   cwp = Vector{Int}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
 
   cl = CellList{N,T}(ncwp,cwp,fp,np)
-  return CellList!(x,box,cl,parallel=parallel)
+  return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
 """
@@ -162,7 +162,7 @@ end
 """
 
 ```
-CellList!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellList{N,T},parallel=true) where {N,T}
+UpdateCellList!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellList{N,T},parallel=true) where {N,T}
 ```
 
 Function that will update a previously allocated `CellList` structure, given new updated particle positions, for example.
@@ -174,12 +174,12 @@ julia> x = [ rand(SVector{3,Float64}) for i in 1:1000 ];
 
 julia> cl = CellList(x,box);
 
-julia> cl = CellList!(x,box,cl); # update lists
+julia> cl = UpdateCellList!(x,box,cl); # update lists
 
 ```
 
 """
-function CellList!(
+function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   box::Box{N},
   cl::CellList{N,T};
@@ -187,6 +187,14 @@ function CellList!(
 ) where {N,T}
   @unpack ncwp, cwp, fp, np = cl
 
+  number_of_cells = prod(box.nc)
+  if number_of_cells > length(cwp) 
+    number_of_cells = ceil(Int,1.1*number_of_cells) # some margin in case of box size variations
+    resize!(cwp,number_of_cells)
+    resize!(fp,number_of_cells)
+  end
+
+  ncwp[1] = 0
   if parallel
     @threads for i in eachindex(cwp)
       cwp[i] = 0
@@ -196,7 +204,6 @@ function CellList!(
       np[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
     end
   else
-    ncwp[1] = 0
     fill!(cwp,0)
     fill!(fp,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))))
     fill!(np,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))) 
@@ -228,7 +235,7 @@ end
 """
 
 ```
-CellList!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N},cl:CellListPair,parallel=true) where {N,T}
+UpdateCellList!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N},cl:CellListPair,parallel=true) where {N,T}
 ```
 
 Function that will update a previously allocated `CellListPair` structure, given new updated particle positions, for example.
@@ -242,12 +249,12 @@ julia> y = [ rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box);
 
-julia> cl = CellList!(x,y,box,cl); # update lists
+julia> cl = UpdateCellList!(x,y,box,cl); # update lists
 
 ```
 
 """
-function CellList!(
+function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   y::AbstractVector{SVector{N,T}},
   box::Box{N},cl_pair::CellListPair;
@@ -255,9 +262,9 @@ function CellList!(
 ) where {N,T}
 
   if length(x) <= length(y)
-    CellList!(y,box,cl_pair.large,parallel=parallel)
+    UpdateCellList!(y,box,cl_pair.large,parallel=parallel)
   else
-    CellList!(x,box,cl_pair.large,parallel=parallel)
+    UpdateCellList!(x,box,cl_pair.large,parallel=parallel)
   end
 
   return cl_pair

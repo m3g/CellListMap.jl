@@ -305,14 +305,14 @@ This function *must* return the updated `output` variable, being it mutable or n
 
 ### Preallocating the cell lists
 
-The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note, however, that the cell lists are dependent on the box properties. Thus, preallocation must be used when the box size does not change. For example:  
+The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size, some arrays might be increased (never shrinked) on this update. 
 
 ```julia
 # Initialize cell lists with initial coordinates
 cl = CellList(x,box)
 for i in 1:nsteps
   x = ... # new coordinates
-  cl = CellList!(x,box) # update cell lists (note the !)
+  cl = UpdateCellList!(x,box) 
 end
 ```
 
@@ -323,7 +323,7 @@ The procedure is identical if using two sets of coordinates, in which case, one 
 cl = CellList(x,y,box)
 for i in 1:nsteps
   x = ... # new coordinates
-  cl = CellList!(x,y,box) # update cell lists (note the !)
+  cl = UpdateCellList!(x,y,box) # update cell lists (note the !)
 end
 ```
 
