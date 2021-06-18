@@ -1,6 +1,6 @@
 # CellListMap.jl
 
-This package is for computing short-ranged particle interactions or any other property that is dependent on the distances between pairs of particles, within a cutoff. It maps a function to be computed pairwise using cell lists using, for the moment, orthorhombic periodic boundary conditions. Parallel and serial implementations can be used. 
+This package is for computing short-ranged particle interactions or any other property that is dependent on the distances between pairs of three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists using, for the moment, orthorhombic periodic boundary conditions. Parallel and serial implementations can be used. 
 
 It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
