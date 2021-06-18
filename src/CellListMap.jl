@@ -65,12 +65,48 @@ end
 
 $(TYPEDEF)
 
+This structure contains the cell linear index and the information about if this cell
+is in the border of the box (such that its neighbouring cells need to be wrapped) 
+
+"""
+struct CellWithBorderInfo
+  icell::Int
+  inborder::Bool
+end
+
+"""
+
+```
+cell_in_border(icell_cartesian,box)
+```
+
+Function that checks if a cell is in the border of the periodic cell box
+
+"""
+function cell_in_border(icell_cartesian,box)
+  if icell_cartesian[1] == 1 ||
+     icell_cartesian[2] == 1 ||
+     icell_cartesian[3] == 1 ||
+     icell_cartesian[1] == box.nc[1] ||
+     icell_cartesian[2] == box.nc[2] ||
+     icell_cartesian[3] == box.nc[3]
+    return true
+  else
+    return false
+  end
+end
+
+
+"""
+
+$(TYPEDEF)
+
 Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{N,T}
   ncwp::Vector{Int} # One-element vector to contain the mutable number of cells with particles
-  cwp::Vector{Int} # Indexes of the unique cells With Particles
+  cwp::Vector{CellWithBorderInfo} # Indexes of the unique cells With Particles
   fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
   np::Vector{AtomWithIndex{N,T}} # Next particle of cell
 end
@@ -108,7 +144,7 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box{N};parallel::Bool=tru
   number_of_particles = length(x)
   number_of_cells = ceil(Int,1.1*prod(box.nc)) # some margin in case of box size variations
   ncwp = zeros(Int,1)
-  cwp = Vector{Int}(undef,number_of_cells)
+  cwp = Vector{CellWithBorderInfo}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
 
@@ -197,14 +233,14 @@ function UpdateCellList!(
   ncwp[1] = 0
   if parallel
     @threads for i in eachindex(cwp)
-      cwp[i] = 0
+      cwp[i] = CellWithBorderInfo(0,false)
       fp[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
     end
     @threads for i in eachindex(np)
       np[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
     end
   else
-    fill!(cwp,0)
+    fill!(cwp,CellWithBorderInfo(0,false))
     fill!(fp,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))))
     fill!(np,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))) 
   end
@@ -221,12 +257,12 @@ end
 #
 function set_celllist_index!(ip,xip,box,cl)
   @unpack ncwp, cwp, fp, np = cl
-  p = AtomWithIndex(ip,xip)
-  icell_cartesian = particle_cell(xip,box)
+  p = AtomWithIndex(ip,wrapone(xip,box.sides))
+  icell_cartesian = particle_cell(p.coordinates,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   if fp[icell].index == 0
     ncwp[1] += 1
-    cwp[ncwp[1]] = icell
+    cwp[ncwp[1]] = CellWithBorderInfo(icell,cell_in_border(icell_cartesian,box))
   end
   np[ip] = fp[icell]
   fp[icell] = p
@@ -529,7 +565,8 @@ end
 
 function inner_loop!(f,box,icell,cl::CellList,output)
   @unpack sides, nc, cutoff_sq = box
-  ic = cl.cwp[icell]
+  cell = cl.cwp[icell]
+  ic = cell.icell
   ic_cartesian = cell_cartesian_indices(nc,ic)
 
   # loop over list of non-repeated particles of cell ic
@@ -540,7 +577,11 @@ function inner_loop!(f,box,icell,cl::CellList,output)
     pⱼ = cl.np[pᵢ.index] 
     j = pⱼ.index
     while j > 0
-      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      if cell.inborder
+        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      else
+        xpⱼ = pⱼ.coordinates
+      end
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
         output = f(xpᵢ,xpⱼ,i,j,d2,output)
@@ -553,23 +594,23 @@ function inner_loop!(f,box,icell,cl::CellList,output)
   end
 
   # cells that share faces
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0, 0)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1, 0)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0, 0,+1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1, 0, 0)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0,+1, 0)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0, 0,+1)))
 
   # Interactions of cells that share axes
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1, 0)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,+1)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1, 0)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1, 0,-1)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,+1)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex(( 0,+1,-1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,+1, 0)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1, 0,+1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,-1, 0)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1, 0,-1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0,+1,+1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0,+1,-1)))
 
   # Interactions of cells that share vertices
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,+1)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,+1,-1)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,+1)))
-  output = cell_output!(f,box,ic,cl,output,ic_cartesian+CartesianIndex((+1,-1,-1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,+1,+1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,+1,-1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,-1,+1)))
+  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,-1,-1)))
 
   return output
 end
@@ -577,9 +618,14 @@ end
 #
 # loops over the particles of a neighbour cell
 #
-function cell_output!(f,box,ic,cl,output,jc_cartesian)
+function cell_output!(f,box,cell,cl,output,jc_cartesian)
   @unpack sides, nc, cutoff_sq = box
-  jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
+  ic = cell.icell
+  if cell.inborder
+    jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
+  else
+    jc_cartesian_wrapped = jc_cartesian
+  end
   jc = cell_linear_index(nc,jc_cartesian_wrapped)
 
   # loop over list of non-repeated particles of cell ic
@@ -590,7 +636,11 @@ function cell_output!(f,box,ic,cl,output,jc_cartesian)
     pⱼ = cl.fp[jc]
     j = pⱼ.index
     while j > 0
-      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      if cell.inborder
+        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      else
+        xpⱼ = pⱼ.coordinates
+      end
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
         output = f(xpᵢ,xpⱼ,i,j,d2,output)
@@ -635,16 +685,25 @@ end
 #
 function inner_loop!(f,output,i,box,cl::CellListPair)
   @unpack sides, nc, cutoff_sq = box
-  xpᵢ = cl.small[i]
+  xpᵢ = wrapone(cl.small[i],box.sides)
   ic = particle_cell(xpᵢ,box)
+  inborder = cell_in_border(ic,box)
   for neighbour_cell in CartesianIndices((-1:1, -1:1, -1:1))   
-    jc_cartesian_wrapped = wrap_cell(nc,neighbour_cell+ic)
+    if inborder
+      jc_cartesian_wrapped = wrap_cell(nc,neighbour_cell+ic)
+    else
+      jc_cartesian_wrapped = neighbour_cell+ic
+    end
     jc = cell_linear_index(nc,jc_cartesian_wrapped)
     pⱼ = cl.large.fp[jc]
     j = pⱼ.index
     # loop over particles of cell jc
     while j > 0
-      xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      if inborder
+        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
+      else
+        xpⱼ = pⱼ.coordinates
+      end
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
         output = f(xpᵢ,xpⱼ,i,j,d2,output)
