@@ -357,6 +357,7 @@ The goal here is to provide a good implementation of cell lists. We compare it w
 
 <img src=https://github.com/lmiq/PairVelocities/blob/main/cv.png>
 
+The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. 
 
 ## Citation
 
