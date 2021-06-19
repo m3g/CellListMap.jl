@@ -569,6 +569,26 @@ function inner_loop!(f,box,icell,cl::CellList,output)
   ic = cell.icell
   ic_cartesian = cell_cartesian_indices(nc,ic)
 
+
+  neighbour_cells = SVector{13,CartesianIndex{3}}(
+    # Faces
+    CartesianIndex(+1, 0, 0),
+    CartesianIndex( 0,+1, 0),
+    CartesianIndex( 0, 0,+1),
+    # Axes                        
+    CartesianIndex(+1,+1, 0),
+    CartesianIndex(+1, 0,+1),
+    CartesianIndex(+1,-1, 0),
+    CartesianIndex(+1, 0,-1),
+    CartesianIndex( 0,+1,+1),
+    CartesianIndex( 0,+1,-1),
+    # Vertices                       
+    CartesianIndex(+1,+1,+1),
+    CartesianIndex(+1,+1,-1),
+    CartesianIndex(+1,-1,+1),
+    CartesianIndex(+1,-1,-1)
+  )
+
   # loop over list of non-repeated particles of cell ic
   pᵢ = cl.fp[ic]
   i = pᵢ.index
@@ -592,25 +612,10 @@ function inner_loop!(f,box,icell,cl::CellList,output)
     pᵢ = cl.np[pᵢ.index]
     i = pᵢ.index
   end
-
-  # cells that share faces
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1, 0, 0)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0,+1, 0)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0, 0,+1)))
-
-  # Interactions of cells that share axes
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,+1, 0)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1, 0,+1)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,-1, 0)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1, 0,-1)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0,+1,+1)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex(( 0,+1,-1)))
-
-  # Interactions of cells that share vertices
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,+1,+1)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,+1,-1)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,-1,+1)))
-  output = cell_output!(f,box,cell,cl,output,ic_cartesian+CartesianIndex((+1,-1,-1)))
+   
+  for jcell in neighbour_cells
+    output = cell_output!(f,box,cell,cl,output,ic_cartesian+jcell)
+  end
 
   return output
 end
@@ -770,5 +775,6 @@ include("./examples.jl")
 include("./halotools.jl")
 
 end # module
+
 
 
