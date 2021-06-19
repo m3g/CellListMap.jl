@@ -9,9 +9,33 @@ export Box
 export CellList, UpdateCellList!
 export map_pairwise!
 
+#
+# Cell neighbours that must be run over if lcell=1
+#
+const neighbour_cells_1 = SVector{13,CartesianIndex{3}}(
+  # Faces
+  CartesianIndex(+1, 0, 0),
+  CartesianIndex( 0,+1, 0),
+  CartesianIndex( 0, 0,+1),
+  # Axes                        
+  CartesianIndex(+1,+1, 0),
+  CartesianIndex(+1, 0,+1),
+  CartesianIndex(+1,-1, 0),
+  CartesianIndex(+1, 0,-1),
+  CartesianIndex( 0,+1,+1),
+  CartesianIndex( 0,+1,-1),
+  # Vertices                       
+  CartesianIndex(+1,+1,+1),
+  CartesianIndex(+1,+1,-1),
+  CartesianIndex(+1,-1,+1),
+  CartesianIndex(+1,-1,-1)
+)
+
 """
 
 $(TYPEDEF)
+
+$(TYPEDFIELDS)
 
 Structure that contains some data required to compute the linked cells. To
 be initialized with the box size and cutoff. 
@@ -24,28 +48,45 @@ julia> sides = [250,250,250];
 julia> cutoff = 10;
 
 julia> box = Box(sides,cutoff)
-
-julia> box = Box(sides,cutoff)
-Box{3, Float64}([250.0, 250.0, 250.0], [25, 25, 25], [10.0, 10.0, 10.0], 10.0, 100.0)
+Box{3, Float64, 13}
+  sides: [250.0, 250.0, 250.0]
+  cutoff: 10.0
+  number of cells on each dimension: [25, 25, 25] (lcell: 1)
+  Total number of cells: 15625
 
 ```
 
 """
-Base.@kwdef struct Box{N,T}
+Base.@kwdef struct Box{N,T,NC}
   sides::SVector{N,T}
   nc::SVector{N,Int}
   cell_side::SVector{N,T}
   cutoff::T
   cutoff_sq::T
+  lcell::Int
+  neighbour_cells::SVector{NC,CartesianIndex{3}}
 end
-function Box(sides::AbstractVector, cutoff, T::DataType)
+function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
   N = length(sides)
   nc = SVector{N,Int}(max.(1,trunc.(Int,sides/cutoff)))
   l = SVector{N,T}(sides ./ nc)
-  return Box{N,T}(SVector{N,T}(sides),nc,l,cutoff,cutoff^2)
+  if lcell == 1
+    NC = 13
+    neighbour_cells = neighbour_cells_1
+  end
+  box = Box{N,T,NC}(SVector{N,T}(sides),nc,l,cutoff,cutoff^2,lcell,neighbour_cells_1)
+  return box
 end
-Box(sides::AbstractVector,cutoff;T::DataType=Float64) =
-  Box(sides,cutoff,T)
+Box(sides::AbstractVector,cutoff;T::DataType=Float64,lcell::Int=1) =
+  Box(sides,cutoff,T,lcell)
+
+function Base.show(io::IO,::MIME"text/plain",box::Box)
+  println(typeof(box))
+  println("  sides: ", box.sides) 
+  println("  cutoff: ", box.cutoff)
+  println("  number of cells on each dimension: ",box.nc, " (lcell: ",box.lcell,")")
+  print("  Total number of cells: ", prod(box.nc))
+end
 
 """
 
@@ -76,30 +117,9 @@ end
 
 """
 
-```
-cell_in_border(icell_cartesian,box)
-```
-
-Function that checks if a cell is in the border of the periodic cell box
-
-"""
-function cell_in_border(icell_cartesian,box)
-  if icell_cartesian[1] == 1 ||
-     icell_cartesian[2] == 1 ||
-     icell_cartesian[3] == 1 ||
-     icell_cartesian[1] == box.nc[1] ||
-     icell_cartesian[2] == box.nc[2] ||
-     icell_cartesian[3] == box.nc[3]
-    return true
-  else
-    return false
-  end
-end
-
-
-"""
-
 $(TYPEDEF)
+
+$(TYPEDFIELDS)
 
 Structure that contains the cell lists information.
 
@@ -110,18 +130,27 @@ Base.@kwdef struct CellList{N,T}
   fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
   np::Vector{AtomWithIndex{N,T}} # Next particle of cell
 end
+function Base.show(io::IO,::MIME"text/plain",cl::CellList)
+  println(typeof(cl))
+  print("  with $(cl.ncwp[1]) cells with particles.")
+end
 
 # Structure that will cointain the cell lists of two independent sets of
 # particles for cross-computation of interactions
 struct CellListPair{V,N,T}
   small::V
   large::CellList{N,T}
+end      
+function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
+  print(typeof(cl),"\n")
+  print("   $(length(cl.small)) particles in the smallest vector.\n")
+  print("   $(cl.large.ncwp[1]) cells with particles.")
 end
   
 """
 
 ```
-CellList(x::AbstractVector{SVector{N,T}},box::Box{N},parallel=true) where {N,T}
+CellList(x::AbstractVector{SVector{N,T}},box::Box,parallel=true) where {N,T}
 ```
 
 Function that will initialize a `CellList` structure from scracth, given a vector
@@ -131,16 +160,18 @@ system, cutoff, etc.
 ### Example
 
 ```julia-repl
-julia> box = Box(SVector{3,Float64}(250,250,250),10);
+julia> box = Box([250,250,250],10);
 
-julia> x = [ rand(SVector{3,Float64}) for i in 1:1000 ];
+julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
 
-julia> cl = CellListMap.CellList(x,box);
+julia> cl = CellListMap.CellList(x,box)
+CellList{3, Float64}
+  with 15597 cells with particles.
 
 ```
 
 """
-function CellList(x::AbstractVector{SVector{N,T}},box::Box{N};parallel::Bool=true) where {N,T} 
+function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) where {N,T} 
   number_of_particles = length(x)
   number_of_cells = ceil(Int,1.1*prod(box.nc)) # some margin in case of box size variations
   ncwp = zeros(Int,1)
@@ -155,7 +186,7 @@ end
 """
 
 ```
-CellList(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N};parallel=true) where {N,T}
+CellList(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box;parallel=true) where {N,T}
 ```
 
 Function that will initialize a `CellListPair` structure from scracth, given two vectors
@@ -166,13 +197,16 @@ will be constructed for the largest vector, and a reference to the smallest vect
 ### Example
 
 ```julia-repl
-julia> box = Box(SVector{3,Float64}(250,250,250),10);
+julia> box = Box([250,250,250],10);
 
-julia> x = [ rand(SVector{3,Float64}) for i in 1:1000 ];
+julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
 
-julia> y = [ rand(SVector{3,Float64}) for i in 1:10000 ];
+julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
-julia> cl = CellList(x,y,box);
+julia> cl = CellList(x,y,box)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   1000 particles in the smallest vector.
+   7452 cells with particles.
 
 ```
 
@@ -180,7 +214,7 @@ julia> cl = CellList(x,y,box);
 function CellList(
   x::AbstractVector{SVector{N,T}},
   y::AbstractVector{SVector{N,T}},
-  box::Box{N};
+  box::Box;
   parallel::Bool=true
 ) where {N,T} 
 
@@ -198,7 +232,7 @@ end
 """
 
 ```
-UpdateCellList!(x::AbstractVector{SVector{N,T}},box::Box{N},cl:CellList{N,T},parallel=true) where {N,T}
+UpdateCellList!(x::AbstractVector{SVector{N,T}},box::Box,cl:CellList{N,T},parallel=true) where {N,T}
 ```
 
 Function that will update a previously allocated `CellList` structure, given new updated particle positions, for example.
@@ -217,7 +251,7 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 """
 function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
-  box::Box{N},
+  box::Box,
   cl::CellList{N,T};
   parallel::Bool=true
 ) where {N,T}
@@ -271,17 +305,17 @@ end
 """
 
 ```
-UpdateCellList!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box{N},cl:CellListPair,parallel=true) where {N,T}
+UpdateCellList!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box,cl:CellListPair,parallel=true) where {N,T}
 ```
 
 Function that will update a previously allocated `CellListPair` structure, given new updated particle positions, for example.
 
 ```julia-repl
-julia> box = Box(SVector{3,Float64}(250,250,250),10);
+julia> box = Box([250,250,250],10);
 
-julia> x = [ rand(SVector{3,Float64}) for i in 1:1000 ];
+julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
 
-julia> y = [ rand(SVector{3,Float64}) for i in 1:10000 ];
+julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box);
 
@@ -293,7 +327,7 @@ julia> cl = UpdateCellList!(x,y,box,cl); # update lists
 function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   y::AbstractVector{SVector{N,T}},
-  box::Box{N},cl_pair::CellListPair;
+  box::Box,cl_pair::CellListPair;
   parallel::Bool=true
 ) where {N,T}
 
@@ -305,6 +339,30 @@ function UpdateCellList!(
 
   return cl_pair
 end
+
+"""
+
+```
+cell_in_border(icell_cartesian,box)
+```
+
+Function that checks if a cell is in the border of the periodic cell box
+
+"""
+function cell_in_border(icell_cartesian,box)
+  if icell_cartesian[1] == 1 ||
+     icell_cartesian[2] == 1 ||
+     icell_cartesian[3] == 1 ||
+     icell_cartesian[1] == box.nc[1] ||
+     icell_cartesian[2] == box.nc[2] ||
+     icell_cartesian[3] == box.nc[3]
+    return true
+  else
+    return false
+  end
+end
+
+
 """
 
 ```
@@ -338,14 +396,14 @@ Function to compute Euclidean distances between two n-dimensional vectors.
 """
 
 ```
-particle_cell(x::AbstractVector{T}, box::Box{N}) where N
+particle_cell(x::SVector{N,T}, box::Box) where {N,T}
 ```
 
 Returns the coordinates of the cell to which a particle belongs, given its coordinates
 and the sides of the periodic box (for arbitrary dimension N).
 
 """
-function particle_cell(x::AbstractVector, box::Box{N}) where N
+function particle_cell(x::SVector{N,T}, box::Box) where {N,T}
   # Wrap to origin
   xwrapped = wrapone(x,box.sides)
   cell = CartesianIndex(
@@ -475,7 +533,7 @@ Which are the coordinates of one particle, the coordinates of the second particl
 
 ## Example
 
-Computing the mean difference in `x` position between random particles, remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does not use the indices or the distance, such that we remove them from the parameters by using a closure.
+Computing the mean absolute difference in `x` position between random particles, remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does not use the indices or the distance, such that we remove them from the parameters by using a closure.
 
 ```julia-repl
 julia> n = 100_000;
@@ -564,30 +622,10 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
 end
 
 function inner_loop!(f,box,icell,cl::CellList,output)
-  @unpack sides, nc, cutoff_sq = box
+  @unpack sides, nc, cutoff_sq, neighbour_cells = box
   cell = cl.cwp[icell]
   ic = cell.icell
   ic_cartesian = cell_cartesian_indices(nc,ic)
-
-
-  neighbour_cells = SVector{13,CartesianIndex{3}}(
-    # Faces
-    CartesianIndex(+1, 0, 0),
-    CartesianIndex( 0,+1, 0),
-    CartesianIndex( 0, 0,+1),
-    # Axes                        
-    CartesianIndex(+1,+1, 0),
-    CartesianIndex(+1, 0,+1),
-    CartesianIndex(+1,-1, 0),
-    CartesianIndex(+1, 0,-1),
-    CartesianIndex( 0,+1,+1),
-    CartesianIndex( 0,+1,-1),
-    # Vertices                       
-    CartesianIndex(+1,+1,+1),
-    CartesianIndex(+1,+1,-1),
-    CartesianIndex(+1,-1,+1),
-    CartesianIndex(+1,-1,-1)
-  )
 
   # loop over list of non-repeated particles of cell ic
   pᵢ = cl.fp[ic]
@@ -733,44 +771,9 @@ function reduce(output::AbstractVector, output_threaded::AbstractVector{<:Abstra
 end
 
 #
-# Function that uses the naive algorithm, for testing
+# Test and example functions
 #
-function map_naive!(f,output,x,box)
-  @unpack sides, cutoff_sq = box
-  for i in 1:length(x)-1
-    xᵢ = x[i]
-    for j in i+1:length(x)
-      xⱼ = wrapone(x[j],sides,xᵢ)
-      d2 = distance_sq(xᵢ,xⱼ) 
-      if d2 <= cutoff_sq
-        output = f(xᵢ,xⱼ,i,j,d2,output)
-      end
-    end
-  end
-  return output
-end
-
-#
-# Function that uses the naive algorithm, for testing
-#
-function map_naive_two!(f,output,x,y,box)
-  @unpack sides, cutoff_sq = box
-  for i in 1:length(x)
-    xᵢ = x[i]
-    for j in 1:length(y)
-      yⱼ = wrapone(y[j],sides,xᵢ)
-      d2 = distance_sq(xᵢ,yⱼ) 
-      if d2 <= cutoff_sq
-        output = f(xᵢ,yⱼ,i,j,d2,output)
-      end
-    end
-  end
-  return output
-end
-
-#
-# Test examples
-#
+include("./naive.jl")
 include("./examples.jl")
 include("./halotools.jl")
 
