@@ -9,28 +9,6 @@ export Box
 export CellList, UpdateCellList!
 export map_pairwise!
 
-#
-# Cell neighbours that must be run over if lcell=1
-#
-const neighbour_cells_1 = SVector{13,CartesianIndex{3}}(
-  # Faces
-  CartesianIndex(+1, 0, 0),
-  CartesianIndex( 0,+1, 0),
-  CartesianIndex( 0, 0,+1),
-  # Axes                        
-  CartesianIndex(+1,+1, 0),
-  CartesianIndex(+1, 0,+1),
-  CartesianIndex(+1,-1, 0),
-  CartesianIndex(+1, 0,-1),
-  CartesianIndex( 0,+1,+1),
-  CartesianIndex( 0,+1,-1),
-  # Vertices                       
-  CartesianIndex(+1,+1,+1),
-  CartesianIndex(+1,+1,-1),
-  CartesianIndex(+1,-1,+1),
-  CartesianIndex(+1,-1,-1)
-)
-
 """
 
 $(TYPEDEF)
@@ -48,7 +26,7 @@ julia> sides = [250,250,250];
 julia> cutoff = 10;
 
 julia> box = Box(sides,cutoff)
-Box{3, Float64, 13}
+Box{3, Float64}
   sides: [250.0, 250.0, 250.0]
   cutoff: 10.0
   number of cells on each dimension: [25, 25, 25] (lcell: 1)
@@ -57,24 +35,19 @@ Box{3, Float64, 13}
 ```
 
 """
-Base.@kwdef struct Box{N,T,NC}
+Base.@kwdef struct Box{N,T}
   sides::SVector{N,T}
   nc::SVector{N,Int}
   cell_side::SVector{N,T}
   cutoff::T
   cutoff_sq::T
   lcell::Int
-  neighbour_cells::SVector{NC,CartesianIndex{3}}
 end
 function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
   N = length(sides)
-  nc = SVector{N,Int}(max.(1,trunc.(Int,sides/cutoff)))
+  nc = SVector{N,Int}(max.(1,floor.(Int,sides/(cutoff/lcell))))
   l = SVector{N,T}(sides ./ nc)
-  if lcell == 1
-    NC = 13
-    neighbour_cells = neighbour_cells_1
-  end
-  box = Box{N,T,NC}(SVector{N,T}(sides),nc,l,cutoff,cutoff^2,lcell,neighbour_cells_1)
+  box = Box{N,T}(SVector{N,T}(sides),nc,l,cutoff,cutoff^2,lcell)
   return box
 end
 Box(sides::AbstractVector,cutoff;T::DataType=Float64,lcell::Int=1) =
@@ -238,11 +211,15 @@ UpdateCellList!(x::AbstractVector{SVector{N,T}},box::Box,cl:CellList{N,T},parall
 Function that will update a previously allocated `CellList` structure, given new updated particle positions, for example.
 
 ```julia-repl
-julia> box = Box(SVector{3,Float64}(250,250,250),10);
+julia> box = Box([250,250,250],10);
 
-julia> x = [ rand(SVector{3,Float64}) for i in 1:1000 ];
+julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
 
 julia> cl = CellList(x,box);
+
+julia> box = Box([260,260,260],10);
+
+julia> x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
 
 julia> cl = UpdateCellList!(x,box,cl); # update lists
 
@@ -305,7 +282,10 @@ end
 """
 
 ```
-UpdateCellList!(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box,cl:CellListPair,parallel=true) where {N,T}
+UpdateCellList!(
+  x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},
+  box::Box,cl:CellListPair,parallel=true
+) where {N,T}
 ```
 
 Function that will update a previously allocated `CellListPair` structure, given new updated particle positions, for example.
@@ -350,16 +330,35 @@ Function that checks if a cell is in the border of the periodic cell box
 
 """
 function cell_in_border(icell_cartesian,box)
-  if icell_cartesian[1] == 1 ||
-     icell_cartesian[2] == 1 ||
-     icell_cartesian[3] == 1 ||
-     icell_cartesian[1] == box.nc[1] ||
-     icell_cartesian[2] == box.nc[2] ||
-     icell_cartesian[3] == box.nc[3]
+  if icell_cartesian[1] <= box.lcell ||
+     icell_cartesian[2] <= box.lcell ||
+     icell_cartesian[3] <= box.lcell ||
+     icell_cartesian[1] > box.nc[1]-box.lcell ||
+     icell_cartesian[2] > box.nc[2]-box.lcell ||
+     icell_cartesian[3] > box.nc[3]-box.lcell
     return true
   else
     return false
   end
+end
+
+"""
+
+```
+neighbour_cells(lcell::Int)
+```
+
+Function that returns the iterator of the cartesian indices of the cell that must be 
+evaluated if the cells have sides of length `cutoff/lcell`. 
+
+"""
+function neighbour_cells(lcell)
+  nb = Iterators.flatten((
+    CartesianIndices((1:lcell,-lcell:lcell,-lcell:lcell)),
+    CartesianIndices((0:0,1:lcell,-lcell:lcell)),
+    CartesianIndices((0:0,0:0,1:lcell))
+  ))
+  return nb
 end
 
 
@@ -622,7 +621,7 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
 end
 
 function inner_loop!(f,box,icell,cl::CellList,output)
-  @unpack sides, nc, cutoff_sq, neighbour_cells = box
+  @unpack sides, nc, cutoff_sq = box
   cell = cl.cwp[icell]
   ic = cell.icell
   ic_cartesian = cell_cartesian_indices(nc,ic)
@@ -651,7 +650,7 @@ function inner_loop!(f,box,icell,cl::CellList,output)
     i = pᵢ.index
   end
    
-  for jcell in neighbour_cells
+  for jcell in neighbour_cells(box.lcell)
     output = cell_output!(f,box,cell,cl,output,ic_cartesian+jcell)
   end
 
