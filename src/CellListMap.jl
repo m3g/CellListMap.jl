@@ -402,7 +402,7 @@ Returns the coordinates of the cell to which a particle belongs, given its coord
 and the sides of the periodic box (for arbitrary dimension N).
 
 """
-function particle_cell(x::SVector{N,T}, box::Box) where {N,T}
+@inline function particle_cell(x::SVector{N,T}, box::Box) where {N,T}
   # Wrap to origin
   xwrapped = wrapone(x,box.sides)
   cell = CartesianIndex(
@@ -421,7 +421,7 @@ Given the linear index of the cell in the cell list, returns the cartesian index
 of the cell (for arbitrary dimension N).
 
 """
-cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} = 
+@inline cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} = 
   CartesianIndices(ntuple(i -> nc[i],N))[i1D]
 
 """
@@ -433,7 +433,7 @@ icell1D(nc::SVector{N,Int}, indexes) where N
 Returns the index of the cell, in the 1D representation, from its cartesian coordinates. 
 
 """
-cell_linear_index(nc::SVector{N,Int}, indexes) where N =
+@inline cell_linear_index(nc::SVector{N,Int}, indexes) where N =
   LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indexes[i],N)...]
 
 """
@@ -446,7 +446,7 @@ Functions that wrap the coordinates They modify the coordinates of the input vec
 Wrap to a given center of coordinates
 
 """
-function wrap!(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
+@inline function wrap!(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
   for i in eachindex(x)
     x[i] = wrapone(x[i],sides,center)
   end
