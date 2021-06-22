@@ -13,13 +13,17 @@ using Test
   end
 
   # Number of particles, sides and cutoff
-  N = 2000
   sides = [250,250,250]
   cutoff = 10.
   box = Box(sides,cutoff)
 
   # Particle positions
+  N = 2000
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  # Add some pathological coordinates
+  x[1] = @SVector([-sides[1], -sides[2], -sides[3]/2])
+  x[10] = @SVector([sides[1], sides[2], 3*sides[3]])
+  x[100] = @SVector([sides[1]/2, -sides[2]/2, 2*sides[3]])
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initialize auxiliary linked lists
@@ -31,6 +35,16 @@ using Test
   naive = abs(CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
   @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
   @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false)) ≈ naive
+
+  # Check if changing lcell breaks something
+  box = Box(sides,cutoff,lcell=1); cl = CellList(x,box)
+  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  box = Box(sides,cutoff,lcell=2); cl = CellList(x,box)
+  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  box = Box(sides,cutoff,lcell=3); cl = CellList(x,box)
+  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  box = Box(sides,cutoff,lcell=15); cl = CellList(x,box)
+  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
 
   # Function to be evalulated for each pair: build distance histogram
   function build_histogram!(x,y,d2,hist)
@@ -59,9 +73,9 @@ using Test
     u = u - 9.8*mass[i]*mass[j]/d
     return u
   end
-  mass = rand(N)
 
   # Run pairwise computation
+  mass = rand(N)
   naive = CellListMap.map_naive!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,box)
   @test map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,box,cl,parallel=true) ≈ naive
   @test map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,box,cl,parallel=false) ≈ naive
@@ -94,16 +108,29 @@ using Test
   ) ≈ naive
 
   # Compute some properties of disjoint sets 
+  box = Box(sides,cutoff,lcell=1)
   cl = CellList(x,y,box)
 
   naive = CellListMap.map_naive_two!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
   @test map_pairwise!(
     (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
-    0.0,box,cl,parallel=true
+    0.0,box,cl,parallel=false
   ) ≈ naive
   @test map_pairwise!(
     (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
+    0.0,box,cl,parallel=true
+  ) ≈ naive
+
+  # Check different lcell
+  box = Box(sides,cutoff,lcell=3)
+  cl = CellList(x,y,box)
+  @test map_pairwise!(
+    (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
     0.0,box,cl,parallel=false
+  ) ≈ naive
+  @test map_pairwise!(
+    (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
+    0.0,box,cl,parallel=true
   ) ≈ naive
 
   # Test the examples, to check further if the parallelization didn't break something

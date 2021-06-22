@@ -4,6 +4,7 @@ using Base.Threads
 using Parameters
 using StaticArrays
 using DocStringExtensions
+using ProgressMeter
 
 export Box
 export CellList, UpdateCellList!
@@ -45,9 +46,9 @@ Base.@kwdef struct Box{N,T}
 end
 function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
   N = length(sides)
-  nc = SVector{N,Int}(max.(1,floor.(Int,sides/(cutoff/lcell))))
-  l = SVector{N,T}(sides ./ nc)
-  box = Box{N,T}(SVector{N,T}(sides),nc,l,cutoff,cutoff^2,lcell)
+  nc = SVector{N,Int}(floor.(Int,max.(1,sides/(cutoff/lcell))))
+  cell_side = SVector{N,T}(sides ./ nc)
+  box = Box{N,T}(SVector{N,T}(sides),nc,cell_side,cutoff,cutoff^2,lcell)
   return box
 end
 Box(sides::AbstractVector,cutoff;T::DataType=Float64,lcell::Int=1) =
@@ -105,7 +106,8 @@ Base.@kwdef struct CellList{N,T}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
-  print("  with $(cl.ncwp[1]) cells with particles.")
+  println("  $(cl.ncwp[1]) cells with particles.")
+  print("  $(length(cl.np)/cl.ncwp[1]) particles per cell.")
 end
 
 # Structure that will cointain the cell lists of two independent sets of
@@ -329,17 +331,17 @@ cell_in_border(icell_cartesian,box)
 Function that checks if a cell is in the border of the periodic cell box
 
 """
-function cell_in_border(icell_cartesian,box)
-  if icell_cartesian[1] <= box.lcell ||
-     icell_cartesian[2] <= box.lcell ||
-     icell_cartesian[3] <= box.lcell ||
-     icell_cartesian[1] > box.nc[1]-box.lcell ||
-     icell_cartesian[2] > box.nc[2]-box.lcell ||
-     icell_cartesian[3] > box.nc[3]-box.lcell
-    return true
-  else
-    return false
+function cell_in_border(icell_cartesian,box::Box{N,T}) where {N,T}
+  inborder = false
+  for i in 1:N
+    ic = icell_cartesian[i]
+    if ic <= box.lcell 
+      (inborder = true) && break
+    elseif ic > box.nc[i] - box.lcell
+      (inborder = true) && break
+    end
   end
+  return inborder
 end
 
 """
@@ -360,6 +362,9 @@ function neighbour_cells(lcell)
   ))
   return nb
 end
+
+neighbour_cells_all(lcell) = 
+  CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
 
 
 """
@@ -406,7 +411,7 @@ and the sides of the periodic box (for arbitrary dimension N).
   # Wrap to origin
   xwrapped = wrapone(x,box.sides)
   cell = CartesianIndex(
-    ntuple(i -> floor(Int,(xwrapped[i]+box.sides[i]/2)/box.cell_side[i])+1, N)
+    ntuple(i -> floor(Int,(xwrapped[i]+box.sides[i]/2)/box.cell_side[i]) + 1, N)
   )
   return cell
 end
@@ -460,7 +465,7 @@ end
 end
 
 @inline function wrapx(x,s)
-  if x > s/2
+  if x >= s/2
     x = x - s
   elseif x < -s/2
     x = x + s
@@ -516,7 +521,7 @@ end
 """
 
 ```
-map_pairwise!(f::Function,output,box::Box,cl::CellList;parallel::Bool=true)
+map_pairwise!(f::Function,output,box::Box,cl::CellList;parallel::Bool=true,show_progress::Bool=false)
 ```
 
 This function will run over every pair of particles which are closer than `box.cutoff` and compute
@@ -556,15 +561,17 @@ function map_pairwise!(f::F, output, box::Box, cl::CellList;
   # Parallelization options
   parallel::Bool=true,
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
-  reduce::Function=reduce
+  reduce::Function=reduce,
+  show_progress::Bool=false,
 ) where {F} # Needed for specialization for this function (avoids some allocations)
   if parallel && nthreads() > 1
     output = map_pairwise_parallel!(f,output,box,cl;
       output_threaded=output_threaded,
-      reduce=reduce
+      reduce=reduce,
+      show_progress=show_progress
     )
   else
-    output = map_pairwise_serial!(f,output,box,cl)
+    output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
   end
   return output
 end
@@ -582,15 +589,17 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
   # Parallelization options
   parallel::Bool=true,
   output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
-  reduce::F2=reduce
+  reduce::F2=reduce,
+  show_progress::Bool=false
 ) where {F1,F2} # Needed for specialization for this function (avoids some allocations) 
   if parallel && nthreads() > 1
     output = map_pairwise_parallel!(f,output,box,cl;
       output_threaded=output_threaded,
-      reduce=reduce
+      reduce=reduce,
+      show_progress=show_progress
     )
   else
-    output = map_pairwise_serial!(f,output,box,cl)
+    output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
   end
   return output
 end
@@ -598,9 +607,11 @@ end
 #
 # Serial version for self-pairwise computations
 #
-function map_pairwise_serial!(f::F, output, box::Box, cl::CellList) where {F}
+function map_pairwise_serial!(f::F, output, box::Box, cl::CellList; show_progress::Bool=false) where {F}
+  p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
   for icell in 1:cl.ncwp[1]
     output = inner_loop!(f,box,icell,cl,output) 
+    next!(p)
   end 
   return output
 end
@@ -610,11 +621,14 @@ end
 #
 function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
   output_threaded=output_threaded,
-  reduce::F2=reduce
+  reduce::F2=reduce,
+  show_progress::Bool=false
 ) where {F1,F2}
+  p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
   @threads for icell in 1:cl.ncwp[1]
     it = threadid()
     output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
+    next!(p)
   end 
   output = reduce(output,output_threaded)
   return output
@@ -700,9 +714,14 @@ end
 #
 # Serial version for cross-interaction computations
 #
-function map_pairwise_serial!(f::F, output, box::Box, cl::CellListPair) where {F}
+function map_pairwise_serial!(f::F, output, box::Box, cl::CellListPair; 
+  parallel::Bool=false,
+  show_progress=show_progress
+) where {F}
+  p = Progress(length(cl.small),dt=1,enabled=show_progress)
   for i in eachindex(cl.small)
     output = inner_loop!(f,output,i,box,cl)
+    next!(p)
   end
   return output
 end
@@ -712,11 +731,15 @@ end
 #
 function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellListPair;
   output_threaded=output_threaded,
-  reduce::F2=reduce
+  reduce::F2=reduce,
+  parallel::Bool=false,
+  show_progress=show_progress
 ) where {F1,F2}
+  p = Progress(length(cl.small),dt=1,enabled=show_progress)
   @threads for i in eachindex(cl.small)
     it = threadid()
     output_threaded[it] = inner_loop!(f,output_threaded[it],i,box,cl) 
+    next!(p)
   end 
   output = reduce(output,output_threaded)
   return output
@@ -726,11 +749,11 @@ end
 # Inner loop of cross-interaction computations
 #
 function inner_loop!(f,output,i,box,cl::CellListPair)
-  @unpack sides, nc, cutoff_sq = box
+  @unpack sides, nc, lcell, cutoff_sq = box
   xpᵢ = wrapone(cl.small[i],box.sides)
   ic = particle_cell(xpᵢ,box)
   inborder = cell_in_border(ic,box)
-  for neighbour_cell in CartesianIndices((-1:1, -1:1, -1:1))   
+  for neighbour_cell in neighbour_cells_all(lcell)
     if inborder
       jc_cartesian_wrapped = wrap_cell(nc,neighbour_cell+ic)
     else
