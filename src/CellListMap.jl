@@ -84,8 +84,9 @@ This structure contains the cell linear index and the information about if this 
 is in the border of the box (such that its neighbouring cells need to be wrapped) 
 
 """
-struct CellWithBorderInfo
+struct Cell{N}
   icell::Int
+  cartesian::CartesianIndex{N}
   inborder::Bool
 end
 
@@ -100,7 +101,7 @@ Structure that contains the cell lists information.
 """
 Base.@kwdef struct CellList{N,T}
   ncwp::Vector{Int} # One-element vector to contain the mutable number of cells with particles
-  cwp::Vector{CellWithBorderInfo} # Indexes of the unique cells With Particles
+  cwp::Vector{Cell{N}} # Indexes of the unique cells With Particles
   fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
   np::Vector{AtomWithIndex{N,T}} # Next particle of cell
 end
@@ -150,7 +151,7 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   number_of_particles = length(x)
   number_of_cells = ceil(Int,1.1*prod(box.nc)) # some margin in case of box size variations
   ncwp = zeros(Int,1)
-  cwp = Vector{CellWithBorderInfo}(undef,number_of_cells)
+  cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
 
@@ -246,14 +247,14 @@ function UpdateCellList!(
   ncwp[1] = 0
   if parallel
     @threads for i in eachindex(cwp)
-      cwp[i] = CellWithBorderInfo(0,false)
+      cwp[i] = Cell{N}(0,zero(CartesianIndex{N}),false)
       fp[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
     end
     @threads for i in eachindex(np)
       np[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
     end
   else
-    fill!(cwp,CellWithBorderInfo(0,false))
+    fill!(cwp,Cell{N}(0,zero(CartesianIndex{N}),false))
     fill!(fp,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))))
     fill!(np,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))) 
   end
@@ -268,14 +269,14 @@ end
 #
 # Set one index of a cell list
 #
-function set_celllist_index!(ip,xip,box,cl)
+function set_celllist_index!(ip,xip::SVector{N,T},box,cl) where {N,T}
   @unpack ncwp, cwp, fp, np = cl
   p = AtomWithIndex(ip,wrapone(xip,box.sides))
   icell_cartesian = particle_cell(p.coordinates,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   if fp[icell].index == 0
     ncwp[1] += 1
-    cwp[ncwp[1]] = CellWithBorderInfo(icell,cell_in_border(icell_cartesian,box))
+    cwp[ncwp[1]] = Cell{N}(icell,icell_cartesian,cell_in_border(icell_cartesian,box))
   end
   np[ip] = fp[icell]
   fp[icell] = p
@@ -635,13 +636,11 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
 end
 
 function inner_loop!(f,box,icell,cl::CellList,output)
-  @unpack sides, nc, cutoff_sq = box
+  @unpack sides, cutoff_sq = box
   cell = cl.cwp[icell]
-  ic = cell.icell
-  ic_cartesian = cell_cartesian_indices(nc,ic)
 
   # loop over list of non-repeated particles of cell ic
-  pᵢ = cl.fp[ic]
+  pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
@@ -665,7 +664,7 @@ function inner_loop!(f,box,icell,cl::CellList,output)
   end
    
   for jcell in neighbour_cells(box.lcell)
-    output = cell_output!(f,box,cell,cl,output,ic_cartesian+jcell)
+    output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
   end
 
   return output
@@ -676,7 +675,6 @@ end
 #
 function cell_output!(f,box,cell,cl,output,jc_cartesian)
   @unpack sides, nc, cutoff_sq = box
-  ic = cell.icell
   if cell.inborder
     jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
   else
@@ -685,7 +683,7 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
   jc = cell_linear_index(nc,jc_cartesian_wrapped)
 
   # loop over list of non-repeated particles of cell ic
-  pᵢ = cl.fp[ic]
+  pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
