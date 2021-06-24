@@ -608,7 +608,10 @@ end
 #
 # Serial version for self-pairwise computations
 #
-function map_pairwise_serial!(f::F, output, box::Box, cl::CellList; show_progress::Bool=false) where {F}
+function map_pairwise_serial!(
+  f::F, output, box::Box, cl::CellList; 
+  show_progress::Bool=false
+) where {F}
   p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
   for icell in 1:cl.ncwp[1]
     output = inner_loop!(f,box,icell,cl,output) 
