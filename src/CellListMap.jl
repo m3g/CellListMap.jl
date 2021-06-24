@@ -620,6 +620,10 @@ function map_pairwise_serial!(
   return output
 end
 
+# Chunck splitter, we jump over cells such that possible 
+# heterogeneities have greater changes of getting split into different chuncks
+splitter(it,n) = it:nthreads():n
+
 #
 # Parallel version for self-pairwise computations
 #
@@ -631,13 +635,7 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
   p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
   n_per_chunck = div(cl.ncwp[1],nthreads())
   @threads for it in 1:nthreads() 
-    first_cell = (it-1)*n_per_chunck + 1
-    if it < nthreads()
-      last_cell = first_cell + n_per_chunck - 1
-    else
-      last_cell = cl.ncwp[1]
-    end
-    for icell in first_cell:last_cell
+    for icell in splitter(it,cl.ncwp[1])
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       next!(p)
     end
@@ -745,10 +743,11 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellListPair;
   show_progress=show_progress
 ) where {F1,F2}
   p = Progress(length(cl.small),dt=1,enabled=show_progress)
-  @threads for i in eachindex(cl.small)
-    it = threadid()
-    output_threaded[it] = inner_loop!(f,output_threaded[it],i,box,cl) 
-    next!(p)
+  @threads for it in 1:nthreads()
+    for i in splitter(it,length(cl.small))
+      output_threaded[it] = inner_loop!(f,output_threaded[it],i,box,cl) 
+      next!(p)
+    end
   end 
   output = reduce(output,output_threaded)
   return output
