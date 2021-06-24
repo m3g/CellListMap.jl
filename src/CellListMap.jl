@@ -633,7 +633,6 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
   show_progress::Bool=false
 ) where {F1,F2}
   p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
-  n_per_chunck = div(cl.ncwp[1],nthreads())
   @threads for it in 1:nthreads() 
     for icell in splitter(it,cl.ncwp[1])
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
