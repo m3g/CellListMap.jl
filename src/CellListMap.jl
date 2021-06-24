@@ -629,10 +629,18 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
   show_progress::Bool=false
 ) where {F1,F2}
   p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
-  @threads for icell in 1:cl.ncwp[1]
-    it = threadid()
-    output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
-    next!(p)
+  n_per_chunck = div(cl.ncwp[1],nthreads())
+  @threads for it in 1:nthreads() 
+    first_cell = (it-1)*n_per_chunck + 1
+    if it < nthreads()
+      last_cell = first_cell + n_per_chunck - 1
+    else
+      last_cell = cl.ncwp[1]
+    end
+    for icell in first_cell:last_cell
+      output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
+      next!(p)
+    end
   end 
   output = reduce(output,output_threaded)
   return output
