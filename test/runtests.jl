@@ -143,8 +143,8 @@ using Test
   @test CellListMap.test4(parallel=true,x=x) ≈ CellListMap.test4(parallel=false,x=x)
   @test count(CellListMap.test5(parallel=true,x=x,y=y) .≈ CellListMap.test5(parallel=false,x=x,y=y)) == 3
 
-  pairs1 = CellListMap.test7(parallel=true,x=x)
-  pairs2 = CellListMap.test7(parallel=false,x=x)
+  pairs1 = sort!(CellListMap.test7(parallel=true,x=x),by=x->x[3])
+  pairs2 = sort!(CellListMap.test7(parallel=false,x=x),by=x->x[3])
   @test count([ count(pairs1[i] .≈ pairs2[i]) == 3 for i in 1:length(pairs1) ]) == length(pairs1)
 
   x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
