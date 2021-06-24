@@ -378,7 +378,7 @@ Thus, besides being useful for following the progress of a long run, it is usefu
 
 ## Some benchmarks
 
-The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. This tests are implemented in the [halotools.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/halotools.jl) file. Currently, the `CellListMap.jl` is as fast for dense systems, and scales linearly and parallelizes well for increasing number of particles, with constant density:
+The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. These tests are implemented in the [halotools.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/halotools.jl) file. Currently, the `CellListMap.jl` is as fast for dense systems, and scales linearly and parallelizes well for increasing number of particles, with constant density:
 
 
 <img src=https://github.com/lmiq/PairVelocities/blob/main/cd_v0.4.6.png>
