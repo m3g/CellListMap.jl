@@ -613,10 +613,10 @@ function map_pairwise_serial!(
   f::F, output, box::Box, cl::CellList; 
   show_progress::Bool=false
 ) where {F}
-  p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
+  show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for icell in 1:cl.ncwp[1]
     output = inner_loop!(f,box,icell,cl,output) 
-    next!(p)
+    show_progress && next!(p)
   end 
   return output
 end
@@ -633,11 +633,11 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
   reduce::F2=reduce,
   show_progress::Bool=false
 ) where {F1,F2}
-  p = Progress(cl.ncwp[1],dt=1,enabled=show_progress)
+  show_progress && (p = Progress(cl.ncwp[1],dt=1))
   @threads for it in 1:nthreads() 
     for icell in splitter(it,cl.ncwp[1])
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
-      next!(p)
+      show_progress && next!(p)
     end
   end 
   output = reduce(output,output_threaded)
@@ -725,10 +725,10 @@ function map_pairwise_serial!(f::F, output, box::Box, cl::CellListPair;
   parallel::Bool=false,
   show_progress=show_progress
 ) where {F}
-  p = Progress(length(cl.small),dt=1,enabled=show_progress)
+  show_progress && (p = Progress(length(cl.small),dt=1))
   for i in eachindex(cl.small)
     output = inner_loop!(f,output,i,box,cl)
-    next!(p)
+    show_progress && next!(p)
   end
   return output
 end
@@ -742,11 +742,11 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellListPair;
   parallel::Bool=false,
   show_progress=show_progress
 ) where {F1,F2}
-  p = Progress(length(cl.small),dt=1,enabled=show_progress)
+  show_progress && (p = Progress(length(cl.small),dt=1))
   @threads for it in 1:nthreads()
     for i in splitter(it,length(cl.small))
       output_threaded[it] = inner_loop!(f,output_threaded[it],i,box,cl) 
-      next!(p)
+      show_progress && next!(p)
     end
   end 
   output = reduce(output,output_threaded)
