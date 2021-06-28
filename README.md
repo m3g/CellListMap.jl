@@ -374,16 +374,16 @@ whill print something like:
 Progress:  43%|█████████████████                    | ETA: 0:18:25
 ```
 
-Thus, besides being useful for following the progress of a long run, it is useful to test different values of `lcell` to tune the peformance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. 
+Thus, besides being useful for following the progress of a long run, it is useful to test different values of `lcell` to tune the peformance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. The default and recommended option for production runs is to use `show_progress=false`, because tracking the progress introduces a small overhead into the computation. 
 
 ## Some benchmarks
 
 The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. These tests are implemented in the [halotools.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/halotools.jl) file. Currently, the `CellListMap.jl` is as fast for dense systems, and scales linearly and parallelizes well for increasing number of particles, with constant density:
 
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.4.7.png>
+<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.4.8.png>
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.4.7.png>
+<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.4.8.png>
 
 The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. 
 
