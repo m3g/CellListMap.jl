@@ -75,6 +75,7 @@ struct AtomWithIndex{N,T}
   index::Int
   coordinates::SVector{N,T}
 end
+AtomWithIndex{N,T}() where {N,T} = AtomWithIndex{N,T}(0,zero(SVector{N,T})) 
 
 """
 
