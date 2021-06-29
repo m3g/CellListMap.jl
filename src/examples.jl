@@ -11,7 +11,7 @@ function test1(;N=100_000,parallel=true,x=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
@@ -43,7 +43,7 @@ function test2(;N=100_000,parallel=true,x=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
@@ -85,7 +85,7 @@ function test3(;N=100_000,parallel=true,x=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
@@ -126,7 +126,7 @@ function test4(;N=100_000,parallel=true,x=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
@@ -171,10 +171,10 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
   end
-  if y == nothing 
+  if y === nothing 
     y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
   end
 
@@ -215,10 +215,10 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
   end
-  if y == nothing 
+  if y === nothing 
     y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
   end
 
@@ -288,7 +288,7 @@ function test7(;N=100_000,parallel=true,x=nothing)
 
   # Particle positions
   Random.seed!(321)
-  if x == nothing 
+  if x === nothing 
     x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 

@@ -37,30 +37,107 @@ Box{3, Float64}
 
 """
 Base.@kwdef struct Box{N,T}
-  sides::SVector{N,T}
+  unit_cell::SMatrix{N,N,T}
+  unit_cell_center::SVector{N,T}
+  unit_cell_max::SVector{N,T}
+  lcell::Int
   nc::SVector{N,Int}
-  cell_side::SVector{N,T}
   cutoff::T
   cutoff_sq::T
-  lcell::Int
 end
-function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
-  N = length(sides)
-  nc = SVector{N,Int}(floor.(Int,max.(1,sides/(cutoff/lcell))))
-  cell_side = SVector{N,T}(sides ./ nc)
-  box = Box{N,T}(SVector{N,T}(sides),nc,cell_side,cutoff,cutoff^2,lcell)
-  return box
+
+"""
+
+```
+Box(unit_cell::AbstractMatrix, cutoff; T::DataType=Float64, lcell::Int=1)
+```
+
+Construct box structure given the cell matrix of lattice vectors. 
+
+### Example
+```julia
+julia> unit_cell = [ 100   50    0 
+                       0  120    0
+                       0    0  130 ];
+
+julia> box = Box(unit_cell,10)
+Box{3, Float64}
+  unit cell: [100.0 50.0 0.0; 0.0 120.0 0.0; 0.0 0.0 130.0]
+  cutoff: 10.0
+  number of cells on each dimension: [16, 13, 14] (lcell: 1)
+  Total number of cells: 2912
+
+```
+
+"""
+function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
+  N = size(unit_cell)[1]
+  @assert N == size(unit_cell)[2] "Unit cell matrix must be square."
+  @assert count(unit_cell .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
+  unit_cell_max = SVector{N,T}(sum(@view(unit_cell[:,i]) for i in 1:N))
+  unit_cell_center = unit_cell_max / 2 
+  unit_cell = SMatrix{N,N,T}(unit_cell) 
+  nc = SVector{N,Int}(ceil.(Int,max.(1,unit_cell_max/(cutoff/lcell)))) .+ 1
+  return Box{N,T}(
+    unit_cell,
+    unit_cell_center,
+    unit_cell_max,
+    lcell,nc,
+    cutoff,
+    cutoff^2
+  )
 end
-Box(sides::AbstractVector,cutoff;T::DataType=Float64,lcell::Int=1) =
-  Box(sides,cutoff,T,lcell)
+Box(unit_cell::AbstractMatrix,cutoff;T::DataType=Float64,lcell::Int=1) =
+  Box(unit_cell,cutoff,T,lcell)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
   println(typeof(box))
-  println("  sides: ", box.sides) 
+  println("  unit cell: ", box.unit_cell) 
+  println("  unit cell center: ", box.unit_cell_center) 
+  println("  unit cell maximum: ", box.unit_cell_max) 
   println("  cutoff: ", box.cutoff)
   println("  number of cells on each dimension: ",box.nc, " (lcell: ",box.lcell,")")
   print("  Total number of cells: ", prod(box.nc))
 end
+
+"""
+
+```
+Box(sides::AbstractVector, cutoff; T::DataType=Float64, lcell::Int=1)
+```
+
+For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side. 
+
+### Example
+```julia
+julia> box = Box([120,150,100],10)
+Box{3, Float64}
+  unit cell: [120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0]
+  cutoff: 10.0
+  number of cells on each dimension: [13, 16, 11] (lcell: 1)
+  Total number of cells: 2288
+
+```
+
+"""
+function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
+  N = length(sides)
+  cart_idxs = CartesianIndices((1:N,1:N))
+  # Build unit cell matrix from lengths
+  unit_cell = SMatrix{N,N,T}( 
+    ntuple(N*N) do i
+      c = cart_idxs[i]
+      if c[1] == c[2] 
+        return sides[c[1]] 
+      else
+        return zero(T)
+      end
+    end
+  )
+  return Box(unit_cell,cutoff,T,lcell) 
+end
+Box(sides::AbstractVector,cutoff;T::DataType=Float64,lcell::Int=1) =
+  Box(sides,cutoff,T,lcell)
 
 """
 
@@ -88,7 +165,6 @@ is in the border of the box (such that its neighbouring cells need to be wrapped
 struct Cell{N}
   icell::Int
   cartesian::CartesianIndex{N}
-  inborder::Bool
 end
 
 """
@@ -101,8 +177,8 @@ Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{N,T}
-  ncwp::Vector{Int} # One-element vector to contain the mutable number of cells with particles
-  cwp::Vector{Cell{N}} # Indexes of the unique cells With Particles
+  ncwp::Vector{Int} # One-element vector to contain the *mutable* number of cells with particles
+  cwp::Vector{Cell{N}} # Indices of the unique cells with Particles
   fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
   np::Vector{AtomWithIndex{N,T}} # Next particle of cell
 end
@@ -149,13 +225,13 @@ CellList{3, Float64}
 
 """
 function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) where {N,T} 
+  number_of_cells = ceil(Int,prod(box.nc))
+  # next is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = length(x)
-  number_of_cells = ceil(Int,1.1*prod(box.nc)) # some margin in case of box size variations
   ncwp = zeros(Int,1)
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
-
   cl = CellList{N,T}(ncwp,cwp,fp,np)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
@@ -248,40 +324,247 @@ function UpdateCellList!(
   ncwp[1] = 0
   if parallel
     @threads for i in eachindex(cwp)
-      cwp[i] = Cell{N}(0,zero(CartesianIndex{N}),false)
-      fp[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
+      cwp[i] = Cell{N}(0,zero(CartesianIndex{N}))
+      fp[i] = AtomWithIndex{N,T}()
     end
     @threads for i in eachindex(np)
-      np[i] = AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))
+      np[i] = AtomWithIndex{N,T}()
     end
   else
-    fill!(cwp,Cell{N}(0,zero(CartesianIndex{N}),false))
-    fill!(fp,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N))))
-    fill!(np,AtomWithIndex{N,T}(0,SVector{N,T}(ntuple(i->zero(T),N)))) 
+    fill!(cwp,Cell{N}(0,zero(CartesianIndex{N})))
+    fill!(fp,AtomWithIndex{N,T}())
+    fill!(np,AtomWithIndex{N,T}())
   end
+
   # Not worth paralellizing probably (would need to take care of concurrency)
-  for (ip,xip) in pairs(x)
+  ip = 0
+  for xip in x
+    # add true particles to particle list
+    ip += 1
     set_celllist_index!(ip,xip,box,cl)
-  end
+
+    #
+    # fill surrounding computing cells with images
+    #
+    # this is ugly as it is, but probably rarely passes from the first or second loops
+    #
+    i = 1
+    p_image = translation_image(xip,box.unit_cell,i,0,0) 
+    while !out_of_bounding_box(p_image,box) 
+      ip += 1
+      set_celllist_index!(ip,p_image,box,cl)
+
+      j = 0
+      p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      while !out_of_bounding_box(p_image,box)
+        ip += 1
+        set_celllist_index!(ip,p_image,box,cl)
+
+        k = 0
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k += 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        k = -1 
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k -= 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        j += 1 
+        p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      end
+
+      j = -1 
+      p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      while !out_of_bounding_box(p_image,box)
+        ip += 1
+        set_celllist_index!(ip,p_image,box,cl)
+
+        k = 0
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k += 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        k = 0 
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k -= 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        j -= 1 
+        p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      end
+
+      i += 1
+      p_image = translation_image(xip,box.unit_cell,i,0,0) 
+    end
+
+    i = -1 
+    p_image = translation_image(xip,box.unit_cell,i,0,0) 
+    while !out_of_bounding_box(p_image,box) 
+      ip += 1
+      set_celllist_index!(ip,p_image,box,cl)
+
+      j = 0
+      p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      while !out_of_bounding_box(p_image,box)
+        ip += 1
+        set_celllist_index!(ip,p_image,box,cl)
+
+        k = 0
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k += 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        k = -1 
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k -= 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        j += 1 
+        p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      end
+
+      j = -1 
+      p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      while !out_of_bounding_box(p_image,box)
+        ip += 1
+        set_celllist_index!(ip,p_image,box,cl)
+
+        k = 0
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k += 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        k = 0 
+        p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        while !out_of_bounding_box(p_image,box)
+          ip += 1
+          set_celllist_index!(ip,p_image,box,cl)
+          k -= 1 
+          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        end
+    
+        j -= 1 
+        p_image = translation_image(xip,box.unit_cell,i,j,0) 
+      end
+
+      i -= 1
+      p_image = translation_image(xip,box.unit_cell,i,0,0) 
+    end
+  end # particles
 
   return cl
 end
 
-#
-# Set one index of a cell list
-#
+function out_of_bounding_box(x::SVector{N,T},box::Box{N,T}) where {N,T}
+  for i in 1:N
+    (x[i] > box.nc[i]*box.cutoff) && return true
+    (x[i] < 0) && return true
+  end
+  return false
+end
+out_of_bounding_box(p::AtomWithIndex,box::Box{N,T}) where {N,T} =
+  out_of_bounding_box(p.coordinates,box)
+
+"""
+
+Set one index of a cell list
+
+"""
 function set_celllist_index!(ip,xip::SVector{N,T},box,cl) where {N,T}
   @unpack ncwp, cwp, fp, np = cl
-  p = AtomWithIndex(ip,wrapone(xip,box.sides))
+  p = AtomWithIndex(ip,wrap_to_first(xip,box.unit_cell))
   icell_cartesian = particle_cell(p.coordinates,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   if fp[icell].index == 0
     ncwp[1] += 1
-    cwp[ncwp[1]] = Cell{N}(icell,icell_cartesian,cell_in_border(icell_cartesian,box))
+    cwp[ncwp[1]] = Cell{N}(icell,icell_cartesian)
+  end
+  if ip > length(np) 
+    old_length = length(np)
+    resize!(np,ceil(Int,1.2*old_length))
+    for i in old_length+1:length(np)
+      np[i] = AtomWithIndex{N,T}() 
+    end
   end
   np[ip] = fp[icell]
   fp[icell] = p
+  return p
 end
+
+"""
+
+```
+wrap_to_first(x::SVector{N,T},cell) where {N,T}
+```
+
+Wraps the coordinates of point `x` such that the returning coordinates are in the
+first unit cell with all-positive coordinates. 
+
+"""
+function wrap_to_first(x::T,cell) where T<:AbstractVector
+  p = MVector{length(x),eltype(x)}(rem.(cell\x,1))
+  for i in eachindex(p)
+    if p[i] < 0
+      p[i] += 1
+    end
+  end
+  return T(cell*p)
+end
+
+"""
+
+```
+wrap_relative_to(x::T, xref, cell) where T<:AbstractVector
+```
+
+Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`. 
+
+"""
+function wrap_relative_to(x::T, xref, cell) where T<:AbstractVector
+  return T(rem.(cell\(x-xref),1))
+end
+
+"""
+
+```
+translation_image(x::SVector{N,T},unit_cell,indices::Int...) where {N,T}
+```
+
+Translate vector `x` according to the `unit_cell` lattice vectors and the `indices`
+provided.
+
+"""
+translation_image(x::SVector{N,T},unit_cell,indices::Int...) where {T,N} =
+  x + unit_cell*SVector{N,T}(ntuple(i -> indices[i],N))
 
 """
 
@@ -322,28 +605,6 @@ function UpdateCellList!(
   end
 
   return cl_pair
-end
-
-"""
-
-```
-cell_in_border(icell_cartesian,box)
-```
-
-Function that checks if a cell is in the border of the periodic cell box
-
-"""
-function cell_in_border(icell_cartesian,box::Box{N,T}) where {N,T}
-  inborder = false
-  for i in 1:N
-    ic = icell_cartesian[i]
-    if ic <= box.lcell 
-      (inborder = true) && break
-    elseif ic > box.nc[i] - box.lcell
-      (inborder = true) && break
-    end
-  end
-  return inborder
 end
 
 """
@@ -405,18 +666,12 @@ Function to compute Euclidean distances between two n-dimensional vectors.
 particle_cell(x::SVector{N,T}, box::Box) where {N,T}
 ```
 
-Returns the coordinates of the cell to which a particle belongs, given its coordinates
-and the sides of the periodic box (for arbitrary dimension N).
+Returns the coordinates of the computing cell to which a particle belongs, given its coordinates
+and the cutoff/cell. 
 
 """
-@inline function particle_cell(x::SVector{N,T}, box::Box) where {N,T}
-  # Wrap to origin
-  xwrapped = wrapone(x,box.sides)
-  cell = CartesianIndex(
-    ntuple(i -> floor(Int,(xwrapped[i]+box.sides[i]/2)/box.cell_side[i]) + 1, N)
-  )
-  return cell
-end
+@inline particle_cell(x::SVector{N,T}, box::Box) where {N,T} =
+  CartesianIndex(ntuple(i -> floor(Int,x[i]/(box.cutoff/box.lcell) + 1), N))
 
 """
 
@@ -424,7 +679,7 @@ end
 cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
 ```
 
-Given the linear index of the cell in the cell list, returns the cartesian indexes
+Given the linear index of the cell in the cell list, returns the cartesian indices 
 of the cell (for arbitrary dimension N).
 
 """
@@ -434,91 +689,14 @@ of the cell (for arbitrary dimension N).
 """
 
 ```
-icell1D(nc::SVector{N,Int}, indexes) where N
+cell_linear_index(nc::SVector{N,Int}, indices) where N
 ```
 
 Returns the index of the cell, in the 1D representation, from its cartesian coordinates. 
 
 """
-@inline cell_linear_index(nc::SVector{N,Int}, indexes) where N =
-  LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indexes[i],N)...]
-
-"""
-
-```
-function wrap!(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
-```
-
-Functions that wrap the coordinates They modify the coordinates of the input vector.  
-Wrap to a given center of coordinates
-
-"""
-@inline function wrap!(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
-  for i in eachindex(x)
-    x[i] = wrapone(x[i],sides,center)
-  end
-  return nothing
-end
-
-@inline function wrapone(x::AbstractVector, sides::AbstractVector, center::AbstractVector)
-  s = @. (x-center)%sides
-  s = @. wrapx(s,sides) + center
-  return s
-end
-
-@inline function wrapx(x,s)
-  if x >= s/2
-    x = x - s
-  elseif x < -s/2
-    x = x + s
-  end
-  return x
-end
-
-"""
-
-```
-wrap!(x::AbstractVector, sides::AbstractVector)
-```
-
-Wrap to origin (slightly cheaper).
-
-"""
-function wrap!(x::AbstractVector, sides::AbstractVector)
-  for i in eachindex(x)
-    x[i] = wrapone(x[i],sides)
-  end
-  return nothing
-end
-
-@inline function wrapone(x::AbstractVector, sides::AbstractVector)
-  s = @. x%sides
-  s = @. wrapx(s,sides)
-  return s
-end
-
-"""
-
-```
-wrap_cell(nc::SVector{N,Int}, indexes) where N
-```
-
-Given the dimension `N` of the system, return the periodic cell which correspondst to
-it, if the cell is outside the main box.
-
-"""
-@inline function wrap_cell(nc::SVector{N,Int}, indexes) where N
-  cell_indexes = ntuple(N) do i
-    ind = indexes[i]
-    if ind < 1
-      ind = nc[i] + ind
-    elseif ind > nc[i]
-      ind = ind - nc[i]
-    end
-    return ind
-  end
-  return cell_indexes
-end
+@inline cell_linear_index(nc::SVector{N,Int}, indices) where N =
+  LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indices[i],N)...]
 
 """
 
