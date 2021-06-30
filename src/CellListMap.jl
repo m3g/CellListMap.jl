@@ -348,6 +348,23 @@ function UpdateCellList!(
     #
     # this is ugly as it is, but probably rarely passes from the first or second loops
     #
+
+    function loop!(idim,step,ip,xip,box::Box{N,T},cl,indices::Int...) where {N,T}
+      p_image = translation_image(xip,box.unit_cell,indices...) 
+      if !out_of_bounding_box(p_image,cl)
+        ip += 1
+        set_celllist_index!(ip,p_image,box,cl)
+        indices = ntuple(i -> (i==idim) ? indices[i] += 1 : indices[i], N) 
+        if idim < N
+          return loop!(idim+1, step, ip, xip, box, cl, indices...)
+        else
+          return loop!(idim, step, ip, xip, box, cl, indices...)
+        end
+      else
+        return nothing 
+      end
+    end
+
     i = 1
     p_image = translation_image(xip,box.unit_cell,i,0,0) 
     while !out_of_bounding_box(p_image,box) 
@@ -360,24 +377,21 @@ function UpdateCellList!(
         ip += 1
         set_celllist_index!(ip,p_image,box,cl)
 
-        k = 0
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k += 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
+        function translate_image_loop!(idim,step,ip,xip,box::Box{N,T},cl,indices...) where {N,T}
+          p_image = translation_image(xip,box.unit_cell,indices)
+          while !out_of_bounding_box(p_image,box)
+            ip += 1
+            set_celllist_index!(ip,p_image,box,cl)
+            ic += indices[dim] + step 
+            indices = ntuple(i -> (i==idim) ? ic : indices[i], N)
+            p_image = translation_image(xip,box.unit_cell,indices...) 
+          end
+          return ip, cl
         end
-    
-        k = -1 
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k -= 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
-    
+
+        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
+        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
+
         j += 1 
         p_image = translation_image(xip,box.unit_cell,i,j,0) 
       end
@@ -388,23 +402,8 @@ function UpdateCellList!(
         ip += 1
         set_celllist_index!(ip,p_image,box,cl)
 
-        k = 0
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k += 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
-    
-        k = 0 
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k -= 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
+        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
+        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
     
         j -= 1 
         p_image = translation_image(xip,box.unit_cell,i,j,0) 
@@ -426,24 +425,9 @@ function UpdateCellList!(
         ip += 1
         set_celllist_index!(ip,p_image,box,cl)
 
-        k = 0
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k += 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
-    
-        k = -1 
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k -= 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
-    
+        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
+        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
+
         j += 1 
         p_image = translation_image(xip,box.unit_cell,i,j,0) 
       end
@@ -454,24 +438,9 @@ function UpdateCellList!(
         ip += 1
         set_celllist_index!(ip,p_image,box,cl)
 
-        k = 0
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k += 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
-    
-        k = 0 
-        p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        while !out_of_bounding_box(p_image,box)
-          ip += 1
-          set_celllist_index!(ip,p_image,box,cl)
-          k -= 1 
-          p_image = translation_image(xip,box.unit_cell,i,j,k) 
-        end
-    
+        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
+        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
+
         j -= 1 
         p_image = translation_image(xip,box.unit_cell,i,j,0) 
       end
@@ -984,6 +953,28 @@ end
 include("./naive.jl")
 include("./examples.jl")
 include("./halotools.jl")
+
+function test(idim,step,indices...)
+  indices = ntuple(i -> (i==idim) ? indices[i] + 1 : indices[i], 3)
+  @show indices
+  readline()
+  out = (indices[idim] == 5)
+  if !out
+    if idim < 3
+      return test(idim+1, step, indices...)
+    else
+      return test(idim, step, indices...)
+    end
+  else
+    idim == 1 && return nothing
+    indices = ntuple(3) do i
+      i == idim && return 0
+      i == idim - 1 && return indices[i] 
+      return indices[i]
+    end
+    return test(idim-1, step, indices...)
+  end
+end
 
 end # module
 
