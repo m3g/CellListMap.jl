@@ -195,6 +195,7 @@ end
 struct CellListPair{V,N,T}
   small::V
   large::CellList{N,T}
+  swap::Bool
 end      
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
   print(typeof(cl),"\n")
@@ -228,7 +229,7 @@ CellList{3, Float64}
 """
 function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) where {N,T} 
   number_of_cells = ceil(Int,prod(box.nc))
-  # next is a lower bound, will be resized when necessary to incorporate particle images
+  # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = length(x)
   ncwp = zeros(Int,1)
   ncp = zeros(Int,1)
@@ -273,15 +274,13 @@ function CellList(
   box::Box;
   parallel::Bool=true
 ) where {N,T} 
-
   if length(x) <= length(y)
     y_cl = CellList(y,box,parallel=parallel)
-    cl_pair = CellListPair(x,y_cl)
+    cl_pair = CellListPair(x,y_cl,swap=false)
   else
     x_cl = CellList(x,box,parallel=parallel)
-    cl_pair = CellListPair(y,x_cl)
+    cl_pair = CellListPair(y,x_cl,swap=true)
   end
-
   return cl_pair
 end
 
@@ -901,7 +900,11 @@ function inner_loop!(f,output,i,box,cl::CellListPair)
       end
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
-        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        if cl.swap
+          output = f(xpⱼ,xpᵢ,j,i,d2,output)
+        else
+          output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        end
       end
       pⱼ = cl.large.np[j]
       j = pⱼ.index
