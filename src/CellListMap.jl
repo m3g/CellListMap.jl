@@ -178,6 +178,7 @@ Structure that contains the cell lists information.
 """
 Base.@kwdef struct CellList{N,T}
   ncwp::Vector{Int} # One-element vector to contain the *mutable* number of cells with particles
+  ncp::Vector{Int} # One-element vector to contain the *mutable* number of particles in the computing box
   cwp::Vector{Cell{N}} # Indices of the unique cells with Particles
   fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
   np::Vector{AtomWithIndex{N,T}} # Next particle of cell
@@ -185,7 +186,8 @@ end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
   println("  $(cl.ncwp[1]) cells with particles.")
-  print("  $(length(cl.np)/cl.ncwp[1]) particles per cell.")
+  println("  $(cl.ncp[1]) particles in computing box, including images.")
+  print("  $(length(cl.np)/cl.ncwp[1]) particles per computing cell.")
 end
 
 # Structure that will cointain the cell lists of two independent sets of
@@ -229,10 +231,11 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   # next is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = length(x)
   ncwp = zeros(Int,1)
+  ncp = zeros(Int,1)
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
-  cl = CellList{N,T}(ncwp,cwp,fp,np)
+  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -336,126 +339,20 @@ function UpdateCellList!(
     fill!(np,AtomWithIndex{N,T}())
   end
 
+  #
   # Not worth paralellizing probably (would need to take care of concurrency)
-  ip = 0
-  for xip in x
-    # add true particles to particle list
-    ip += 1
-    set_celllist_index!(ip,xip,box,cl)
-
-    #
-    # fill surrounding computing cells with images
-    #
-    # this is ugly as it is, but probably rarely passes from the first or second loops
-    #
-
-    function loop!(idim,step,ip,xip,box::Box{N,T},cl,indices::Int...) where {N,T}
-      p_image = translation_image(xip,box.unit_cell,indices...) 
-      if !out_of_bounding_box(p_image,cl)
-        ip += 1
-        set_celllist_index!(ip,p_image,box,cl)
-        indices = ntuple(i -> (i==idim) ? indices[i] += 1 : indices[i], N) 
-        if idim < N
-          return loop!(idim+1, step, ip, xip, box, cl, indices...)
-        else
-          return loop!(idim, step, ip, xip, box, cl, indices...)
-        end
-      else
-        return nothing 
-      end
-    end
-
-    i = 1
-    p_image = translation_image(xip,box.unit_cell,i,0,0) 
-    while !out_of_bounding_box(p_image,box) 
-      ip += 1
-      set_celllist_index!(ip,p_image,box,cl)
-
-      j = 0
-      p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      while !out_of_bounding_box(p_image,box)
-        ip += 1
-        set_celllist_index!(ip,p_image,box,cl)
-
-        function translate_image_loop!(idim,step,ip,xip,box::Box{N,T},cl,indices...) where {N,T}
-          p_image = translation_image(xip,box.unit_cell,indices)
-          while !out_of_bounding_box(p_image,box)
-            ip += 1
-            set_celllist_index!(ip,p_image,box,cl)
-            ic += indices[dim] + step 
-            indices = ntuple(i -> (i==idim) ? ic : indices[i], N)
-            p_image = translation_image(xip,box.unit_cell,indices...) 
-          end
-          return ip, cl
-        end
-
-        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
-        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
-
-        j += 1 
-        p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      end
-
-      j = -1 
-      p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      while !out_of_bounding_box(p_image,box)
-        ip += 1
-        set_celllist_index!(ip,p_image,box,cl)
-
-        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
-        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
-    
-        j -= 1 
-        p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      end
-
-      i += 1
-      p_image = translation_image(xip,box.unit_cell,i,0,0) 
-    end
-
-    i = -1 
-    p_image = translation_image(xip,box.unit_cell,i,0,0) 
-    while !out_of_bounding_box(p_image,box) 
-      ip += 1
-      set_celllist_index!(ip,p_image,box,cl)
-
-      j = 0
-      p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      while !out_of_bounding_box(p_image,box)
-        ip += 1
-        set_celllist_index!(ip,p_image,box,cl)
-
-        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
-        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
-
-        j += 1 
-        p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      end
-
-      j = -1 
-      p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      while !out_of_bounding_box(p_image,box)
-        ip += 1
-        set_celllist_index!(ip,p_image,box,cl)
-
-        translate_image_loop!(3,+1,ip,xip,box,cl,i,j,0)
-        translate_image_loop!(3,-1,ip,xip,box,cl,i,j,0)
-
-        j -= 1 
-        p_image = translation_image(xip,box.unit_cell,i,j,0) 
-      end
-
-      i -= 1
-      p_image = translation_image(xip,box.unit_cell,i,0,0) 
-    end
-  end # particles
+  #
+  for particle in x
+    add_images_to_celllist!(particle,box,cl)
+  end
 
   return cl
 end
 
+# Function that checks if the particule is outside the computation bounding box
 function out_of_bounding_box(x::SVector{N,T},box::Box{N,T}) where {N,T}
   for i in 1:N
-    (x[i] > box.nc[i]*box.cutoff) && return true
+    (x[i] >= box.nc[i]*box.cutoff) && return true
     (x[i] < 0) && return true
   end
   return false
@@ -463,29 +360,112 @@ end
 out_of_bounding_box(p::AtomWithIndex,box::Box{N,T}) where {N,T} =
   out_of_bounding_box(p.coordinates,box)
 
+function add_images_to_celllist!(particle,box::Box{N,T},cl) where {N,T}
+  # Wrap to first image with positive coordinates
+  p = wrap_to_first(particle,box.unit_cell)
+  # current particle position
+  add_particle_to_celllist!(p,box,cl) 
+  # images that fall within the computing box
+  steps = Iterators.filter(
+    step -> count(isequal(0),step) != N,
+    Iterators.product(
+      ntuple(i -> -1:1, N)...
+    ) 
+  )
+  for step in steps
+    indices = ntuple( i -> step[i], N) 
+    x = translation_image(p,box.unit_cell,indices)
+    while ! out_of_bounding_box(x,box)
+      add_particle_to_celllist!(x,box,cl) 
+      indices = ntuple( i -> indices[i] + step[i], N) 
+      x = translation_image(p,box.unit_cell,indices)
+    end
+  end
+  return nothing
+end
+
+"""
+
+```
+view_celllist_particles(cl::CellList)
+```
+
+Auxiliary function to view the particles of a computing box, including images created
+for computing purposes.
+
+### Example
+```julia
+julia> box = Box([ 100 50; 50 100 ],10);
+
+julia> p = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
+
+julia> cl = CellList(p,box);
+
+julia> x, y = CellListMap.view_celllist_particles(cl);
+
+julia> using Plots
+
+julia> scatter(x,y,label=nothing,xlims=(-10,180),ylims=(-10,180));
+
+```
+
+"""
+function view_celllist_particles(cl::CellList{N,T}) where {N,T}
+  @unpack ncwp, cwp, ncp, fp, np = cl
+  x = Vector{SVector{N,T}}(undef,ncp[1])
+  ip = 0
+  for i in 1:ncwp[1]
+    ip += 1
+    p = fp[cwp[i].icell]
+    x[ip] = p.coordinates
+    while np[p.index].index > 0
+      ip += 1
+      x[ip] = p.coordinates
+      p = np[p.index]
+    end
+  end
+  return ([x[i][j] for i in 1:ncp[1]] for j in 1:N)
+end
+
 """
 
 Set one index of a cell list
 
 """
-function set_celllist_index!(ip,xip::SVector{N,T},box,cl) where {N,T}
-  @unpack ncwp, cwp, fp, np = cl
-  p = AtomWithIndex(ip,wrap_to_first(xip,box.unit_cell))
+function add_particle_to_celllist!(particle::SVector{N,T},box,cl) where {N,T}
+  @unpack ncwp, ncp, cwp, fp, np = cl
+  ncp[1] += 1
+  p = AtomWithIndex(cl.ncp[1],particle)
   icell_cartesian = particle_cell(p.coordinates,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   if fp[icell].index == 0
     ncwp[1] += 1
     cwp[ncwp[1]] = Cell{N}(icell,icell_cartesian)
   end
-  if ip > length(np) 
+  if ncp[1] > length(np) 
     old_length = length(np)
     resize!(np,ceil(Int,1.2*old_length))
     for i in old_length+1:length(np)
       np[i] = AtomWithIndex{N,T}() 
     end
   end
-  np[ip] = fp[icell]
+  np[ncp[1]] = fp[icell]
   fp[icell] = p
+  return nothing
+end
+
+"""
+
+wrap_cell_fraction(x::SVector{N,T}, cell)
+
+"""
+function wrap_cell_fraction(x::T, cell) where T
+  p = MVector{length(x),eltype(x)}(rem.(cell\x,1))
+  for i in eachindex(p)
+    if p[i] < 0
+      p[i] += 1
+    end
+  end
   return p
 end
 
@@ -500,12 +480,7 @@ first unit cell with all-positive coordinates.
 
 """
 function wrap_to_first(x::T,cell) where T<:AbstractVector
-  p = MVector{length(x),eltype(x)}(rem.(cell\x,1))
-  for i in eachindex(p)
-    if p[i] < 0
-      p[i] += 1
-    end
-  end
+  p = wrap_cell_fraction(x,cell)
   return T(cell*p)
 end
 
@@ -525,14 +500,14 @@ end
 """
 
 ```
-translation_image(x::SVector{N,T},unit_cell,indices::Int...) where {N,T}
+translation_image(x::SVector{N,T},unit_cell,indices) where {N,T}
 ```
 
 Translate vector `x` according to the `unit_cell` lattice vectors and the `indices`
 provided.
 
 """
-translation_image(x::SVector{N,T},unit_cell,indices::Int...) where {T,N} =
+translation_image(x::SVector{N,T},unit_cell,indices) where {T,N} =
   x + unit_cell*SVector{N,T}(ntuple(i -> indices[i],N))
 
 """
@@ -953,28 +928,6 @@ end
 include("./naive.jl")
 include("./examples.jl")
 include("./halotools.jl")
-
-function test(idim,step,indices...)
-  indices = ntuple(i -> (i==idim) ? indices[i] + 1 : indices[i], 3)
-  @show indices
-  readline()
-  out = (indices[idim] == 5)
-  if !out
-    if idim < 3
-      return test(idim+1, step, indices...)
-    else
-      return test(idim, step, indices...)
-    end
-  else
-    idim == 1 && return nothing
-    indices = ntuple(3) do i
-      i == idim && return 0
-      i == idim - 1 && return indices[i] 
-      return indices[i]
-    end
-    return test(idim-1, step, indices...)
-  end
-end
 
 end # module
 
