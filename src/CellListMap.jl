@@ -276,10 +276,10 @@ function CellList(
 ) where {N,T} 
   if length(x) <= length(y)
     y_cl = CellList(y,box,parallel=parallel)
-    cl_pair = CellListPair(x,y_cl,swap=false)
+    cl_pair = CellListPair(small=x,large=y_cl,swap=false)
   else
     x_cl = CellList(x,box,parallel=parallel)
-    cl_pair = CellListPair(y,x_cl,swap=true)
+    cl_pair = CellListPair(small=y,large=x_cl,swap=true)
   end
   return cl_pair
 end
@@ -930,10 +930,10 @@ function inner_loop!(f,output,i,box,cl::CellListPair)
       end
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
-        if cl.swap
-          output = f(xpⱼ,xpᵢ,j,i,d2,output)
-        else
+        if ! cl.swap 
           output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        else
+          output = f(xpⱼ,xpᵢ,j,i,d2,output)
         end
       end
       pⱼ = cl.large.np[j]

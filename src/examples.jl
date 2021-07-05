@@ -217,9 +217,13 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
   Random.seed!(321)
   if x === nothing 
     x = [ rand(SVector{3,Float64}) for i in 1:N1 ]
+  else
+    N1 = length(x)
   end
   if y === nothing 
     y = [ rand(SVector{3,Float64}) for i in 1:N2 ]
+  else
+    N2 = length(y)
   end
 
   # Boundaries
@@ -398,5 +402,3 @@ function florpi(;N=100_000,cd=true,parallel=true)
   return mean_v_r
 
 end
-
-
