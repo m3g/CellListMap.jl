@@ -192,7 +192,7 @@ end
 
 # Structure that will cointain the cell lists of two independent sets of
 # particles for cross-computation of interactions
-struct CellListPair{V,N,T}
+@with_kw struct CellListPair{V,N,T}
   small::V
   large::CellList{N,T}
   swap::Bool
