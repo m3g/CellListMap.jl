@@ -363,23 +363,53 @@ function add_images_to_celllist!(particle,box::Box{N,T},cl) where {N,T}
   # Wrap to first image with positive coordinates
   p = wrap_to_first(particle,box.unit_cell)
   # current particle position
-  add_particle_to_celllist!(p,box,cl) 
-  # images that fall within the computing box
-  steps = Iterators.filter(
-    step -> count(isequal(0),step) != N,
-    Iterators.product(
-      ntuple(i -> -1:1, N)...
-    ) 
-  )
-  for step in steps
-    indices = ntuple( i -> step[i], N) 
-    x = translation_image(p,box.unit_cell,indices)
-    while ! out_of_bounding_box(x,box)
-      add_particle_to_celllist!(x,box,cl) 
-      indices = ntuple( i -> indices[i] + step[i], N) 
-      x = translation_image(p,box.unit_cell,indices)
+
+  step = ntuple(i -> 0, N)
+
+  for i in -10:10
+    for j in -10:10
+      x = translation_image(p,box.unit_cell,(i,j))
+      if ! out_of_bounding_box(x,box)
+        add_particle_to_celllist!(x,box,cl) 
+      end
     end
-  end
+  end 
+
+#  add_particle_to_celllist!(p,box,cl) 
+#  steps = Iterators.filter(
+#    step -> findfirst(i -> i > 0, step) !== nothing,
+#    Iterators.product(
+#      ntuple(i -> -1:1, N)...
+#    ) 
+#  )
+#  for dim in 1:N
+#    indices = ntuple(i -> 0, N)
+#    for step in steps
+#      indices = ntuple( i -> indices[i] + step[i], N) 
+#      x = translation_image(p,box.unit_cell,step)
+#      @show indices, out_of_bounding_box(x,box), x
+#      while ! out_of_bounding_box(x,box)
+#        add_particle_to_celllist!(x,box,cl) 
+#        indices = ntuple( i -> (i==dim) ? indices[i] + 1 : indices[i], N) 
+#        x = translation_image(p,box.unit_cell,indices)
+#        @show indices, out_of_bounding_box(x,box), x
+#        readline()
+#      end
+#    end
+#  end
+
+#  for step in steps
+#    indices = ntuple( i -> step[i], N) 
+#    x = translation_image(p,box.unit_cell,step)
+#    @show indices, out_of_bounding_box(x,box), x
+#    while ! out_of_bounding_box(x,box)
+#      readline()
+#      add_particle_to_celllist!(x,box,cl) 
+#      indices = ntuple( i -> indices[i] + step[i], N) 
+#      x = translation_image(p,box.unit_cell,indices)
+#      @show indices, out_of_bounding_box(x,box), x
+#    end
+#  end
   return nothing
 end
 
