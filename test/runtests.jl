@@ -151,6 +151,14 @@ using Test
   y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
   @test count(CellListMap.test6(parallel=true,x=x,y=y) .≈ CellListMap.test6(parallel=false,x=x,y=y)) == 3
 
+  # invert x and y to test swap
+  ixy = CellListMap.test6(parallel=false,x=x,y=y) 
+  iyx = CellListMap.test6(parallel=false,x=y,y=x) 
+  @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
+  ixy = CellListMap.test6(parallel=true,x=x,y=y) 
+  iyx = CellListMap.test6(parallel=true,x=y,y=x) 
+  @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
+
   # Test resizing of the cell lists
   x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
   box = Box([0.83,0.41,0.97],0.1)

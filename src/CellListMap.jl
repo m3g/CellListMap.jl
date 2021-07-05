@@ -114,7 +114,7 @@ end
 
 # Structure that will cointain the cell lists of two independent sets of
 # particles for cross-computation of interactions
-struct CellListPair{V,N,T}
+@with_kw struct CellListPair{V,N,T}
   small::V
   large::CellList{N,T}
   swap::Bool
@@ -198,10 +198,10 @@ function CellList(
 
   if length(x) <= length(y)
     y_cl = CellList(y,box,parallel=parallel)
-    cl_pair = CellListPair(x,y_cl,swap=false)
+    cl_pair = CellListPair(small=x,large=y_cl,swap=false)
   else
     x_cl = CellList(x,box,parallel=parallel)
-    cl_pair = CellListPair(y,x_cl,swap=true)
+    cl_pair = CellListPair(small=y,large=x_cl,swap=true)
   end
 
   return cl_pair
