@@ -5,6 +5,7 @@ using Parameters
 using StaticArrays
 using DocStringExtensions
 using ProgressMeter
+using Setfield
 
 export Box
 export CellList, UpdateCellList!
@@ -176,7 +177,9 @@ $(TYPEDFIELDS)
 Structure that contains the cell lists information.
 
 """
-Base.@kwdef struct CellList{N,T}
+Base.@kwdef struct CellList{V,N,T}
+  nx::Vector{Int} # One-element vector with the number of particles
+  x::V # Abstract vector with the particle coordinates
   ncwp::Vector{Int} # One-element vector to contain the *mutable* number of cells with particles
   ncp::Vector{Int} # One-element vector to contain the *mutable* number of particles in the computing box
   cwp::Vector{Cell{N}} # Indices of the unique cells with Particles
@@ -236,7 +239,7 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
-  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np)
+  cl = CellList{typeof(x),N,T}(length(x),x,ncwp,ncp,cwp,fp,np)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -311,9 +314,9 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   box::Box,
-  cl::CellList{N,T};
+  cl::CellList{V,N,T};
   parallel::Bool=true
-) where {N,T}
+) where {V,N,T}
   @unpack ncwp, cwp, fp, np = cl
 
   number_of_cells = prod(box.nc)
@@ -321,6 +324,10 @@ function UpdateCellList!(
     number_of_cells = ceil(Int,1.1*number_of_cells) # some margin in case of box size variations
     resize!(cwp,number_of_cells)
     resize!(fp,number_of_cells)
+  end
+  if length(x) > cl.nx[1]
+    cl.nx[1] = length(x)
+    resize!(cl.x,length(x))
   end
 
   ncwp[1] = 0
@@ -332,10 +339,14 @@ function UpdateCellList!(
     @threads for i in eachindex(np)
       np[i] = AtomWithIndex{N,T}()
     end
+    @threads for i in eachindex(x)
+      cl.x[i] = x[i] 
+    end
   else
     fill!(cwp,Cell{N}(0,zero(CartesianIndex{N})))
     fill!(fp,AtomWithIndex{N,T}())
     fill!(np,AtomWithIndex{N,T}())
+    cl.x .= x
   end
 
   #
@@ -352,108 +363,96 @@ end
 function out_of_bounding_box(x::SVector{N,T},box::Box{N,T}) where {N,T}
   for i in 1:N
     (x[i] >= box.nc[i]*box.cutoff) && return true
-    (x[i] < 0) && return true
+    (x[i] < zero(T)) && return true
   end
   return false
 end
 out_of_bounding_box(p::AtomWithIndex,box::Box{N,T}) where {N,T} =
   out_of_bounding_box(p.coordinates,box)
 
-function add_images_to_celllist!(particle,box::Box{N,T},cl) where {N,T}
-  # Wrap to first image with positive coordinates
-  p = wrap_to_first(particle,box.unit_cell)
-  # current particle position
+"""
 
-  step = ntuple(i -> 0, N)
+```
+replicate_particle!(p::T,box,cl) where {T <: SVector{2,S} where S}
+```
 
-  for i in -10:10
-    for j in -10:10
+Replicates the particle as many times as necessary to fill the computing box.
+
+"""
+function replicate_particle!(p::T,box,cl) where {T <: SVector{2,S} where S}
+  c = box.cutoff
+  um = box.unit_cell_max
+  cell_extremes = SVector{3,T}( 
+    T( um[1] + c,         0 ), 
+    T(         0, um[2] + c ),
+    T( um[1] + c, um[2] + c ) 
+  )
+  r_min = zero(T)
+  r_max = zero(T) 
+  for ex in cell_extremes
+    r = box.unit_cell \ ex
+    r = ceil.(Int,abs.(r)) .* sign.(r)
+    r_min = min.(r,r_min)
+    r_max = max.(r,r_max)
+  end
+  for i in r_min[1]:r_max[1]
+    for j in r_min[2]:r_max[2]
       x = translation_image(p,box.unit_cell,(i,j))
       if ! out_of_bounding_box(x,box)
         add_particle_to_celllist!(x,box,cl) 
       end
     end
   end 
-
-#  add_particle_to_celllist!(p,box,cl) 
-#  steps = Iterators.filter(
-#    step -> findfirst(i -> i > 0, step) !== nothing,
-#    Iterators.product(
-#      ntuple(i -> -1:1, N)...
-#    ) 
-#  )
-#  for dim in 1:N
-#    indices = ntuple(i -> 0, N)
-#    for step in steps
-#      indices = ntuple( i -> indices[i] + step[i], N) 
-#      x = translation_image(p,box.unit_cell,step)
-#      @show indices, out_of_bounding_box(x,box), x
-#      while ! out_of_bounding_box(x,box)
-#        add_particle_to_celllist!(x,box,cl) 
-#        indices = ntuple( i -> (i==dim) ? indices[i] + 1 : indices[i], N) 
-#        x = translation_image(p,box.unit_cell,indices)
-#        @show indices, out_of_bounding_box(x,box), x
-#        readline()
-#      end
-#    end
-#  end
-
-#  for step in steps
-#    indices = ntuple( i -> step[i], N) 
-#    x = translation_image(p,box.unit_cell,step)
-#    @show indices, out_of_bounding_box(x,box), x
-#    while ! out_of_bounding_box(x,box)
-#      readline()
-#      add_particle_to_celllist!(x,box,cl) 
-#      indices = ntuple( i -> indices[i] + step[i], N) 
-#      x = translation_image(p,box.unit_cell,indices)
-#      @show indices, out_of_bounding_box(x,box), x
-#    end
-#  end
   return nothing
 end
 
 """
 
 ```
-view_celllist_particles(cl::CellList)
+replicate_particle!(p::T,box,cl) where {T <: SVector{3,S} where S}
 ```
 
-Auxiliary function to view the particles of a computing box, including images created
-for computing purposes.
-
-### Example
-```julia
-julia> box = Box([ 100 50; 50 100 ],10);
-
-julia> p = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
-
-julia> cl = CellList(p,box);
-
-julia> x, y = CellListMap.view_celllist_particles(cl);
-
-julia> using Plots
-
-julia> scatter(x,y,label=nothing,xlims=(-10,180),ylims=(-10,180));
-
-```
+Replicates the particle as many times as necessary to fill the computing box.
 
 """
-function view_celllist_particles(cl::CellList{N,T}) where {N,T}
-  @unpack ncwp, cwp, ncp, fp, np = cl
-  x = Vector{SVector{N,T}}(undef,ncp[1])
-  ip = 0
-  for i in 1:ncwp[1]
-    ip += 1
-    p = fp[cwp[i].icell]
-    x[ip] = p.coordinates
-    while np[p.index].index > 0
-      ip += 1
-      x[ip] = p.coordinates
-      p = np[p.index]
-    end
+function replicate_particle!(p::T,box,cl) where {T <: SVector{3,S} where S}
+  c = box.cutoff
+  um = box.unit_cell_max
+  cell_extremes = SVector{7,T}( 
+    T( um[1] + c,         0,         0 ), 
+    T( um[1] + c, um[2] + c,         0 ), 
+    T( um[1] + c,         0, um[3] + c ), 
+    T( um[1] + c, um[2] + c, um[3] + c ), 
+    T(         0, um[2] + c,         0 ),
+    T(         0, um[2] + c, um[3] + c ),
+    T(         0,         0, um[3] + c )
+  )
+  r_min = zero(T)
+  r_max = zero(T) 
+  for ex in cell_extremes
+    r = box.unit_cell \ ex
+    r = ceil.(Int,abs.(r)) .* sign.(r)
+    r_min = min.(r,r_min)
+    r_max = max.(r,r_max)
   end
-  return ([x[i][j] for i in 1:ncp[1]] for j in 1:N)
+  for i in r_min[1]:r_max[1]
+    for j in r_min[2]:r_max[2]
+      for k in r_min[3]:r_max[3]
+        x = translation_image(p,box.unit_cell,(i,j,k))
+        if ! out_of_bounding_box(x,box)
+          add_particle_to_celllist!(x,box,cl) 
+        end
+      end
+    end
+  end 
+  return nothing
+end
+
+function add_images_to_celllist!(particle,box::Box{N,T},cl) where {N,T}
+  # Wrap to first image with positive coordinates
+  p = wrap_to_first(particle,box.unit_cell)
+  replicate_particle!(p,box,cl)
+  return nothing
 end
 
 """
@@ -765,10 +764,51 @@ function map_pairwise_serial!(
   show_progress::Bool=false
 ) where {F}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
-  for icell in 1:cl.ncwp[1]
-    output = inner_loop!(f,box,icell,cl,output) 
+  for i in 1:cl.nx[1]
+    icell_cartesian = particle_cell(cl.x[i],box)
+    icell = cell_linear_index(box.nc,icell_cartesian)
+    for jcell_cartesian in neighbour_cells(box.lcell)    
+      output = inner_loop2!(f,i,cl.x[i],icell,box,cl,output)
+    end
     show_progress && next!(p)
   end 
+  return output
+end
+
+function inner_loop2!(f,i,xpi,icell,box,cl::CellList,output)
+  @unpack sides, cutoff_sq = box
+
+  # loop over the same cell icell where xpi is
+  pj = cl.fp[icell]
+  j = pj.index
+  while j > 0
+    if j != i  
+      xpj = pj.coordinates
+      d2 = distance_sq(xpi,xpj)
+      if d2 <= cutoff_sq
+        output = f(xpi,xpj,i,j,d2,output)
+      end
+    end
+    pj = cl.np[pj.index]
+    j = pj.index
+  end
+   
+  # loop over neighbouring cells
+  for jcell_cartesian in neighbour_cells(box.lcell)
+    jc = cell_linear_index(nc,jcell_cartesian)
+    pj = cl.fp[jcell]
+    j = pj.index
+    while j > 0
+      xpj = pj.coordinates
+      d2 = distance_sq(xpi,xpj)
+      if d2 <= cutoff_sq
+        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+      end
+      pj = cl.np[pj.index]
+      j = pj.index
+    end
+  end
+
   return output
 end
 

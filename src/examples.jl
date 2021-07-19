@@ -1,4 +1,5 @@
 import Random
+
 #
 # In this test we compute the average displacement of the x coordinates of the atoms
 #              
