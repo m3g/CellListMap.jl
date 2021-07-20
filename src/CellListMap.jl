@@ -44,6 +44,8 @@ Base.@kwdef struct Box{N,T,M}
   nc::SVector{N,Int}
   cutoff::T
   cutoff_sq::T
+  r_min::SVector{N,Int}
+  r_max::SVector{N,Int}
 end
 
 """
@@ -79,12 +81,15 @@ function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
   nc = SVector{N,Int}(
     ceil.(Int,max.(1,(unit_cell_max .+ 2*cutoff)/(cutoff/lcell)))
   ) 
+  r_min, r_max = ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max)
   return Box{N,T,N*N}(
     unit_cell,
     unit_cell_max,
     lcell, nc,
     cutoff,
-    cutoff^2
+    cutoff^2,
+    r_min,
+    r_max
   )
 end
 Box(unit_cell::AbstractMatrix,cutoff;T::DataType=Float64,lcell::Int=1) =
@@ -380,27 +385,7 @@ Replicates the particle as many times as necessary to fill the computing box.
 
 """
 function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
-  c = box.cutoff
-  um = box.unit_cell_max
-  cell_extremes = SVector{4,T}( 
-    T(        -c,        -c ), 
-    T( um[1] + c,        -c ), 
-    T(        -c, um[2] + c ),
-    T( um[1] + c, um[2] + c ) 
-  )
-  r_min = zero(T)
-  r_max = zero(T) 
-  for ex in cell_extremes
-    r = box.unit_cell \ ex
-    ri = @. ceil(Int,abs(r))
-    for (i,el) in pairs(r)
-      if el < 0
-        @set! ri[i] = -ri[i]
-      end
-    end
-    r_min = min.(r,r_min)
-    r_max = max.(r,r_max)
-  end
+  @unpack r_min, r_max = box
   for i in r_min[1]:r_max[1]
     for j in r_min[2]:r_max[2]
       x = translation_image(p,box.unit_cell,(i,j))
@@ -422,31 +407,7 @@ Replicates the particle as many times as necessary to fill the computing box.
 
 """
 function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
-  c = box.cutoff
-  um = box.unit_cell_max
-  cell_extremes = SVector{8,T}( 
-    T(        -c,        -c,        -c ), 
-    T( um[1] + c,        -c,        -c ), 
-    T( um[1] + c, um[2] + c,        -c ), 
-    T( um[1] + c,        -c, um[3] + c ), 
-    T( um[1] + c, um[2] + c, um[3] + c ), 
-    T(        -c, um[2] + c,        -c ),
-    T(        -c, um[2] + c, um[3] + c ),
-    T(        -c,        -c, um[3] + c )
-  )
-  r_min = box.nc 
-  r_max = SVector{3,Int}(-1,-1,-1)
-  for ex in cell_extremes
-    r = box.unit_cell \ ex
-    ri = @. ceil(Int,abs(r))
-    for (i,el) in pairs(r)
-      if el < 0
-        @set! ri[i] = -ri[i]
-      end
-    end
-    r_min = min.(ri,r_min)
-    r_max = max.(ri,r_max)
-  end
+  @unpack r_min, r_max = box
   for i in r_min[1]:r_max[1]
     for j in r_min[2]:r_max[2]
       for k in r_min[3]:r_max[3]
@@ -458,6 +419,63 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
     end
   end 
   return nothing
+end
+
+function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{3,T}) where T
+  V = SVector{3,T}
+  c = cutoff
+  um = unit_cell_max
+  cell_vertices = SVector{8,V}( 
+    V(        -c,        -c,        -c ), 
+    V( um[1] + c,        -c,        -c ), 
+    V( um[1] + c, um[2] + c,        -c ), 
+    V( um[1] + c,        -c, um[3] + c ), 
+    V( um[1] + c, um[2] + c, um[3] + c ), 
+    V(        -c, um[2] + c,        -c ),
+    V(        -c, um[2] + c, um[3] + c ),
+    V(        -c,        -c, um[3] + c )
+  )
+  r_min, r_max = _ranges_of_replicas(
+    nc,
+    SVector{3,Int}(-1,-1,-1),
+    unit_cell,
+    cell_vertices
+  )
+  return r_min, r_max
+end
+
+function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{2,T}) where T
+  V = SVector{2,T}
+  c = cutoff
+  um = unit_cell_max
+  cell_vertices = SVector{4,V}( 
+    V(        -c,        -c ), 
+    V( um[1] + c,        -c ), 
+    V(        -c, um[2] + c ),
+    V( um[1] + c, um[2] + c ) 
+  )
+  r_min, r_max = _ranges_of_replicas(
+    nc,
+    SVector{3,Int}(-1,-1),
+    unit_cell,
+    cell_vertices
+  )
+  return r_min, r_max
+end
+
+function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
+  for vert in cell_vertices
+    r = unit_cell \ vert 
+    ri = @. ceil(Int,abs(r))
+    for (i,el) in pairs(r)
+      if el < 0
+        @set! ri[i] = -ri[i]
+      end
+    end
+    r_min = min.(ri,r_min)
+    r_max = max.(ri,r_max)
+  end
+  return r_min, r_max
 end
 
 """
@@ -800,11 +818,6 @@ function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
     if j_original > i  
       xpj = pj.coordinates
       d2 = distance_sq(xpi,xpj)
-      if i == j
-        @show icell
-        @show i, j, j_original
-        @show xpi, xpj
-      end
       if d2 <= cutoff_sq
         output = f(xpi,xpj,i,j_original,d2,output)
       end
