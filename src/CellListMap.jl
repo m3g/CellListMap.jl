@@ -780,7 +780,7 @@ function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
   pj = cl.fp[icell]
   j = pj.index
   while j > 0
-    if j != i  
+    if j > i  
       xpj = pj.coordinates
       d2 = distance_sq(xpi,xpj)
       if d2 <= cutoff_sq
