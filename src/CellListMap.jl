@@ -44,8 +44,7 @@ Base.@kwdef struct Box{N,T,M}
   nc::SVector{N,Int}
   cutoff::T
   cutoff_sq::T
-  r_min::SVector{N,Int}
-  r_max::SVector{N,Int}
+  ranges::SVector{N,UnitRange{Int}}
 end
 
 """
@@ -81,15 +80,14 @@ function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
   nc = SVector{N,Int}(
     ceil.(Int,max.(1,(unit_cell_max .+ 2*cutoff)/(cutoff/lcell)))
   ) 
-  r_min, r_max = ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max)
+  ranges = ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max)
   return Box{N,T,N*N}(
     unit_cell,
     unit_cell_max,
     lcell, nc,
     cutoff,
     cutoff^2,
-    r_min,
-    r_max
+    ranges
   )
 end
 Box(unit_cell::AbstractMatrix,cutoff;T::DataType=Float64,lcell::Int=1) =
@@ -182,13 +180,20 @@ Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{V,N,T}
-  nx::Vector{Int} # One-element vector with the number of particles
-  x::V # Abstract vector with the particle coordinates
-  ncwp::Vector{Int} # One-element vector to contain the *mutable* number of cells with particles
-  ncp::Vector{Int} # One-element vector to contain the *mutable* number of particles in the computing box
-  cwp::Vector{Cell{N}} # Indices of the unique cells with Particles
-  fp::Vector{AtomWithIndex{N,T}} # First particle of cell 
-  np::Vector{AtomWithIndex{N,T}} # Next particle of cell
+  " One-element vector with the number of particles "
+  nx::Vector{Int}
+  " Abstract vector with the particle coordinates "
+  x::V 
+  " One-element vector to contain the *mutable* number of cells with particles "
+  ncwp::Vector{Int}   
+  " One-element vector to contain the *mutable* number of particles in the computing box "
+  ncp::Vector{Int}
+  " Indices of the unique cells with Particles "
+  cwp::Vector{Cell{N}}
+  " First particle of cell "
+  fp::Vector{AtomWithIndex{N,T}}
+  " Next particle of cell "
+  np::Vector{AtomWithIndex{N,T}}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
@@ -354,11 +359,19 @@ function UpdateCellList!(
   end
 
   #
-  # Not worth paralellizing probably (would need to take care of concurrency)
+  # Add virtual particles to edge cells
   #
   for (ip,particle) in pairs(x)
     p = wrap_to_first(particle,box.unit_cell)
     replicate_particle!(ip,p,box,cl)
+  end
+  #
+  # Add true particles, such that the first particle of each cell is
+  # always a true particle
+  #
+  for (ip,particle) in pairs(x)
+    p = wrap_to_first(particle,box.unit_cell)
+    add_particle_to_celllist!(ip,p,box,cl) 
   end
 
   return cl
@@ -385,12 +398,13 @@ Replicates the particle as many times as necessary to fill the computing box.
 
 """
 function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
-  @unpack r_min, r_max = box
-  for i in r_min[1]:r_max[1]
-    for j in r_min[2]:r_max[2]
+  @unpack ranges = box
+  for i in ranges[1]
+    for j in ranges[2]
+      i == 0 && j == 0 && continue
       x = translation_image(p,box.unit_cell,(i,j))
       if ! out_of_bounding_box(x,box)
-        add_particle_to_celllist!(ip,x,box,cl) 
+        add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
       end
     end
   end 
@@ -407,13 +421,14 @@ Replicates the particle as many times as necessary to fill the computing box.
 
 """
 function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
-  @unpack r_min, r_max = box
-  for i in r_min[1]:r_max[1]
-    for j in r_min[2]:r_max[2]
-      for k in r_min[3]:r_max[3]
+  @unpack ranges = box
+  for i in ranges[1]
+    for j in ranges[2]
+      for k in ranges[3]
+        i == 0 && j == 0 && k == 0 && continue
         x = translation_image(p,box.unit_cell,(i,j,k))
         if ! out_of_bounding_box(x,box)
-          add_particle_to_celllist!(ip,x,box,cl) 
+          add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
         end
       end
     end
@@ -441,7 +456,12 @@ function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{3,T}) whe
     unit_cell,
     cell_vertices
   )
-  return r_min, r_max
+  ranges = SVector{3,UnitRange{Int}}(
+    r_min[1]:r_max[1],
+    r_min[2]:r_max[2],
+    r_min[3]:r_max[3]
+  )
+  return ranges
 end
 
 function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{2,T}) where T
@@ -460,7 +480,11 @@ function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{2,T}) whe
     unit_cell,
     cell_vertices
   )
-  return r_min, r_max
+  ranges = SVector{2,UnitRange{Int}}(
+    r_min[1]:r_max[1],
+    r_min[2]:r_max[2]
+  )
+  return ranges
 end
 
 function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
@@ -483,12 +507,13 @@ end
 Set one index of a cell list
 
 """
-function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl) where {N,T}
+function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool=true) where {N,T}
   @unpack ncwp, ncp, cwp, fp, np = cl
   ncp[1] += 1
   icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
-  if fp[icell].index == 0
+  # Cells starting with real particles are annotated to be run over
+  if real_particle && fp[icell].index == 0
     ncwp[1] += 1
     cwp[ncwp[1]] = Cell{N}(icell,icell_cartesian)
   end
@@ -825,7 +850,7 @@ function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
     pj = cl.np[pj.index]
     j = pj.index
   end
-   
+
   # loop over neighbouring cells
   for neighbouring_cell in neighbour_cells(box.lcell)
     jcell_cartesian = icell_cartesian + neighbouring_cell
