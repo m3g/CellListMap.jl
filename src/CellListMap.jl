@@ -822,52 +822,10 @@ function map_pairwise_serial!(
   show_progress::Bool=false
 ) where {F}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
-  for i in 1:cl.nx[1]
-    xi = wrap_to_first(cl.x[i],box.unit_cell) 
-    icell_cartesian = particle_cell(xi,box)
-    output = inner_loop2!(f,i,xi,icell_cartesian,box,cl,output)
+  for icell in 1:cl.ncwp[1]
+    output = inner_loop!(f,box,icell,cl,output) 
     show_progress && next!(p)
-  end 
-  return output
-end
-
-function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
-  @unpack nc, cutoff_sq = box
-  icell = cell_linear_index(box.nc,icell_cartesian)
-
-  # loop over the same cell icell where xpi is
-  pj = cl.fp[icell]
-  j = pj.index
-  while j > 0
-    j_original = pj.index_original
-    if j_original > i  
-      xpj = pj.coordinates
-      d2 = distance_sq(xpi,xpj)
-      if d2 <= cutoff_sq
-        output = f(xpi,xpj,i,j_original,d2,output)
-      end
-    end
-    pj = cl.np[pj.index]
-    j = pj.index
   end
-
-  # loop over neighbouring cells
-  for neighbouring_cell in neighbour_cells(box.lcell)
-    jcell_cartesian = icell_cartesian + neighbouring_cell
-    jcell = cell_linear_index(box.nc,jcell_cartesian)
-    pj = cl.fp[jcell]
-    j = pj.index
-    while j > 0
-      xpj = pj.coordinates
-      d2 = distance_sq(xpi,xpj)
-      if d2 <= cutoff_sq
-        output = f(xpi,xpj,i,pj.index_original,d2,output)
-      end
-      pj = cl.np[pj.index]
-      j = pj.index
-    end
-  end
-
   return output
 end
 
@@ -895,25 +853,23 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
 end
 
 function inner_loop!(f,box,icell,cl::CellList,output)
-  @unpack sides, cutoff_sq = box
+  @unpack cutoff_sq = box
   cell = cl.cwp[icell]
 
   # loop over list of non-repeated particles of cell ic
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
+  i_orig = pᵢ.index_original
   while i > 0
     xpᵢ = pᵢ.coordinates
     pⱼ = cl.np[pᵢ.index] 
     j = pⱼ.index
+    j_orig = pⱼ.index_original
     while j > 0
-      if cell.inborder
-        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
-      else
-        xpⱼ = pⱼ.coordinates
-      end
+      xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
-        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index
@@ -933,30 +889,23 @@ end
 # loops over the particles of a neighbour cell
 #
 function cell_output!(f,box,cell,cl,output,jc_cartesian)
-  @unpack sides, nc, cutoff_sq = box
-  if cell.inborder
-    jc_cartesian_wrapped = wrap_cell(nc,jc_cartesian)
-  else
-    jc_cartesian_wrapped = jc_cartesian
-  end
-  jc = cell_linear_index(nc,jc_cartesian_wrapped)
+  @unpack nc, cutoff_sq = box
+  jc = cell_linear_index(nc,jc_cartesian)
 
   # loop over list of non-repeated particles of cell ic
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
+  i_orig = pᵢ.index_original
   while i > 0
     xpᵢ = pᵢ.coordinates
     pⱼ = cl.fp[jc]
     j = pⱼ.index
+    j_orig = pⱼ.index_original
     while j > 0
-      if cell.inborder
-        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
-      else
-        xpⱼ = pⱼ.coordinates
-      end
+      xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
-        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index
