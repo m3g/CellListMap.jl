@@ -4,42 +4,82 @@ using StaticArrays, Plots, BenchmarkTools, Revise; using CellListMap
 Random.seed!(321)
 
 # 2D
-box = Box([ 100  90 
-              0 100 ],10);
+box = Box([ 100   0 
+              0 100 ],10)
 p = [ 10*box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
 cl = CellList(p,box)
 x, y = CellListMap.view_celllist_particles(cl);
-scatter(x,y,label=nothing,xlims=(-10,210),ylims=(-10,210),markersize=0.1)
+scatter(x,y,label=nothing,xlims=(-10,210),ylims=(-10,210),markersize=0.1,aspect_ratio=1)
   
-# 3D
-box = Box([ 100   0   0 
-              0 100   0
-              0  90 100],10)
-p = [ 10*box.unit_cell_max .* rand(SVector{3,Float64}) for i in 1:1000 ];
-cl = CellList(p,box)
+# florpi 
+function florpi(;N=100_000,cd=true,parallel=true)
+
+    @inline dot(x::SVector{3,Float64},y::SVector{3,Float64}) = x[1]*y[1] + x[2]*y[2] + x[3]*y[3]
+    
+    function compute_pairwise_mean_cell_lists!(x,y,i,j,d2,hist,velocities,rbins,sides)
+      d = x - y
+      r = sqrt(d2)
+      ibin = searchsortedfirst(rbins, r) - 1
+      hist[1][ibin] += 1
+      hist[2][ibin] += dot(velocities[i]-velocities[j],d)/r
+      return hist
+    end
+  
+    function reduce_hist(hist,hist_threaded)
+      hist = hist_threaded[1]
+      for i in 2:Threads.nthreads()
+        hist[1] .+= hist_threaded[i][1]
+        hist[2] .+= hist_threaded[i][2]
+      end
+      return hist
+    end
+  
+    n_halos = N
+  
+    if cd
+      density = 10^5/250^3  # density of the original problem
+      boxsize = (n_halos / density)^(1/3)
+    else
+      boxsize = 250.
+    end
+    
+    Random.seed!(321)
+    Lbox = [boxsize,boxsize,boxsize]
+    positions = boxsize .* rand(Float64, 3, n_halos)
+    velocities = rand(Float64, 3, n_halos)
+    rbins = [0.,2.,4.,6.,8.,10.]
+    r_max = maximum(rbins)
+  
+    n = size(positions)[2]
+    positions = reshape(reinterpret(SVector{3,Float64},positions),n)
+    velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
+  
+    box = Box(Lbox, r_max)
+    cl = CellList(positions,box)
+    hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
+  
+    # Needs this to stabilize the type of velocities and hist, probably
+    function barrier(f,velocities,rbins,Lbox,hist,positions,box,cl,reduce_hist,parallel)
+      hist = CellListMap.map_pairwise_serial!(
+        (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(
+           x,y,i,j,d2,hist,velocities,rbins,Lbox
+        ),
+        hist, box, cl,
+      )
+      return hist
+    end
+  
+    hist = barrier(compute_pairwise_mean_cell_lists!,
+      velocities,rbins,Lbox,hist,positions,box,cl,reduce_hist,parallel)
+  
+    n_pairs = hist[1]
+    mean_v_r = hist[2]
+    mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0]./n_pairs[n_pairs .> 0]
+    return mean_v_r
+  
+  end
+
 x, y, z = CellListMap.view_celllist_particles(cl);
-scatter(x,y,z,label=nothing,xlims=(-10,210),ylims=(-10,210),markersize=1.0)
 
-# Number of particles, sides and cutoff
-sides = [250,250,250]
-cutoff = 10.
-box = Box(sides,cutoff)
-
-# Particle positions
-N = 2000
-x = [ box.unit_cell_max .* rand(SVector{3,Float64}) for i in 1:N ]
-# Add some pathological coordinates
-x[1] = @SVector([-sides[1], -sides[2], -sides[3]/2])
-x[10] = @SVector([sides[1], sides[2], 3*sides[3]])
-x[100] = @SVector([sides[1]/2, -sides[2]/2, 2*sides[3]])
-
-# Initialize auxiliary linked lists
-cl = CellList(x,box)
-
-# Function to be evalulated for each pair: sum of displacements on x
-f(x,y,avg_dx) = avg_dx + abs(x[1] - y[1])
-
-naive = abs(CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
-CellListMap.map_pairwise_serial!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl)
-
-@test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+scatter(x,y,label=nothing,xlims=(-10,210),ylims=(-10,210),markersize=0.1,aspect_ratio=1)
+  

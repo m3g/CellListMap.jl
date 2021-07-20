@@ -78,7 +78,7 @@ function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
   unit_cell = SMatrix{N,N,T}(unit_cell) 
   nc = SVector{N,Int}(
     ceil.(Int,max.(1,(unit_cell_max .+ 2*cutoff)/(cutoff/lcell)))
-  ) .+ 1
+  ) 
   return Box{N,T}(
     unit_cell,
     unit_cell_max,
@@ -149,9 +149,10 @@ data, but is probably worth the effort.
 """
 struct AtomWithIndex{N,T}
   index::Int
+  index_original::Int
   coordinates::SVector{N,T}
 end
-AtomWithIndex{N,T}() where {N,T} = AtomWithIndex{N,T}(0,zero(SVector{N,T})) 
+AtomWithIndex{N,T}() where {N,T} = AtomWithIndex{N,T}(0,0,zero(SVector{N,T})) 
 
 """
 
@@ -188,7 +189,7 @@ function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
   println("  $(cl.ncwp[1]) cells with particles.")
   println("  $(cl.ncp[1]) particles in computing box, including images.")
-  print("  $(length(cl.np)/cl.ncwp[1]) particles per computing cell.")
+  print("  $(cl.ncp[1]/cl.ncwp[1]) particles per computing cell.")
 end
 
 # Structure that will cointain the cell lists of two independent sets of
@@ -350,8 +351,9 @@ function UpdateCellList!(
   #
   # Not worth paralellizing probably (would need to take care of concurrency)
   #
-  for particle in x
-    add_images_to_celllist!(particle,box,cl)
+  for (ip,particle) in pairs(x)
+    p = wrap_to_first(particle,box.unit_cell)
+    replicate_particle!(ip,p,box,cl)
   end
 
   return cl
@@ -371,13 +373,13 @@ out_of_bounding_box(p::AtomWithIndex,box::Box{N,T}) where {N,T} =
 """
 
 ```
-replicate_particle!(p::T,box,cl) where {T <: SVector{2,S} where S}
+replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
 ```
 
 Replicates the particle as many times as necessary to fill the computing box.
 
 """
-function replicate_particle!(p::T,box,cl) where {T <: SVector{2,S} where S}
+function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
   c = box.cutoff
   um = box.unit_cell_max
   cell_extremes = SVector{4,T}( 
@@ -398,7 +400,7 @@ function replicate_particle!(p::T,box,cl) where {T <: SVector{2,S} where S}
     for j in r_min[2]:r_max[2]
       x = translation_image(p,box.unit_cell,(i,j))
       if ! out_of_bounding_box(x,box)
-        add_particle_to_celllist!(x,box,cl) 
+        add_particle_to_celllist!(ip,x,box,cl) 
       end
     end
   end 
@@ -408,13 +410,13 @@ end
 """
 
 ```
-replicate_particle!(p::T,box,cl) where {T <: SVector{3,S} where S}
+replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
 ```
 
 Replicates the particle as many times as necessary to fill the computing box.
 
 """
-function replicate_particle!(p::T,box,cl) where {T <: SVector{3,S} where S}
+function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
   c = box.cutoff
   um = box.unit_cell_max
   cell_extremes = SVector{8,T}( 
@@ -440,18 +442,11 @@ function replicate_particle!(p::T,box,cl) where {T <: SVector{3,S} where S}
       for k in r_min[3]:r_max[3]
         x = translation_image(p,box.unit_cell,(i,j,k))
         if ! out_of_bounding_box(x,box)
-          add_particle_to_celllist!(x,box,cl) 
+          add_particle_to_celllist!(ip,x,box,cl) 
         end
       end
     end
   end 
-  return nothing
-end
-
-function add_images_to_celllist!(particle,box::Box{N,T},cl) where {N,T}
-  # Wrap to first image with positive coordinates
-  p = wrap_to_first(particle,box.unit_cell)
-  replicate_particle!(p,box,cl)
   return nothing
 end
 
@@ -460,11 +455,10 @@ end
 Set one index of a cell list
 
 """
-function add_particle_to_celllist!(particle::SVector{N,T},box,cl) where {N,T}
+function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl) where {N,T}
   @unpack ncwp, ncp, cwp, fp, np = cl
   ncp[1] += 1
-  p = AtomWithIndex(cl.ncp[1],particle)
-  icell_cartesian = particle_cell(p.coordinates,box)
+  icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   if fp[icell].index == 0
     ncwp[1] += 1
@@ -478,7 +472,7 @@ function add_particle_to_celllist!(particle::SVector{N,T},box,cl) where {N,T}
     end
   end
   np[ncp[1]] = fp[icell]
-  fp[icell] = p
+  fp[icell] = AtomWithIndex(ncp[1],ip,x) 
   return nothing
 end
 
@@ -522,7 +516,15 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 function wrap_relative_to(x::T, xref, cell) where T<:AbstractVector
-  return T(cell*rem.(cell\(x-xref),1))
+  p = MVector{length(x),eltype(x)}(rem.(cell\(x-xref),1))
+  for i in eachindex(p)
+    if p[i] > 0.5 
+      p[i] -= 1
+    elseif p[i] < -0.5
+      p[i] += 1
+    end
+  end
+  return cell*p
 end
 
 """
@@ -779,12 +781,17 @@ function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
   # loop over the same cell icell where xpi is
   pj = cl.fp[icell]
   j = pj.index
+  j_original = pj.index_original
   while j > 0
-    if j > i  
+    if j_original > i  
       xpj = pj.coordinates
       d2 = distance_sq(xpi,xpj)
+      if i == j
+        @show i, j, j_original
+        @show xpi, xpj
+      end
       if d2 <= cutoff_sq
-        output = f(xpi,xpj,i,j,d2,output)
+        output = f(xpi,xpj,i,j_original,d2,output)
       end
     end
     pj = cl.np[pj.index]
@@ -801,7 +808,7 @@ function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
       xpj = pj.coordinates
       d2 = distance_sq(xpi,xpj)
       if d2 <= cutoff_sq
-        output = f(xpi,xpj,i,j,d2,output)
+        output = f(xpi,xpj,i,pj.index_original,d2,output)
       end
       pj = cl.np[pj.index]
       j = pj.index
