@@ -2,11 +2,11 @@
 # Function that uses the naive algorithm, for testing
 #
 function map_naive!(f,output,x,box)
-  @unpack sides, cutoff_sq = box
+  @unpack unit_cell, cutoff_sq = box
   for i in 1:length(x)-1
     xᵢ = x[i]
     for j in i+1:length(x)
-      xⱼ = wrapone(x[j],sides,xᵢ)
+      xⱼ = wrap_relative_to(x[j],xᵢ,unit_cell)
       d2 = distance_sq(xᵢ,xⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,xⱼ,i,j,d2,output)
@@ -20,11 +20,11 @@ end
 # Function that uses the naive algorithm, for testing
 #
 function map_naive_two!(f,output,x,y,box)
-  @unpack sides, cutoff_sq = box
+  @unpack unit_cell, cutoff_sq = box
   for i in 1:length(x)
     xᵢ = x[i]
     for j in 1:length(y)
-      yⱼ = wrapone(y[j],sides,xᵢ)
+      yⱼ = wrap_relative_to(y[j],xᵢ,unit_cell)
       d2 = distance_sq(xᵢ,yⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,yⱼ,i,j,d2,output)
@@ -94,7 +94,7 @@ julia> scatter(x,y,label=nothing,xlims=(-10,180),ylims=(-10,180))
 ```
 
 """
-function view_celllist_particles(cl::CellList{N,T}) where {N,T}
+function view_celllist_particles(cl::CellList{V,N,T}) where {V,N,T}
   @unpack ncwp, cwp, ncp, fp, np = cl
   x = Vector{SVector{N,T}}(undef,ncp[1])
   ip = 0

@@ -39,7 +39,6 @@ Box{3, Float64}
 """
 Base.@kwdef struct Box{N,T}
   unit_cell::SMatrix{N,N,T}
-  unit_cell_center::SVector{N,T}
   unit_cell_max::SVector{N,T}
   lcell::Int
   nc::SVector{N,Int}
@@ -76,14 +75,14 @@ function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
   @assert N == size(unit_cell)[2] "Unit cell matrix must be square."
   @assert count(unit_cell .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
   unit_cell_max = SVector{N,T}(sum(@view(unit_cell[:,i]) for i in 1:N))
-  unit_cell_center = unit_cell_max / 2 
   unit_cell = SMatrix{N,N,T}(unit_cell) 
-  nc = SVector{N,Int}(ceil.(Int,max.(1,unit_cell_max/(cutoff/lcell)))) .+ 1
+  nc = SVector{N,Int}(
+    ceil.(Int,max.(1,(unit_cell_max .+ 2*cutoff)/(cutoff/lcell)))
+  ) .+ 1
   return Box{N,T}(
     unit_cell,
-    unit_cell_center,
     unit_cell_max,
-    lcell,nc,
+    lcell, nc,
     cutoff,
     cutoff^2
   )
@@ -94,7 +93,6 @@ Box(unit_cell::AbstractMatrix,cutoff;T::DataType=Float64,lcell::Int=1) =
 function Base.show(io::IO,::MIME"text/plain",box::Box)
   println(typeof(box))
   println("  unit cell: ", box.unit_cell) 
-  println("  unit cell center: ", box.unit_cell_center) 
   println("  unit cell maximum: ", box.unit_cell_max) 
   println("  cutoff: ", box.cutoff)
   println("  number of cells on each dimension: ",box.nc, " (lcell: ",box.lcell,")")
@@ -239,7 +237,7 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
-  cl = CellList{typeof(x),N,T}(length(x),x,ncwp,ncp,cwp,fp,np)
+  cl = CellList{typeof(x),N,T}([length(x)],x,ncwp,ncp,cwp,fp,np)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -362,8 +360,8 @@ end
 # Function that checks if the particule is outside the computation bounding box
 function out_of_bounding_box(x::SVector{N,T},box::Box{N,T}) where {N,T}
   for i in 1:N
-    (x[i] >= box.nc[i]*box.cutoff) && return true
-    (x[i] < zero(T)) && return true
+    (x[i] >= box.unit_cell_max[i] + box.cutoff) && return true
+    (x[i] < -box.cutoff) && return true
   end
   return false
 end
@@ -382,9 +380,10 @@ Replicates the particle as many times as necessary to fill the computing box.
 function replicate_particle!(p::T,box,cl) where {T <: SVector{2,S} where S}
   c = box.cutoff
   um = box.unit_cell_max
-  cell_extremes = SVector{3,T}( 
-    T( um[1] + c,         0 ), 
-    T(         0, um[2] + c ),
+  cell_extremes = SVector{4,T}( 
+    T(        -c,        -c ), 
+    T( um[1] + c,        -c ), 
+    T(        -c, um[2] + c ),
     T( um[1] + c, um[2] + c ) 
   )
   r_min = zero(T)
@@ -418,22 +417,23 @@ Replicates the particle as many times as necessary to fill the computing box.
 function replicate_particle!(p::T,box,cl) where {T <: SVector{3,S} where S}
   c = box.cutoff
   um = box.unit_cell_max
-  cell_extremes = SVector{7,T}( 
-    T( um[1] + c,         0,         0 ), 
-    T( um[1] + c, um[2] + c,         0 ), 
-    T( um[1] + c,         0, um[3] + c ), 
+  cell_extremes = SVector{8,T}( 
+    T(        -c,        -c,        -c ), 
+    T( um[1] + c,        -c,        -c ), 
+    T( um[1] + c, um[2] + c,        -c ), 
+    T( um[1] + c,        -c, um[3] + c ), 
     T( um[1] + c, um[2] + c, um[3] + c ), 
-    T(         0, um[2] + c,         0 ),
-    T(         0, um[2] + c, um[3] + c ),
-    T(         0,         0, um[3] + c )
+    T(        -c, um[2] + c,        -c ),
+    T(        -c, um[2] + c, um[3] + c ),
+    T(        -c,        -c, um[3] + c )
   )
-  r_min = zero(T)
-  r_max = zero(T) 
+  r_min = box.nc 
+  r_max = SVector{3,Int}(-1,-1,-1)
   for ex in cell_extremes
     r = box.unit_cell \ ex
-    r = ceil.(Int,abs.(r)) .* sign.(r)
-    r_min = min.(r,r_min)
-    r_max = max.(r,r_max)
+    ri = @. ceil(Int,abs(r)) * Int(sign(r))
+    r_min = min.(ri,r_min)
+    r_max = max.(ri,r_max)
   end
   for i in r_min[1]:r_max[1]
     for j in r_min[2]:r_max[2]
@@ -522,7 +522,7 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 function wrap_relative_to(x::T, xref, cell) where T<:AbstractVector
-  return T(rem.(cell\(x-xref),1))
+  return T(cell*rem.(cell\(x-xref),1))
 end
 
 """
@@ -597,7 +597,6 @@ function neighbour_cells(lcell)
   ))
   return nb
 end
-
 neighbour_cells_all(lcell) = 
   CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
 
@@ -643,7 +642,7 @@ and the cutoff/cell.
 
 """
 @inline particle_cell(x::SVector{N,T}, box::Box) where {N,T} =
-  CartesianIndex(ntuple(i -> floor(Int,x[i]/(box.cutoff/box.lcell) + 1), N))
+  CartesianIndex(ntuple(i -> floor(Int,(x[i] .+ box.cutoff)/(box.cutoff/box.lcell) + 1), N))
 
 """
 
@@ -765,18 +764,17 @@ function map_pairwise_serial!(
 ) where {F}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for i in 1:cl.nx[1]
-    icell_cartesian = particle_cell(cl.x[i],box)
-    icell = cell_linear_index(box.nc,icell_cartesian)
-    for jcell_cartesian in neighbour_cells(box.lcell)    
-      output = inner_loop2!(f,i,cl.x[i],icell,box,cl,output)
-    end
+    xi = wrap_to_first(cl.x[i],box.unit_cell) 
+    icell_cartesian = particle_cell(xi,box)
+    output = inner_loop2!(f,i,xi,icell_cartesian,box,cl,output)
     show_progress && next!(p)
   end 
   return output
 end
 
-function inner_loop2!(f,i,xpi,icell,box,cl::CellList,output)
-  @unpack sides, cutoff_sq = box
+function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
+  @unpack nc, cutoff_sq = box
+  icell = cell_linear_index(box.nc,icell_cartesian)
 
   # loop over the same cell icell where xpi is
   pj = cl.fp[icell]
@@ -794,15 +792,16 @@ function inner_loop2!(f,i,xpi,icell,box,cl::CellList,output)
   end
    
   # loop over neighbouring cells
-  for jcell_cartesian in neighbour_cells(box.lcell)
-    jc = cell_linear_index(nc,jcell_cartesian)
+  for neighbouring_cell in neighbour_cells(box.lcell)
+    jcell_cartesian = icell_cartesian + neighbouring_cell
+    jcell = cell_linear_index(box.nc,jcell_cartesian)
     pj = cl.fp[jcell]
     j = pj.index
     while j > 0
       xpj = pj.coordinates
       d2 = distance_sq(xpi,xpj)
       if d2 <= cutoff_sq
-        output = f(xpᵢ,xpⱼ,i,j,d2,output)
+        output = f(xpi,xpj,i,j,d2,output)
       end
       pj = cl.np[pj.index]
       j = pj.index
