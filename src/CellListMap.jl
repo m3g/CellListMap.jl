@@ -37,8 +37,8 @@ Box{3, Float64}
 ```
 
 """
-Base.@kwdef struct Box{N,T}
-  unit_cell::SMatrix{N,N,T}
+Base.@kwdef struct Box{N,T,M}
+  unit_cell::SMatrix{N,N,T,M}
   unit_cell_max::SVector{N,T}
   lcell::Int
   nc::SVector{N,Int}
@@ -79,7 +79,7 @@ function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
   nc = SVector{N,Int}(
     ceil.(Int,max.(1,(unit_cell_max .+ 2*cutoff)/(cutoff/lcell)))
   ) 
-  return Box{N,T}(
+  return Box{N,T,N*N}(
     unit_cell,
     unit_cell_max,
     lcell, nc,
@@ -360,14 +360,14 @@ function UpdateCellList!(
 end
 
 # Function that checks if the particule is outside the computation bounding box
-function out_of_bounding_box(x::SVector{N,T},box::Box{N,T}) where {N,T}
+function out_of_bounding_box(x::SVector{N,T},box::Box{N,T,M}) where {N,T,M}
   for i in 1:N
     (x[i] >= box.unit_cell_max[i] + box.cutoff) && return true
     (x[i] < -box.cutoff) && return true
   end
   return false
 end
-out_of_bounding_box(p::AtomWithIndex,box::Box{N,T}) where {N,T} =
+out_of_bounding_box(p::AtomWithIndex,box::Box{N,T,M}) where {N,T,M} =
   out_of_bounding_box(p.coordinates,box)
 
 """
@@ -392,7 +392,12 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
   r_max = zero(T) 
   for ex in cell_extremes
     r = box.unit_cell \ ex
-    r = ceil.(Int,abs.(r)) .* sign.(r)
+    ri = @. ceil(Int,abs(r))
+    for (i,el) in pairs(r)
+      if el < 0
+        @set! ri[i] = -ri[i]
+      end
+    end
     r_min = min.(r,r_min)
     r_max = max.(r,r_max)
   end
@@ -433,7 +438,12 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
   r_max = SVector{3,Int}(-1,-1,-1)
   for ex in cell_extremes
     r = box.unit_cell \ ex
-    ri = @. ceil(Int,abs(r)) * Int(sign(r))
+    ri = @. ceil(Int,abs(r))
+    for (i,el) in pairs(r)
+      if el < 0
+        @set! ri[i] = -ri[i]
+      end
+    end
     r_min = min.(ri,r_min)
     r_max = max.(ri,r_max)
   end
@@ -478,14 +488,18 @@ end
 
 """
 
-wrap_cell_fraction(x::SVector{N,T}, cell)
+```
+wrap_cell_fraction(x,cell)
+```
+
+`x` is a vector of dimension `N` and `cell` a matrix of dimension `NxN`
 
 """
-function wrap_cell_fraction(x::T, cell) where T
-  p = MVector{length(x),eltype(x)}(rem.(cell\x,1))
+@inline function wrap_cell_fraction(x,cell)
+  p = rem.(cell\x,1)
   for i in eachindex(p)
     if p[i] < 0
-      p[i] += 1
+      @set! p[i] += 1
     end
   end
   return p
@@ -501,9 +515,9 @@ Wraps the coordinates of point `x` such that the returning coordinates are in th
 first unit cell with all-positive coordinates. 
 
 """
-function wrap_to_first(x::T,cell) where T<:AbstractVector
+@inline function wrap_to_first(x,cell)
   p = wrap_cell_fraction(x,cell)
-  return T(cell*p)
+  return cell*p
 end
 
 """
@@ -516,12 +530,12 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 function wrap_relative_to(x::T, xref, cell) where T<:AbstractVector
-  p = MVector{length(x),eltype(x)}(rem.(cell\(x-xref),1))
+  p = SVector{length(x),eltype(x)}(rem.(cell\(x-xref),1))
   for i in eachindex(p)
     if p[i] > 0.5 
-      p[i] -= 1
+      @set! p[i] -= 1
     elseif p[i] < -0.5
-      p[i] += 1
+      @set! p[i] += 1
     end
   end
   return cell*p
@@ -781,12 +795,13 @@ function inner_loop2!(f,i,xpi,icell_cartesian,box,cl::CellList,output)
   # loop over the same cell icell where xpi is
   pj = cl.fp[icell]
   j = pj.index
-  j_original = pj.index_original
   while j > 0
+    j_original = pj.index_original
     if j_original > i  
       xpj = pj.coordinates
       d2 = distance_sq(xpi,xpj)
       if i == j
+        @show icell
         @show i, j, j_original
         @show xpi, xpj
       end

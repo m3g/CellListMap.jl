@@ -80,6 +80,5 @@ function florpi(;N=100_000,cd=true,parallel=true)
   end
 
 x, y, z = CellListMap.view_celllist_particles(cl);
-
-scatter(x,y,label=nothing,xlims=(-10,210),ylims=(-10,210),markersize=0.1,aspect_ratio=1)
+scatter(x,y,z,label=nothing,lims=(-20,270),markersize=0.1,aspect_ratio=1)
   

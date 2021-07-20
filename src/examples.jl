@@ -13,7 +13,7 @@ function test1(;N=100_000,parallel=true,x=nothing)
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+    x = [ SVector{3,Float64}(sides...) .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
   # Initialize auxiliary linked lists
