@@ -6,21 +6,21 @@ import Random
 function test1(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = @SVector [250,250,250]
   cutoff = 10
   box = Box(sides,cutoff)
 
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ SVector{3,Float64}(sides...) .* rand(SVector{3,Float64}) for i in 1:N ]
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box,parallel=parallel)
 
   # Function to be evalulated for each pair: sum of displacements on x
-  f(x,y,avg_dx) = avg_dx + x[1] - y[1]
+  f(x,y,avg_dx) = avg_dx + abs(x[1] - y[1])
 
   avg_dx = (N/(N*(N-1)/2)) * map_pairwise!(
     (x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),
@@ -45,7 +45,7 @@ function test2(;N=100_000,parallel=true,x=nothing)
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
   # Initialize auxiliary linked lists
@@ -80,14 +80,14 @@ end
 function test3(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = @SVector [250,250,250]
   cutoff = 10.
   box = Box(sides,cutoff)
 
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
   # Initialize auxiliary linked lists
@@ -121,14 +121,14 @@ end
 function test4(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = @SVector [250,250,250]
   cutoff = 10.
   box = Box(sides,cutoff)
 
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
   # masses
@@ -166,17 +166,17 @@ end
 function test5(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = @SVector [250,250,250]
   cutoff = 10.
   box = Box(sides,cutoff)
 
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
   end
   if y === nothing 
-    y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
+    y = [ sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
   end
 
   # Initialize auxiliary linked lists (largest set!)
@@ -287,14 +287,14 @@ end
 function test7(;N=100_000,parallel=true,x=nothing)
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = @SVector [250,250,250]
   cutoff = 10.
   box = Box(sides,cutoff)
 
   # Particle positions
   Random.seed!(321)
   if x === nothing 
-    x = [ SVector{3,Float64}(sides...) .* rand(SVector{3,Float64}) for i in 1:N ]
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   end
 
   # Initialize auxiliary linked lists

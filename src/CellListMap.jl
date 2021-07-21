@@ -859,15 +859,15 @@ function inner_loop!(f,box,icell,cl::CellList,output)
   # loop over list of non-repeated particles of cell ic
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
-  i_orig = pᵢ.index_original
   while i > 0
     xpᵢ = pᵢ.coordinates
-    pⱼ = cl.np[pᵢ.index] 
+    pⱼ = cl.np[i] 
     j = pⱼ.index
-    j_orig = pⱼ.index_original
+    i_orig = pᵢ.index_original
     while j > 0
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
+      j_orig = pⱼ.index_original
       if d2 <= cutoff_sq
         output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
@@ -877,7 +877,7 @@ function inner_loop!(f,box,icell,cl::CellList,output)
     pᵢ = cl.np[pᵢ.index]
     i = pᵢ.index
   end
-   
+
   for jcell in neighbour_cells(box.lcell)
     output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
   end
@@ -895,15 +895,15 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
   # loop over list of non-repeated particles of cell ic
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
-  i_orig = pᵢ.index_original
   while i > 0
     xpᵢ = pᵢ.coordinates
     pⱼ = cl.fp[jc]
     j = pⱼ.index
-    j_orig = pⱼ.index_original
+    i_orig = pᵢ.index_original
     while j > 0
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
+      j_orig = pⱼ.index_original
       if d2 <= cutoff_sq
         output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
