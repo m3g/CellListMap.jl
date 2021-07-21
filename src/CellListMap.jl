@@ -988,7 +988,7 @@ end
 #
 # Test and example functions
 #
-include("./naive.jl")
+include("./testing.jl")
 include("./examples.jl")
 include("./halotools.jl")
 
