@@ -60,13 +60,14 @@ julia> scatter(x,y,label=nothing,xlims=(-10,180),ylims=(-10,180))
 ```
 
 """
-function view_celllist_particles(cl::CellList{N,T}) where {N,T}
-  @unpack ncwp, cwp, ncp, fp, np = cl
-  x = Vector{SVector{N,T}}(undef,ncp[1])
+function view_celllist_particles(cl::CellList{N,T},box::Box) where {N,T}
+  @unpack nc = box
+  @unpack cwp, ncp, fp, np = cl
+  x = Vector{SVector{N,T}}(undef,ncp)
   ip = 0
-  for i in 1:ncwp[1]
+  for p in cl.fp
+    p.index == 0 && continue
     ip += 1
-    p = fp[cwp[i].icell]
     x[ip] = p.coordinates
     while np[p.index].index > 0
       ip += 1
@@ -74,6 +75,6 @@ function view_celllist_particles(cl::CellList{N,T}) where {N,T}
       p = np[p.index]
     end
   end
-  return ([x[i][j] for i in 1:ncp[1]] for j in 1:N)
+  return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp]
 end
 

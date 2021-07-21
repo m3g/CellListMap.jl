@@ -1,6 +1,6 @@
 # CellListMap.jl
 
-This package is for computing short-ranged particle interactions or any other property that is dependent on the distances between pairs of three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists using, for the moment, orthorhombic periodic boundary conditions. Parallel and serial implementations can be used. 
+This package is for computing short-ranged particle interactions or any other property that is dependent on the distances between pairs of three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
 
 It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
@@ -14,7 +14,8 @@ It allows the fast computation of any quantity from the pairs that are within th
       3. [Gravitational potential](#gravitational-potential) 
       4. [Gravitational force](#gravitational-force) 
       5. [Nearest neighbor](#nearest-neighbor) 
-      6. [Neighbor list](#neighbor-list) 
+      6. [Neighbour list](#neighbor-list) 
+      7. [Periodic boundary conditions](#periodic-boundary-conditions)
 4. [Parallelization splitting and reduction](#parallelization-splitting-and-reduction)
       1. [Custom reduction functions](#custom-reduction-functions) 
 5. [Preallocating auxiliary arrays: threaded output and cell lists](#preallocating-auxiliary-arrays-threaded-output-and-cell-lists)
@@ -226,7 +227,7 @@ mind = map_pairwise!(
 
 The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points it is a faster method than usual ball-tree methods. 
 
-### Neighbor list
+### Neighbour list
 
 In this example we compute the complete neighbor list, of all pairs of atoms which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the atoms and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
 
@@ -262,6 +263,67 @@ pairs = map_pairwise!(
 ```
 
 The full example can be run with `CellListMap.test7()`. 
+
+## Periodic boundary conditions
+
+Periodic boundary conditions of any kind can be used. Let us illustrate its use with a two-dimensional case, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. 
+
+Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cutoff=0.1`): 
+
+```julia
+julia> box = Box([ 1.0  0.5
+                     0  1.0 ], 0.1);
+
+julia> x = 10*rand(SVector{2,Float64},1000);
+```
+We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:
+```julia
+julia> p = [ CellListMap.wrap_to_first(x,box) for x in x ];
+
+julia> using Plots
+
+julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
+```
+
+<img src=./src/assets/lattice.png>
+
+The construction of the cell list is, as always, done with:
+
+```julia
+julia> cl = CellList(x,box)
+CellList{2, Float64}
+  90 cells with real particles.
+  2065 particles in computing box, including images.
+
+```
+
+Upon construction of the cell lists, the particles are replicated to fill a square box (or cubic box, in three-dimenions). This improves the performance of the pairwise computations by avoding the necessity of wrapping coordinates on the main loop. The resulting box can be visualized with:
+
+```julia
+julia> p = CellListMap.view_celllist_particles(cl,box);
+
+julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
+```
+<img src=./src/assets/replicated.png>
+
+These are the particles that will be considered for the calculations. 
+
+In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:
+
+```julia
+julia> box = Box([ 50.  0. 20. 
+                    0.  0. 30.          
+                    0. 30. 50. ], 10.)
+
+julia> x = 100*rand(SVector{3,Float64},10000);
+
+julia> p = [ CellListMap.wrap_to_first(x,box) for x in x ];
+
+julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
+```
+to work with an arbitrary 3D lattice, Which in this case looks like:
+
+<img src=./src/assets/3Dlattice.png>
 
 ## Parallelization splitting and reduction
 
