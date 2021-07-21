@@ -468,7 +468,7 @@ function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{2,T}) whe
   )
   r_min, r_max = _ranges_of_replicas(
     nc,
-    SVector{3,Int}(-1,-1),
+    SVector{2,Int}(-1,-1),
     unit_cell,
     cell_vertices
   )
@@ -554,6 +554,17 @@ first unit cell with all-positive coordinates.
   p = wrap_cell_fraction(x,cell)
   return cell*p
 end
+"""
+
+```
+wrap_to_first(x::SVector{N,T},box::Box)
+```
+
+Wraps the coordinates of point `x` such that the returning coordinates are in the
+first unit cell with all-positive coordinates, given the `Box` structure.
+
+"""
+@inline wrap_to_first(x,box::Box) = wrap_to_first(x,box.unit_cell)
 
 """
 
@@ -633,14 +644,17 @@ end
 """
 
 ```
-neighbour_cells(lcell::Int)
+neighbour_cells(box::Box{N,T,M}) where {N,M}
 ```
 
-Function that returns the iterator of the cartesian indices of the cell that must be 
-evaluated if the cells have sides of length `cutoff/lcell`. 
+Function that returns the iterator of the cartesian indices of the cells that must be 
+evaluated (forward, i. e. to avoid repeated interactions) 
+if the cells have sides of length `box.cutoff/box.lcell`. `N` can be
+`2` or `3`, for two- or three-dimensional systems.
 
 """
-function neighbour_cells(lcell)
+function neighbour_cells(box::Box{3,T,9}) where T
+  @unpack lcell = box
   nb = Iterators.flatten((
     CartesianIndices((1:lcell,-lcell:lcell,-lcell:lcell)),
     CartesianIndices((0:0,1:lcell,-lcell:lcell)),
@@ -648,8 +662,34 @@ function neighbour_cells(lcell)
   ))
   return nb
 end
-neighbour_cells_all(lcell) = 
-  CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
+function neighbour_cells(box::Box{2,T,4}) where T
+  @unpack lcell = box
+  nb = Iterators.flatten((
+    CartesianIndices((1:lcell,-lcell:lcell)),
+    CartesianIndices((0:0,1:lcell))
+  ))
+  return nb
+end
+
+"""
+
+```
+neighbour_cells_all(box::Box{N,T,M}) where {N,M}
+```
+
+Function that returns the iterator of the cartesian indices of all neighbouring
+cells of a cell if the cells have sides of `box.cutoff/box.lcell`. `N` can be
+`2` or `3`, for two- or three-dimensional systems.
+
+"""
+function neighbour_cells_all(box::Box{3,T,9}) where T  
+  @unpack lcell = box
+  return CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
+end
+function neighbour_cells_all(box::Box{2,T,4}) where T  
+  @unpack lcell = box
+  return CartesianIndices((-lcell:lcell,-lcell:lcell))
+end
 
 """
 
@@ -869,7 +909,7 @@ function inner_loop!(f,box,icell,cl::CellList,output)
     i = pᵢ.index
   end
 
-  for jcell in neighbour_cells(box.lcell)
+  for jcell in neighbour_cells(box)
     output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
   end
 
@@ -912,7 +952,6 @@ end
 # Serial version for cross-interaction computations
 #
 function map_pairwise_serial!(f::F, output, box::Box, cl::CellListPair; 
-  parallel::Bool=false,
   show_progress=show_progress
 ) where {F}
   show_progress && (p = Progress(length(cl.small),dt=1))
@@ -929,7 +968,6 @@ end
 function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellListPair;
   output_threaded=output_threaded,
   reduce::F2=reduce,
-  parallel::Bool=false,
   show_progress=show_progress
 ) where {F1,F2}
   show_progress && (p = Progress(length(cl.small),dt=1))
@@ -947,10 +985,10 @@ end
 # Inner loop of cross-interaction computations
 #
 function inner_loop!(f,output,i,box,cl::CellListPair)
-  @unpack unit_cell, nc, lcell, cutoff_sq = box
+  @unpack unit_cell, nc, cutoff_sq = box
   xpᵢ = wrap_to_first(cl.small[i],unit_cell)
   ic = particle_cell(xpᵢ,box)
-  for neighbour_cell in neighbour_cells_all(lcell)
+  for neighbour_cell in neighbour_cells_all(box)
     jc = cell_linear_index(nc,neighbour_cell+ic)
     pⱼ = cl.large.fp[jc]
     j = pⱼ.index
