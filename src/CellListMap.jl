@@ -180,10 +180,10 @@ Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{N,T}
-  " One-element vector to contain the *mutable* number of cells with particles "
-  ncwp::Vector{Int}   
-  " One-element vector to contain the *mutable* number of particles in the computing box "
-  ncp::Vector{Int}
+  " *mutable* number of cells with particles "
+  ncwp::Int
+  " *mutable* number of particles in the computing box "
+  ncp::Int
   " Indices of the unique cells with Particles "
   cwp::Vector{Cell{N}}
   " First particle of cell "
@@ -193,8 +193,8 @@ Base.@kwdef struct CellList{N,T}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
-  println("  $(cl.ncwp[1]) cells with real particles.")
-  print("  $(cl.ncp[1]) particles in computing box, including images.")
+  println("  $(cl.ncwp) cells with real particles.")
+  print("  $(cl.ncp) particles in computing box, including images.")
 end
 
 # Structure that will cointain the cell lists of two independent sets of
@@ -207,7 +207,7 @@ end
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
   print(typeof(cl),"\n")
   print("   $(length(cl.small)) particles in the smallest vector.\n")
-  print("   $(cl.large.ncwp[1]) cells with particles.")
+  print("   $(cl.large.ncwp) cells with particles.")
 end
   
 """
@@ -238,8 +238,8 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   number_of_cells = ceil(Int,prod(box.nc))
   # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = length(x)
-  ncwp = zeros(Int,1)
-  ncp = zeros(Int,1)
+  ncwp = 0
+  ncp = 0
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
@@ -321,7 +321,7 @@ function UpdateCellList!(
   cl::CellList{N,T};
   parallel::Bool=true
 ) where {N,T}
-  @unpack ncwp, cwp, fp, np = cl
+  @unpack cwp, fp, np = cl
 
   number_of_cells = prod(box.nc)
   if number_of_cells > length(cwp) 
@@ -330,7 +330,7 @@ function UpdateCellList!(
     resize!(fp,number_of_cells)
   end
 
-  ncwp[1] = 0
+  @set! cl.ncwp = 0
   if parallel
     @threads for i in eachindex(cwp)
       cwp[i] = Cell{N}(0,zero(CartesianIndex{N}))
@@ -355,7 +355,7 @@ function UpdateCellList!(
   #
   for (ip,particle) in pairs(x)
     p = wrap_to_first(particle,box.unit_cell)
-    replicate_particle!(ip,p,box,cl)
+    cl = replicate_particle!(ip,p,box,cl)
   end
   #
   # Add true particles, such that the first particle of each cell is
@@ -363,7 +363,7 @@ function UpdateCellList!(
   #
   for (ip,particle) in pairs(x)
     p = wrap_to_first(particle,box.unit_cell)
-    add_particle_to_celllist!(ip,p,box,cl) 
+    cl = add_particle_to_celllist!(ip,p,box,cl) 
   end
 
   return cl
@@ -396,11 +396,11 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
       i == 0 && j == 0 && continue
       x = translation_image(p,box.unit_cell,(i,j))
       if ! out_of_bounding_box(x,box)
-        add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
+        cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
       end
     end
   end 
-  return nothing
+  return cl
 end
 
 """
@@ -420,12 +420,12 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
         i == 0 && j == 0 && k == 0 && continue
         x = translation_image(p,box.unit_cell,(i,j,k))
         if ! out_of_bounding_box(x,box)
-          add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
+          cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
         end
       end
     end
   end 
-  return nothing
+  return cl
 end
 
 function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{3,T}) where T
@@ -500,25 +500,25 @@ Set one index of a cell list
 
 """
 function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool=true) where {N,T}
-  @unpack ncwp, ncp, cwp, fp, np = cl
-  ncp[1] += 1
+  @unpack cwp, fp, np = cl
+  @set! cl.ncp += 1
   icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   # Cells starting with real particles are annotated to be run over
   if real_particle && fp[icell].index == 0
-    ncwp[1] += 1
-    cwp[ncwp[1]] = Cell{N}(icell,icell_cartesian)
+    @set! cl.ncwp += 1
+    cwp[cl.ncwp] = Cell{N}(icell,icell_cartesian)
   end
-  if ncp[1] > length(np) 
+  if cl.ncp > length(np) 
     old_length = length(np)
     resize!(np,ceil(Int,1.2*old_length))
     for i in old_length+1:length(np)
       np[i] = AtomWithIndex{N,T}() 
     end
   end
-  np[ncp[1]] = fp[icell]
-  fp[icell] = AtomWithIndex(ncp[1],ip,x) 
-  return nothing
+  np[cl.ncp] = fp[icell]
+  fp[icell] = AtomWithIndex(cl.ncp,ip,x) 
+  return cl
 end
 
 """
@@ -812,8 +812,8 @@ function map_pairwise_serial!(
   f::F, output, box::Box, cl::CellList; 
   show_progress::Bool=false
 ) where {F}
-  show_progress && (p = Progress(cl.ncwp[1],dt=1))
-  for icell in 1:cl.ncwp[1]
+  show_progress && (p = Progress(cl.ncwp,dt=1))
+  for icell in 1:cl.ncwp
     output = inner_loop!(f,box,icell,cl,output) 
     show_progress && next!(p)
   end
@@ -832,9 +832,9 @@ function map_pairwise_parallel!(f::F1, output, box::Box, cl::CellList;
   reduce::F2=reduce,
   show_progress::Bool=false
 ) where {F1,F2}
-  show_progress && (p = Progress(cl.ncwp[1],dt=1))
+  show_progress && (p = Progress(cl.ncwp,dt=1))
   @threads for it in 1:nthreads() 
-    for icell in splitter(it,cl.ncwp[1])
+    for icell in splitter(it,cl.ncwp)
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
