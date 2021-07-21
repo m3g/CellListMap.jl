@@ -297,7 +297,7 @@ CellList{2, Float64}
 
 ```
 
-Upon construction of the cell lists, the particles are replicated to fill a square box (or cubic box, in three-dimenions). This improves the performance of the pairwise computations by avoding the necessity of wrapping coordinates on the main loop. The resulting box can be visualized with:
+Upon construction of the cell lists, the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoding the necessity of wrapping coordinates on the main loop (this is an implementation detail only). The resulting box can be visualized with:
 
 ```julia
 julia> p = CellListMap.view_celllist_particles(cl,box);
