@@ -13,18 +13,18 @@ using Test
   end
 
   # Number of particles, sides and cutoff
-  sides = [250,250,250]
+  sides = @SVector [250,250,250]
   cutoff = 10.
   box = Box(sides,cutoff)
 
   # Particle positions
   N = 2000
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   # Add some pathological coordinates
-  x[1] = @SVector([-sides[1], -sides[2], -sides[3]/2])
-  x[10] = @SVector([sides[1], sides[2], 3*sides[3]])
-  x[100] = @SVector([sides[1]/2, -sides[2]/2, 2*sides[3]])
-  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  x[1] = -sides/2
+  x[10] = sides
+  x[100] = @SVector [sides[1]/2, -sides[2]/2, 2*sides[3]]
+  y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
   # Initialize auxiliary linked lists
   cl = CellList(x,box)
@@ -32,19 +32,19 @@ using Test
   # Function to be evalulated for each pair: sum of displacements on x
   f(x,y,avg_dx) = avg_dx + abs(x[1] - y[1])
 
-  naive = abs(CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box))
-  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
-  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false)) ≈ naive
+  naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,x,box)
+  @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+  @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false) ≈ naive
 
   # Check if changing lcell breaks something
   box = Box(sides,cutoff,lcell=1); cl = CellList(x,box)
-  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
   box = Box(sides,cutoff,lcell=2); cl = CellList(x,box)
-  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
   box = Box(sides,cutoff,lcell=3); cl = CellList(x,box)
-  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
   box = Box(sides,cutoff,lcell=15); cl = CellList(x,box)
-  @test abs(map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true)) ≈ naive
+  @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
 
   # Function to be evalulated for each pair: build distance histogram
   function build_histogram!(x,y,d2,hist)
@@ -135,8 +135,8 @@ using Test
 
   # Test the examples, to check further if the parallelization didn't break something
   N = 100_000
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
-  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
+  y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   @test CellListMap.test1(parallel=true,x=x) ≈ CellListMap.test1(parallel=false,x=x)
   @test CellListMap.test2(parallel=true,x=x) ≈ CellListMap.test2(parallel=false,x=x)
   @test CellListMap.test3(parallel=true,x=x) ≈ CellListMap.test3(parallel=false,x=x)
@@ -147,8 +147,8 @@ using Test
   pairs2 = sort!(CellListMap.test7(parallel=false,x=x),by=x->x[3])
   @test count([ count(pairs1[i] .≈ pairs2[i]) == 3 for i in 1:length(pairs1) ]) == length(pairs1)
 
-  x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
-  y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
+  x = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
+  y = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
   @test count(CellListMap.test6(parallel=true,x=x,y=y) .≈ CellListMap.test6(parallel=false,x=x,y=y)) == 3
 
   # invert x and y to test swap
@@ -163,30 +163,30 @@ using Test
   x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
   box = Box([0.83,0.41,0.97],0.1)
   cl = CellList(x,box) 
-  @test length(cl.cwp) == 317
+  @test length(cl.cwp) == 924
 
   box = Box([0.33,0.41,0.97],0.1)
   cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 317
+  @test length(cl.cwp) == 924 
 
   box = Box([0.83,0.81,0.97],0.1)
   cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 634 
+  @test length(cl.cwp) == 1598
 
   x .= 0.9*x
   cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 634 
+  @test length(cl.cwp) == 1598
 
   x .= 1.2*x
   cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 634 
+  @test length(cl.cwp) == 1598
 
   box = Box([0.83,0.81,0.97],0.2)
   cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 634 
+  @test length(cl.cwp) == 1598
 
   box = Box([0.83,0.81,0.97],0.05)
   cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 5351 
+  @test length(cl.cwp) == 8737
 
 end

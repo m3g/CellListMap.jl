@@ -126,7 +126,7 @@ function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
   N = length(sides)
   cart_idxs = CartesianIndices((1:N,1:N))
   # Build unit cell matrix from lengths
-  unit_cell = SMatrix{N,N,T}( 
+  unit_cell = SMatrix{N,N,T,N*N}( 
     ntuple(N*N) do i
       c = cart_idxs[i]
       if c[1] == c[2] 
@@ -179,11 +179,7 @@ $(TYPEDFIELDS)
 Structure that contains the cell lists information.
 
 """
-Base.@kwdef struct CellList{V,N,T}
-  " One-element vector with the number of particles "
-  nx::Vector{Int}
-  " Abstract vector with the particle coordinates "
-  x::V 
+Base.@kwdef struct CellList{N,T}
   " One-element vector to contain the *mutable* number of cells with particles "
   ncwp::Vector{Int}   
   " One-element vector to contain the *mutable* number of particles in the computing box "
@@ -197,9 +193,8 @@ Base.@kwdef struct CellList{V,N,T}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
-  println("  $(cl.ncwp[1]) cells with particles.")
-  println("  $(cl.ncp[1]) particles in computing box, including images.")
-  print("  $(cl.ncp[1]/cl.ncwp[1]) particles per computing cell.")
+  println("  $(cl.ncwp[1]) cells with real particles.")
+  print("  $(cl.ncp[1]) particles in computing box, including images.")
 end
 
 # Structure that will cointain the cell lists of two independent sets of
@@ -248,7 +243,7 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
-  cl = CellList{typeof(x),N,T}([length(x)],x,ncwp,ncp,cwp,fp,np)
+  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -273,7 +268,7 @@ julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
 julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box)
-CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+CellListMap.CellListPair{3, Float64}
    1000 particles in the smallest vector.
    7452 cells with particles.
 
@@ -323,9 +318,9 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   box::Box,
-  cl::CellList{V,N,T};
+  cl::CellList{N,T};
   parallel::Bool=true
-) where {V,N,T}
+) where {N,T}
   @unpack ncwp, cwp, fp, np = cl
 
   number_of_cells = prod(box.nc)
@@ -333,10 +328,6 @@ function UpdateCellList!(
     number_of_cells = ceil(Int,1.1*number_of_cells) # some margin in case of box size variations
     resize!(cwp,number_of_cells)
     resize!(fp,number_of_cells)
-  end
-  if length(x) > cl.nx[1]
-    cl.nx[1] = length(x)
-    resize!(cl.x,length(x))
   end
 
   ncwp[1] = 0
@@ -348,15 +339,16 @@ function UpdateCellList!(
     @threads for i in eachindex(np)
       np[i] = AtomWithIndex{N,T}()
     end
-    @threads for i in eachindex(x)
-      cl.x[i] = x[i] 
-    end
   else
     fill!(cwp,Cell{N}(0,zero(CartesianIndex{N})))
     fill!(fp,AtomWithIndex{N,T}())
     fill!(np,AtomWithIndex{N,T}())
-    cl.x .= x
   end
+
+  #
+  # The following part cannot be *easily* paralelized, because 
+  # there is concurrency on the construction of the cell lists
+  #
 
   #
   # Add virtual particles to edge cells
@@ -581,7 +573,7 @@ function wrap_relative_to(x::T, xref, cell) where T<:AbstractVector
       @set! p[i] += 1
     end
   end
-  return cell*p
+  return cell*p + xref
 end
 
 """
@@ -658,7 +650,6 @@ function neighbour_cells(lcell)
 end
 neighbour_cells_all(lcell) = 
   CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
-
 
 """
 
@@ -754,7 +745,7 @@ julia> n = 100_000;
 
 julia> box = Box([250,250,250],10);
 
-julia> x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ];
+julia> x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:n ];
 
 julia> cl = CellList(x,box);
 
@@ -956,32 +947,23 @@ end
 # Inner loop of cross-interaction computations
 #
 function inner_loop!(f,output,i,box,cl::CellListPair)
-  @unpack sides, nc, lcell, cutoff_sq = box
-  xpᵢ = wrapone(cl.small[i],box.sides)
+  @unpack unit_cell, nc, lcell, cutoff_sq = box
+  xpᵢ = wrap_to_first(cl.small[i],unit_cell)
   ic = particle_cell(xpᵢ,box)
-  inborder = cell_in_border(ic,box)
   for neighbour_cell in neighbour_cells_all(lcell)
-    if inborder
-      jc_cartesian_wrapped = wrap_cell(nc,neighbour_cell+ic)
-    else
-      jc_cartesian_wrapped = neighbour_cell+ic
-    end
-    jc = cell_linear_index(nc,jc_cartesian_wrapped)
+    jc = cell_linear_index(nc,neighbour_cell+ic)
     pⱼ = cl.large.fp[jc]
     j = pⱼ.index
     # loop over particles of cell jc
     while j > 0
-      if inborder
-        xpⱼ = wrapone(pⱼ.coordinates,sides,xpᵢ)
-      else
-        xpⱼ = pⱼ.coordinates
-      end
+      j_orig = pⱼ.index_original 
+      xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
         if ! cl.swap 
-          output = f(xpᵢ,xpⱼ,i,j,d2,output)
+          output = f(xpᵢ,xpⱼ,i,j_orig,d2,output)
         else
-          output = f(xpⱼ,xpᵢ,j,i,d2,output)
+          output = f(xpⱼ,xpᵢ,j_orig,i,d2,output)
         end
       end
       pⱼ = cl.large.np[j]
