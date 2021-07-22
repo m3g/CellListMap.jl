@@ -511,7 +511,7 @@ function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool
   icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   # Cells starting with real particles are annotated to be run over
-  if fp[icell] == 0
+  if fp[icell].index == 0
     npcell[icell] = 1
     if real_particle 
       @set! cl.ncwp += 1
