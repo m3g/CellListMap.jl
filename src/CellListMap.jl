@@ -899,12 +899,12 @@ function inner_loop!(f,box,icell,cl::CellList,output)
     xpᵢ = pᵢ.coordinates
     pⱼ = cl.np[i] 
     j = pⱼ.index
-    i_orig = pᵢ.index_original
     while j > 0
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
-      j_orig = pⱼ.index_original
       if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pⱼ.index_original
         output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
       pⱼ = cl.np[pⱼ.index]
@@ -935,12 +935,12 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
     xpᵢ = pᵢ.coordinates
     pⱼ = cl.fp[jc]
     j = pⱼ.index
-    i_orig = pᵢ.index_original
     while j > 0
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
-      j_orig = pⱼ.index_original
       if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pⱼ.index_original
         output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
       pⱼ = cl.np[pⱼ.index]
@@ -999,10 +999,10 @@ function inner_loop!(f,output,i,box,cl::CellListPair)
     j = pⱼ.index
     # loop over particles of cell jc
     while j > 0
-      j_orig = pⱼ.index_original 
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
+        j_orig = pⱼ.index_original 
         output = f(xpᵢ,xpⱼ,i,j_orig,d2,output)
       end
       pⱼ = cl.large.np[j]
