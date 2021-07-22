@@ -833,14 +833,19 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
   reduce::F2=reduce,
   show_progress::Bool=false
 ) where {F1,F2} # Needed for specialization for this function (avoids some allocations) 
+  if cl.swap 
+    fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
+  else
+    fswap = f
+  end
   if parallel && nthreads() > 1
-    output = map_pairwise_parallel!(f,output,box,cl;
+    output = map_pairwise_parallel!(fswap,output,box,cl;
       output_threaded=output_threaded,
       reduce=reduce,
       show_progress=show_progress
     )
   else
-    output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
+    output = map_pairwise_serial!(fswap,output,box,cl,show_progress=show_progress)
   end
   return output
 end
@@ -998,11 +1003,7 @@ function inner_loop!(f,output,i,box,cl::CellListPair)
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
       if d2 <= cutoff_sq
-        if ! cl.swap 
-          output = f(xpᵢ,xpⱼ,i,j_orig,d2,output)
-        else
-          output = f(xpⱼ,xpᵢ,j_orig,i,d2,output)
-        end
+        output = f(xpᵢ,xpⱼ,i,j_orig,d2,output)
       end
       pⱼ = cl.large.np[j]
       j = pⱼ.index
