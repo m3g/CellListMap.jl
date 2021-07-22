@@ -190,6 +190,8 @@ Base.@kwdef struct CellList{N,T}
   fp::Vector{AtomWithIndex{N,T}}
   " Next particle of cell "
   np::Vector{AtomWithIndex{N,T}}
+  " Number of particles in of cell "
+  npcell::Vector{Int}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
@@ -243,7 +245,8 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   cwp = Vector{Cell{N}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
-  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np)
+  npcell = Vector{Int}(undef,number_of_cells)
+  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np,npcell)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -321,13 +324,14 @@ function UpdateCellList!(
   cl::CellList{N,T};
   parallel::Bool=true
 ) where {N,T}
-  @unpack cwp, fp, np = cl
+  @unpack cwp, fp, np, npcell = cl
 
   number_of_cells = prod(box.nc)
   if number_of_cells > length(cwp) 
     number_of_cells = ceil(Int,1.1*number_of_cells) # some margin in case of box size variations
     resize!(cwp,number_of_cells)
     resize!(fp,number_of_cells)
+    resize!(npcell,number_of_cells)
   end
 
   @set! cl.ncwp = 0
@@ -335,6 +339,7 @@ function UpdateCellList!(
     @threads for i in eachindex(cwp)
       cwp[i] = Cell{N}(0,zero(CartesianIndex{N}))
       fp[i] = AtomWithIndex{N,T}()
+      npcell[i] = 0
     end
     @threads for i in eachindex(np)
       np[i] = AtomWithIndex{N,T}()
@@ -343,6 +348,7 @@ function UpdateCellList!(
     fill!(cwp,Cell{N}(0,zero(CartesianIndex{N})))
     fill!(fp,AtomWithIndex{N,T}())
     fill!(np,AtomWithIndex{N,T}())
+    fill!(npcell,0)
   end
 
   #
@@ -500,14 +506,19 @@ Set one index of a cell list
 
 """
 function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool=true) where {N,T}
-  @unpack cwp, fp, np = cl
+  @unpack cwp, fp, np, npcell = cl
   @set! cl.ncp += 1
   icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
   # Cells starting with real particles are annotated to be run over
-  if real_particle && fp[icell].index == 0
-    @set! cl.ncwp += 1
-    cwp[cl.ncwp] = Cell{N}(icell,icell_cartesian)
+  if fp[icell] == 0
+    npcell[icell] = 1
+    if real_particle 
+      @set! cl.ncwp += 1
+      cwp[cl.ncwp] = Cell{N}(icell,icell_cartesian)
+    end
+  else
+    npcell[icell] += 1
   end
   if cl.ncp > length(np) 
     old_length = length(np)
@@ -921,10 +932,49 @@ function inner_loop!(f,box,icell,cl::CellList,output)
   return output
 end
 
+"""
+```
+partialsort_cutoff!(x,cutoff)
+```
+Function that reorders x vector by putting in the first positions the
+elements with values smaller than cutoff
+
+"""
+function partialsort_cutoff!(x,cutoff;by=isequal(x))
+  iswap = 1
+  @inbounds for i in 1:length(x)
+    if by(x[i]) <= cutoff
+      if iswap != i
+        xtmp = x[iswap]
+        x[iswap] = x[i]
+        x[i] = xtmp
+      end
+      iswap = iswap + 1
+    end
+  end
+  return iswap - 1
+end
+
+struct DIPair
+  i::Int
+  d::Float64
+  x::SVector{3,Float64}
+end
+
+
+using LoopVectorization
+
+struct S
+  n::Int
+  s::Vector{DIPair}
+end
+const s = S(0,[ DIPair(0,0.,zero(SVector{3,Float64})) for i in 1:100_000 ])
+
 #
 # loops over the particles of a neighbour cell
 #
 function cell_output!(f,box,cell,cl,output,jc_cartesian)
+  global s
   @unpack nc, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
@@ -933,19 +983,42 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
+
+    for is in 1:s.n
+      s.s[is] = DIPair(0,0.,zero(SVector{3,Float64}))
+    end
+    @set! s.n = cl.npcell[jc]
+
     pⱼ = cl.fp[jc]
     j = pⱼ.index
-    while j > 0
+    for is in 1:cl.npcell[jc]
       xpⱼ = pⱼ.coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
-      if d2 <= cutoff_sq
-        i_orig = pᵢ.index_original
-        j_orig = pⱼ.index_original
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      end
+      s.s[is] = DIPair(pⱼ.index_original,d2,xpⱼ)
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index
     end
+    n = partialsort_cutoff!(@view(s.s[1:n]),cutoff_sq,by=x->x.d)
+
+    for is in 1:n
+      j_orig = s.s[is].i
+      d2 = s.s[is].d
+      xpⱼ = s.s[is].x
+      i_orig = pᵢ.index_original
+      output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+    end
+
+    #while j > 0
+    #  xpⱼ = pⱼ.coordinates
+    #  d2 = distance_sq(xpᵢ,xpⱼ)
+    #  if d2 <= cutoff_sq
+    #    i_orig = pᵢ.index_original
+    #    j_orig = pⱼ.index_original
+    #    output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+    #  end
+    #  pⱼ = cl.np[pⱼ.index]
+    #  j = pⱼ.index
+    #end
     pᵢ = cl.np[pᵢ.index]
     i = pᵢ.index
   end
