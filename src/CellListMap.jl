@@ -6,6 +6,7 @@ using StaticArrays
 using DocStringExtensions
 using ProgressMeter
 using Setfield
+using LoopVectorization
 
 export Box
 export CellList, UpdateCellList!
@@ -155,7 +156,8 @@ struct AtomWithIndex{N,T}
   index_original::Int
   coordinates::SVector{N,T}
 end
-AtomWithIndex{N,T}() where {N,T} = AtomWithIndex{N,T}(0,0,zero(SVector{N,T})) 
+Base.zero(::Type{AtomWithIndex{N,T}}) where {N,T} =
+  AtomWithIndex{N,T}(0,0,zeros(SVector{N,T}))
 
 """
 
@@ -165,10 +167,27 @@ This structure contains the cell linear index and the information about if this 
 is in the border of the box (such that its neighbouring cells need to be wrapped) 
 
 """
-struct Cell{N}
+struct Cell{N,T}
   icell::Int
   cartesian::CartesianIndex{N}
+  center::SVector{N,T}
 end
+Base.zero(::Type{Cell{N,T}}) where {N,T} =
+  Cell{N,T}(0,CartesianIndex{N}(0,0,0),zeros(SVector{N,T}))
+
+"""
+
+```
+cell_center(c::CartesianIndex{N},cutoff::T) where {N,T}
+```
+
+Computes the geometric center of a cell, to be used in the projection
+of points. Returns a `SVector{N,T}`
+
+"""
+cell_center(c::CartesianIndex{N},cutoff::T) where {N,T} =
+  SVector{N,T}(ntuple(i-> cutoff*c[i]/2, N))
+
 
 """
 
@@ -185,7 +204,7 @@ Base.@kwdef struct CellList{N,T}
   " *mutable* number of particles in the computing box "
   ncp::Int
   " Indices of the unique cells with Particles "
-  cwp::Vector{Cell{N}}
+  cwp::Vector{Cell{N,T}}
   " First particle of cell "
   fp::Vector{AtomWithIndex{N,T}}
   " Next particle of cell "
@@ -242,7 +261,7 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   number_of_particles = length(x)
   ncwp = 0
   ncp = 0
-  cwp = Vector{Cell{N}}(undef,number_of_cells)
+  cwp = Vector{Cell{N,T}}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
   npcell = Vector{Int}(undef,number_of_cells)
@@ -337,17 +356,17 @@ function UpdateCellList!(
   @set! cl.ncwp = 0
   if parallel
     @threads for i in eachindex(cwp)
-      cwp[i] = Cell{N}(0,zero(CartesianIndex{N}))
-      fp[i] = AtomWithIndex{N,T}()
+      cwp[i] = zero(Cell{N,T})
+      fp[i] = zero(AtomWithIndex{N,T})
       npcell[i] = 0
     end
     @threads for i in eachindex(np)
-      np[i] = AtomWithIndex{N,T}()
+      np[i] = zero(AtomWithIndex{N,T})
     end
   else
-    fill!(cwp,Cell{N}(0,zero(CartesianIndex{N})))
-    fill!(fp,AtomWithIndex{N,T}())
-    fill!(np,AtomWithIndex{N,T}())
+    fill!(cwp,zero(Cell{N,T}))
+    fill!(fp,zero(AtomWithIndex{N,T}))
+    fill!(np,zero(AtomWithIndex{N,T}))
     fill!(npcell,0)
   end
 
@@ -506,6 +525,7 @@ Set one index of a cell list
 
 """
 function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool=true) where {N,T}
+  @unpack cutoff = box
   @unpack cwp, fp, np, npcell = cl
   @set! cl.ncp += 1
   icell_cartesian = particle_cell(x,box)
@@ -515,7 +535,7 @@ function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool
     npcell[icell] = 1
     if real_particle 
       @set! cl.ncwp += 1
-      cwp[cl.ncwp] = Cell{N}(icell,icell_cartesian)
+      cwp[cl.ncwp] = Cell{N,T}(icell,icell_cartesian,cell_center(icell_cartesian,cutoff))
     end
   else
     npcell[icell] += 1
@@ -524,7 +544,7 @@ function add_particle_to_celllist!(ip,x::SVector{N,T},box,cl;real_particle::Bool
     old_length = length(np)
     resize!(np,ceil(Int,1.2*old_length))
     for i in old_length+1:length(np)
-      np[i] = AtomWithIndex{N,T}() 
+      np[i] = zero(AtomWithIndex{N,T}) 
     end
   end
   np[cl.ncp] = fp[icell]
@@ -700,6 +720,41 @@ end
 function neighbour_cells_all(box::Box{2,T,4}) where T  
   @unpack lcell = box
   return CartesianIndices((-lcell:lcell,-lcell:lcell))
+end
+
+"""
+
+```
+norm(v::SVector{N,T}) where {N,T}
+```
+
+Computes the norm of a static vector.
+
+"""
+@inline function norm(v::AbstractVector{T}) where T
+  norm = zero(T)
+  for x in v
+    norm += x^2
+  end
+  return sqrt(norm)
+end
+
+"""
+
+```
+dot(x::SVector{N,T},y::SVector{N,T}) where {N,T}
+```
+
+Computes the norm of a static vector.
+
+"""
+@inline function dot(x::AbstractVector{T},y::AbstractVector{T}) where T
+  @assert length(x) == length(y) 
+  dot = zero(T)
+  for i in eachindex(x)
+    @inbounds dot += x[i]*y[i] 
+  end
+  return dot
 end
 
 """
@@ -955,71 +1010,92 @@ function partialsort_cutoff!(x,cutoff;by=isequal(x))
   return iswap - 1
 end
 
-struct DIPair
-  i::Int
-  d::Float64
-  x::SVector{3,Float64}
+struct ProjectedParticle
+  index_original::Int
+  xproj::Float64
+  coordinates::SVector{3,Float64}
 end
 
-
-using LoopVectorization
-
-struct S
-  n::Int
-  s::Vector{DIPair}
+struct ProjectedParticleVector
+  n::Vector{Int}
+  p::Vector{ProjectedParticle}
 end
-const s = S(0,[ DIPair(0,0.,zero(SVector{3,Float64})) for i in 1:100_000 ])
+
+const projected_particles = ProjectedParticleVector(
+  [0], [ ProjectedParticle(0,0.,zero(SVector{3,Float64})) for i in 1:100_000 ]
+)
 
 #
 # loops over the particles of a neighbour cell
 #
 function cell_output!(f,box,cell,cl,output,jc_cartesian)
-  global s
-  @unpack nc, cutoff_sq = box
+  global projected_particles 
+  @unpack nc, cutoff, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
-  # loop over list of non-repeated particles of cell ic
+  # compute vector connecting cell centers
+  dc = cell.center - cell_center(jc_cartesian,cutoff)
+  dc = dc / norm(dc)
+
+  # reset array of projections
+  pⱼ = cl.fp[jc]
+  npcell = cl.npcell[jc]
+  j = pⱼ.index
+  @turbo for jp in 1:npcell
+    j_orig = pⱼ.index_original
+    xpⱼ = pⱼ.coordinates
+    projected_particles.p[jp] = ProjectedParticle(j_orig,0.,xpⱼ) 
+    pⱼ = cl.np[j]
+    j = pⱼ.index
+  end
+  projected_particles.n[1] = npcell
+
+  @turbo for jp in 1:npcell
+    j_orig = projected_particles.p[jp].index_original
+    xpⱼ = projected_particles.p[jp].coordinates
+    xproj = dot(xpⱼ,dc) 
+    projected_particles.p[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
+  end
+
+  # Sort particles according to projection
+  pp = @view(projected_particles.p[1:npcell])
+  sort!(pp,by=x->x.xproj,alg=InsertionSort)
+
+  # Loop over particles of cell icell
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
-
-    for is in 1:s.n
-      s.s[is] = DIPair(0,0.,zero(SVector{3,Float64}))
-    end
-    @set! s.n = cl.npcell[jc]
-
-    pⱼ = cl.fp[jc]
-    j = pⱼ.index
-    for is in 1:cl.npcell[jc]
-      xpⱼ = pⱼ.coordinates
+    xproj = dot(xpᵢ,dc)
+    # Now loop over particles of icell, until abs(xproj - yproj) < cutoff
+    ipos = searchsortedfirst(
+      pp,
+      ProjectedParticle(0,xproj,zero(SVector{3,Float64})),
+      by=x->x.xproj
+    )
+    j = ipos - 1 
+    while j >= 1 && xproj - pp[j].xproj <= cutoff
+      xpⱼ = pp[j].coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
-      s.s[is] = DIPair(pⱼ.index_original,d2,xpⱼ)
-      pⱼ = cl.np[pⱼ.index]
-      j = pⱼ.index
+      if d2 < cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pp[j].index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
+      j -= 1
     end
-    n = partialsort_cutoff!(@view(s.s[1:n]),cutoff_sq,by=x->x.d)
-
-    for is in 1:n
-      j_orig = s.s[is].i
-      d2 = s.s[is].d
-      xpⱼ = s.s[is].x
-      i_orig = pᵢ.index_original
-      output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+    j = ipos
+    while j <= npcell && pp[j].xproj - xproj <= cutoff
+      xpⱼ = pp[j].coordinates
+      d2 = distance_sq(xpᵢ,xpⱼ)
+      if d2 < cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pp[j].index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
+      j += 1
     end
-
-    #while j > 0
-    #  xpⱼ = pⱼ.coordinates
-    #  d2 = distance_sq(xpᵢ,xpⱼ)
-    #  if d2 <= cutoff_sq
-    #    i_orig = pᵢ.index_original
-    #    j_orig = pⱼ.index_original
-    #    output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-    #  end
-    #  pⱼ = cl.np[pⱼ.index]
-    #  j = pⱼ.index
-    #end
-    pᵢ = cl.np[pᵢ.index]
+    pᵢ = cl.np[i]
     i = pᵢ.index
   end
 

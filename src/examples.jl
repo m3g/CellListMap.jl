@@ -377,7 +377,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
   positions = reshape(reinterpret(SVector{3,Float64},positions),n)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
-  box = Box(Lbox, r_max)
+  box = Box(Lbox, r_max, lcell=1)
   cl = CellList(positions,box,parallel=parallel)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
@@ -400,6 +400,14 @@ function florpi(;N=100_000,cd=true,parallel=true)
   n_pairs = hist[1]
   mean_v_r = hist[2]
   mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0]./n_pairs[n_pairs .> 0]
-  return mean_v_r
+
+  correct_result = [ 
+   0.0007883474482652579
+  -0.0035662371878635722
+  -0.00040742008823982926
+   0.0003623877989466509
+  -0.0010441334538614498
+  ]
+  return mean_v_r ≈ correct_result, mean_v_r
 
 end
