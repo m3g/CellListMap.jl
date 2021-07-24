@@ -188,6 +188,11 @@ of points. Returns a `SVector{N,T}`
 cell_center(c::CartesianIndex{N},cutoff::T) where {N,T} =
   SVector{N,T}(ntuple(i-> cutoff*c[i]/2, N))
 
+struct ProjectedParticle{N,T}
+  index_original::Int
+  xproj::T
+  coordinates::SVector{N,T}
+end
 
 """
 
@@ -211,6 +216,8 @@ Base.@kwdef struct CellList{N,T}
   np::Vector{AtomWithIndex{N,T}}
   " Number of particles in of cell "
   npcell::Vector{Int}
+  " Auxiliar vector to store projected particles. "
+  projected_particles::Vector{ProjectedParticle{N,T}}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
@@ -265,7 +272,8 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
   npcell = Vector{Int}(undef,number_of_cells)
-  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np,npcell)
+  projected_particles = Vector{ProjectedParticle{N,T}}(undef,number_of_particles)
+  cl = CellList{N,T}(ncwp,ncp,cwp,fp,np,npcell,projected_particles)
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -992,7 +1000,8 @@ end
 partialsort_cutoff!(x,cutoff)
 ```
 Function that reorders x vector by putting in the first positions the
-elements with values smaller than cutoff
+elements with values smaller than cutoff. Returns the number of elements
+that satisfy the condition.
 
 """
 function partialsort_cutoff!(x,cutoff;by=isequal(x))
@@ -1010,91 +1019,82 @@ function partialsort_cutoff!(x,cutoff;by=isequal(x))
   return iswap - 1
 end
 
-struct ProjectedParticle
-  index_original::Int
-  xproj::Float64
-  coordinates::SVector{3,Float64}
-end
-
-struct ProjectedParticleVector
-  n::Vector{Int}
-  p::Vector{ProjectedParticle}
-end
-
-const projected_particles = ProjectedParticleVector(
-  [0], [ ProjectedParticle(0,0.,zero(SVector{3,Float64})) for i in 1:100_000 ]
-)
-
 #
 # loops over the particles of a neighbour cell
 #
 function cell_output!(f,box,cell,cl,output,jc_cartesian)
-  global projected_particles 
+  @unpack projected_particles = cl
   @unpack nc, cutoff, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
-  # compute vector connecting cell centers
-  dc = cell.center - cell_center(jc_cartesian,cutoff)
-  dc = dc / norm(dc)
+#  # Compute projected coordinates of particles of cell j 
+#  pⱼ = cl.fp[jc]
+#  npcell = cl.npcell[jc]
+#  j = pⱼ.index
+#  for jp in 1:npcell
+#    j_orig = pⱼ.index_original
+#    xpⱼ = pⱼ.coordinates
+#    xproj = dot(xpⱼ-cell.center,dc) 
+#    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
+#    pⱼ = cl.np[j]
+#    j = pⱼ.index
+#  end
 
-  # reset array of projections
+  # Compute projected coordinates of particles of cell j 
   pⱼ = cl.fp[jc]
   npcell = cl.npcell[jc]
   j = pⱼ.index
-  @turbo for jp in 1:npcell
+  for jp in 1:npcell
     j_orig = pⱼ.index_original
     xpⱼ = pⱼ.coordinates
-    projected_particles.p[jp] = ProjectedParticle(j_orig,0.,xpⱼ) 
+    projected_particles[jp] = ProjectedParticle(j_orig,0.,xpⱼ) 
     pⱼ = cl.np[j]
     j = pⱼ.index
   end
-  projected_particles.n[1] = npcell
-
-  @turbo for jp in 1:npcell
-    j_orig = projected_particles.p[jp].index_original
-    xpⱼ = projected_particles.p[jp].coordinates
-    xproj = dot(xpⱼ,dc) 
-    projected_particles.p[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
-  end
 
   # Sort particles according to projection
-  pp = @view(projected_particles.p[1:npcell])
-  sort!(pp,by=x->x.xproj,alg=InsertionSort)
+  pp = @view(projected_particles[1:npcell])
+  #sort!(pp,by=x->x.xproj,alg=InsertionSort)
 
   # Loop over particles of cell icell
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
-    xproj = dot(xpᵢ,dc)
+#    xproj = dot(xpᵢ-cell.center,dc)
+
+    @turbo for j in 1:npcell 
+      j_orig = pp[j].index_original
+      xpⱼ = pp[j].coordinates
+      d2 = distance_sq(xpᵢ,xpⱼ)
+      projected_particles[j] = ProjectedParticle(j_orig,d2,xpⱼ) 
+    end
+    n = partialsort_cutoff!(pp,cutoff_sq,by= x -> x.xproj)
+
+    for j in 1:n
+      xpⱼ = pp[j].coordinates
+      d2 = distance_sq(xpᵢ,xpⱼ)
+global n1 += 1
+      if d2 < cutoff_sq
+global n2 += 1
+        i_orig = pᵢ.index_original
+        j_orig = pp[j].index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
+    end
+
     # Now loop over particles of icell, until abs(xproj - yproj) < cutoff
-    ipos = searchsortedfirst(
-      pp,
-      ProjectedParticle(0,xproj,zero(SVector{3,Float64})),
-      by=x->x.xproj
-    )
-    j = ipos - 1 
-    while j >= 1 && xproj - pp[j].xproj <= cutoff
-      xpⱼ = pp[j].coordinates
-      d2 = distance_sq(xpᵢ,xpⱼ)
-      if d2 < cutoff_sq
-        i_orig = pᵢ.index_original
-        j_orig = pp[j].index_original
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      end
-      j -= 1
-    end
-    j = ipos
-    while j <= npcell && pp[j].xproj - xproj <= cutoff
-      xpⱼ = pp[j].coordinates
-      d2 = distance_sq(xpᵢ,xpⱼ)
-      if d2 < cutoff_sq
-        i_orig = pᵢ.index_original
-        j_orig = pp[j].index_original
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      end
-      j += 1
-    end
+    #j = 1
+    #while j <= npcell && pp[j].xproj - xproj <= cutoff
+    #  xpⱼ = pp[j].coordinates
+    #  d2 = distance_sq(xpᵢ,xpⱼ)
+    #  if d2 < cutoff_sq
+    #    i_orig = pᵢ.index_original
+    #    j_orig = pp[j].index_original
+    #    output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+    #  end
+    #  j += 1
+    #end
     pᵢ = cl.np[i]
     i = pᵢ.index
   end
