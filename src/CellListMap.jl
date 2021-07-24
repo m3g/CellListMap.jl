@@ -1006,10 +1006,10 @@ elements with values smaller than cutoff. Returns the number of elements
 that satisfy the condition.
 
 """
-function partialsort_cutoff!(x,cutoff;by=isequal(x))
+function partialsort_cutoff!(x,cutoff)
   iswap = 1
   @inbounds for i in eachindex(x)
-    if by(x[i]) <= cutoff
+    if x[i].xproj <= cutoff
       if iswap != i
         x[iswap], x[i] = x[i], x[iswap]
       end
@@ -1052,7 +1052,7 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
       d2 = distance_sq(xpᵢ,xpⱼ)
       projected_particles[j] = ProjectedParticle(j_orig,d2,xpⱼ) 
     end
-    n = partialsort_cutoff!(pp,cutoff_sq,by= x -> x.xproj)
+    n = partialsort_cutoff!(pp, cutoff_sq)
 
     for j in 1:n
       xpⱼ = pp[j].coordinates
