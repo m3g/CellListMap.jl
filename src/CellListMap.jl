@@ -996,9 +996,11 @@ function inner_loop!(f,box,icell,cl::CellList,output)
 end
 
 """
+
 ```
 partialsort_cutoff!(x,cutoff)
 ```
+
 Function that reorders x vector by putting in the first positions the
 elements with values smaller than cutoff. Returns the number of elements
 that satisfy the condition.
@@ -1006,14 +1008,12 @@ that satisfy the condition.
 """
 function partialsort_cutoff!(x,cutoff;by=isequal(x))
   iswap = 1
-  @inbounds for i in 1:length(x)
+  @inbounds for i in eachindex(x)
     if by(x[i]) <= cutoff
       if iswap != i
-        xtmp = x[iswap]
-        x[iswap] = x[i]
-        x[i] = xtmp
+        x[iswap], x[i] = x[i], x[iswap]
       end
-      iswap = iswap + 1
+      iswap += 1
     end
   end
   return iswap - 1
@@ -1027,20 +1027,7 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
   @unpack nc, cutoff, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
-#  # Compute projected coordinates of particles of cell j 
-#  pⱼ = cl.fp[jc]
-#  npcell = cl.npcell[jc]
-#  j = pⱼ.index
-#  for jp in 1:npcell
-#    j_orig = pⱼ.index_original
-#    xpⱼ = pⱼ.coordinates
-#    xproj = dot(xpⱼ-cell.center,dc) 
-#    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
-#    pⱼ = cl.np[j]
-#    j = pⱼ.index
-#  end
-
-  # Compute projected coordinates of particles of cell j 
+  # Copy coordinates of particles of cell jcell into continuous array
   pⱼ = cl.fp[jc]
   npcell = cl.npcell[jc]
   j = pⱼ.index
@@ -1051,17 +1038,13 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
     pⱼ = cl.np[j]
     j = pⱼ.index
   end
-
-  # Sort particles according to projection
   pp = @view(projected_particles[1:npcell])
-  #sort!(pp,by=x->x.xproj,alg=InsertionSort)
 
   # Loop over particles of cell icell
   pᵢ = cl.fp[cell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
-#    xproj = dot(xpᵢ-cell.center,dc)
 
     @turbo for j in 1:npcell 
       j_orig = pp[j].index_original
@@ -1073,28 +1056,12 @@ function cell_output!(f,box,cell,cl,output,jc_cartesian)
 
     for j in 1:n
       xpⱼ = pp[j].coordinates
-      d2 = distance_sq(xpᵢ,xpⱼ)
-global n1 += 1
-      if d2 < cutoff_sq
-global n2 += 1
-        i_orig = pᵢ.index_original
-        j_orig = pp[j].index_original
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      end
+      d2 = pp[j].xproj
+      i_orig = pᵢ.index_original
+      j_orig = pp[j].index_original
+      output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
     end
 
-    # Now loop over particles of icell, until abs(xproj - yproj) < cutoff
-    #j = 1
-    #while j <= npcell && pp[j].xproj - xproj <= cutoff
-    #  xpⱼ = pp[j].coordinates
-    #  d2 = distance_sq(xpᵢ,xpⱼ)
-    #  if d2 < cutoff_sq
-    #    i_orig = pᵢ.index_original
-    #    j_orig = pp[j].index_original
-    #    output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-    #  end
-    #  j += 1
-    #end
     pᵢ = cl.np[i]
     i = pᵢ.index
   end
