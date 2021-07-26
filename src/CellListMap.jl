@@ -998,18 +998,18 @@ end
 """
 
 ```
-partialsort_cutoff!(x,cutoff)
+partition!(x::AbstractVector,by)
 ```
 
-Function that reorders x vector by putting in the first positions the
-elements with values smaller than cutoff. Returns the number of elements
+Function that reorders `x` vector by putting in the first positions the
+elements with values satisfying `by(el)`. Returns the number of elements
 that satisfy the condition.
 
 """
-function partialsort_cutoff!(x,cutoff)
+function partition!(x::AbstractVector,by) where T
   iswap = 1
   @inbounds for i in eachindex(x)
-    if x[i].xproj <= cutoff
+    if by(x[i])
       if iswap != i
         x[iswap], x[i] = x[i], x[iswap]
       end
@@ -1022,46 +1022,49 @@ end
 #
 # loops over the particles of a neighbour cell
 #
-function cell_output!(f,box,cell,cl,output,jc_cartesian)
+function cell_output!(f,box,icell,cl,output,jc_cartesian)
   @unpack projected_particles = cl
   @unpack nc, cutoff, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
-  # Copy coordinates of particles of cell jcell into continuous array
+  # Vector connecting cell centers
+  Δc = cell_center(jc_cartesian,cutoff) - icell.center 
+
+  # Copy coordinates of particles of icell jcell into continuous array,
+  # and project them into the vector connecting cell centers
   pⱼ = cl.fp[jc]
   npcell = cl.npcell[jc]
   j = pⱼ.index
   for jp in 1:npcell
     j_orig = pⱼ.index_original
     xpⱼ = pⱼ.coordinates
-    projected_particles[jp] = ProjectedParticle(j_orig,0.,xpⱼ) 
+    xproj = dot(xpⱼ - icell.center,Δc)
+    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
     pⱼ = cl.np[j]
     j = pⱼ.index
   end
   pp = @view(projected_particles[1:npcell])
 
+  # Sort particles according to projection norm
+  sort!(pp, by=el->el.xproj,alg=InsertionSort)
+
   # Loop over particles of cell icell
-  pᵢ = cl.fp[cell.icell]
+  pᵢ = cl.fp[icell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
-
-    @turbo for j in 1:npcell 
-      j_orig = pp[j].index_original
+    xproj = dot(xpᵢ-icell.center,Δc)
+    j = 1
+    while j <= npcell && xproj - pp[j].xproj <= cutoff
       xpⱼ = pp[j].coordinates
       d2 = distance_sq(xpᵢ,xpⱼ)
-      projected_particles[j] = ProjectedParticle(j_orig,d2,xpⱼ) 
+      if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pp[j].index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
+      j += 1
     end
-    n = partialsort_cutoff!(pp, cutoff_sq)
-
-    for j in 1:n
-      xpⱼ = pp[j].coordinates
-      d2 = pp[j].xproj
-      i_orig = pᵢ.index_original
-      j_orig = pp[j].index_original
-      output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-    end
-
     pᵢ = cl.np[i]
     i = pᵢ.index
   end
