@@ -1,6 +1,5 @@
 module CellListMap
 
-using StaticArrays
 using LinearAlgebra: dot, norm, norm_sqr
 using Base.Threads
 using Parameters
