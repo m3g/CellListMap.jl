@@ -195,7 +195,7 @@ function inner_loop!(
     j = pⱼ.index
     while j > 0
       xpⱼ = pⱼ.coordinates
-      d2 = distance_sq(xpᵢ,xpⱼ)
+      d2 = norm_sqr(xpᵢ - xpⱼ)
       if d2 <= cutoff_sq
         i_orig = pᵢ.index_original
         j_orig = pⱼ.index_original
@@ -260,7 +260,7 @@ function cell_output!(
     j = 1
     while j <= npcell && xproj - pp[j].xproj <= cutoff
       xpⱼ = pp[j].coordinates
-      d2 = distance_sq(xpᵢ,xpⱼ)
+      d2 = norm_sqr(xpᵢ - xpⱼ)
       if d2 <= cutoff_sq
         i_orig = pᵢ.index_original
         j_orig = pp[j].index_original
@@ -329,7 +329,7 @@ function inner_loop!(
     # loop over particles of cell jc
     while j > 0
       xpⱼ = pⱼ.coordinates
-      d2 = distance_sq(xpᵢ,xpⱼ)
+      d2 = norm_sqr(xpᵢ - xpⱼ)
       if d2 <= cutoff_sq
         j_orig = pⱼ.index_original 
         output = f(xpᵢ,xpⱼ,i,j_orig,d2,output)
