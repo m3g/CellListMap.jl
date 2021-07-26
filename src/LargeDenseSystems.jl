@@ -1,3 +1,16 @@
+"""
+
+```
+cell_center(c::CartesianIndex{N},cutoff::T) where {N,T}
+```
+
+Computes the geometric center of a cell, to be used in the projection
+of points. Returns a `SVector{N,T}`
+
+"""
+cell_center(c::CartesianIndex{N},cutoff::T) where {N,T} =
+  SVector{N,T}(ntuple(i-> cutoff*c[i]/2, N))
+
 #
 # Functions to deal with large and dense system, avoiding the maximum number
 # of unnecessary loop iterations over non-interacting particles
