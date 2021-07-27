@@ -8,7 +8,7 @@ function test1(;N=100_000,parallel=true,x=nothing)
   # Number of particles, sides and cutoff
   sides = @SVector [250,250,250]
   cutoff = 10
-  box = Box(sides,cutoff,scale_cutoff=1)
+  box = Box(sides,cutoff,scale_cutoff=2)
 
   # Particle positions
   Random.seed!(321)

@@ -66,7 +66,7 @@ end
 
 # Chunck splitter, we jump over cells such that possible 
 # heterogeneities have greater changes of getting split into different chuncks
-splitter(it,n) = it:nthreads():n
+@inline splitter(it,n) = it:nthreads():n
 
 #
 # Functions to reduce the output of common options (vectors of numbers 
