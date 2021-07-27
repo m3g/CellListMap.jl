@@ -65,10 +65,7 @@ function view_celllist_particles(cl::CellList{SystemType,N,T}) where {SystemType
   x = Vector{SVector{N,T}}(undef,ncp[1])
   ip = 0
   for p in cl.fp
-    p.index == 0 && continue
-    ip += 1
-    x[ip] = p.coordinates
-    while np[p.index].index > 0
+    while p.index > 0
       ip += 1
       x[ip] = p.coordinates
       p = np[p.index]
