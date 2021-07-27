@@ -103,7 +103,6 @@ function add_particle_to_celllist!(
   cl::CellList{LargeDenseSystem,N,T};
   real_particle::Bool=true
 ) where {N,T}
-  @unpack cell_size = box
   @unpack ncp, ncwp, cwp, fp, np, npcell = cl
   ncp[1] += 1
   icell_cartesian = particle_cell(x,box)
@@ -113,7 +112,7 @@ function add_particle_to_celllist!(
     npcell[icell] = 1
     if real_particle 
       ncwp[1] += 1
-      cwp[ncwp[1]] = Cell{N,T}(icell,icell_cartesian,cell_center(icell_cartesian,cell_size))
+      cwp[ncwp[1]] = Cell{N,T}(icell,icell_cartesian,cell_center(icell_cartesian,box))
     end
   else
     npcell[icell] += 1
@@ -218,7 +217,7 @@ function cell_output!(
   jc = cell_linear_index(nc,jc_cartesian)
 
   # Vector connecting cell centers
-  Δc = cell_center(jc_cartesian,cell_size) - icell.center 
+  Δc = cell_center(jc_cartesian,box) - icell.center 
 
   # Copy coordinates of particles of icell jcell into continuous array,
   # and project them into the vector connecting cell centers

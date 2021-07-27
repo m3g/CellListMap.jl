@@ -2,10 +2,11 @@
 # Function that checks if the particule is outside the computation bounding box
 #
 function out_of_bounding_box(x::SVector{N,T},box::Box{N,T,M}) where {N,T,M}
-  @unpack cell_size, nc, lcell = box
+  @unpack cutoff, unit_cell = box
+  unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
   for i in 1:N
-    (x[i] < -cell_size*lcell) && return true
-    (x[i] >= (nc[i]-lcell)*cell_size) && return true
+    (x[i] < -cutoff) && return true
+    (x[i] >= unit_cell_max[i]+cutoff) && return true
   end
   return false
 end
@@ -267,7 +268,7 @@ and the cell_size.
 
 """
 @inline particle_cell(x::SVector{N,T}, box::Box) where {N,T} =
-  CartesianIndex(ntuple(i -> floor(Int,(x[i] .+ box.cell_size*box.lcell)/box.cell_size + 1), N))
+  CartesianIndex(ntuple(i -> ceil(Int,x[i]/box.cell_size) + box.lcell, N))
 
 """
 

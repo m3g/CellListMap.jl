@@ -87,9 +87,7 @@ function Box(
   unit_cell = SMatrix{N,N,T}(unit_cell) 
   cell_size = scale_cutoff*cutoff/lcell
   unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
-  nc = SVector{N,Int}(
-    ceil.(Int,max.(1,(unit_cell_max .+ 2*(lcell*cell_size))/cell_size))
-  ) 
+  nc = SVector{N,Int}(ceil.(Int,unit_cell_max/cell_size) .+ 2)
 
   ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell)
   return Box{N,T,N*N}(
@@ -223,11 +221,13 @@ Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{SystemType,N,T}
-  " *mutable* number of cells with particles "
+  " *mutable* number of cells with real particles. "
   ncwp::Vector{Int}
   " *mutable* number of particles in the computing box "
   ncp::Vector{Int}
-  " Indices of the unique cells with Particles "
+  " Auxiliary array to annotate if the cell contains real particles. "
+  contains_real::Vector{Bool}
+  " Indices of the unique cells with real particles. "
   cwp::Vector{Cell{N,T}}
   " First particle of cell "
   fp::Vector{AtomWithIndex{N,T}}
@@ -288,11 +288,21 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   ncwp = [0]
   ncp = [0]
   cwp = Vector{Cell{N,T}}(undef,number_of_cells)
+  contains_real = Vector{Bool}(undef,number_of_cells)
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
   npcell = Vector{Int}(undef,number_of_cells)
   projected_particles = Vector{ProjectedParticle{N,T}}(undef,number_of_particles)
-  cl = CellList{LargeDenseSystem,N,T}(ncwp,ncp,cwp,fp,np,npcell,projected_particles)
+  cl = CellList{LargeDenseSystem,N,T}(
+    ncwp,
+    ncp,
+    contains_real,
+    cwp,
+    fp,
+    np,
+    npcell,
+    projected_particles
+  )
   return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 

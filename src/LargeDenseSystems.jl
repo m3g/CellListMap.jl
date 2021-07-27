@@ -40,11 +40,12 @@ function UpdateCellList!(
   cl::CellList{LargeDenseSystem,N,T};
   parallel::Bool=true
 ) where {N,T}
-  @unpack cwp, fp, np, npcell = cl
+  @unpack contains_real, cwp, fp, np, npcell = cl
 
   number_of_cells = prod(box.nc)
   if number_of_cells > length(cwp) 
     number_of_cells = ceil(Int,1.1*number_of_cells) # some margin in case of box size variations
+    resize!(contains_real,number_of_cells)
     resize!(cwp,number_of_cells)
     resize!(fp,number_of_cells)
     resize!(npcell,number_of_cells)
@@ -53,6 +54,7 @@ function UpdateCellList!(
   cl.ncwp[1] = 0
   if parallel
     @threads for i in eachindex(cwp)
+      contains_real[i] = false
       cwp[i] = zero(Cell{N,T})
       fp[i] = zero(AtomWithIndex{N,T})
       npcell[i] = 0
@@ -61,6 +63,7 @@ function UpdateCellList!(
       np[i] = zero(AtomWithIndex{N,T})
     end
   else
+    fill!(contains_real,false)
     fill!(cwp,zero(Cell{N,T}))
     fill!(fp,zero(AtomWithIndex{N,T}))
     fill!(np,zero(AtomWithIndex{N,T}))
@@ -103,22 +106,24 @@ function add_particle_to_celllist!(
   cl::CellList{LargeDenseSystem,N,T};
   real_particle::Bool=true
 ) where {N,T}
-  @unpack cell_size = box
-  @unpack ncp, ncwp, cwp, fp, np, npcell = cl
+  @unpack contains_real, ncp, ncwp, cwp, fp, np, npcell = cl
   ncp[1] += 1
   icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
+  #
   # Cells starting with real particles are annotated to be run over
+  #
+  if real_particle && (!contains_real[icell])
+    contains_real[icell] = true
+    ncwp[1] += 1
+    cwp[ncwp[1]] = Cell{N,T}(
+      icell,
+      icell_cartesian,
+      cell_center(icell_cartesian,box)
+    )
+  end
   if fp[icell].index == 0
     npcell[icell] = 1
-    if real_particle 
-      ncwp[1] += 1
-      cwp[ncwp[1]] = Cell{N,T}(
-        icell,
-        icell_cartesian,
-        cell_center(icell_cartesian,cell_size)
-      )
-    end
   else
     npcell[icell] += 1
   end
@@ -218,11 +223,11 @@ function cell_output!(
   jc_cartesian
 ) where {N,T}
   @unpack projected_particles = cl
-  @unpack nc, cell_size, cutoff, cutoff_sq = box
+  @unpack nc, cutoff, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
   # Vector connecting cell centers
-  Δc = cell_center(jc_cartesian,cell_size) - icell.center 
+  Δc = cell_center(jc_cartesian,box) - icell.center 
 
   # Copy coordinates of particles of icell jcell into continuous array,
   # and project them into the vector connecting cell centers

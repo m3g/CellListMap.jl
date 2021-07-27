@@ -83,14 +83,14 @@ end
 """
 
 ```
-cell_center(c::CartesianIndex{N},cell_size::T) where {N,T}
+cell_center(c::CartesianIndex{N},box::Box{N,T,M}) where {N,T,M}
 ```
 
 Computes the geometric center of a computin cell, to be used in the projection
 of points. Returns a `SVector{N,T}`
 
 """
-cell_center(c::CartesianIndex{N},cell_size::T) where {N,T} =
-  SVector{N,T}(ntuple(i-> cell_size*c[i]/2, N))
+@inline cell_center(c::CartesianIndex{N},box::Box{N,T,M}) where {N,T,M} =
+  SVector{N,T}(ntuple(i -> box.cell_size*(c[i] - 0.5 - box.lcell), N))
 
 

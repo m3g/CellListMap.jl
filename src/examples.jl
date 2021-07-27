@@ -8,7 +8,7 @@ function test1(;N=100_000,parallel=true,x=nothing)
   # Number of particles, sides and cutoff
   sides = @SVector [250,250,250]
   cutoff = 10
-  box = Box(sides,cutoff)
+  box = Box(sides,cutoff,scale_cutoff=1)
 
   # Particle positions
   Random.seed!(321)
@@ -27,8 +27,9 @@ function test1(;N=100_000,parallel=true,x=nothing)
     0.,box,cl,
     parallel=parallel
   )
-  return avg_dx
 
+  correct_result = 100.5799271448272
+  return avg_dx ≈ correct_result, avg_dx
 end
 
 #
@@ -377,16 +378,14 @@ function florpi(;N=100_000,cd=true,parallel=true)
   positions = reshape(reinterpret(SVector{3,Float64},positions),n)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
-  box = Box(Lbox, r_max, lcell=1, scale_cutoff=1.2) 
+  box = Box(Lbox, r_max) 
   cl = CellList(positions,box,parallel=parallel)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
   # Needs this to stabilize the type of velocities and hist, probably
-  function barrier(f,velocities,rbins,Lbox,hist,positions,box,cl,reduce_hist,parallel)
+  function barrier(f!,velocities,rbins,Lbox,hist,box,cl,reduce_hist,parallel)
     hist = map_pairwise!(
-      (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(
-         x,y,i,j,d2,hist,velocities,rbins,Lbox
-      ),
+      (x,y,i,j,d2,hist) -> f!(x,y,i,j,d2,hist,velocities,rbins,Lbox),
       hist, box, cl,
       reduce=reduce_hist,
       parallel=parallel
@@ -395,7 +394,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
   end
 
   hist = barrier(compute_pairwise_mean_cell_lists!,
-    velocities,rbins,Lbox,hist,positions,box,cl,reduce_hist,parallel)
+    velocities,rbins,Lbox,hist,box,cl,reduce_hist,parallel)
 
   n_pairs = hist[1]
   mean_v_r = hist[2]
