@@ -2,9 +2,10 @@
 # Function that checks if the particule is outside the computation bounding box
 #
 function out_of_bounding_box(x::SVector{N,T},box::Box{N,T,M}) where {N,T,M}
+  @unpack cell_size, nc, lcell = box
   for i in 1:N
-    (x[i] >= box.unit_cell_max[i] + box.cutoff) && return true
-    (x[i] < -box.cutoff) && return true
+    (x[i] < -cell_size*lcell) && return true
+    (x[i] >= (nc[i]-lcell)*cell_size) && return true
   end
   return false
 end
@@ -34,6 +35,7 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
   return cl
 end
 
+
 """
 
 ```
@@ -59,23 +61,23 @@ function replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
   return cl
 end
 
-function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{3,T}) where T
+function ranges_of_replicas(cell_size, lcell, nc, unit_cell::SMatrix{3,3,T,9}) where T
   V = SVector{3,T}
-  c = cutoff
-  um = unit_cell_max
+  cmin = ntuple(i->-lcell*cell_size,3)
+  cmax = ntuple(i->(nc[i]-lcell)*cell_size,3)
   cell_vertices = SVector{8,V}( 
-    V(        -c,        -c,        -c ), 
-    V( um[1] + c,        -c,        -c ), 
-    V( um[1] + c, um[2] + c,        -c ), 
-    V( um[1] + c,        -c, um[3] + c ), 
-    V( um[1] + c, um[2] + c, um[3] + c ), 
-    V(        -c, um[2] + c,        -c ),
-    V(        -c, um[2] + c, um[3] + c ),
-    V(        -c,        -c, um[3] + c )
+    V(   cmin[1],   cmin[2],   cmin[3] ), 
+    V(   cmin[1],   cmin[2],   cmax[3] ),
+    V(   cmin[1],   cmax[2],   cmin[3] ),
+    V(   cmin[1],   cmax[2],   cmax[3] ),
+    V(   cmax[1],   cmin[2],   cmin[3] ), 
+    V(   cmax[1],   cmin[2],   cmax[3] ), 
+    V(   cmax[1],   cmax[2],   cmin[3] ), 
+    V(   cmax[1],   cmax[2],   cmax[3] ) 
   )
   r_min, r_max = _ranges_of_replicas(
     nc,
-    SVector{3,Int}(-1,-1,-1),
+    SVector{3,Int}(-lcell,-lcell,-lcell),
     unit_cell,
     cell_vertices
   )
@@ -87,19 +89,19 @@ function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{3,T}) whe
   return ranges
 end
 
-function ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max::SVector{2,T}) where T
+function ranges_of_replicas(lcell,cell_size,nc,unit_cell::SMatrix{2,2,T,4}) where T
   V = SVector{2,T}
-  c = cutoff
-  um = unit_cell_max
+  cmin = ntuple(i->-lcell*cell_size,2)
+  cmax = ntuple(i->(nc[i]-lcell)*cell_size,2)
   cell_vertices = SVector{4,V}( 
-    V(        -c,        -c ), 
-    V( um[1] + c,        -c ), 
-    V(        -c, um[2] + c ),
-    V( um[1] + c, um[2] + c ) 
+    V(   cmin[1],   cmin[2] ), 
+    V(   cmin[1],   cmax[2] ),
+    V(   cmax[1],   cmin[2] ), 
+    V(   cmax[1],   cmax[2] ), 
   )
   r_min, r_max = _ranges_of_replicas(
     nc,
-    SVector{2,Int}(-1,-1),
+    SVector{2,Int}(-lcell,-lcell),
     unit_cell,
     cell_vertices
   )
@@ -212,7 +214,7 @@ neighbour_cells(box::Box{N,T,M}) where {N,M}
 
 Function that returns the iterator of the cartesian indices of the cells that must be 
 evaluated (forward, i. e. to avoid repeated interactions) 
-if the cells have sides of length `box.cutoff/box.lcell`. `N` can be
+if the cells have sides of length `box.cell_size`. `N` can be
 `2` or `3`, for two- or three-dimensional systems.
 
 """
@@ -241,7 +243,7 @@ neighbour_cells_all(box::Box{N,T,M}) where {N,M}
 ```
 
 Function that returns the iterator of the cartesian indices of all neighbouring
-cells of a cell if the cells have sides of `box.cutoff/box.lcell`. `N` can be
+cells of a cell if the cells have sides of `box.cell_size`. `N` can be
 `2` or `3`, for two- or three-dimensional systems.
 
 """
@@ -261,11 +263,11 @@ particle_cell(x::SVector{N,T}, box::Box) where {N,T}
 ```
 
 Returns the coordinates of the computing cell to which a particle belongs, given its coordinates
-and the cutoff/cell. 
+and the cell_size. 
 
 """
 @inline particle_cell(x::SVector{N,T}, box::Box) where {N,T} =
-  CartesianIndex(ntuple(i -> floor(Int,(x[i] .+ box.cutoff)/(box.cutoff/box.lcell) + 1), N))
+  CartesianIndex(ntuple(i -> floor(Int,(x[i] .+ box.cell_size*box.lcell)/box.cell_size + 1), N))
 
 """
 

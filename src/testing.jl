@@ -47,23 +47,22 @@ for computing purposes.
 ```julia
 julia> box = Box([ 100 50; 50 100 ],10);
 
-julia> p = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
+julia> x = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
 
-julia> cl = CellList(p,box);
+julia> cl = CellList(x,box);
 
-julia> x, y = CellListMap.view_celllist_particles(cl);
+julia> p = CellListMap.view_celllist_particles(cl);
 
 julia> using Plots
 
-julia> scatter(x,y,label=nothing,xlims=(-10,180),ylims=(-10,180))
+julia> scatter(Tuple.(p),label=nothing,xlims=(-10,180),ylims=(-10,180))
 
 ```
 
 """
-function view_celllist_particles(cl::CellList{N,T},box::Box) where {N,T}
-  @unpack nc = box
-  @unpack cwp, ncp, fp, np = cl
-  x = Vector{SVector{N,T}}(undef,ncp)
+function view_celllist_particles(cl::CellList{SystemType,N,T}) where {SystemType,N,T}
+  @unpack ncp, np = cl
+  x = Vector{SVector{N,T}}(undef,ncp[1])
   ip = 0
   for p in cl.fp
     p.index == 0 && continue
@@ -75,6 +74,6 @@ function view_celllist_particles(cl::CellList{N,T},box::Box) where {N,T}
       p = np[p.index]
     end
   end
-  return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp]
+  return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp[1]]
 end
 

@@ -36,12 +36,13 @@ Box{3, Float64}
 """
 Base.@kwdef struct Box{N,T,M}
   unit_cell::SMatrix{N,N,T,M}
-  unit_cell_max::SVector{N,T}
   lcell::Int
   nc::SVector{N,Int}
   cutoff::T
   cutoff_sq::T
   ranges::SVector{N,UnitRange{Int}}
+  scale_cutoff::T
+  cell_size::T
 end
 
 """
@@ -68,32 +69,50 @@ Box{3, Float64}
 ```
 
 """
-function Box(unit_cell::AbstractMatrix, cutoff, T::DataType, lcell::Int=1)
+function Box(
+  unit_cell::AbstractMatrix, 
+  cutoff, 
+  T::DataType, 
+  lcell::Int=1,
+  scale_cutoff=1.0
+)
+
+  @assert lcell >= 1 "lcell must be greater or equal to 1"
+  @assert scale_cutoff >= 1 "scale_cutoff must be greater or equal to 1.0"
+
   N = size(unit_cell)[1]
   @assert N == size(unit_cell)[2] "Unit cell matrix must be square."
   @assert count(unit_cell .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
-  unit_cell_max = SVector{N,T}(sum(@view(unit_cell[:,i]) for i in 1:N))
+
   unit_cell = SMatrix{N,N,T}(unit_cell) 
+  cell_size = scale_cutoff*cutoff/lcell
+  unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
   nc = SVector{N,Int}(
-    ceil.(Int,max.(1,(unit_cell_max .+ 2*cutoff)/(cutoff/lcell)))
+    ceil.(Int,max.(1,(unit_cell_max .+ 2*(lcell*cell_size))/cell_size))
   ) 
-  ranges = ranges_of_replicas(cutoff,nc,unit_cell,unit_cell_max)
+
+  ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell)
   return Box{N,T,N*N}(
     unit_cell,
-    unit_cell_max,
     lcell, nc,
     cutoff,
     cutoff^2,
-    ranges
+    ranges,
+    scale_cutoff,
+    cell_size
   )
 end
-Box(unit_cell::AbstractMatrix,cutoff;T::DataType=Float64,lcell::Int=1) =
-  Box(unit_cell,cutoff,T,lcell)
+Box(
+  unit_cell::AbstractMatrix,
+  cutoff;
+  T::DataType=Float64,
+  lcell::Int=1,
+  scale_cutoff=1.0
+) = Box(unit_cell,cutoff,T,lcell,scale_cutoff)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
   println(typeof(box))
   println("  unit cell: ", box.unit_cell) 
-  println("  unit cell maximum: ", box.unit_cell_max) 
   println("  cutoff: ", box.cutoff)
   println("  number of cells on each dimension: ",box.nc, " (lcell: ",box.lcell,")")
   print("  Total number of cells: ", prod(box.nc))
@@ -119,7 +138,13 @@ Box{3, Float64}
 ```
 
 """
-function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
+function Box(
+  sides::AbstractVector, 
+  cutoff, 
+  T::DataType, 
+  lcell::Int=1,
+  scale_cutoff=1.0
+)
   N = length(sides)
   cart_idxs = CartesianIndices((1:N,1:N))
   # Build unit cell matrix from lengths
@@ -133,10 +158,15 @@ function Box(sides::AbstractVector, cutoff, T::DataType, lcell::Int=1)
       end
     end
   )
-  return Box(unit_cell,cutoff,T,lcell) 
+  return Box(unit_cell,cutoff,T,lcell,scale_cutoff) 
 end
-Box(sides::AbstractVector,cutoff;T::DataType=Float64,lcell::Int=1) =
-  Box(sides,cutoff,T,lcell)
+Box(
+  sides::AbstractVector,
+  cutoff;
+  T::DataType=Float64,
+  lcell::Int=1,
+  scale_cutoff=1.0
+) = Box(sides,cutoff,T,lcell,scale_cutoff)
 
 """
 

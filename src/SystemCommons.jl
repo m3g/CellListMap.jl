@@ -79,3 +79,18 @@ function reduce(output::AbstractVector, output_threaded::AbstractVector{<:Abstra
   end
   return output
 end
+
+"""
+
+```
+cell_center(c::CartesianIndex{N},cell_size::T) where {N,T}
+```
+
+Computes the geometric center of a computin cell, to be used in the projection
+of points. Returns a `SVector{N,T}`
+
+"""
+cell_center(c::CartesianIndex{N},cell_size::T) where {N,T} =
+  SVector{N,T}(ntuple(i-> cell_size*c[i]/2, N))
+
+

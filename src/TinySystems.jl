@@ -113,11 +113,7 @@ function add_particle_to_celllist!(
     npcell[icell] = 1
     if real_particle 
       ncwp[1] += 1
-      cwp[ncwp[1]] = Cell{N,T}(
-        icell,
-        icell_cartesian,
-        cell_center(icell_cartesian,cell_size)
-      )
+      cwp[ncwp[1]] = Cell{N,T}(icell,icell_cartesian,cell_center(icell_cartesian,cell_size))
     end
   else
     npcell[icell] += 1
@@ -218,7 +214,7 @@ function cell_output!(
   jc_cartesian
 ) where {N,T}
   @unpack projected_particles = cl
-  @unpack nc, cell_size, cutoff, cutoff_sq = box
+  @unpack nc, cutoff, cutoff_sq, cell_size = box
   jc = cell_linear_index(nc,jc_cartesian)
 
   # Vector connecting cell centers
@@ -232,7 +228,7 @@ function cell_output!(
   for jp in 1:npcell
     j_orig = pⱼ.index_original
     xpⱼ = pⱼ.coordinates
-    xproj = dot(xpⱼ-icell.center,Δc)
+    xproj = dot(xpⱼ - icell.center,Δc)
     projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
     pⱼ = cl.np[j]
     j = pⱼ.index

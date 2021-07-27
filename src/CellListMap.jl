@@ -24,16 +24,25 @@ include("./SystemCommons.jl")
 map_pairwise!(f::Function,output,box::Box,cl::CellList;parallel::Bool=true,show_progress::Bool=false)
 ```
 
-This function will run over every pair of particles which are closer than `box.cutoff` and compute
-the Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the cutoff, a function `f` of the coordinates
-of the two particles will be computed. 
+This function will run over every pair of particles which are closer than 
+`box.cutoff` and compute the Euclidean distance between the particles, 
+considering the periodic boundary conditions given in the `Box` structure. 
+If the distance is smaller than the cutoff, a function `f` of the 
+coordinates of the two particles will be computed. 
 
 The function `f` receives six arguments as input: 
 ```
 f(x,y,i,j,d2,output)
 ```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. 
+Which are the coordinates of one particle, the coordinates of the 
+second particle, the index of the first particle, the index of the second 
+particle, the squared distance between them, and the `output` variable. 
+It has also to return the same `output` variable. Thus, `f` may or not 
+mutate `output`, but in either case it must return it. With that, it is 
+possible to compute an average property of the distance of the particles 
+or, for example, build a histogram. The squared distance `d2` is computed internally for comparison with the 
+`cutoff`, and is passed to the `f` because many times it is used for the 
+desired computation. 
 
 ## Example
 
