@@ -88,11 +88,15 @@ function Box(
   cell_size = scale_cutoff*cutoff/lcell
   unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
   nc = SVector{N,Int}(ceil.(Int,unit_cell_max/cell_size) .+ 2)
+  @show unit_cell_max/cell_size
+  @show ceil.(Int,unit_cell_max/cell_size)
+  @show nc
 
   ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell)
   return Box{N,T,N*N}(
     unit_cell,
-    lcell, nc,
+    lcell, 
+    nc,
     cutoff,
     cutoff^2,
     ranges,

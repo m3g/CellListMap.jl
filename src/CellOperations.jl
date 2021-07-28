@@ -2,11 +2,13 @@
 # Function that checks if the particule is outside the computation bounding box
 #
 function out_of_bounding_box(x::SVector{N,T},box::Box{N,T,M}) where {N,T,M}
-  @unpack cutoff, unit_cell = box
+  @unpack cutoff, unit_cell, cell_size, lcell, nc = box
   unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
   for i in 1:N
     (x[i] < -cutoff) && return true
     (x[i] >= unit_cell_max[i]+cutoff) && return true
+#    (x[i] < -lcell*cell_size) && return true
+#    (x[i] >= (nc[i]-lcell)*cell_size) && return true
   end
   return false
 end
