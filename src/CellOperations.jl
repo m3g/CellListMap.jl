@@ -90,7 +90,7 @@ function ranges_of_replicas(cell_size, lcell, nc, unit_cell::SMatrix{3,3,T,9}) w
   return ranges
 end
 
-function ranges_of_replicas(lcell,cell_size,nc,unit_cell::SMatrix{2,2,T,4}) where T
+function ranges_of_replicas(cell_size, lcell, nc,unit_cell::SMatrix{2,2,T,4}) where T
   V = SVector{2,T}
   cmin = ntuple(i->-lcell*cell_size,2)
   cmax = ntuple(i->(nc[i]-lcell)*cell_size,2)
