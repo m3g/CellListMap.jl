@@ -7,6 +7,7 @@ struct MediumSparseSystem end
 struct MediumDenseSystem end
 struct LargeSparseSystem end
 struct LargeDenseSystem end
+struct HugeDenseSystem end
 
 """
 
@@ -87,10 +88,10 @@ function Box(
   unit_cell = SMatrix{N,N,T}(unit_cell) 
   cell_size = scale_cutoff*cutoff/lcell
   unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
+
+### lcell*cell_size must be == unit_cell_max
+
   nc = SVector{N,Int}(ceil.(Int,unit_cell_max/cell_size) .+ 2)
-  @show unit_cell_max/cell_size
-  @show ceil.(Int,unit_cell_max/cell_size)
-  @show nc
 
   ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell)
   return Box{N,T,N*N}(
@@ -191,8 +192,9 @@ Base.zero(::Type{AtomWithIndex{N,T}}) where {N,T} =
 
 $(TYPEDEF)
 
-This structure contains the cell linear index and the information about if this cell
-is in the border of the box (such that its neighbouring cells need to be wrapped) 
+This structure contains the cell linear index and the information 
+about if this cell is in the border of the box (such that its 
+neighbouring cells need to be wrapped) 
 
 """
 struct Cell{N,T}
@@ -233,14 +235,14 @@ Base.@kwdef struct CellList{SystemType,N,T}
   contains_real::Vector{Bool}
   " Indices of the unique cells with real particles. "
   cwp::Vector{Cell{N,T}}
-  " First particle of cell "
+  " First particle of cell. "
   fp::Vector{AtomWithIndex{N,T}}
   " Next particle of cell "
   np::Vector{AtomWithIndex{N,T}}
-  " Number of particles in of cell "
+  " Number of particles of cell. "
   npcell::Vector{Int}
-  " Auxiliar vector to store projected particles. "
-  projected_particles::Vector{ProjectedParticle{N,T}}
+  " Auxiliar array to store projected particles. "
+  projected_particles::Vector{Vector{ProjectedParticle{N,T}}}
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
@@ -296,7 +298,9 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
   npcell = Vector{Int}(undef,number_of_cells)
-  projected_particles = Vector{ProjectedParticle{N,T}}(undef,number_of_particles)
+  projected_particles = [
+   Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads()
+  ]
   cl = CellList{LargeDenseSystem,N,T}(
     ncwp,
     ncp,

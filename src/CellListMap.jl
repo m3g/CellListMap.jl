@@ -1,5 +1,6 @@
 module CellListMap
 
+using Base: project_deps_get
 using LinearAlgebra: dot, norm, norm_sqr
 using Base.Threads
 using Parameters
@@ -7,7 +8,6 @@ using StaticArrays
 using DocStringExtensions
 using ProgressMeter
 using Setfield
-using LoopVectorization
 
 export Box
 export CellList, UpdateCellList!
