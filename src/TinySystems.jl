@@ -213,7 +213,7 @@ function cell_output!(
   jc_cartesian
 ) where {N,T}
   @unpack projected_particles = cl
-  @unpack nc, cutoff, cutoff_sq, cell_size = box
+  @unpack nc, cutoff, cutoff_sq = box
   jc = cell_linear_index(nc,jc_cartesian)
 
   # Vector connecting cell centers

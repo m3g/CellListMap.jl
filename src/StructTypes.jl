@@ -284,7 +284,7 @@ CellList{3, Float64}
 function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) where {N,T} 
   number_of_cells = ceil(Int,prod(box.nc))
   # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
-  number_of_particles = length(x)
+  number_of_particles = ceil(Int,1.2*length(x))
   ncwp = [0]
   ncp = [0]
   cwp = Vector{Cell{N,T}}(undef,number_of_cells)
