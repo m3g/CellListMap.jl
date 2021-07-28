@@ -197,7 +197,7 @@ struct Cell{N,T}
   center::SVector{N,T}
 end
 Base.zero(::Type{Cell{N,T}}) where {N,T} =
-  Cell{N,T}(0,CartesianIndex{N}(0,0,0),zeros(SVector{N,T}))
+  Cell{N,T}(0,CartesianIndex{N}(ntuple(i->0,N)),zeros(SVector{N,T}))
 
 """
 
