@@ -5,11 +5,6 @@
 struct TinySystem end 
 struct LowDensitySystem end
 struct HighDensitySystem end
-struct LargeHighDensitySystem end
-
-const UnionLargeDense = 
-  Union{HighDensitySystem,LargeHighDensitySystem}
-
 
 """
 
@@ -336,9 +331,9 @@ function set_system_type(x,box)
 
   particles_per_cell = length(x) / prod(box.nc)
 
-  if particles_per_cell < 32
-    return LowDensitySystem
-  end
+#  if particles_per_cell < 32
+#    return LowDensitySystem
+#  end
 
   return HighDensitySystem
 end

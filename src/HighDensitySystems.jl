@@ -8,9 +8,9 @@
 ```
 UpdateCellList!(
     x::AbstractVector{SVector{N,T}},
-    box::Box,cl:CellList{SystemType,N,T},
+    box::Box,cl:CellList{HighDensitySystem,N,T},
     parallel=true
-) where {SystemType<:UnionLargeDense,N,T}
+) where {N,T}
 ```
 
 Function that will update a previously allocated `CellList` structure, given new updated particle 
@@ -37,9 +37,9 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   box::Box,
-  cl::CellList{SystemType,N,T};
+  cl::CellList{HighDensitySystem,N,T};
   parallel::Bool=true
-) where {SystemType<:UnionLargeDense,N,T}
+) where {N,T}
   @unpack contains_real, cwp, fp, np, npcell, projected_particles = cl
 
   number_of_cells = prod(box.nc)
@@ -110,9 +110,9 @@ function add_particle_to_celllist!(
   ip,
   x::SVector{N,T},
   box,
-  cl::CellList{SystemType,N,T};
+  cl::CellList{HighDensitySystem,N,T};
   real_particle::Bool=true
-) where {SystemType<:UnionLargeDense,N,T}
+) where {N,T}
   @unpack contains_real, ncp, ncwp, cwp, fp, np, npcell = cl
   ncp[1] += 1
   icell_cartesian = particle_cell(x,box)
@@ -150,9 +150,9 @@ end
 # Serial version for self-pairwise computations
 #
 function map_pairwise_serial!(
-  f::F, output, box::Box, cl::CellList{SystemType,N,T}; 
+  f::F, output, box::Box, cl::CellList{HighDensitySystem,N,T}; 
   show_progress::Bool=false
-) where {F,SystemType<:UnionLargeDense,N,T}
+) where {F,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for icell in 1:cl.ncwp[1]
     output = inner_loop!(f,box,icell,cl,output) 
@@ -165,14 +165,14 @@ end
 # Parallel version for self-pairwise computations
 #
 function map_pairwise_parallel!(
-  f::F1, output, box::Box, cl::CellList{SystemType,N,T};
+  f::F1, output, box::Box, cl::CellList{HighDensitySystem,N,T};
   output_threaded=output_threaded,
   reduce::F2=reduce,
   show_progress::Bool=false
-) where {F1,F2,SystemType<:UnionLargeDense,N,T}
+) where {F1,F2,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   @threads for it in 1:nthreads() 
-    for icell in splitter(it,cl.ncwp[1])
+    for icell in it:nthreads():cl.ncwp[1]
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
@@ -183,9 +183,9 @@ end
 
 function inner_loop!(
   f,box,icell,
-  cl::CellList{SystemType,N,T},
+  cl::CellList{HighDensitySystem,N,T},
   output
-) where {SystemType<:UnionLargeDense,N,T}
+) where {N,T}
   @unpack cutoff_sq = box
   cell = cl.cwp[icell]
 
