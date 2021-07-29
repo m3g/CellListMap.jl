@@ -1,9 +1,7 @@
 #
-# Functions to deal with large and dense system, avoiding the maximum number
-# of unnecessary loop iterations over non-interacting particles
+# Functions to deal with systems of medium size, for which some
+# pre-processing of the cell list brings too much overhead.
 #
-
-const UnionLargeDense = Union{LargeDenseSystem,HugeDenseSystem}
 
 """
 
@@ -262,7 +260,7 @@ function cell_output!(
   pp = project_particles(jc_cartesian,cl,Δc,icell,box)
 
   # Sort particles according to projection norm
-  sort!(pp, by=el->el.xproj,alg=InsertionSort)
+  sort!(pp, by=el->el.xproj, alg=HeapSort)
 
   # Loop over particles of cell icell
   pᵢ = cl.fp[icell.icell]

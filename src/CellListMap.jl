@@ -13,9 +13,16 @@ export Box
 export CellList, UpdateCellList!
 export map_pairwise!
 
+export TinySystem 
+export LowDensitySystem
+export HighDensitySystem
+export LargeHighDensitySystem
+
+
 include("./StructTypes.jl")
 include("./CellOperations.jl")
-include("./LargeDenseSystems.jl")
+include("./TinySystems.jl")
+include("./HighDensitySystems.jl")
 include("./SystemCommons.jl")
 
 """

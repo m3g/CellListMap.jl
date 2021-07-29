@@ -3,11 +3,13 @@
 # Type of systems, to dispatch methods accordingly
 #
 struct TinySystem end 
-struct MediumSparseSystem end
-struct MediumDenseSystem end
-struct LargeSparseSystem end
-struct LargeDenseSystem end
-struct HugeDenseSystem end
+struct LowDensitySystem end
+struct HighDensitySystem end
+struct LargeHighDensitySystem end
+
+const UnionLargeDense = 
+  Union{HighDensitySystem,LargeHighDensitySystem}
+
 
 """
 
@@ -247,7 +249,7 @@ end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println(typeof(cl))
   println("  $(cl.ncwp[1]) cells with real particles.")
-  print("  $(cl.ncp[1]) particles in computing box, including images.")
+  println("  $(cl.ncp[1]) particles in computing box, including images.")
 end
 
 # Structure that will cointain the cell lists of two independent sets of
@@ -287,7 +289,12 @@ CellList{3, Float64}
 ```
 
 """
-function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) where {N,T} 
+function CellList(
+  x::AbstractVector{SVector{N,T}},
+  box::Box;
+  parallel::Bool=true,
+  SystemType=nothing
+) where {N,T} 
   number_of_cells = ceil(Int,prod(box.nc))
   # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = ceil(Int,1.2*length(x))
@@ -301,7 +308,14 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
   projected_particles = [
    Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads()
   ]
-  cl = CellList{LargeDenseSystem,N,T}(
+
+  # Set automatically the system type, as a function of the 
+  # total number of particles and the number of particles per cell
+  if isnothing(SystemType) 
+    SystemType = set_system_type(x,box)
+  end
+
+  cl = CellList{SystemType,N,T}(
     ncwp,
     ncp,
     contains_real,
@@ -312,6 +326,21 @@ function CellList(x::AbstractVector{SVector{N,T}},box::Box;parallel::Bool=true) 
     projected_particles
   )
   return UpdateCellList!(x,box,cl,parallel=parallel)
+end
+
+function set_system_type(x,box)
+
+  if length(x) <= 20 
+    return TinySystem
+  end
+
+  particles_per_cell = length(x) / prod(box.nc)
+
+  if particles_per_cell < 32
+    return LowDensitySystem
+  end
+
+  return HighDensitySystem
 end
 
 """
@@ -357,4 +386,6 @@ function CellList(
   end
   return cl_pair
 end
+
+particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
 
