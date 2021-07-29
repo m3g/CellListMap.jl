@@ -332,3 +332,42 @@ function cell_output!(
 
   return output
 end
+
+#
+# loops over the particles of a neighbour cell
+#
+function cell_output!(
+  f,
+  box,
+  icell,
+  cl::CellList{MediumDenseSystem,N,T},
+  output,
+  jc_cartesian
+) where {N,T}
+  @unpack nc, cutoff_sq = box
+  jc = cell_linear_index(nc,jc_cartesian)
+
+  # loop over list of non-repeated particles of cell ic
+  pᵢ = cl.fp[icell.icell]
+  i = pᵢ.index
+  while i > 0
+    xpᵢ = pᵢ.coordinates
+    pⱼ = cl.fp[jc]
+    j = pⱼ.index
+    i_orig = pᵢ.index_original
+    while j > 0
+      xpⱼ = pⱼ.coordinates
+      d2 = norm_sqr(xpᵢ-xpⱼ)
+      j_orig = pⱼ.index_original
+      if d2 <= cutoff_sq
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
+      pⱼ = cl.np[pⱼ.index]
+      j = pⱼ.index
+    end
+    pᵢ = cl.np[pᵢ.index]
+    i = pᵢ.index
+  end
+
+  return output
+end
