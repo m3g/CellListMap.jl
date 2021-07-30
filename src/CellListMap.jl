@@ -18,10 +18,13 @@ export LowDensitySystem
 export HighDensitySystem
 export LargeHighDensitySystem
 
+export TriclinicCell
+export OrthorhombicCell
 
 include("./StructTypes.jl")
 include("./CellOperations.jl")
 include("./TinySystems.jl")
+include("./LowDensitySystems.jl")
 include("./HighDensitySystems.jl")
 include("./SystemCommons.jl")
 
