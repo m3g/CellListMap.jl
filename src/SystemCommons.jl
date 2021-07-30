@@ -83,14 +83,14 @@ end
 """
 
 ```
-cell_center(c::CartesianIndex{N},box::Box{N,T,M}) where {N,T,M}
+cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
 ```
 
 Computes the geometric center of a computin cell, to be used in the projection
 of points. Returns a `SVector{N,T}`
 
 """
-@inline cell_center(c::CartesianIndex{N},box::Box{N,T,M}) where {N,T,M} =
+@inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
   SVector{N,T}(ntuple(i -> box.cell_size*(c[i] - 0.5 - box.lcell), N))
 
 #
@@ -142,8 +142,8 @@ function inner_loop!(
   f,output,i,box,
   cl::CellListPair{SystemType,N,T}
 ) where {SystemType,N,T}
-  @unpack unit_cell, nc, cutoff_sq = box
-  xpᵢ = wrap_to_first(cl.small[i],unit_cell)
+  @unpack nc, cutoff_sq = box
+  xpᵢ = wrap_to_first(cl.small[i],box)
   ic = particle_cell(xpᵢ,box)
   for neighbour_cell in neighbour_cells_all(box)
     jc = cell_linear_index(nc,neighbour_cell+ic)

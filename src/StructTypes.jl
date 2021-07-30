@@ -6,6 +6,17 @@ struct TinySystem end
 struct LowDensitySystem end
 struct HighDensitySystem end
 
+#
+# We make difference between these two because wrapping in orthorhombic 
+# cells is cheaper
+#
+struct TriclinicCell end
+struct OrthorhombicCell end
+
+struct UnitCell{UnitCellType,N,T,M}
+  matrix::SMatrix{N,N,T,M}
+end
+
 """
 
 $(TYPEDEF)
@@ -32,8 +43,8 @@ Box{3, Float64}
 ```
 
 """
-Base.@kwdef struct Box{N,T,M}
-  unit_cell::SMatrix{N,N,T,M}
+Base.@kwdef struct Box{UnitCellType,N,T,M}
+  unit_cell::UnitCell{UnitCellType,N,T,M}
   lcell::Int
   nc::SVector{N,Int}
   cutoff::T
@@ -41,6 +52,7 @@ Base.@kwdef struct Box{N,T,M}
   ranges::SVector{N,UnitRange{Int}}
   scale_cutoff::T
   cell_size::T
+  unit_cell_max::SVector{N,T}
 end
 
 """
@@ -68,30 +80,31 @@ Box{3, Float64}
 
 """
 function Box(
-  unit_cell::AbstractMatrix, 
+  unit_cell_matrix::AbstractMatrix, 
   cutoff, 
   T::DataType, 
   lcell::Int=1,
-  scale_cutoff=1.0
+  scale_cutoff=1.0,
+  UnitCellType=TriclinicCell
 )
 
   @assert lcell >= 1 "lcell must be greater or equal to 1"
   @assert scale_cutoff >= 1 "scale_cutoff must be greater or equal to 1.0"
 
-  N = size(unit_cell)[1]
-  @assert N == size(unit_cell)[2] "Unit cell matrix must be square."
-  @assert count(unit_cell .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
+  N = size(unit_cell_matrix)[1]
+  @assert N == size(unit_cell_matrix)[2] "Unit cell matrix must be square."
+  @assert count(unit_cell_matrix .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
 
-  unit_cell = SMatrix{N,N,T}(unit_cell) 
+  unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
   cell_size = scale_cutoff*cutoff/lcell
-  unit_cell_max = sum(@view(unit_cell[:,i]) for i in 1:N) 
+  unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
 
 ### lcell*cell_size must be == unit_cell_max
 
   nc = SVector{N,Int}(ceil.(Int,unit_cell_max/cell_size) .+ 2)
 
-  ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell)
-  return Box{N,T,N*N}(
+  ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
+  return Box{UnitCellType,N,T,N*N}(
     unit_cell,
     lcell, 
     nc,
@@ -99,20 +112,22 @@ function Box(
     cutoff^2,
     ranges,
     scale_cutoff,
-    cell_size
+    cell_size,
+    unit_cell_max
   )
 end
 Box(
-  unit_cell::AbstractMatrix,
+  unit_cell_matrix::AbstractMatrix,
   cutoff;
   T::DataType=Float64,
   lcell::Int=1,
-  scale_cutoff=1.0
-) = Box(unit_cell,cutoff,T,lcell,scale_cutoff)
+  scale_cutoff=1.0,
+  UnitCellType=TriclinicCell
+) = Box(unit_cell_matrix,cutoff,T,lcell,scale_cutoff,UnitCellType)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
   println(typeof(box))
-  println("  unit cell: ", box.unit_cell) 
+  println("  unit cell matrix: ", box.unit_cell.matrix) 
   println("  cutoff: ", box.cutoff)
   println("  number of cells on each dimension: ",box.nc, " (lcell: ",box.lcell,")")
   print("  Total number of cells: ", prod(box.nc))
@@ -143,12 +158,13 @@ function Box(
   cutoff, 
   T::DataType, 
   lcell::Int=1,
-  scale_cutoff=1.0
+  scale_cutoff=1.0,
+  UnitCellType=OrthorhombicCell
 )
   N = length(sides)
   cart_idxs = CartesianIndices((1:N,1:N))
   # Build unit cell matrix from lengths
-  unit_cell = SMatrix{N,N,T,N*N}( 
+  unit_cell_matrix = SMatrix{N,N,T,N*N}( 
     ntuple(N*N) do i
       c = cart_idxs[i]
       if c[1] == c[2] 
@@ -158,15 +174,23 @@ function Box(
       end
     end
   )
-  return Box(unit_cell,cutoff,T,lcell,scale_cutoff) 
+  return Box(
+    unit_cell_matrix,
+    cutoff,
+    T,
+    lcell,
+    scale_cutoff,
+    UnitCellType
+  ) 
 end
 Box(
   sides::AbstractVector,
   cutoff;
   T::DataType=Float64,
   lcell::Int=1,
-  scale_cutoff=1.0
-) = Box(sides,cutoff,T,lcell,scale_cutoff)
+  scale_cutoff=1.0,
+  UnitCellType=OrthorhombicCell
+) = Box(sides,cutoff,T,lcell,scale_cutoff,UnitCellType)
 
 """
 
@@ -290,7 +314,7 @@ function CellList(
   parallel::Bool=true,
   SystemType=nothing
 ) where {N,T} 
-  number_of_cells = ceil(Int,prod(box.nc))
+  number_of_cells = prod(box.nc)
   # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = ceil(Int,1.2*length(x))
   ncwp = [0]
@@ -300,9 +324,7 @@ function CellList(
   fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
   np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
   npcell = Vector{Int}(undef,number_of_cells)
-  projected_particles = [
-   Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads()
-  ]
+  projected_particles = [ Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads() ]
 
   # Set automatically the system type, as a function of the 
   # total number of particles and the number of particles per cell
@@ -331,6 +353,7 @@ function set_system_type(x,box)
 
   particles_per_cell = length(x) / prod(box.nc)
 
+  # what is low? what is high? to test
   if particles_per_cell < 32
     return LowDensitySystem
   end

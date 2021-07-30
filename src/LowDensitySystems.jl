@@ -1,6 +1,5 @@
 #
-# Functions to deal with systems of medium size, for which some
-# pre-processing of the cell list brings too much overhead.
+# Functions for low density systems
 #
 
 """
@@ -8,7 +7,7 @@
 ```
 UpdateCellList!(
     x::AbstractVector{SVector{N,T}},
-    box::Box,cl:CellList{LargeDenseSystem,N,T},
+    box::Box,cl:CellList{LowDensitySystem,N,T},
     parallel=true
 ) where {N,T}
 ```
@@ -37,10 +36,10 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 function UpdateCellList!(
   x::AbstractVector{SVector{N,T}},
   box::Box,
-  cl::CellList{SystemType,N,T};
+  cl::CellList{LowDensitySystem,N,T};
   parallel::Bool=true
-) where {SystemType<:UnionLargeDense,N,T}
-  @unpack contains_real, cwp, fp, np, npcell, projected_particles = cl
+) where {N,T}
+  @unpack contains_real, cwp, fp, np, npcell = cl
 
   number_of_cells = prod(box.nc)
   if number_of_cells > length(cwp) 
@@ -52,23 +51,11 @@ function UpdateCellList!(
   end
 
   cl.ncwp[1] = 0
-  if parallel
-    @threads for i in eachindex(cwp)
-      contains_real[i] = false
-      cwp[i] = zero(Cell{N,T})
-      fp[i] = zero(AtomWithIndex{N,T})
-      npcell[i] = 0
-    end
-    @threads for i in eachindex(np)
-      np[i] = zero(AtomWithIndex{N,T})
-    end
-  else
-    fill!(contains_real,false)
-    fill!(cwp,zero(Cell{N,T}))
-    fill!(fp,zero(AtomWithIndex{N,T}))
-    fill!(np,zero(AtomWithIndex{N,T}))
-    fill!(npcell,0)
-  end
+  fill!(contains_real,false)
+  fill!(cwp,zero(Cell{N,T}))
+  fill!(fp,zero(AtomWithIndex{N,T}))
+  fill!(np,zero(AtomWithIndex{N,T}))
+  fill!(npcell,0)
 
   #
   # The following part cannot be *easily* paralelized, because 
@@ -79,7 +66,7 @@ function UpdateCellList!(
   # Add virtual particles to edge cells
   #
   for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box.unit_cell)
+    p = wrap_to_first(particle,box)
     cl = replicate_particle!(ip,p,box,cl)
   end
   #
@@ -87,15 +74,8 @@ function UpdateCellList!(
   # always a true particle
   #
   for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box.unit_cell)
+    p = wrap_to_first(particle,box)
     cl = add_particle_to_celllist!(ip,p,box,cl) 
-  end
-
-  maximum_npcell = maximum(npcell)
-  if maximum_npcell > length(projected_particles[1])
-    for i in 1:nthreads()
-      resize!(projected_particles[i],ceil(Int,1.2*maximum_npcell))
-    end
   end
 
   return cl
@@ -110,9 +90,9 @@ function add_particle_to_celllist!(
   ip,
   x::SVector{N,T},
   box,
-  cl::CellList{SystemType,N,T};
+  cl::CellList{LowDensitySystem,N,T};
   real_particle::Bool=true
-) where {SystemType<:UnionLargeDense,N,T}
+) where {N,T}
   @unpack contains_real, ncp, ncwp, cwp, fp, np, npcell = cl
   ncp[1] += 1
   icell_cartesian = particle_cell(x,box)
@@ -126,7 +106,7 @@ function add_particle_to_celllist!(
     cwp[ncwp[1]] = Cell{N,T}(
       icell,
       icell_cartesian,
-      cell_center(icell_cartesian,box)
+      zeros(SVector{N,T})
     )
   end
   if fp[icell].index == 0
@@ -152,7 +132,8 @@ end
 function map_pairwise_serial!(
   f::F, output, box::Box, cl::CellList{SystemType,N,T}; 
   show_progress::Bool=false
-) where {F,SystemType<:UnionLargeDense,N,T}
+) where {F,SystemType,N,T}
+@show cl.ncwp[1]
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for icell in 1:cl.ncwp[1]
     output = inner_loop!(f,box,icell,cl,output) 
@@ -165,14 +146,14 @@ end
 # Parallel version for self-pairwise computations
 #
 function map_pairwise_parallel!(
-  f::F1, output, box::Box, cl::CellList{SystemType,N,T};
+  f::F1, output, box::Box, cl::CellList{LowDensitySystem,N,T};
   output_threaded=output_threaded,
   reduce::F2=reduce,
   show_progress::Bool=false
-) where {F1,F2,SystemType<:UnionLargeDense,N,T}
+) where {F1,F2,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   @threads for it in 1:nthreads() 
-    for icell in splitter(it,cl.ncwp[1])
+    for icell in it:nthreads():cl.ncwp[1]
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
@@ -183,9 +164,9 @@ end
 
 function inner_loop!(
   f,box,icell,
-  cl::CellList{SystemType,N,T},
+  cl::CellList{LowDensitySystem,N,T},
   output
-) where {SystemType<:UnionLargeDense,N,T}
+) where {N,T}
   @unpack cutoff_sq = box
   cell = cl.cwp[icell]
 
@@ -202,7 +183,7 @@ function inner_loop!(
       if d2 <= cutoff_sq
         i_orig = pᵢ.index_original
         j_orig = pⱼ.index_original
-          output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index
@@ -218,152 +199,39 @@ function inner_loop!(
   return output
 end
 
-function project_particles(jc_cartesian,cl,Δc,icell,box)
-  @unpack nc = box
-  @unpack fp = cl
-  projected_particles = cl.projected_particles[threadid()]
-  jc = cell_linear_index(nc,jc_cartesian)
-  pⱼ = fp[jc]
-  npcell = cl.npcell[jc]
-  j = pⱼ.index
-  for jp in 1:npcell
-    j_orig = pⱼ.index_original
-    xpⱼ = pⱼ.coordinates
-    xproj = dot(xpⱼ-icell.center,Δc)
-    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
-    pⱼ = cl.np[j]
-    j = pⱼ.index
-  end
-  pp = @view(projected_particles[1:npcell])
-  return pp
-end
-
 #
-# loops over the particles of a neighbour cell, for HugeDenseSystem
-#
-# all efforts are made to not run anything on unnecessary pairs 
-# of particles, this includes sorting the projections
-#
-function cell_output!(
-  f,
-  box,
-  icell,
-  cl::CellList{HugeDenseSystem,N,T},
-  output,
-  jc_cartesian
-) where {N,T}
-  @unpack cutoff, cutoff_sq = box
-
-  # Project particles into vector connection cell centers
-  Δc = cell_center(jc_cartesian,box) - icell.center 
-  Δc = Δc/norm(Δc)
-  pp = project_particles(jc_cartesian,cl,Δc,icell,box)
-
-  # Sort particles according to projection norm
-  sort!(pp, by=el->el.xproj, alg=HeapSort)
-
-  # Loop over particles of cell icell
-  pᵢ = cl.fp[icell.icell]
-  i = pᵢ.index
-  while i > 0
-    xpᵢ = pᵢ.coordinates
-    xproj = dot(xpᵢ-icell.center,Δc)
-    for j in eachindex(pp)
-      xproj - pp[j].xproj > cutoff && break
-      xpⱼ = pp[j].coordinates
-      d2 = norm_sqr(xpᵢ - xpⱼ)
-      if d2 <= cutoff_sq
-        i_orig = pᵢ.index_original
-        j_orig = pp[j].index_original
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      end
-    end
-    pᵢ = cl.np[i]
-    i = pᵢ.index
-  end
-
-  return output
-end
-
-#
-# loops over the particles of a neighbour cell, for LargeDenseSystem
+# loops over the particles of a neighbour cell, for LowDensitySystems
 # not large enough such that sorting the projections is useful
 #
 function cell_output!(
   f,
   box,
   icell,
-  cl::CellList{LargeDenseSystem,N,T},
+  cl::CellList{LowDensitySystem,N,T},
   output,
   jc_cartesian
 ) where {N,T}
-  @unpack cutoff, cutoff_sq = box
+  @unpack cutoff_sq, nc = box
+  jcell = cell_linear_index(nc,jc_cartesian)
 
-  # Vector connecting cell centers
-  Δc = cell_center(jc_cartesian,box) - icell.center 
-  Δc = Δc/norm(Δc)
-  pp = project_particles(jc_cartesian,cl,Δc,icell,box)
-
-  # Loop over particles of cell icell
   pᵢ = cl.fp[icell.icell]
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
-    xproj = dot(xpᵢ-icell.center,Δc)
-
-    # Partition pp array according to the current projections
-    n = partition!(pp, el -> el.xproj - xproj <= cutoff)
-
-    # Compute the interactions 
-    for j in 1:n
-      xpⱼ = pp[j].coordinates
+    pⱼ = cl.fp[jcell]
+    j = pⱼ.index
+    while j > 0
+      xpⱼ = pⱼ.coordinates
       d2 = norm_sqr(xpᵢ - xpⱼ)
       if d2 <= cutoff_sq
         i_orig = pᵢ.index_original
-        j_orig = pp[j].index_original
+        j_orig = pⱼ.index_original
         output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
-    end
-    pᵢ = cl.np[i]
-    i = pᵢ.index
-  end
-
-  return output
-end
-
-#
-# loops over the particles of a neighbour cell
-#
-function cell_output!(
-  f,
-  box,
-  icell,
-  cl::CellList{MediumDenseSystem,N,T},
-  output,
-  jc_cartesian
-) where {N,T}
-  @unpack nc, cutoff_sq = box
-  jc = cell_linear_index(nc,jc_cartesian)
-
-  # loop over list of non-repeated particles of cell ic
-  pᵢ = cl.fp[icell.icell]
-  i = pᵢ.index
-  while i > 0
-    xpᵢ = pᵢ.coordinates
-    pⱼ = cl.fp[jc]
-    j = pⱼ.index
-    i_orig = pᵢ.index_original
-    while j > 0
-      xpⱼ = pⱼ.coordinates
-      d2 = norm_sqr(xpᵢ-xpⱼ)
-      j_orig = pⱼ.index_original
-      if d2 <= cutoff_sq
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      end
-      pⱼ = cl.np[pⱼ.index]
+      pⱼ = cl.np[j]
       j = pⱼ.index
     end
-    pᵢ = cl.np[pᵢ.index]
+    pᵢ = cl.np[i]
     i = pᵢ.index
   end
 

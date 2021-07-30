@@ -53,8 +53,6 @@ function UpdateCellList!(
   return cl
 end
 
-using LoopVectorization
-
 #
 # Serial version for self-pairwise computations
 #
