@@ -200,9 +200,9 @@ function inner_loop!(
     i = pᵢ.index
   end
 
-  #for jcell in neighbour_cells(box)
-  #  output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
-  #end
+  for jcell in neighbour_cells(box)
+    output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
+  end
 
   return output
 end
