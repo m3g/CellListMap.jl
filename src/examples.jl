@@ -336,7 +336,7 @@ end
 #
 # florpi
 #
-function florpi(;N=100_000,cd=true,parallel=true)
+function florpi(;N=100_000,cd=true,parallel=true,SystemType=nothing)
 
   @inline dot(x::SVector{3,Float64},y::SVector{3,Float64}) = x[1]*y[1] + x[2]*y[2] + x[3]*y[3]
   
@@ -378,8 +378,8 @@ function florpi(;N=100_000,cd=true,parallel=true)
   positions = reshape(reinterpret(SVector{3,Float64},positions),n)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
-  box = Box(Lbox, r_max) 
-  cl = CellList(positions,box,parallel=parallel)
+  box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell) 
+  cl = CellList(positions,box,parallel=parallel,SystemType=SystemType)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
   # Needs this to stabilize the type of velocities and hist, probably
