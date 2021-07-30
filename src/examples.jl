@@ -245,7 +245,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
   cutoff = +Inf
   for v in x
     iy = rand(1:N2)
-    cutoff = min(CellListMap.distance(v,y[iy]),cutoff)
+    cutoff = min(CellListMap.norm(v-y[iy]),cutoff)
   end 
    
   # Define box sides
