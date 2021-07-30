@@ -266,8 +266,7 @@ The full example can be run with `CellListMap.test7()`.
 
 ## Periodic boundary conditions
 
-**
-WARNING: The development of general periodic boundary conditions is still premilimary. Non-orthorhombic periodicity is not extensively tested. Next release (0.6) will contain more stable and tested implementation of this feature.**
+**WARNING: The development of general periodic boundary conditions is still premilimary. Non-orthorhombic periodicity is not extensively tested. Next release (0.6) will contain more stable and tested implementation of this feature.**
 
 Periodic boundary conditions of any kind can be used. Let us illustrate its use with a two-dimensional case, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. 
 
