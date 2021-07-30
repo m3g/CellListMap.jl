@@ -103,7 +103,7 @@ function Box(
   cell_size_max = unit_cell_max ./ nc_min
   cell_size = cell_size_max/lcell
 
-  nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2)
+  nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2*lcell)
 
   ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
   return Box{UnitCellType,N,T,N*N}(
@@ -350,7 +350,6 @@ end
 
 function set_system_type(x,box)
 
-  #return LowDensitySystem
   return HighDensitySystem
 
   if length(x) <= 20 
