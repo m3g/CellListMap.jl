@@ -1,8 +1,7 @@
 module CellListMap
 
-using Base: project_deps_get
-using LinearAlgebra: dot, norm, norm_sqr
 using Base.Threads
+using LinearAlgebra: dot, norm, norm_sqr
 using Parameters
 using StaticArrays
 using DocStringExtensions
@@ -16,7 +15,6 @@ export map_pairwise!
 export TinySystem 
 export LowDensitySystem
 export HighDensitySystem
-export LargeHighDensitySystem
 
 export TriclinicCell
 export OrthorhombicCell
