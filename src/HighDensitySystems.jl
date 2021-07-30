@@ -159,14 +159,8 @@ function map_pairwise_parallel!(
   show_progress::Bool=false
 ) where {F1,F2,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
-#  @threads for it in 1:nthreads() 
-#    for icell in it:nthreads():cl.ncwp[1]
-#      output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
-#      show_progress && next!(p)
-#    end
-#  end 
-  @sync for it in 1:nthreads() 
-    @async Threads.@spawn for icell in it:nthreads():cl.ncwp[1]
+  @threads for it in 1:nthreads() 
+    for icell in it:nthreads():cl.ncwp[1]
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
