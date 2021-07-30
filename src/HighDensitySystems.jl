@@ -52,23 +52,11 @@ function UpdateCellList!(
   end
 
   cl.ncwp[1] = 0
-  if parallel
-    @threads for i in eachindex(cwp)
-      contains_real[i] = false
-      cwp[i] = zero(Cell{N,T})
-      fp[i] = zero(AtomWithIndex{N,T})
-      npcell[i] = 0
-    end
-    @threads for i in eachindex(np)
-      np[i] = zero(AtomWithIndex{N,T})
-    end
-  else
-    fill!(contains_real,false)
-    fill!(cwp,zero(Cell{N,T}))
-    fill!(fp,zero(AtomWithIndex{N,T}))
-    fill!(np,zero(AtomWithIndex{N,T}))
-    fill!(npcell,0)
-  end
+  fill!(contains_real,false)
+  fill!(cwp,zero(Cell{N,T}))
+  fill!(fp,zero(AtomWithIndex{N,T}))
+  fill!(np,zero(AtomWithIndex{N,T}))
+  fill!(npcell,0)
 
   #
   # The following part cannot be *easily* paralelized, because 
@@ -79,7 +67,7 @@ function UpdateCellList!(
   # Add virtual particles to edge cells
   #
   for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box.unit_cell)
+    p = wrap_to_first(particle,box)
     cl = replicate_particle!(ip,p,box,cl)
   end
   #
@@ -87,7 +75,7 @@ function UpdateCellList!(
   # always a true particle
   #
   for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box.unit_cell)
+    p = wrap_to_first(particle,box)
     cl = add_particle_to_celllist!(ip,p,box,cl) 
   end
 
