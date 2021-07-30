@@ -133,7 +133,6 @@ function map_pairwise_serial!(
   f::F, output, box::Box, cl::CellList{SystemType,N,T}; 
   show_progress::Bool=false
 ) where {F,SystemType,N,T}
-@show cl.ncwp[1]
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for icell in 1:cl.ncwp[1]
     output = inner_loop!(f,box,icell,cl,output) 
@@ -162,11 +161,20 @@ function map_pairwise_parallel!(
   return output
 end
 
+@inline function distance_sq(x::AbstractVector{T}, y::AbstractVector{T}) where T
+  @assert length(x) == length(y)
+  d = zero(T)
+  @inbounds for i in eachindex(x)
+    d += (x[i]-y[i])^2
+  end
+  return d
+end
+
 function inner_loop!(
   f,box,icell,
-  cl::CellList{LowDensitySystem,N,T},
+  cl::CellList{LowDensitySystem},
   output
-) where {N,T}
+)
   @unpack cutoff_sq = box
   cell = cl.cwp[icell]
 
@@ -192,9 +200,9 @@ function inner_loop!(
     i = pᵢ.index
   end
 
-  for jcell in neighbour_cells(box)
-    output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
-  end
+  #for jcell in neighbour_cells(box)
+  #  output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
+  #end
 
   return output
 end
