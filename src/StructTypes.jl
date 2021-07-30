@@ -347,6 +347,9 @@ end
 
 function set_system_type(x,box)
 
+  #return LowDensitySystem
+  return HighDensitySystem
+
   if length(x) <= 20 
     return TinySystem
   end
