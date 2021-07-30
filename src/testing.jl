@@ -6,7 +6,7 @@ function map_naive!(f,output,x,box)
   for i in 1:length(x)-1
     xᵢ = x[i]
     for j in i+1:length(x)
-      xⱼ = wrap_relative_to(x[j],xᵢ,unit_cell)
+      xⱼ = wrap_relative_to(x[j],xᵢ,box.unit_cell.matrix)
       d2 = norm_sqr(xᵢ - xⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,xⱼ,i,j,d2,output)
@@ -24,7 +24,7 @@ function map_naive_two!(f,output,x,y,box)
   for i in 1:length(x)
     xᵢ = x[i]
     for j in 1:length(y)
-      yⱼ = wrap_relative_to(y[j],xᵢ,unit_cell)
+      yⱼ = wrap_relative_to(y[j],xᵢ,box.unit_cell.matrix)
       d2 = norm_sqr(xᵢ - yⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,yⱼ,i,j,d2,output)
