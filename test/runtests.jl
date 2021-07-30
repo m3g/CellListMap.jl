@@ -137,7 +137,7 @@ using Test
   N = 100_000
   x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
-  @test CellListMap.test1(parallel=true,x=x) ≈ CellListMap.test1(parallel=false,x=x)
+  @test CellListMap.test1(parallel=true,x=x)[2] ≈ CellListMap.test1(parallel=false,x=x)[2]
   @test CellListMap.test2(parallel=true,x=x) ≈ CellListMap.test2(parallel=false,x=x)
   @test CellListMap.test3(parallel=true,x=x) ≈ CellListMap.test3(parallel=false,x=x)
   @test CellListMap.test4(parallel=true,x=x) ≈ CellListMap.test4(parallel=false,x=x)
