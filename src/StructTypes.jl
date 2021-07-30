@@ -51,7 +51,7 @@ Base.@kwdef struct Box{UnitCellType,N,T,M}
   cutoff_sq::T
   ranges::SVector{N,UnitRange{Int}}
   scale_cutoff::T
-  cell_size::T
+  cell_size::SVector{N,T}
   unit_cell_max::SVector{N,T}
 end
 
@@ -96,12 +96,14 @@ function Box(
   @assert count(unit_cell_matrix .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
 
   unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
-  cell_size = scale_cutoff*cutoff/lcell
   unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
+ 
+  nc_min = @. floor.(Int,unit_cell_max/cutoff) 
+  @assert count(nc_min .== 0) == 0 "Cutoff smaller than unit cell size. "
+  cell_size_max = unit_cell_max ./ nc_min
+  cell_size = cell_size_max/lcell
 
-### lcell*cell_size must be == unit_cell_max
-
-  nc = SVector{N,Int}(ceil.(Int,unit_cell_max/cell_size) .+ 2)
+  nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2)
 
   ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
   return Box{UnitCellType,N,T,N*N}(
@@ -129,7 +131,8 @@ function Base.show(io::IO,::MIME"text/plain",box::Box)
   println(typeof(box))
   println("  unit cell matrix: ", box.unit_cell.matrix) 
   println("  cutoff: ", box.cutoff)
-  println("  number of cells on each dimension: ",box.nc, " (lcell: ",box.lcell,")")
+  println("  number of computing cells on each dimension: ",box.nc)
+  println("  computing cell sizes: ", box.cell_size, " (lcell: ",box.lcell,")")
   print("  Total number of cells: ", prod(box.nc))
 end
 

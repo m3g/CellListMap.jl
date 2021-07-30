@@ -91,7 +91,7 @@ of points. Returns a `SVector{N,T}`
 
 """
 @inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-  SVector{N,T}(ntuple(i -> box.cell_size*(c[i] - 0.5 - box.lcell), N))
+  SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - 0.5 - box.lcell), N))
 
 #
 # Currently the methods for cross-interaction computations are the

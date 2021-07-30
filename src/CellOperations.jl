@@ -63,8 +63,8 @@ end
 
 function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
   V = SVector{3,T}
-  cmin = ntuple(i->-lcell*cell_size,3)
-  cmax = ntuple(i->(nc[i]-lcell)*cell_size,3)
+  cmin = -lcell*cell_size
+  cmax = (nc .- lcell) .* cell_size
   cell_vertices = SVector{8,V}( 
     V(   cmin[1],   cmin[2],   cmin[3] ), 
     V(   cmin[1],   cmin[2],   cmax[3] ),
@@ -91,8 +91,8 @@ end
 
 function ranges_of_replicas(cell_size, lcell, nc,unit_cell_matrix::SMatrix{2,2,T}) where T
   V = SVector{2,T}
-  cmin = ntuple(i->-lcell*cell_size,2)
-  cmax = ntuple(i->(nc[i]-lcell)*cell_size,2)
+  cmin = -lcell*cell_size
+  cmax = (nc .- lcell) .* cell_size
   cell_vertices = SVector{4,V}( 
     V(   cmin[1],   cmin[2] ), 
     V(   cmin[1],   cmax[2] ),
@@ -270,7 +270,7 @@ and the cell_size.
 
 """
 @inline particle_cell(x::SVector{N}, box::Box) where N =
-  CartesianIndex(ntuple(i -> floor(Int,x[i]/box.cell_size) + box.lcell + 1, N))
+  CartesianIndex(ntuple(i -> floor(Int,x[i]/box.cell_size[i]) + box.lcell + 1, N))
 
 """
 
