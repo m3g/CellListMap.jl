@@ -130,7 +130,7 @@ function add_particle_to_celllist!(
     end
   end
   np[ncp[1]] = fp[icell]
-  fp[icell] = AtomWithIndex(ncp[1],ip,x) 
+  fp[icell] = AtomWithIndex(ncp[1],ip,x,real_particle) 
   return cl
 end
 
@@ -182,15 +182,17 @@ function inner_loop!(
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
+    i_orig = pᵢ.index_original
     pⱼ = cl.np[i] 
     j = pⱼ.index
     while j > 0
-      xpⱼ = pⱼ.coordinates
-      d2 = norm_sqr(xpᵢ - xpⱼ)
-      if d2 <= cutoff_sq
-        i_orig = pᵢ.index_original
-        j_orig = pⱼ.index_original
+      j_orig = pⱼ.index_original
+      if (pᵢ.real && pⱼ.real) || (i_orig < j_orig)
+        xpⱼ = pⱼ.coordinates
+        d2 = norm_sqr(xpᵢ - xpⱼ)
+        if d2 <= cutoff_sq
           output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+        end
       end
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index

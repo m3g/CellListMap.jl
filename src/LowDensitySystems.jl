@@ -122,7 +122,7 @@ function add_particle_to_celllist!(
     end
   end
   np[ncp[1]] = fp[icell]
-  fp[icell] = AtomWithIndex(ncp[1],ip,x) 
+  fp[icell] = AtomWithIndex(ncp[1],ip,x,real_particle) 
   return cl
 end
 

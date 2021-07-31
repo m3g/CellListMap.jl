@@ -46,7 +46,7 @@ function UpdateCellList!(
   # it is what it takes to use the same CellList structure 
   ncp[1] = length(x)
   for (ip,coordinates) in pairs(x)
-    np[ip] = AtomWithIndex(ip,ip,coordinates)
+    np[ip] = AtomWithIndex(ip,ip,coordinates,true)
   end
   resize!(projected_particles[1],ncp[1])
 

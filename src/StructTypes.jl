@@ -208,9 +208,10 @@ struct AtomWithIndex{N,T}
   index::Int
   index_original::Int
   coordinates::SVector{N,T}
+  real::Bool
 end
 Base.zero(::Type{AtomWithIndex{N,T}}) where {N,T} =
-  AtomWithIndex{N,T}(0,0,zeros(SVector{N,T}))
+  AtomWithIndex{N,T}(0,0,zeros(SVector{N,T}),false)
 
 """
 
