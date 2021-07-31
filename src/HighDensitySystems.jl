@@ -187,7 +187,9 @@ function inner_loop!(
     j = pⱼ.index
     while j > 0
       j_orig = pⱼ.index_original
-      if (pᵢ.real && pⱼ.real) || (i_orig < j_orig)
+      # Will compute interactions if both particles are real, or if one is
+      # real but with a greater index than the first, to avoid repetitions
+      if (pᵢ.real && pⱼ.real) || (i_orig > j_orig)
         xpⱼ = pⱼ.coordinates
         d2 = norm_sqr(xpᵢ - xpⱼ)
         if d2 <= cutoff_sq
@@ -264,6 +266,11 @@ function cell_output!(
   pᵢ = cl.fp[icell.icell]
   i = pᵢ.index
   while i > 0
+    if ! pᵢ.real
+      pᵢ = cl.np[i]
+      i = pᵢ.index
+      continue
+    end
     xpᵢ = pᵢ.coordinates
     xproj = dot(xpᵢ-icell.center,Δc)
 
