@@ -186,13 +186,6 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
   p = SVector{N,T}(rem.(unit_cell_matrix\(x-xref),1))
-  for i in eachindex(p)
-    if p[i] > 0.5 
-      @set! p[i] -= 1
-    elseif p[i] < -0.5
-      @set! p[i] += 1
-    end
-  end
   return unit_cell_matrix*p + xref
 end
 
