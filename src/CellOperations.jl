@@ -137,7 +137,7 @@ wrap_cell_fraction(x,cell)
 
 """
 @inline function wrap_cell_fraction(x,unit_cell_matrix)
-  p = rem.(unit_cell_matrix\x,1)
+  p = mod.(unit_cell_matrix\x,1)
   p = @. ifelse(p < 0, p + 1, p)
   return p
 end
@@ -170,7 +170,7 @@ first unit cell with all-positive coordinates, given the `Box` structure.
 
 @inline function wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
   sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
-  x = rem.(x,sides)
+  x = mod.(x,sides)
   x = @. ifelse(x < 0, x + sides, x)
   return x
 end
@@ -185,13 +185,15 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
+  @show "entrou"
+  readline()
   x_f = wrap_cell_fraction(x,unit_cell_matrix)
   xref_f = wrap_cell_fraction(xref,unit_cell_matrix)
   xw = wrap_relative_to(x_f,xref_f,SVector{N,T}(ntuple(i->1,N)))
   return unit_cell_matrix * (xw - xref_f) + xref
 end
 
-@inline wrap_relative_to(x,xref,box::Box{TriclinicCell,N,T}) where {N,T} =
+@inline wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
   wrap_relative_to(x,xref,box.unit_cell.matrix)
 
 @inline function wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
@@ -200,16 +202,20 @@ end
 end
 
 @inline function wrap_relative_to(x,xref,sides::AbstractVector)
-  xw = (x-xref) ./ sides
-  for i in eachindex(xw)
-    if xw[i] < -0.5
-      @set! xw[i] += 1
-    elseif xw[i] >= 0.5
-      @set! xw[i] -= 1
-    end
-  end
-  return sides .* xw + xref
+  xw = mod.(x-xref,sides)
+  xw = wrap_single_coordinate.(xw,sides)
+  return xw + xref
 end
+
+@inline function wrap_single_coordinate(x,s)
+  if x >= s/2
+    x = x - s
+  elseif x < -s/2
+    x = x + s
+  end
+  return x
+end
+
 
 """
 
