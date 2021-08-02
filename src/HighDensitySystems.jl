@@ -143,7 +143,7 @@ function map_pairwise_serial!(
 ) where {F,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for icell in 1:cl.ncwp[1]
-    output = inner_loop!(f,box,icell,cl,output) 
+    output = inner_loop2!(f,box,icell,cl,output) 
     show_progress && next!(p)
   end
   return output
@@ -161,11 +161,66 @@ function map_pairwise_parallel!(
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   @threads for it in 1:nthreads() 
     for icell in it:nthreads():cl.ncwp[1]
-      output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
+      output_threaded[it] = inner_loop2!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
   end 
   output = reduce(output,output_threaded)
+  return output
+end
+
+function inner_loop2!(
+  f,box,icell,
+  cl::CellList{HighDensitySystem,N,T},
+  output
+) where {N,T}
+  @unpack cutoff, cutoff_sq, nc = box
+  cell = cl.cwp[icell]
+
+  for neighbour_cell in neighbour_cells_all(box)
+    jc_cartesian = cell.cartesian + neighbour_cell
+    jc = cell_linear_index(nc,jc_cartesian)
+
+    # Vector connecting cell centers
+    if jc == cell.icell
+      Δc = SVector{N,T}(ntuple(i->1,N))
+    else
+      Δc = cell_center(jc_cartesian,box) - cell.center 
+    end
+    Δc = Δc/norm(Δc)
+    pp = project_particles(jc_cartesian,cl,Δc,cell,box)
+
+    pᵢ = cl.fp[cell.icell]
+    i = pᵢ.index
+    while i > 0
+      if !pᵢ.real
+        pᵢ = cl.np[pᵢ.index]
+        i = pᵢ.index
+        continue
+      end
+      xpᵢ = pᵢ.coordinates
+      i_orig = pᵢ.index_original
+
+      # Partition pp array according to the current projections
+      xproj = dot(xpᵢ-cell.center,Δc)
+      n = partition!(pp, el -> el.xproj - xproj <= cutoff)
+
+      for j in 1:n
+        pⱼ = pp[j]
+        j_orig = pⱼ.index_original
+        if i_orig < j_orig
+          xpⱼ = pⱼ.coordinates
+          d2 = norm_sqr(xpᵢ - xpⱼ)
+          if d2 <= cutoff_sq
+            output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+          end
+        end
+      end
+      pᵢ = cl.np[pᵢ.index]
+      i = pᵢ.index
+    end
+  end
+
   return output
 end
 
@@ -189,19 +244,21 @@ function inner_loop!(
       j_orig = pⱼ.index_original
       # Will compute interactions if both particles are real, or if one is
       # real but with a greater index than the first, to avoid repetitions
-      if (pᵢ.real && pⱼ.real) || (i_orig > j_orig)
+#      if (pᵢ.real && pⱼ.real) || (i_orig < j_orig)
         xpⱼ = pⱼ.coordinates
         d2 = norm_sqr(xpᵢ - xpⱼ)
         if d2 <= cutoff_sq
           output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
         end
-      end
+#      end
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index
     end
     pᵢ = cl.np[pᵢ.index]
     i = pᵢ.index
   end
+
+  @show cell.cartesian
 
   for jcell in neighbour_cells(box)
     output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
@@ -235,7 +292,8 @@ function project_particles(jc_cartesian,cl,Δc,icell,box)
     j_orig = pⱼ.index_original
     xpⱼ = pⱼ.coordinates
     xproj = dot(xpⱼ-icell.center,Δc)
-    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ) 
+    xreal = pⱼ.real
+    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ,xreal) 
     pⱼ = cl.np[j]
     j = pⱼ.index
   end
@@ -262,6 +320,8 @@ function cell_output!(
   Δc = Δc/norm(Δc)
   pp = project_particles(jc_cartesian,cl,Δc,icell,box)
 
+  @show jc_cartesian
+
   # Loop over particles of cell icell
   pᵢ = cl.fp[icell.icell]
   i = pᵢ.index
@@ -273,18 +333,21 @@ function cell_output!(
     end
     xpᵢ = pᵢ.coordinates
     xproj = dot(xpᵢ-icell.center,Δc)
+    i_orig = pᵢ.index_original
 
     # Partition pp array according to the current projections
     n = partition!(pp, el -> el.xproj - xproj <= cutoff)
 
     # Compute the interactions 
     for j in 1:n
-      xpⱼ = pp[j].coordinates
-      d2 = norm_sqr(xpᵢ - xpⱼ)
-      if d2 <= cutoff_sq
-        i_orig = pᵢ.index_original
-        j_orig = pp[j].index_original
-        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      pⱼ = pp[j]
+      j_orig = pⱼ.index_original
+      if pⱼ.real || (i_orig < j_orig)
+        xpⱼ = pⱼ.coordinates
+        d2 = norm_sqr(xpᵢ - xpⱼ)
+        if d2 <= cutoff_sq
+          output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+        end
       end
     end
     pᵢ = cl.np[i]
@@ -293,3 +356,5 @@ function cell_output!(
 
   return output
 end
+
+

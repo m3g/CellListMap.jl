@@ -6,7 +6,7 @@ function map_naive!(f,output,x,box)
   for i in 1:length(x)-1
     xᵢ = x[i]
     for j in i+1:length(x)
-      xⱼ = wrap_relative_to(x[j],xᵢ,box.unit_cell.matrix)
+      xⱼ = wrap_relative_to(x[j],xᵢ,box)
       d2 = norm_sqr(xᵢ - xⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,xⱼ,i,j,d2,output)
@@ -24,7 +24,7 @@ function map_naive_two!(f,output,x,y,box)
   for i in 1:length(x)
     xᵢ = x[i]
     for j in 1:length(y)
-      yⱼ = wrap_relative_to(y[j],xᵢ,box.unit_cell.matrix)
+      yⱼ = wrap_relative_to(y[j],xᵢ,box)
       d2 = norm_sqr(xᵢ - yⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,yⱼ,i,j,d2,output)
@@ -74,20 +74,27 @@ function view_celllist_particles(cl::CellList{SystemType,N,T}) where {SystemType
   return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp[1]]
 end
 
-function test(N)
-  b(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
-  n(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
+b(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
+n(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
+
+function test(N,M=2)
+  local x, box
   for i in 1:100000
-    box = Box(SMatrix{N,N,Float64,N*N}(rand(N,N)*10 .+ 1), 1)
-    if shortest_path(box.unit_cell.matrix) < box.cutoff
+    box = Box(SMatrix{N,N,Float64,N*N}(rand(N,N)*10), 1)
+    if shortest_path(box.unit_cell.matrix) < 2*box.cutoff
       continue
     end
-    x = 100 .* rand(SVector{N,Float64},2)
+    x = 100 .* rand(SVector{N,Float64},M)
+    for i in eachindex(x)
+      x[i] = x[i] .- 50  
+    end
     cl = CellList(x,box)
     if !(b(box,cl) ≈ n(box,x))
       return x, box
     end
   end
+  println(" ALL PASSED! ")
+  return x, box
 end
 
 

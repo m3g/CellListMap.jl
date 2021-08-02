@@ -99,13 +99,14 @@ function Box(
   unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
  
   nc_min = @. floor.(Int,unit_cell_max/cutoff) 
-  @assert count(nc_min .== 0) == 0 "Cutoff smaller than unit cell size. "
+#  @assert count(nc_min .== 0) == 0 "Cutoff greater than maximum unit cell size. "
   cell_size_max = unit_cell_max ./ nc_min
   cell_size = cell_size_max/lcell
 
   nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2*lcell)
 
-  ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
+  #ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
+  ranges = SVector{N,UnitRange{Int}}(ntuple(i->-1:1,N))
   return Box{UnitCellType,N,T,N*N}(
     unit_cell,
     lcell, 
@@ -240,6 +241,7 @@ struct ProjectedParticle{N,T}
   index_original::Int
   xproj::T
   coordinates::SVector{N,T}
+  real::Bool
 end
 
 """

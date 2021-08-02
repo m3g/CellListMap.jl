@@ -185,21 +185,30 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-  p = SVector{N,T}(rem.(unit_cell_matrix\(x-xref),1))
-  return unit_cell_matrix*p + xref
+  x_f = wrap_cell_fraction(x,unit_cell_matrix)
+  xref_f = wrap_cell_fraction(xref,unit_cell_matrix)
+  xw = wrap_relative_to(x_f,xref_f,SVector{N,T}(ntuple(i->1,N)))
+  return unit_cell_matrix * (xw - xref_f) + xref
 end
 
+@inline wrap_relative_to(x,xref,box::Box{TriclinicCell,N,T}) where {N,T} =
+  wrap_relative_to(x,xref,box.unit_cell.matrix)
+
 @inline function wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
-  sides = ntuple(i->box.unit_cell.matrix[i,i],N)
-  x = (x-xref) ./ sides
-  for i in 1:N
-    if x[i] < -0.5
-      @set! x[i] += 1
-    elseif x[i] >= 0.5
-      @set! x[i] -= 1
+  sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
+  return wrap_relative_to(x,xref,sides)
+end
+
+@inline function wrap_relative_to(x,xref,sides::AbstractVector)
+  xw = (x-xref) ./ sides
+  for i in eachindex(xw)
+    if xw[i] < -0.5
+      @set! xw[i] += 1
+    elseif xw[i] >= 0.5
+      @set! xw[i] -= 1
     end
   end
-  return sides .* x + xref
+  return sides .* xw + xref
 end
 
 """
