@@ -189,6 +189,19 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
   return unit_cell_matrix*p + xref
 end
 
+@inline function wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
+  sides = ntuple(i->box.unit_cell.matrix[i,i],N)
+  x = (x-xref) ./ sides
+  for i in 1:N
+    if x[i] < -0.5
+      @set! x[i] += 1
+    elseif x[i] >= 0.5
+      @set! x[i] -= 1
+    end
+  end
+  return sides .* x + xref
+end
+
 """
 
 ```
