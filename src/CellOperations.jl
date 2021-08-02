@@ -16,7 +16,7 @@ function out_of_bounding_box(x::SVector{N},box::Box) where N
   end
   return false
 end
-out_of_bounding_box(p::AtomWithIndex,box::Box) =
+out_of_bounding_box(p::ParticleWithIndex,box::Box) =
   out_of_bounding_box(p.coordinates,box)
 
 """

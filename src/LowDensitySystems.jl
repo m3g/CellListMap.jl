@@ -53,8 +53,8 @@ function UpdateCellList!(
   cl.ncwp[1] = 0
   fill!(contains_real,false)
   fill!(cwp,zero(Cell{N,T}))
-  fill!(fp,zero(AtomWithIndex{N,T}))
-  fill!(np,zero(AtomWithIndex{N,T}))
+  fill!(fp,zero(ParticleWithIndex{N,T}))
+  fill!(np,zero(ParticleWithIndex{N,T}))
   fill!(npcell,0)
 
   #
@@ -118,11 +118,11 @@ function add_particle_to_celllist!(
     old_length = length(np)
     resize!(np,ceil(Int,1.2*old_length))
     for i in old_length+1:length(np)
-      np[i] = zero(AtomWithIndex{N,T}) 
+      np[i] = zero(ParticleWithIndex{N,T}) 
     end
   end
   np[ncp[1]] = fp[icell]
-  fp[icell] = AtomWithIndex(ncp[1],ip,x,real_particle) 
+  fp[icell] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
   return cl
 end
 

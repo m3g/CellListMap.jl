@@ -12,7 +12,6 @@ export Box
 export CellList, UpdateCellList!
 export map_pairwise!
 
-export TinySystem 
 export LowDensitySystem
 export HighDensitySystem
 
@@ -21,7 +20,6 @@ export OrthorhombicCell
 
 include("./StructTypes.jl")
 include("./CellOperations.jl")
-include("./TinySystems.jl")
 include("./LowDensitySystems.jl")
 include("./HighDensitySystems.jl")
 include("./SystemCommons.jl")

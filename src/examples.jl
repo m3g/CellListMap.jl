@@ -1,7 +1,7 @@
 import Random
 
 #
-# In this test we compute the average displacement of the x coordinates of the atoms
+# In this test we compute the average displacement of the x coordinates of the particles
 #              
 function test1(;N=100_000,parallel=true,x=nothing)
 

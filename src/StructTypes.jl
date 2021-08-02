@@ -1,14 +1,13 @@
-
 #
 # Type of systems, to dispatch methods accordingly
 #
-struct TinySystem end 
 struct LowDensitySystem end
 struct HighDensitySystem end
 
 #
-# We make difference between these two because wrapping in orthorhombic 
-# cells is cheaper
+# This difference is important because for Orthorhombic cells it is
+# possible to run over only half of the cells, and wrapping coordinates
+# in Orthorhombic cells is slightly cheaper. 
 #
 struct TriclinicCell end
 struct OrthorhombicCell end
@@ -205,14 +204,14 @@ in memory when building the cell lists. This strategy duplicates the particle co
 data, but is probably worth the effort.
 
 """
-struct AtomWithIndex{N,T}
+struct ParticleWithIndex{N,T}
   index::Int
   index_original::Int
   coordinates::SVector{N,T}
   real::Bool
 end
-Base.zero(::Type{AtomWithIndex{N,T}}) where {N,T} =
-  AtomWithIndex{N,T}(0,0,zeros(SVector{N,T}),false)
+Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
+  ParticleWithIndex{N,T}(0,0,zeros(SVector{N,T}),false)
 
 """
 
@@ -263,9 +262,9 @@ Base.@kwdef struct CellList{SystemType,N,T}
   " Indices of the unique cells with real particles. "
   cwp::Vector{Cell{N,T}}
   " First particle of cell. "
-  fp::Vector{AtomWithIndex{N,T}}
+  fp::Vector{ParticleWithIndex{N,T}}
   " Next particle of cell "
-  np::Vector{AtomWithIndex{N,T}}
+  np::Vector{ParticleWithIndex{N,T}}
   " Number of particles of cell. "
   npcell::Vector{Int}
   " Auxiliar array to store projected particles. "
@@ -327,8 +326,8 @@ function CellList(
   ncp = [0]
   cwp = Vector{Cell{N,T}}(undef,number_of_cells)
   contains_real = Vector{Bool}(undef,number_of_cells)
-  fp = Vector{AtomWithIndex{N,T}}(undef,number_of_cells)
-  np = Vector{AtomWithIndex{N,T}}(undef,number_of_particles)
+  fp = Vector{ParticleWithIndex{N,T}}(undef,number_of_cells)
+  np = Vector{ParticleWithIndex{N,T}}(undef,number_of_particles)
   npcell = Vector{Int}(undef,number_of_cells)
   projected_particles = [ Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads() ]
 

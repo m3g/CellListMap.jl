@@ -72,7 +72,7 @@ The full code of the examples described here is available at the [examples.jl](h
 
 ### Mean difference of coordinates 
 
-Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the atoms from the parameters of the input function, as they are not needed in this case.
+Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.
 
 ```julia
 using CellListMap
@@ -105,7 +105,7 @@ The example above can be run with `CellListMap.test1()`.
 ### Histogram of distances
 
 Computing the histogram of the distances between particles (considering the same particles as in the above example). Again,
-we use a closure to remove the indexes of the atoms from the computation, because they are not needed. The distance, on the other side, is needed in this example:
+we use a closure to remove the indexes of the particles from the computation, because they are not needed. The distance, on the other side, is needed in this example:
 
 ```julia
 # Function that accumulates the histogram of distances
@@ -184,7 +184,7 @@ The example above can be run with `CellListMap.test4()`.
 
 ### Nearest neighbor
 
-Here we compute the indexes of the atoms that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
+Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
 
 ```julia
 # Number of particles, sides and cutoff
@@ -229,7 +229,7 @@ The example above can be run with `CellListMap.test5()`. The example `CellListMa
 
 ### Neighbour list
 
-In this example we compute the complete neighbor list, of all pairs of atoms which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the atoms and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
+In this example we compute the complete neighbor list, of all pairs of particles which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the particles and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
 
 ```julia
 # Function to be evalulated for each pair: push pair if d<cutoff
@@ -423,7 +423,7 @@ box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 map_pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few atoms and the computations loop over a samller number of cells. For dense systems, it is better to run over more cells with less atoms per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is between `lcell=1` and `lcell=6`, but for large and dense systems a larger value may be optimal. For molecular systems with normal densities `lcell=2` is likely the optimal choice. The peformance can be tested using the progress meter, as explained below.  
+This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a samller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is between `lcell=1` and `lcell=6`, but for large and dense systems a larger value may be optimal. For molecular systems with normal densities `lcell=2` is likely the optimal choice. The peformance can be tested using the progress meter, as explained below.  
 
 ### Output progress 
 
