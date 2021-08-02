@@ -143,7 +143,7 @@ function map_pairwise_serial!(
 ) where {F,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   for icell in 1:cl.ncwp[1]
-    output = inner_loop2!(f,box,icell,cl,output) 
+    output = inner_loop!(f,box,icell,cl,output) 
     show_progress && next!(p)
   end
   return output
@@ -161,7 +161,7 @@ function map_pairwise_parallel!(
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   @threads for it in 1:nthreads() 
     for icell in it:nthreads():cl.ncwp[1]
-      output_threaded[it] = inner_loop2!(f,box,icell,cl,output_threaded[it]) 
+      output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
   end 
@@ -169,8 +169,42 @@ function map_pairwise_parallel!(
   return output
 end
 
-function inner_loop2!(
-  f,box,icell,
+"""
+
+```
+project_particles(jc_cartesian,cl,Δc,icell,box)
+```
+
+Projects all particles of the cell of cartesian coordinates
+`jc_cartesian` into the unnitary vector `Δc` with direction
+connecting `icell.center` and the center of cell `jc_cartesian`. 
+Returns a view of the array of projected particles, with length
+equal to the number of particles of cell `jc_cartesian`. 
+
+"""
+function project_particles(jc_cartesian,cl,Δc,icell,box)
+  @unpack nc = box
+  @unpack fp = cl
+  projected_particles = cl.projected_particles[threadid()]
+  jc = cell_linear_index(nc,jc_cartesian)
+  pⱼ = fp[jc]
+  npcell = cl.npcell[jc]
+  j = pⱼ.index
+  for jp in 1:npcell
+    j_orig = pⱼ.index_original
+    xpⱼ = pⱼ.coordinates
+    xproj = dot(xpⱼ-icell.center,Δc)
+    xreal = pⱼ.real
+    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ,xreal) 
+    pⱼ = cl.np[j]
+    j = pⱼ.index
+  end
+  pp = @view(projected_particles[1:npcell])
+  return pp
+end
+
+function inner_loop!(
+  f,box::Box{TriclinicCell},icell,
   cl::CellList{HighDensitySystem,N,T},
   output
 ) where {N,T}
@@ -225,7 +259,7 @@ function inner_loop2!(
 end
 
 function inner_loop!(
-  f,box,icell,
+  f,box::Box{OrthorhombicCell},icell,
   cl::CellList{HighDensitySystem,N,T},
   output
 ) where {N,T}
@@ -237,28 +271,22 @@ function inner_loop!(
   i = pᵢ.index
   while i > 0
     xpᵢ = pᵢ.coordinates
-    i_orig = pᵢ.index_original
     pⱼ = cl.np[i] 
     j = pⱼ.index
     while j > 0
-      j_orig = pⱼ.index_original
-      # Will compute interactions if both particles are real, or if one is
-      # real but with a greater index than the first, to avoid repetitions
-#      if (pᵢ.real && pⱼ.real) || (i_orig < j_orig)
-        xpⱼ = pⱼ.coordinates
-        d2 = norm_sqr(xpᵢ - xpⱼ)
-        if d2 <= cutoff_sq
-          output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-        end
-#      end
+      xpⱼ = pⱼ.coordinates
+      d2 = norm_sqr(xpᵢ - xpⱼ)
+      if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pⱼ.index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
       pⱼ = cl.np[pⱼ.index]
       j = pⱼ.index
     end
     pᵢ = cl.np[pᵢ.index]
     i = pᵢ.index
   end
-
-  @show cell.cartesian
 
   for jcell in neighbour_cells(box)
     output = cell_output!(f,box,cell,cl,output,cell.cartesian+jcell)
@@ -267,47 +295,13 @@ function inner_loop!(
   return output
 end
 
-"""
-
-```
-project_particles(jc_cartesian,cl,Δc,icell,box)
-```
-
-Projects all particles of the cell of cartesian coordinates
-`jc_cartesian` into the unnitary vector `Δc` with direction
-connecting `icell.center` and the center of cell `jc_cartesian`. 
-Returns a view of the array of projected particles, with length
-equal to the number of particles of cell `jc_cartesian`. 
-
-"""
-function project_particles(jc_cartesian,cl,Δc,icell,box)
-  @unpack nc = box
-  @unpack fp = cl
-  projected_particles = cl.projected_particles[threadid()]
-  jc = cell_linear_index(nc,jc_cartesian)
-  pⱼ = fp[jc]
-  npcell = cl.npcell[jc]
-  j = pⱼ.index
-  for jp in 1:npcell
-    j_orig = pⱼ.index_original
-    xpⱼ = pⱼ.coordinates
-    xproj = dot(xpⱼ-icell.center,Δc)
-    xreal = pⱼ.real
-    projected_particles[jp] = ProjectedParticle(j_orig,xproj,xpⱼ,xreal) 
-    pⱼ = cl.np[j]
-    j = pⱼ.index
-  end
-  pp = @view(projected_particles[1:npcell])
-  return pp
-end
-
 #
 # loops over the particles of a neighbour cell, for LargeDenseSystem
 # not large enough such that sorting the projections is useful
 #
 function cell_output!(
   f,
-  box,
+  box::Box{OrthorhombicCell},
   icell,
   cl::CellList{HighDensitySystem,N,T},
   output,
@@ -320,34 +314,25 @@ function cell_output!(
   Δc = Δc/norm(Δc)
   pp = project_particles(jc_cartesian,cl,Δc,icell,box)
 
-  @show jc_cartesian
-
   # Loop over particles of cell icell
   pᵢ = cl.fp[icell.icell]
   i = pᵢ.index
   while i > 0
-    if ! pᵢ.real
-      pᵢ = cl.np[i]
-      i = pᵢ.index
-      continue
-    end
     xpᵢ = pᵢ.coordinates
     xproj = dot(xpᵢ-icell.center,Δc)
-    i_orig = pᵢ.index_original
-
+    
     # Partition pp array according to the current projections
     n = partition!(pp, el -> el.xproj - xproj <= cutoff)
 
     # Compute the interactions 
     for j in 1:n
       pⱼ = pp[j]
-      j_orig = pⱼ.index_original
-      if pⱼ.real || (i_orig < j_orig)
-        xpⱼ = pⱼ.coordinates
-        d2 = norm_sqr(xpᵢ - xpⱼ)
-        if d2 <= cutoff_sq
-          output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-        end
+      xpⱼ = pⱼ.coordinates
+      d2 = norm_sqr(xpᵢ - xpⱼ)
+      if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pⱼ.index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
       end
     end
     pᵢ = cl.np[i]
