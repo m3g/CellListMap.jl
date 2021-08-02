@@ -1,6 +1,13 @@
-#
-# Function that checks if the particule is outside the computation bounding box
-#
+"""
+
+```
+out_of_bounding_box(x::SVector{N},box::Box) where N
+```
+
+Function that evaluates if a particle is outside the computing bounding box,
+defined by the maximum and minimum unit cell coordinates. 
+
+"""
 function out_of_bounding_box(x::SVector{N},box::Box) where N
   @unpack cutoff, unit_cell_max = box
   for i in 1:N
@@ -15,52 +22,34 @@ out_of_bounding_box(p::AtomWithIndex,box::Box) =
 """
 
 ```
-replicate_particle!(ip,p::T,box,cl) where {T <: SVector{2,S} where S}
+replicate_particle!(ip,p::SVector{N},box,cl) where N
 ```
 
 Replicates the particle as many times as necessary to fill the computing box.
 
 """
-function replicate_particle!(ip,p::SVector{2},box,cl)
-  @unpack ranges = box
-  for i in ranges[1]
-    for j in ranges[2]
-      i == 0 && j == 0 && continue
-      x = translation_image(p,box.unit_cell.matrix,(i,j))
-      if ! out_of_bounding_box(x,box)
-        cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
-      end
+function replicate_particle!(ip,p::SVector{N},box,cl) where N
+  itr = Iterators.product(ntuple(i->box.ranges[i],N)...)
+  for indexes in itr
+    (count(isequal(0),indexes) == N) && continue
+    x = translation_image(p,box.unit_cell.matrix,indexes)
+    if ! out_of_bounding_box(x,box)
+      cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
     end
   end 
   return cl
 end
 
-
 """
 
 ```
-replicate_particle!(ip,p::T,box,cl) where {T <: SVector{3,S} where S}
+ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
 ```
 
-Replicates the particle as many times as necessary to fill the computing box.
+Function that sets which is the range of periodic images necessary to fill
+the computing box, in 3D.
 
 """
-function replicate_particle!(ip,p::SVector{3},box,cl)
-  @unpack ranges = box
-  for i in ranges[1]
-    for j in ranges[2]
-      for k in ranges[3]
-        i == 0 && j == 0 && k == 0 && continue
-        x = translation_image(p,box.unit_cell.matrix,(i,j,k))
-        if ! out_of_bounding_box(x,box)
-          cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
-        end
-      end
-    end
-  end 
-  return cl
-end
-
 function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
   V = SVector{3,T}
   cmin = -lcell*cell_size
@@ -89,6 +78,16 @@ function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,
   return ranges
 end
 
+"""
+
+```
+ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
+```
+
+Function that sets which is the range of periodic images necessary to fill
+the computing box, in 2D.
+
+"""
 function ranges_of_replicas(cell_size, lcell, nc,unit_cell_matrix::SMatrix{2,2,T}) where T
   V = SVector{2,T}
   cmin = -lcell*cell_size
@@ -130,10 +129,26 @@ end
 """
 
 ```
-wrap_cell_fraction(x,cell)
+wrap_to_cell_fraction(x,unit_cell_matrix)
 ```
 
-`x` is a vector of dimension `N` and `cell` a matrix of dimension `NxN`
+Obtaint the coordinates of `x` as a fraction of unit cell vectors, first
+positive cell. `x` is a vector of dimension `N` and `cell` a matrix of 
+dimension `NxN`
+
+### Example
+
+```
+julia> unit_cell_matrix = [ 10 0
+                            0 10 ];
+
+julia> x = [ 15, 13 ];
+
+julia> wrap_to_cell_fraction(x,unit_cell_matrix)
+2-element Vector{Float64}:
+ 0.5
+ 0.3
+```
 
 """
 @inline function wrap_cell_fraction(x,unit_cell_matrix)
@@ -151,11 +166,26 @@ wrap_to_first(x,unit_cell_matrix)
 Wraps the coordinates of point `x` such that the returning coordinates are in the
 first unit cell with all-positive coordinates. 
 
+### Example
+
+```
+julia> unit_cell_matrix = [ 10 0
+                            0 10 ];
+
+julia> x = [ 15, 13 ];
+
+julia> wrap_to_first(x,unit_cell_matrix)
+2-element Vector{Float64}:
+ 5.0
+ 3.0000000000000004
+ ```
+
 """
 @inline function wrap_to_first(x,unit_cell_matrix)
   p = wrap_cell_fraction(x,unit_cell_matrix)
   return unit_cell_matrix*p
 end
+
 """
 
 ```
@@ -168,6 +198,17 @@ first unit cell with all-positive coordinates, given the `Box` structure.
 """
 @inline wrap_to_first(x,box::Box) = wrap_to_first(x,box.unit_cell.matrix)
 
+"""
+
+```
+wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
+```
+
+Wraps the coordinates of point `x` such that the returning coordinates are in the
+first unit cell with all-positive coordinates, given an Orthorhombic cell. 
+This is slightly cheaper than for general cells.  
+
+"""
 @inline function wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
   sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
   x = mod.(x,sides)
@@ -185,29 +226,60 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-  @show "entrou"
-  readline()
   x_f = wrap_cell_fraction(x,unit_cell_matrix)
   xref_f = wrap_cell_fraction(xref,unit_cell_matrix)
   xw = wrap_relative_to(x_f,xref_f,SVector{N,T}(ntuple(i->1,N)))
   return unit_cell_matrix * (xw - xref_f) + xref
 end
 
+"""
+
+```
+wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
+```
+
+Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
+given a general `Box` structure.
+
+"""
 @inline wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
   wrap_relative_to(x,xref,box.unit_cell.matrix)
 
+"""
+
+```
+wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
+```
+
+Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
+given an Orthorhombic cell. This is slightly cheaper than for general cells.
+
+"""
 @inline function wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
   sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
   return wrap_relative_to(x,xref,sides)
 end
 
+"""
+
+```
+wrap_relative_to(x,xref,sides::AbstractVector)
+```
+
+Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
+for an Orthorhombic cell of which only the side lengths are provided.
+
+"""
 @inline function wrap_relative_to(x,xref,sides::AbstractVector)
   xw = mod.(x-xref,sides)
-  xw = wrap_single_coordinate.(xw,sides)
+  xw = _wrap_single_coordinate.(xw,sides)
   return xw + xref
 end
 
-@inline function wrap_single_coordinate(x,s)
+#
+# Wrap a single coordinate
+#
+@inline function _wrap_single_coordinate(x,s)
   if x >= s/2
     x = x - s
   elseif x < -s/2
@@ -233,7 +305,7 @@ provided.
 """
 
 ```
-neighbour_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+neighbour_cells(box::Box{UnitCellType,N}) where UnitCellType 
 ```
 
 Function that returns the iterator of the cartesian indices of the cells that must be 
@@ -251,6 +323,7 @@ function neighbour_cells(box::Box{UnitCellType,3}) where UnitCellType
   ))
   return nb
 end
+
 function neighbour_cells(box::Box{UnitCellType,2}) where UnitCellType 
   @unpack lcell = box
   nb = Iterators.flatten((
@@ -275,6 +348,7 @@ function neighbour_cells_all(box::Box{UnitCellType,3}) where UnitCellType
   @unpack lcell = box
   return CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
 end
+
 function neighbour_cells_all(box::Box{UnitCellType,2}) where UnitCellType  
   @unpack lcell = box
   return CartesianIndices((-lcell:lcell,-lcell:lcell))
@@ -286,8 +360,9 @@ end
 particle_cell(x::SVector{N,T}, box::Box) where {N,T}
 ```
 
-Returns the coordinates of the computing cell to which a particle belongs, given its coordinates
-and the cell_size. 
+Returns the coordinates of the *computing cell* to which a particle belongs, given its coordinates
+and the `cell_size` vector. The computing box is always Orthorhombic, and the first
+computing box with positive coordinates has indexes `Box.lcell + 1`.
 
 """
 @inline particle_cell(x::SVector{N}, box::Box) where N =
