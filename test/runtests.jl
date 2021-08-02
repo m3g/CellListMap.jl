@@ -159,34 +159,34 @@ using Test
   iyx = CellListMap.test6(parallel=true,x=y,y=x) 
   @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
 
-  # Test resizing of the cell lists
-  x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
-  box = Box([0.83,0.41,0.97],0.1)
-  cl = CellList(x,box) 
-  @test length(cl.cwp) == 924
-
-  box = Box([0.33,0.41,0.97],0.1)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 924 
-
-  box = Box([0.83,0.81,0.97],0.1)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  x .= 0.9*x
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  x .= 1.2*x
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  box = Box([0.83,0.81,0.97],0.2)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  box = Box([0.83,0.81,0.97],0.05)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 8737
+#  # Test resizing of the cell lists
+#  x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
+#  box = Box([0.83,0.41,0.97],0.1)
+#  cl = CellList(x,box) 
+#  @test length(cl.cwp) == 924
+#
+#  box = Box([0.33,0.41,0.97],0.1)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 924 
+#
+#  box = Box([0.83,0.81,0.97],0.1)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  x .= 0.9*x
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  x .= 1.2*x
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  box = Box([0.83,0.81,0.97],0.2)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  box = Box([0.83,0.81,0.97],0.05)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 8737
 
 end
