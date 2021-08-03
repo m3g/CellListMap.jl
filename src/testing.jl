@@ -102,7 +102,7 @@ function check_random_cells(N,M=2)
       x[i] = x[i] .- 50  
     end
     cl = CellList(x,box)
-    if !(b(box,cl) ≈ n(box,x))
+    if !(test_map(box,cl) ≈ test_naive(box,x))
       println("FOUND PROBLEMATIC SETUP.")
       return x, box
     end
