@@ -60,7 +60,7 @@ julia> scatter(Tuple.(p),label=nothing,xlims=(-10,180),ylims=(-10,180))
 ```
 
 """
-function view_celllist_particles(cl::CellList{SystemType,N,T}) where {SystemType,N,T}
+function view_celllist_particles(cl::CellList{N,T}) where {N,T}
   @unpack ncp, np = cl
   x = Vector{SVector{N,T}}(undef,ncp[1])
   ip = 0

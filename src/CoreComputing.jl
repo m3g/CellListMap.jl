@@ -1,144 +1,25 @@
 #
-# Functions to deal with large and dense system, avoiding the maximum number
-# of unnecessary loop iterations over non-interacting particles
+# Parallel thread spliiter
 #
+splitter(first,n) = first:nthreads():n
 
-"""
-
-```
-UpdateCellList!(
-    x::AbstractVector{SVector{N,T}},
-    box::Box,cl:CellList{HighDensitySystem,N,T},
-    parallel=true
-) where {N,T}
-```
-
-Function that will update a previously allocated `CellList` structure, given new updated particle 
-positions of large and dense systems.
-
-## Example
-
-```julia-repl
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
-
-julia> cl = CellList(x,box);
-
-julia> box = Box([260,260,260],10);
-
-julia> x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
-
-julia> cl = UpdateCellList!(x,box,cl); # update lists
-
-```
-
-"""
-function UpdateCellList!(
-  x::AbstractVector{SVector{N,T}},
-  box::Box,
-  cl::CellList{HighDensitySystem,N,T};
-  parallel::Bool=true
-) where {N,T}
-  @unpack contains_real, cwp, fp, np, npcell, projected_particles = cl
-
-  number_of_cells = prod(box.nc)
-  if number_of_cells > length(cwp) 
-    number_of_cells = ceil(Int,1.2*number_of_cells) # some margin in case of box size variations
-    resize!(contains_real,number_of_cells)
-    resize!(cwp,number_of_cells)
-    resize!(fp,number_of_cells)
-    resize!(npcell,number_of_cells)
+#
+# Functions to reduce the output of common options (vectors of numbers 
+# and vectors of vectors)
+#
+reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
+function reduce(output::AbstractVector, output_threaded::AbstractVector{<:AbstractVector}) 
+  for i in 1:nthreads()
+    @. output += output_threaded[i]
   end
-
-  cl.ncwp[1] = 0
-  fill!(contains_real,false)
-  fill!(cwp,zero(Cell{N,T}))
-  fill!(fp,zero(ParticleWithIndex{N,T}))
-  fill!(np,zero(ParticleWithIndex{N,T}))
-  fill!(npcell,0)
-
-  #
-  # The following part cannot be *easily* paralelized, because 
-  # there is concurrency on the construction of the cell lists
-  #
-
-  #
-  # Add virtual particles to edge cells
-  #
-  for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box)
-    cl = replicate_particle!(ip,p,box,cl)
-  end
-  #
-  # Add true particles, such that the first particle of each cell is
-  # always a true particle
-  #
-  for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box)
-    cl = add_particle_to_celllist!(ip,p,box,cl) 
-  end
-
-  maximum_npcell = maximum(npcell)
-  if maximum_npcell > length(projected_particles[1])
-    for i in 1:nthreads()
-      resize!(projected_particles[i],ceil(Int,1.2*maximum_npcell))
-    end
-  end
-
-  return cl
-end
-
-"""
-
-Set one index of a cell list
-
-"""
-function add_particle_to_celllist!(
-  ip,
-  x::SVector{N,T},
-  box,
-  cl::CellList{HighDensitySystem,N,T};
-  real_particle::Bool=true
-) where {N,T}
-  @unpack contains_real, ncp, ncwp, cwp, fp, np, npcell = cl
-  ncp[1] += 1
-  icell_cartesian = particle_cell(x,box)
-  icell = cell_linear_index(box.nc,icell_cartesian)
-  #
-  # Cells starting with real particles are annotated to be run over
-  #
-  if real_particle && (!contains_real[icell])
-    contains_real[icell] = true
-    ncwp[1] += 1
-    cwp[ncwp[1]] = Cell{N,T}(
-      icell,
-      icell_cartesian,
-      cell_center(icell_cartesian,box)
-    )
-  end
-  if fp[icell].index == 0
-    npcell[icell] = 1
-  else
-    npcell[icell] += 1
-  end
-  if ncp[1] > length(np) 
-    old_length = length(np)
-    resize!(np,ceil(Int,1.2*old_length))
-    for i in old_length+1:length(np)
-      np[i] = zero(ParticleWithIndex{N,T}) 
-    end
-  end
-  np[ncp[1]] = fp[icell]
-  fp[icell] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
-  return cl
+  return output
 end
 
 #
 # Serial version for self-pairwise computations
 #
 function map_pairwise_serial!(
-  f::F, output, box::Box, cl::CellList{HighDensitySystem,N,T}; 
+  f::F, output, box::Box, cl::CellList{N,T}; 
   show_progress::Bool=false
 ) where {F,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
@@ -153,14 +34,14 @@ end
 # Parallel version for self-pairwise computations
 #
 function map_pairwise_parallel!(
-  f::F1, output, box::Box, cl::CellList{HighDensitySystem,N,T};
+  f::F1, output, box::Box, cl::CellList{N,T};
   output_threaded=output_threaded,
   reduce::F2=reduce,
   show_progress::Bool=false
 ) where {F1,F2,N,T}
   show_progress && (p = Progress(cl.ncwp[1],dt=1))
   @threads for it in 1:nthreads() 
-    for icell in it:nthreads():cl.ncwp[1]
+    for icell in splitter(it,cl.ncwp[1])
       output_threaded[it] = inner_loop!(f,box,icell,cl,output_threaded[it]) 
       show_progress && next!(p)
     end
@@ -168,6 +49,31 @@ function map_pairwise_parallel!(
   output = reduce(output,output_threaded)
   return output
 end
+
+"""
+
+```
+partition!(x::AbstractVector,by)
+```
+
+Function that reorders `x` vector by putting in the first positions the
+elements with values satisfying `by(el)`. Returns the number of elements
+that satisfy the condition.
+
+"""
+function partition!(x::AbstractVector,by)
+  iswap = 1
+  @inbounds for i in eachindex(x)
+    if by(x[i])
+      if iswap != i
+        x[iswap], x[i] = x[i], x[iswap]
+      end
+      iswap += 1
+    end
+  end
+  return iswap - 1
+end
+
 
 """
 
@@ -205,7 +111,7 @@ end
 
 function inner_loop!(
   f,box::Box{TriclinicCell},icell,
-  cl::CellList{HighDensitySystem,N,T},
+  cl::CellList{N,T},
   output
 ) where {N,T}
   @unpack cutoff, cutoff_sq, nc = box
@@ -258,9 +164,13 @@ function inner_loop!(
   return output
 end
 
+#
+# Inner loop for Orthorhombic cells is faster because we can guarantee that
+# there are not repeated computations even if running over half of the cells.
+#
 function inner_loop!(
   f,box::Box{OrthorhombicCell},icell,
-  cl::CellList{HighDensitySystem,N,T},
+  cl::CellList{N,T},
   output
 ) where {N,T}
   @unpack cutoff_sq = box
@@ -295,15 +205,11 @@ function inner_loop!(
   return output
 end
 
-#
-# loops over the particles of a neighbour cell, for LargeDenseSystem
-# not large enough such that sorting the projections is useful
-#
 function cell_output!(
   f,
   box::Box{OrthorhombicCell},
   icell,
-  cl::CellList{HighDensitySystem,N,T},
+  cl::CellList{N,T},
   output,
   jc_cartesian
 ) where {N,T}
@@ -342,4 +248,68 @@ function cell_output!(
   return output
 end
 
+#
+# Serial version for cross-interaction computations
+#
+function map_pairwise_serial!(
+  f::F, output, box::Box, 
+  cl::CellListPair{N,T}; 
+  show_progress=show_progress
+) where {F,N,T}
+  show_progress && (p = Progress(length(cl.small),dt=0))
+  for i in eachindex(cl.small)
+    output = inner_loop!(f,output,i,box,cl)
+    show_progress && next!(p)
+  end
+  return output
+end
 
+#
+# Parallel version for cross-interaction computations
+#
+function map_pairwise_parallel!(
+  f::F1, output, box::Box, 
+  cl::CellListPair{N,T};
+  output_threaded=output_threaded,
+  reduce::F2=reduce,
+  show_progress=show_progress
+) where {F1,F2,N,T}
+  show_progress && (p = Progress(length(cl.small),dt=1))
+  @threads for it in 1:nthreads()
+    for i in splitter(it,length(cl.small))
+      output_threaded[it] = inner_loop!(f,output_threaded[it],i,box,cl) 
+      show_progress && next!(p)
+    end
+  end 
+  output = reduce(output,output_threaded)
+  return output
+end
+
+#
+# Inner loop of cross-interaction computations
+#
+function inner_loop!(
+  f,output,i,box,
+  cl::CellListPair{N,T}
+) where {N,T}
+  @unpack nc, cutoff_sq = box
+  xpᵢ = wrap_to_first(cl.small[i],box)
+  ic = particle_cell(xpᵢ,box)
+  for neighbour_cell in neighbour_cells_all(box)
+    jc = cell_linear_index(nc,neighbour_cell+ic)
+    pⱼ = cl.large.fp[jc]
+    j = pⱼ.index
+    # loop over particles of cell jc
+    while j > 0
+      xpⱼ = pⱼ.coordinates
+      d2 = norm_sqr(xpᵢ - xpⱼ)
+      if d2 <= cutoff_sq
+        j_orig = pⱼ.index_original 
+        output = f(xpᵢ,xpⱼ,i,j_orig,d2,output)
+      end
+      pⱼ = cl.large.np[j]
+      j = pⱼ.index
+    end                                   
+  end
+  return output
+end

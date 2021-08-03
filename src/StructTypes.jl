@@ -1,10 +1,4 @@
 #
-# Type of systems, to dispatch methods accordingly
-#
-struct LowDensitySystem end
-struct HighDensitySystem end
-
-#
 # This difference is important because for Orthorhombic cells it is
 # possible to run over only half of the cells, and wrapping coordinates
 # in Orthorhombic cells is slightly cheaper. 
@@ -49,7 +43,6 @@ Base.@kwdef struct Box{UnitCellType,N,T,M}
   cutoff::T
   cutoff_sq::T
   ranges::SVector{N,UnitRange{Int}}
-  scale_cutoff::T
   cell_size::SVector{N,T}
   unit_cell_max::SVector{N,T}
 end
@@ -83,7 +76,6 @@ function Box(
   cutoff, 
   T::DataType, 
   lcell::Int=1,
-  scale_cutoff=1.0,
   UnitCellType=TriclinicCell
 )
 
@@ -91,7 +83,6 @@ function Box(
   unit_cell_matrix = SMatrix{s[1],s[2],Float64,s[1]*s[2]}(unit_cell_matrix)
 
   @assert lcell >= 1 "lcell must be greater or equal to 1"
-  @assert scale_cutoff >= 1 "scale_cutoff must be greater or equal to 1.0"
 
   N = size(unit_cell_matrix)[1]
   @assert N == size(unit_cell_matrix)[2] "Unit cell matrix must be square."
@@ -116,7 +107,6 @@ function Box(
     cutoff,
     cutoff^2,
     ranges,
-    scale_cutoff,
     cell_size,
     unit_cell_max
   )
@@ -126,9 +116,8 @@ Box(
   cutoff;
   T::DataType=Float64,
   lcell::Int=1,
-  scale_cutoff=1.0,
   UnitCellType=TriclinicCell
-) = Box(unit_cell_matrix,cutoff,T,lcell,scale_cutoff,UnitCellType)
+) = Box(unit_cell_matrix,cutoff,T,lcell,UnitCellType)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
   println(typeof(box))
@@ -164,7 +153,6 @@ function Box(
   cutoff, 
   T::DataType, 
   lcell::Int=1,
-  scale_cutoff=1.0,
   UnitCellType=OrthorhombicCell
 )
   N = length(sides)
@@ -185,7 +173,6 @@ function Box(
     cutoff,
     T,
     lcell,
-    scale_cutoff,
     UnitCellType
   ) 
 end
@@ -194,9 +181,8 @@ Box(
   cutoff;
   T::DataType=Float64,
   lcell::Int=1,
-  scale_cutoff=1.0,
   UnitCellType=OrthorhombicCell
-) = Box(sides,cutoff,T,lcell,scale_cutoff,UnitCellType)
+) = Box(sides,cutoff,T,lcell,UnitCellType)
 
 """
 
@@ -255,7 +241,7 @@ $(TYPEDFIELDS)
 Structure that contains the cell lists information.
 
 """
-Base.@kwdef struct CellList{SystemType,N,T}
+Base.@kwdef struct CellList{N,T}
   " *mutable* number of cells with real particles. "
   ncwp::Vector{Int}
   " *mutable* number of particles in the computing box "
@@ -279,11 +265,19 @@ function Base.show(io::IO,::MIME"text/plain",cl::CellList)
   println("  $(cl.ncp[1]) particles in computing box, including images.")
 end
 
-# Structure that will cointain the cell lists of two independent sets of
-# particles for cross-computation of interactions
-@with_kw struct CellListPair{SystemType,V,N,T}
+"""
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+Structure that will cointain the cell lists of two independent sets of
+particles for cross-computation of interactions
+
+"""
+@with_kw struct CellListPair{V,N,T}
   small::V
-  large::CellList{SystemType,N,T}
+  large::CellList{N,T}
   swap::Bool
 end      
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
@@ -319,8 +313,7 @@ CellList{3, Float64}
 function CellList(
   x::AbstractVector{SVector{N,T}},
   box::Box;
-  parallel::Bool=true,
-  SystemType=nothing
+  parallel::Bool=true
 ) where {N,T} 
   number_of_cells = prod(box.nc)
   # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
@@ -334,13 +327,7 @@ function CellList(
   npcell = Vector{Int}(undef,number_of_cells)
   projected_particles = [ Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads() ]
 
-  # Set automatically the system type, as a function of the 
-  # total number of particles and the number of particles per cell
-  if isnothing(SystemType) 
-    SystemType = set_system_type(x,box)
-  end
-
-  cl = CellList{SystemType,N,T}(
+  cl = CellList{N,T}(
     ncwp,
     ncp,
     contains_real,
@@ -351,24 +338,6 @@ function CellList(
     projected_particles
   )
   return UpdateCellList!(x,box,cl,parallel=parallel)
-end
-
-function set_system_type(x,box)
-
-  return HighDensitySystem
-
-  if length(x) <= 20 
-    return TinySystem
-  end
-
-  particles_per_cell = length(x) / prod(box.nc)
-
-  # what is low? what is high? to test
-  if particles_per_cell < 32
-    return LowDensitySystem
-  end
-
-  return HighDensitySystem
 end
 
 """
@@ -415,5 +384,186 @@ function CellList(
   return cl_pair
 end
 
+"""
+
+```
+particles_per_cell(cl::CellList,box::Box)
+```
+
+Returns the average number of particles per computing cell.
+
+"""
 particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
 
+"""
+
+```
+UpdateCellList!(
+    x::AbstractVector{SVector{N,T}},
+    box::Box,cl:CellList{N,T},
+    parallel=true
+) where {N,T}
+```
+
+Function that will update a previously allocated `CellList` structure, given new 
+updated particle positions.
+
+## Example
+
+```julia-repl
+julia> box = Box([250,250,250],10);
+
+julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia> cl = CellList(x,box);
+
+julia> box = Box([260,260,260],10);
+
+julia> x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia> cl = UpdateCellList!(x,box,cl); # update lists
+
+```
+
+"""
+function UpdateCellList!(
+  x::AbstractVector{SVector{N,T}},
+  box::Box,
+  cl::CellList{N,T};
+  parallel::Bool=true
+) where {N,T}
+  @unpack contains_real, cwp, fp, np, npcell, projected_particles = cl
+
+  number_of_cells = prod(box.nc)
+  if number_of_cells > length(cwp) 
+    number_of_cells = ceil(Int,1.2*number_of_cells) # some margin in case of box size variations
+    resize!(contains_real,number_of_cells)
+    resize!(cwp,number_of_cells)
+    resize!(fp,number_of_cells)
+    resize!(npcell,number_of_cells)
+  end
+
+  cl.ncwp[1] = 0
+  fill!(contains_real,false)
+  fill!(cwp,zero(Cell{N,T}))
+  fill!(fp,zero(ParticleWithIndex{N,T}))
+  fill!(np,zero(ParticleWithIndex{N,T}))
+  fill!(npcell,0)
+
+  #
+  # The following part cannot be *easily* paralelized, because 
+  # there is concurrency on the construction of the cell lists
+  #
+
+  #
+  # Add virtual particles to edge cells
+  #
+  for (ip,particle) in pairs(x)
+    p = wrap_to_first(particle,box)
+    cl = replicate_particle!(ip,p,box,cl)
+  end
+  #
+  # Add true particles, such that the first particle of each cell is
+  # always a true particle
+  #
+  for (ip,particle) in pairs(x)
+    p = wrap_to_first(particle,box)
+    cl = add_particle_to_celllist!(ip,p,box,cl) 
+  end
+
+  maximum_npcell = maximum(npcell)
+  if maximum_npcell > length(projected_particles[1])
+    for i in 1:nthreads()
+      resize!(projected_particles[i],ceil(Int,1.2*maximum_npcell))
+    end
+  end
+
+  return cl
+end
+
+"""
+
+Set one index of a cell list
+
+"""
+function add_particle_to_celllist!(
+  ip,
+  x::SVector{N,T},
+  box,
+  cl::CellList{N,T};
+  real_particle::Bool=true
+) where {N,T}
+  @unpack contains_real, ncp, ncwp, cwp, fp, np, npcell = cl
+  ncp[1] += 1
+  icell_cartesian = particle_cell(x,box)
+  icell = cell_linear_index(box.nc,icell_cartesian)
+  #
+  # Cells starting with real particles are annotated to be run over
+  #
+  if real_particle && (!contains_real[icell])
+    contains_real[icell] = true
+    ncwp[1] += 1
+    cwp[ncwp[1]] = Cell{N,T}(
+      icell,
+      icell_cartesian,
+      cell_center(icell_cartesian,box)
+    )
+  end
+  if fp[icell].index == 0
+    npcell[icell] = 1
+  else
+    npcell[icell] += 1
+  end
+  if ncp[1] > length(np) 
+    old_length = length(np)
+    resize!(np,ceil(Int,1.2*old_length))
+    for i in old_length+1:length(np)
+      np[i] = zero(ParticleWithIndex{N,T}) 
+    end
+  end
+  np[ncp[1]] = fp[icell]
+  fp[icell] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
+  return cl
+end
+
+
+"""
+
+```
+UpdateCellList!(
+  x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},
+  box::Box,cl:CellListPair,parallel=true
+) where {N,T}
+```
+
+Function that will update a previously allocated `CellListPair` structure, given new updated particle positions, for example.
+
+```julia-repl
+julia> box = Box([250,250,250],10);
+
+julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
+
+julia> cl = CellList(x,y,box);
+
+julia> cl = UpdateCellList!(x,y,box,cl); # update lists
+
+```
+
+"""
+function UpdateCellList!(
+  x::AbstractVector{SVector{N,T}},
+  y::AbstractVector{SVector{N,T}},
+  box::Box,cl_pair::CellListPair;
+  parallel::Bool=true
+) where {N,T}
+
+  if length(x) <= length(y)
+    UpdateCellList!(y,box,cl_pair.large,parallel=parallel)
+  else
+    UpdateCellList!(x,box,cl_pair.large,parallel=parallel)
+  end
+
+  return cl_pair
+end

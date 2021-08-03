@@ -1,28 +1,22 @@
 module CellListMap
 
-using Base.Threads
-using LinearAlgebra: dot, norm, norm_sqr, cross
-using Parameters
-using StaticArrays
 using DocStringExtensions
 using ProgressMeter
+using Parameters
+using StaticArrays
 using Setfield
+using Base.Threads
+using LinearAlgebra: dot, norm, norm_sqr, cross
 
 export Box
 export CellList, UpdateCellList!
 export map_pairwise!
-
-export LowDensitySystem
-export HighDensitySystem
-
 export TriclinicCell
 export OrthorhombicCell
 
 include("./StructTypes.jl")
 include("./CellOperations.jl")
-include("./LowDensitySystems.jl")
-include("./HighDensitySystems.jl")
-include("./SystemCommons.jl")
+include("./CoreComputing.jl")
 
 """
 
@@ -127,9 +121,8 @@ end
 #
 # Test and example functions
 #
-include("./testing.jl")
 include("./examples.jl")
-include("./halotools.jl")
+include("./testing.jl")
 
 end # module
 

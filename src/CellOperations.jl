@@ -1,134 +1,6 @@
 """
 
 ```
-out_of_bounding_box(x::SVector{N},box::Box) where N
-```
-
-Function that evaluates if a particle is outside the computing bounding box,
-defined by the maximum and minimum unit cell coordinates. 
-
-"""
-function out_of_bounding_box(x::SVector{N},box::Box) where N
-  @unpack cutoff, unit_cell_max = box
-  for i in 1:N
-    (x[i] < -cutoff) && return true
-    (x[i] >= unit_cell_max[i]+cutoff) && return true
-  end
-  return false
-end
-out_of_bounding_box(p::ParticleWithIndex,box::Box) =
-  out_of_bounding_box(p.coordinates,box)
-
-"""
-
-```
-replicate_particle!(ip,p::SVector{N},box,cl) where N
-```
-
-Replicates the particle as many times as necessary to fill the computing box.
-
-"""
-function replicate_particle!(ip,p::SVector{N},box,cl) where N
-  itr = Iterators.product(ntuple(i->box.ranges[i],N)...)
-  for indexes in itr
-    (count(isequal(0),indexes) == N) && continue
-    x = translation_image(p,box.unit_cell.matrix,indexes)
-    if ! out_of_bounding_box(x,box)
-      cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
-    end
-  end 
-  return cl
-end
-
-"""
-
-```
-ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
-```
-
-Function that sets which is the range of periodic images necessary to fill
-the computing box, in 3D.
-
-"""
-function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
-  V = SVector{3,T}
-  cmin = -lcell*cell_size
-  cmax = (nc .- lcell) .* cell_size
-  cell_vertices = SVector{8,V}( 
-    V(   cmin[1],   cmin[2],   cmin[3] ), 
-    V(   cmin[1],   cmin[2],   cmax[3] ),
-    V(   cmin[1],   cmax[2],   cmin[3] ),
-    V(   cmin[1],   cmax[2],   cmax[3] ),
-    V(   cmax[1],   cmin[2],   cmin[3] ), 
-    V(   cmax[1],   cmin[2],   cmax[3] ), 
-    V(   cmax[1],   cmax[2],   cmin[3] ), 
-    V(   cmax[1],   cmax[2],   cmax[3] ) 
-  )
-  r_min, r_max = _ranges_of_replicas(
-    SVector{3,Int}(10^6,10^6,10^6), #min
-    SVector{3,Int}(-1,-1,-1),       #max
-    unit_cell_matrix,
-    cell_vertices
-  )
-  ranges = SVector{3,UnitRange{Int}}(
-    r_min[1]:r_max[1],
-    r_min[2]:r_max[2],
-    r_min[3]:r_max[3]
-  )
-  return ranges
-end
-
-"""
-
-```
-ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
-```
-
-Function that sets which is the range of periodic images necessary to fill
-the computing box, in 2D.
-
-"""
-function ranges_of_replicas(cell_size, lcell, nc,unit_cell_matrix::SMatrix{2,2,T}) where T
-  V = SVector{2,T}
-  cmin = -lcell*cell_size
-  cmax = (nc .- lcell) .* cell_size
-  cell_vertices = SVector{4,V}( 
-    V(   cmin[1],   cmin[2] ), 
-    V(   cmin[1],   cmax[2] ),
-    V(   cmax[1],   cmin[2] ), 
-    V(   cmax[1],   cmax[2] ), 
-  )
-  r_min, r_max = _ranges_of_replicas(
-    SVector{2,Int}(10^6,10^6), #min
-    SVector{2,Int}(-1,-1),     #max
-    unit_cell_matrix,
-    cell_vertices
-  )
-  ranges = SVector{2,UnitRange{Int}}(
-    r_min[1]:r_max[1],
-    r_min[2]:r_max[2]
-  )
-  return ranges
-end
-
-function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
-  for vert in cell_vertices
-    r = unit_cell \ vert 
-    ri = @. ceil(Int,abs(r))
-    for (i,el) in pairs(r)
-      if el < 0
-        @set! ri[i] = -ri[i]
-      end
-    end
-    r_min = min.(ri,r_min)
-    r_max = max.(ri,r_max)
-  end
-  return r_min, r_max
-end
-
-"""
-
-```
 wrap_to_cell_fraction(x,unit_cell_matrix)
 ```
 
@@ -371,6 +243,20 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
 """
 
 ```
+cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
+```
+
+Computes the geometric center of a computing cell, to be used in the projection
+of points. Returns a `SVector{N,T}`
+
+"""
+@inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
+  SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - 0.5 - box.lcell), N))
+
+
+"""
+
+```
 cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
 ```
 
@@ -393,79 +279,210 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 @inline cell_linear_index(nc::SVector{N,Int}, indices) where N =
   LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indices[i],N)...]
 
-  """
+"""
 
-  ```
-  check_unit_cell(box::Box)
-  ```
-  
-  Checks if the unit cell satisfies the conditions for using the minimum-image
-  convention, with the same criteria used gy Gromacs. 
-  
-  """
-  check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix,box.cutoff)
+```
+out_of_bounding_box(x::SVector{N},box::Box) where N
+```
 
-  function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
-    a = @view(unit_cell_matrix[:,1])
-    b = @view(unit_cell_matrix[:,2])
-    c = @view(unit_cell_matrix[:,3])
-    check = true
+Function that evaluates if a particle is outside the computing bounding box,
+defined by the maximum and minimum unit cell coordinates. 
 
-    if size(unit_cell_matrix) != (3,3) 
-      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (3,3).")
-      check = false
+"""
+function out_of_bounding_box(x::SVector{N},box::Box) where N
+  @unpack cutoff, unit_cell_max = box
+  for i in 1:N
+    (x[i] < -cutoff) && return true
+    (x[i] >= unit_cell_max[i]+cutoff) && return true
+  end
+  return false
+end
+out_of_bounding_box(p::ParticleWithIndex,box::Box) =
+  out_of_bounding_box(p.coordinates,box)
+
+"""
+
+```
+replicate_particle!(ip,p::SVector{N},box,cl) where N
+```
+
+Replicates the particle as many times as necessary to fill the computing box.
+
+"""
+function replicate_particle!(ip,p::SVector{N},box,cl) where N
+  itr = Iterators.product(ntuple(i->box.ranges[i],N)...)
+  for indexes in itr
+    (count(isequal(0),indexes) == N) && continue
+    x = translation_image(p,box.unit_cell.matrix,indexes)
+    if ! out_of_bounding_box(x,box)
+      cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
     end
+  end 
+  return cl
+end
 
-    if count(el -> el < 0, unit_cell_matrix) != 0
-      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
-      check = false
-    end
+"""
 
-    bc = cross(b,c)
-    bc = bc / norm(bc)
-    aproj = dot(a,bc) 
+```
+check_unit_cell(box::Box)
+```
 
-    ab = cross(a,b)
-    ab = ab / norm(ab)
-    cproj = dot(c,ab) 
+Checks if the unit cell satisfies the conditions for using the minimum-image
+convention, with the same criteria used gy Gromacs. 
 
-    ca = cross(c,a)
-    ca = ca / norm(ca)
-    bproj = dot(b,ca) 
+"""
+check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix,box.cutoff)
 
-    if (aproj < 2*cutoff) || (bproj < 2*cutoff) || (cproj < 2*cutoff)
-      printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
-      check = false
-    end
-  
-    return check
+function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
+  a = @view(unit_cell_matrix[:,1])
+  b = @view(unit_cell_matrix[:,2])
+  c = @view(unit_cell_matrix[:,3])
+  check = true
+
+  if size(unit_cell_matrix) != (3,3) 
+    printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (3,3).")
+    check = false
   end
 
-  function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
-    a = @view(unit_cell_matrix[:,1])
-    b = @view(unit_cell_matrix[:,2])
-    check = true
-
-    if size(unit_cell_matrix) != (2,2) 
-      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (2,2).")
-      check = false
-    end
-
-    if count(el -> el < 0, unit_cell_matrix) != 0
-      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
-      check = false
-    end
-
-    i = a / norm(a)
-    bproj = sqrt(norm_sqr(b) - dot(b,i)^2)
-
-    j = b / norm(b)
-    aproj = sqrt(norm_sqr(a) - dot(a,j)^2)
-
-    if (aproj < 2*cutoff) || (bproj < 2*cutoff)
-      printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
-      check = false
-    end
-  
-    return check
+  if count(el -> el < 0, unit_cell_matrix) != 0
+    printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
+    check = false
   end
+
+  bc = cross(b,c)
+  bc = bc / norm(bc)
+  aproj = dot(a,bc) 
+
+  ab = cross(a,b)
+  ab = ab / norm(ab)
+  cproj = dot(c,ab) 
+
+  ca = cross(c,a)
+  ca = ca / norm(ca)
+  bproj = dot(b,ca) 
+
+  if (aproj < 2*cutoff) || (bproj < 2*cutoff) || (cproj < 2*cutoff)
+    printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+    check = false
+  end
+
+  return check
+end
+
+function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
+  a = @view(unit_cell_matrix[:,1])
+  b = @view(unit_cell_matrix[:,2])
+  check = true
+
+  if size(unit_cell_matrix) != (2,2) 
+    printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (2,2).")
+    check = false
+  end
+
+  if count(el -> el < 0, unit_cell_matrix) != 0
+    printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
+    check = false
+  end
+
+  i = a / norm(a)
+  bproj = sqrt(norm_sqr(b) - dot(b,i)^2)
+
+  j = b / norm(b)
+  aproj = sqrt(norm_sqr(a) - dot(a,j)^2)
+
+  if (aproj < 2*cutoff) || (bproj < 2*cutoff)
+    printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+    check = false
+  end
+
+  return check
+end
+
+#
+# The following functions are not being used anymore.
+#
+"""
+
+```
+ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
+```
+
+Function that sets which is the range of periodic images necessary to fill
+the computing box, in 3D.
+
+"""
+function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
+  V = SVector{3,T}
+  cmin = -lcell*cell_size
+  cmax = (nc .- lcell) .* cell_size
+  cell_vertices = SVector{8,V}( 
+    V(   cmin[1],   cmin[2],   cmin[3] ), 
+    V(   cmin[1],   cmin[2],   cmax[3] ),
+    V(   cmin[1],   cmax[2],   cmin[3] ),
+    V(   cmin[1],   cmax[2],   cmax[3] ),
+    V(   cmax[1],   cmin[2],   cmin[3] ), 
+    V(   cmax[1],   cmin[2],   cmax[3] ), 
+    V(   cmax[1],   cmax[2],   cmin[3] ), 
+    V(   cmax[1],   cmax[2],   cmax[3] ) 
+  )
+  r_min, r_max = _ranges_of_replicas(
+    SVector{3,Int}(10^6,10^6,10^6), #min
+    SVector{3,Int}(-1,-1,-1),       #max
+    unit_cell_matrix,
+    cell_vertices
+  )
+  ranges = SVector{3,UnitRange{Int}}(
+    r_min[1]:r_max[1],
+    r_min[2]:r_max[2],
+    r_min[3]:r_max[3]
+  )
+  return ranges
+end
+
+"""
+
+```
+ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
+```
+
+Function that sets which is the range of periodic images necessary to fill
+the computing box, in 2D.
+
+"""
+function ranges_of_replicas(cell_size, lcell, nc,unit_cell_matrix::SMatrix{2,2,T}) where T
+  V = SVector{2,T}
+  cmin = -lcell*cell_size
+  cmax = (nc .- lcell) .* cell_size
+  cell_vertices = SVector{4,V}( 
+    V(   cmin[1],   cmin[2] ), 
+    V(   cmin[1],   cmax[2] ),
+    V(   cmax[1],   cmin[2] ), 
+    V(   cmax[1],   cmax[2] ), 
+  )
+  r_min, r_max = _ranges_of_replicas(
+    SVector{2,Int}(10^6,10^6), #min
+    SVector{2,Int}(-1,-1),     #max
+    unit_cell_matrix,
+    cell_vertices
+  )
+  ranges = SVector{2,UnitRange{Int}}(
+    r_min[1]:r_max[1],
+    r_min[2]:r_max[2]
+  )
+  return ranges
+end
+
+function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
+  for vert in cell_vertices
+    r = unit_cell \ vert 
+    ri = @. ceil(Int,abs(r))
+    for (i,el) in pairs(r)
+      if el < 0
+        @set! ri[i] = -ri[i]
+      end
+    end
+    r_min = min.(ri,r_min)
+    r_max = max.(ri,r_max)
+  end
+  return r_min, r_max
+end

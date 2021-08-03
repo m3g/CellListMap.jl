@@ -8,7 +8,7 @@ function test1(;N=100_000,parallel=true,x=nothing)
   # Number of particles, sides and cutoff
   sides = @SVector [250,250,250]
   cutoff = 10
-  box = Box(sides,cutoff,scale_cutoff=1)
+  box = Box(sides,cutoff)
 
   # Particle positions
   Random.seed!(321)
@@ -336,7 +336,7 @@ end
 #
 # florpi
 #
-function florpi(;N=100_000,cd=true,parallel=true,SystemType=nothing)
+function florpi(;N=100_000,cd=true,parallel=true)
 
   @inline dot(x::SVector{3,Float64},y::SVector{3,Float64}) = x[1]*y[1] + x[2]*y[2] + x[3]*y[3]
   
@@ -378,7 +378,7 @@ function florpi(;N=100_000,cd=true,parallel=true,SystemType=nothing)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
   box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=1) 
-  cl = CellList(positions,box,parallel=parallel,SystemType=SystemType)
+  cl = CellList(positions,box,parallel=parallel)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
   # Needs this to stabilize the type of velocities and hist, probably
