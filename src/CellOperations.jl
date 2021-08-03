@@ -399,7 +399,9 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
 end
 
 #
-# The following functions are not being used anymore.
+# The following functions are not being used anymore in CellListMap, but may
+# be useful if this is split in into a sepparate package for playing with
+# periodic systems.
 #
 """
 
