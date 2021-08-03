@@ -325,15 +325,15 @@ end
 
 ```
 CellList(
-  x::AbstractVector{SVector{N,T}},
-  box::Box;
+  x::AbstractVector{AbstractVector},
+  box::Box{UnitCellType,N,T};
   parallel::Bool=true
-) where {N,T} 
+) where {UnitCellType,N,T} 
 ```
 
 Function that will initialize a `CellList` structure from scracth, given a vector
-or particle coordinates (as `SVector`s) and a `Box`, which contain the size ofthe
-system, cutoff, etc.  
+or particle coordinates (a vector of vectors, typically of static vectors) 
+and a `Box`, which contain the size ofthe system, cutoff, etc.  
 
 ### Example
 
@@ -351,10 +351,10 @@ CellList{3, Float64}
 
 """
 function CellList(
-  x::AbstractVector{SVector{N,T}},
-  box::Box;
+  x::AbstractVector{<:AbstractVector},
+  box::Box{UnitCellType,N,T};
   parallel::Bool=true
-) where {N,T} 
+) where {UnitCellType,N,T} 
   number_of_cells = prod(box.nc)
   # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
   number_of_particles = ceil(Int,1.2*length(x))
@@ -384,11 +384,11 @@ end
 
 ```
 CellList(
-  x::AbstractVector{SVector{N,T}},
-  y::AbstractVector{SVector{N,T}},
-  box::Box;
+  x::AbstractVector{<:AbstractVector},
+  y::AbstractVector{<:AbstractVector},
+  box::Box{UnitCellType,N,T};
   parallel::Bool=true
-) where {N,T} 
+) where {UnitCellType,N,T} 
 ```
 
 Function that will initialize a `CellListPair` structure from scracth, given two vectors
@@ -443,7 +443,7 @@ particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
 
 ```
 UpdateCellList!(
-    x::AbstractVector{SVector{N,T}},
+    x::AbstractVector{<:AbstractVector},
     box::Box,cl:CellList{N,T},
     parallel=true
 ) where {N,T}
@@ -471,7 +471,7 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 
 """
 function UpdateCellList!(
-  x::AbstractVector{SVector{N,T}},
+  x::AbstractVector{<:AbstractVector},
   box::Box,
   cl::CellList{N,T};
   parallel::Bool=true
@@ -503,7 +503,7 @@ function UpdateCellList!(
   # Add virtual particles to edge cells
   #
   for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box)
+    p = SVector{N,T}(wrap_to_first(particle,box))
     cl = replicate_particle!(ip,p,box,cl)
   end
   #
@@ -511,7 +511,7 @@ function UpdateCellList!(
   # always a true particle
   #
   for (ip,particle) in pairs(x)
-    p = wrap_to_first(particle,box)
+    p = SVector{N,T}(wrap_to_first(particle,box))
     cl = add_particle_to_celllist!(ip,p,box,cl) 
   end
 
@@ -584,9 +584,10 @@ end
 
 ```
 UpdateCellList!(
-  x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},
-  box::Box,cl:CellListPair,parallel=true
-) where {N,T}
+  x::AbstractVector{<:AbstractVector},
+  y::AbstractVector{<:AbstractVector},
+  box::Box{UnitCellType,N,T},cl:CellListPair,parallel=true
+) where {UnitCellType,N,T}
 ```
 
 Function that will update a previously allocated `CellListPair` structure, given new updated particle positions, for example.
@@ -606,11 +607,11 @@ julia> cl = UpdateCellList!(x,y,box,cl); # update lists
 
 """
 function UpdateCellList!(
-  x::AbstractVector{SVector{N,T}},
-  y::AbstractVector{SVector{N,T}},
-  box::Box,cl_pair::CellListPair;
+  x::AbstractVector{<:AbstractVector},
+  y::AbstractVector{<:AbstractVector},
+  box::Box{UnitCellType,N,T},cl_pair::CellListPair;
   parallel::Bool=true
-) where {N,T}
+) where {UnitCellType,N,T}
 
   if length(x) <= length(y)
     UpdateCellList!(y,box,cl_pair.large,parallel=parallel)

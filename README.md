@@ -78,12 +78,12 @@ Computing the mean difference in `x` position between random particles. The clos
 using CellListMap
 
 # System properties
-n = 100_000
+N = 100_000
 sides = [250,250,250]
 cutoff = 10
 
 # Particle positions
-x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:n ]
+x = [ sides .* rand(3) for i in 1:N ]
 
 # Initialize linked lists and box structures
 box = Box(sides,cutoff)
@@ -94,10 +94,9 @@ f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation (0.0 is the initial value)
-avg_dx = normalization * map_parwise(
-  (x,y,i,j,d2,sum_dx) -> (x,y,sum_dx), 0.0, box, cl 
+avg_dx = normalization * map_pairwise!(
+  (x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl 
 )
-
 ```
 
 The example above can be run with `CellListMap.test1()`. 
@@ -266,7 +265,9 @@ The full example can be run with `CellListMap.test7()`.
 
 ## Periodic boundary conditions
 
-Periodic boundary conditions of any kind can be used. Let us illustrate its use with a two-dimensional case, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. 
+Triclinic periodic boundary conditions of any kind can be used. However, the input has some limitations for the moment. The lattice vectors must have strictly positive coordinates, and the smallest distance within the cell cannot be smaller than twice the size of the cutoff. An error will be produced if the cell does not satisfy these conditions. 
+
+Let us illustrate building a two-dimensional cell, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. 
 
 Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cutoff=0.1`): 
 
@@ -278,11 +279,9 @@ julia> x = 10*rand(SVector{2,Float64},1000);
 ```
 We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:
 ```julia
-julia> p = [ CellListMap.wrap_to_first(x,box) for x in x ];
-
 julia> using Plots
 
-julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
+julia> CellListMap.draw_computing_cell(x,box)
 ```
 
 <img src=./src/assets/lattice.png>
@@ -292,28 +291,19 @@ The construction of the cell list is, as always, done with:
 ```julia
 julia> cl = CellList(x,box)
 CellList{2, Float64}
-  90 cells with real particles.
-  2065 particles in computing box, including images.
+  109 cells with real particles.
+  2041 particles in computing box, including images.
 
 ```
 
-Upon construction of the cell lists, the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoding the necessity of wrapping coordinates on the main loop (this is an implementation detail only). The resulting box can be visualized with:
-
-```julia
-julia> p = CellListMap.view_celllist_particles(cl,box);
-
-julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
-```
-<img src=./src/assets/replicated.png>
-
-These are the particles that will be considered for the calculations. 
+Upon construction of the cell lists, the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoding the necessity of wrapping coordinates on the main loop (this is an implementation detail only). 
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:
 
 ```julia
-julia> box = Box([ 50.  0. 20. 
-                    0.  0. 30.          
-                    0. 30. 50. ], 10.)
+julia> box = Box([ 50.  0. 00. 
+                    0. 30. 30.          
+                    0. 00. 50. ],  2.)
 
 julia> x = 100*rand(SVector{3,Float64},10000);
 
@@ -423,7 +413,7 @@ box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 map_pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a samller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is between `lcell=1` and `lcell=6`, but for large and dense systems a larger value may be optimal. For molecular systems with normal densities `lcell=2` is likely the optimal choice. The peformance can be tested using the progress meter, as explained below.  
+This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a samller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is between `lcell=1` and `lcell=6`, but for large and dense systems a larger value may be optimal. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The peformance can be tested using the progress meter, as explained below.  
 
 ### Output progress 
 
