@@ -111,7 +111,7 @@ using Test
   box = Box(sides,cutoff,lcell=1)
   cl = CellList(x,y,box)
 
-  naive = CellListMap.map_naive_two!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
+  naive = CellListMap.map_naive!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
   @test map_pairwise!(
     (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
     0.0,box,cl,parallel=false
