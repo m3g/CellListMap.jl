@@ -21,7 +21,14 @@ include("./CoreComputing.jl")
 """
 
 ```
-map_pairwise!(f::Function,output,box::Box,cl::CellList;parallel::Bool=true,show_progress::Bool=false)
+map_pairwise!(
+  f::Function,
+  output,
+  box::Box,
+  cl::CellList
+  ;parallel::Bool=true,
+  show_progress::Bool=false
+)
 ```
 
 This function will run over every pair of particles which are closer than 
@@ -40,7 +47,8 @@ particle, the squared distance between them, and the `output` variable.
 It has also to return the same `output` variable. Thus, `f` may or not 
 mutate `output`, but in either case it must return it. With that, it is 
 possible to compute an average property of the distance of the particles 
-or, for example, build a histogram. The squared distance `d2` is computed internally for comparison with the 
+or, for example, build a histogram. The squared distance `d2` is computed 
+internally for comparison with the 
 `cutoff`, and is passed to the `f` because many times it is used for the 
 desired computation. 
 
