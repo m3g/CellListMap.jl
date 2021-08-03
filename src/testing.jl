@@ -77,19 +77,29 @@ end
 b(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
 n(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
 
-function test(N,M=2)
+function check_random_cells(N,M=2)
   local x, box
-  for i in 1:100000
-    box = Box(SMatrix{N,N,Float64,N*N}(rand(N,N)*10), 1)
-    if shortest_path(box.unit_cell.matrix) < 2*box.cutoff
+  ntrial = 0
+  p = Progress(10000,0.5)
+  while ntrial < 10000
+    unit_cell_matrix = 10*rand(SMatrix{N,N,Float64})
+    cutoff = max(0.01,rand())
+    if !check_unit_cell(unit_cell_matrix,cutoff,printerr=false)
       continue
     end
+    box = Box(unit_cell_matrix,cutoff)    
+    if prod(box.nc) > 100000
+      continue
+    end
+    ntrial += 1
+    next!(p)
     x = 100 .* rand(SVector{N,Float64},M)
     for i in eachindex(x)
       x[i] = x[i] .- 50  
     end
     cl = CellList(x,box)
     if !(b(box,cl) ≈ n(box,x))
+      println("FOUND PROBLEMATIC SETUP.")
       return x, box
     end
   end
@@ -97,17 +107,7 @@ function test(N,M=2)
   return x, box
 end
 
-
-@views orth_proj(m,i,j) = 
-  sqrt(norm(m[:,i])^2 - dot(m[:,i],m[:,j]/norm(m[:,j]))^2)
-
-function shortest_path(m::SMatrix{2,2,T,4}) where T
-   return min(orth_proj(m,1,2),orth_proj(m,2,1))
-end
-
-shortest_path(box::Box) = shortest_path(box.unit_cell.matrix)
-
-function plotbox(box)
+function drawbox(box::Box{UnitCellType,2}) where UnitCellType
   S = SVector{2,Float64}
   m = box.unit_cell.matrix
   x = [S(0.,0.)]
@@ -118,9 +118,75 @@ function plotbox(box)
   return x
 end
 
+function drawbox(box::Box{UnitCellType,3}) where UnitCellType
+  S = SVector{3,Float64}
+  m = box.unit_cell.matrix
+  x = [S(0.,0.,0.)]
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,2]))
+  push!(x,S(m[:,2]))
+  push!(x,S(0.,0.,0.))
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,3]))
+  push!(x,S(m[:,3]))
+  push!(x,S(0.,0.,0.))
+  push!(x,S(m[:,2]))
+  push!(x,S(m[:,2] + m[:,3]))
+  push!(x,S(m[:,2]))
+  push!(x,S(0.,0.,0.))
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,2]))
+  push!(x,S(m[:,1] + m[:,2]) + m[:,3])
+  push!(x,S(m[:,1] + m[:,3]))
+  push!(x,S(m[:,3]))
+  push!(x,S(m[:,3]) + m[:,2])
+  push!(x,S(m[:,1] + m[:,2]) + m[:,3])
+  return x
+end
 
-  
-  
+function draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
+  cl = CellList(x,box)
+  box_points = drawbox(box)
+  p = view_celllist_particles(cl)
+  plt = Main.plot()
+  Main.plot!(plt,Tuple.(box_points),label=:none)
+  Main.scatter!(plt,Tuple.(p),label=:none,markeralpha=0.3)
+  Main.scatter!(plt,Tuple.(wrap_to_first.(x,Ref(box))),label=:none)
+  xmin = minimum(el[1] for el in p) - 3*box.cell_size[1]
+  xmin = minimum(el[1] for el in p) - 3*box.cell_size[1]
+  xmax = maximum(el[1] for el in p) + 3*box.cell_size[1]
+  ymin = minimum(el[2] for el in p) - 3*box.cell_size[2]
+  ymax = maximum(el[2] for el in p) + 3*box.cell_size[2]
+  Main.plot!(plt,
+    aspect_ratio=1,framestyle=:box,xrotation=60,
+    xlims=(xmin,xmax),
+    ylims=(ymin,ymax),
+    xticks=(round.(digits=3,xmin:box.cell_size[1]:xmax)),
+    yticks=(round.(digits=3,ymin:box.cell_size[2]:ymax)),
+  )
+  return plt
+end
 
-
-
+function draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
+  cl = CellList(x,box)
+  box_points = drawbox(box)
+  p = view_celllist_particles(cl)
+  plt = Main.plot()
+  Main.plot!(plt,Tuple.(box_points),label=:none)
+  Main.scatter!(plt,Tuple.(p),label=:none,markeralpha=0.3)
+  Main.scatter!(plt,Tuple.(wrap_to_first.(x,Ref(box))),label=:none,markeralpha=0.3)
+  lims = Vector{Float64}[] 
+  for i in 1:3
+    push!(lims, [ -2*box.cell_size[i], box.nc[i] + 2*box.cell_size[i] ])
+  end
+  Main.plot!(plt,
+    aspect_ratio=1,framestyle=:box,xrotation=60,yrotation=-70,zrotation=0,
+    xlims=lims[1],
+    ylims=lims[2],
+    zlims=lims[3],
+    xticks=(round.(digits=3,lims[1][1]:box.cell_size[1]:lims[1][2])),
+    yticks=(round.(digits=3,lims[2][1]:box.cell_size[2]:lims[2][2])),
+    zticks=(round.(digits=3,lims[3][1]:box.cell_size[3]:lims[3][2])),
+  )
+  return plt
+end

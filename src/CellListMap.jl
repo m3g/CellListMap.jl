@@ -1,7 +1,7 @@
 module CellListMap
 
 using Base.Threads
-using LinearAlgebra: dot, norm, norm_sqr
+using LinearAlgebra: dot, norm, norm_sqr, cross
 using Parameters
 using StaticArrays
 using DocStringExtensions

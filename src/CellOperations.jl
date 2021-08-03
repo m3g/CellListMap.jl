@@ -393,6 +393,79 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 @inline cell_linear_index(nc::SVector{N,Int}, indices) where N =
   LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indices[i],N)...]
 
+  """
 
+  ```
+  check_unit_cell(box::Box)
+  ```
+  
+  Checks if the unit cell satisfies the conditions for using the minimum-image
+  convention, with the same criteria used gy Gromacs. 
+  
+  """
+  check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix,box.cutoff)
 
+  function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
+    a = @view(unit_cell_matrix[:,1])
+    b = @view(unit_cell_matrix[:,2])
+    c = @view(unit_cell_matrix[:,3])
+    check = true
 
+    if size(unit_cell_matrix) != (3,3) 
+      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (3,3).")
+      check = false
+    end
+
+    if count(el -> el < 0, unit_cell_matrix) != 0
+      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
+      check = false
+    end
+
+    bc = cross(b,c)
+    bc = bc / norm(bc)
+    aproj = dot(a,bc) 
+
+    ab = cross(a,b)
+    ab = ab / norm(ab)
+    cproj = dot(c,ab) 
+
+    ca = cross(c,a)
+    ca = ca / norm(ca)
+    bproj = dot(b,ca) 
+
+    if (aproj < 2*cutoff) || (bproj < 2*cutoff) || (cproj < 2*cutoff)
+      printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+      check = false
+    end
+  
+    return check
+  end
+
+  function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
+    a = @view(unit_cell_matrix[:,1])
+    b = @view(unit_cell_matrix[:,2])
+    check = true
+
+    if size(unit_cell_matrix) != (2,2) 
+      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (2,2).")
+      check = false
+    end
+
+    if count(el -> el < 0, unit_cell_matrix) != 0
+      printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
+      check = false
+    end
+
+    i = a / norm(a)
+    bproj = sqrt(norm_sqr(b) - dot(b,i)^2)
+
+    j = b / norm(b)
+    aproj = sqrt(norm_sqr(a) - dot(a,j)^2)
+
+    if (aproj < 2*cutoff) || (bproj < 2*cutoff)
+      printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+      check = false
+    end
+  
+    return check
+  end

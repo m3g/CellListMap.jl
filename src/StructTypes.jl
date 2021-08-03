@@ -87,12 +87,15 @@ function Box(
   UnitCellType=TriclinicCell
 )
 
+  s = size(unit_cell_matrix)
+  unit_cell_matrix = SMatrix{s[1],s[2],Float64,s[1]*s[2]}(unit_cell_matrix)
+
   @assert lcell >= 1 "lcell must be greater or equal to 1"
   @assert scale_cutoff >= 1 "scale_cutoff must be greater or equal to 1.0"
 
   N = size(unit_cell_matrix)[1]
   @assert N == size(unit_cell_matrix)[2] "Unit cell matrix must be square."
-  @assert count(unit_cell_matrix .< 0) == 0 "Unit cell lattice vectors must only contain non-negative coordinates."
+  @assert check_unit_cell(unit_cell_matrix,cutoff) " Unit cell matrix does not satisfy required conditions."
 
   unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
   unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
