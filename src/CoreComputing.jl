@@ -3,10 +3,18 @@
 #
 splitter(first,n) = first:nthreads():n
 
-#
-# Functions to reduce the output of common options (vectors of numbers 
-# and vectors of vectors)
-#
+"""
+
+```
+reduce(output::Number, output_threaded::Vector{<:Number})
+```
+
+Functions to reduce the output of common options (vectors of numbers 
+and vectors of vectors). This function can be overloaded by custom
+reduction methods. It always must both receive the `output` variable
+as a parameter, and return it at the end.
+
+"""
 reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
 function reduce(output::AbstractVector, output_threaded::AbstractVector{<:AbstractVector}) 
   for i in 1:nthreads()
@@ -141,7 +149,12 @@ function inner_loop!(
       xpᵢ = pᵢ.coordinates
       i_orig = pᵢ.index_original
 
-      # Partition pp array according to the current projections
+      # Partition pp array according to the current projections. This
+      # is faster than it looks, because after the first partitioning, the
+      # array will be almost correct, and essentially the algorithm
+      # will only run over most elements. Avoiding this partitioning or
+      # trying to sort the array before always resulted to be much more
+      # expensive. 
       xproj = dot(xpᵢ-cell.center,Δc)
       n = partition!(pp, el -> el.xproj - xproj <= cutoff)
 
@@ -182,7 +195,7 @@ function inner_loop!(
   while i > 0
     xpᵢ = pᵢ.coordinates
     pⱼ = cl.np[i] 
-    j = pⱼ.index
+    j = pⱼ.index # here j starts from i+1
     while j > 0
       xpⱼ = pⱼ.coordinates
       d2 = norm_sqr(xpᵢ - xpⱼ)
@@ -286,7 +299,9 @@ function map_pairwise_parallel!(
 end
 
 #
-# Inner loop of cross-interaction computations
+# Inner loop of cross-interaction computations. If the two sets
+# are large, this might(?) be improved by computing two sepparate
+# cell lists and using projection and partitioning.
 #
 function inner_loop!(
   f,output,i,box,

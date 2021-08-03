@@ -1,7 +1,13 @@
-#
-# Function that uses the naive algorithm, for testing
-#
-function map_naive!(f,output,x,box)
+"""
+
+```
+map_naive!(f,output,x,box)
+```
+
+Function that uses the naive pairwise mapping algorithm, for testing.
+
+"""
+function map_naive!(f,output,x,box::Box)
   @unpack unit_cell, cutoff_sq = box
   for i in 1:length(x)-1
     xᵢ = x[i]
@@ -16,10 +22,7 @@ function map_naive!(f,output,x,box)
   return output
 end
 
-#
-# Function that uses the naive algorithm, for testing
-#
-function map_naive_two!(f,output,x,y,box)
+function map_naive!(f,output,x,y,box::Box)
   @unpack unit_cell, cutoff_sq = box
   for i in 1:length(x)
     xᵢ = x[i]
@@ -44,6 +47,7 @@ Auxiliary function to view the particles of a computing box, including images cr
 for computing purposes.
 
 ### Example
+
 ```julia
 julia> box = Box([ 100 50; 50 100 ],10);
 
@@ -74,8 +78,8 @@ function view_celllist_particles(cl::CellList{N,T}) where {N,T}
   return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp[1]]
 end
 
-b(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
-n(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
+test_map(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
+test_naive(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
 
 function check_random_cells(N,M=2)
   local x, box
@@ -144,6 +148,15 @@ function drawbox(box::Box{UnitCellType,3}) where UnitCellType
   return x
 end
 
+"""
+
+```
+draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
+```
+
+This function creates a plot of the computing cell, in two dimensions.
+
+"""
 function draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
   cl = CellList(x,box)
   box_points = drawbox(box)
@@ -167,6 +180,15 @@ function draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
   return plt
 end
 
+"""
+
+```
+draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
+```
+
+This function creates a plot of the computing cell, in three dimensions.
+
+"""
 function draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
   cl = CellList(x,box)
   box_points = drawbox(box)

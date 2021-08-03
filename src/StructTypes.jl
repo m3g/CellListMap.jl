@@ -19,7 +19,7 @@ $(TYPEDFIELDS)
 Structure that contains some data required to compute the linked cells. To
 be initialized with the box size and cutoff. 
 
-## Example
+## Examples
 
 ```julia-repl
 julia> sides = [250,250,250];
@@ -27,11 +27,22 @@ julia> sides = [250,250,250];
 julia> cutoff = 10;
 
 julia> box = Box(sides,cutoff)
-Box{3, Float64}
-  sides: [250.0, 250.0, 250.0]
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [250.0 0.0 0.0; 0.0 250.0 0.0; 0.0 0.0 250.0]
   cutoff: 10.0
-  number of cells on each dimension: [25, 25, 25] (lcell: 1)
-  Total number of cells: 15625
+  number of computing cells on each dimension: [27, 27, 27]
+  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells: 19683
+
+julia> box = Box([ 10  0  0 
+                    0 10  5
+                    0  0 10 ], 1)
+Box{TriclinicCell, 3, Float64, 9}
+unit cell matrix: [10.0 0.0 0.0; 0.0 10.0 5.0; 0.0 0.0 10.0]
+cutoff: 1.0
+number of computing cells on each dimension: [12, 17, 12]
+computing cell sizes: [1.0, 1.0, 1.0] (lcell: 1)
+Total number of cells: 2448
 
 ```
 
@@ -50,10 +61,18 @@ end
 """
 
 ```
-Box(unit_cell::AbstractMatrix, cutoff; T::DataType=Float64, lcell::Int=1)
+Box(
+  unit_cell_matrix::AbstractMatrix, 
+  cutoff, 
+  T::DataType, 
+  lcell::Int=1,
+  UnitCellType=TriclinicCell
+)
 ```
 
-Construct box structure given the cell matrix of lattice vectors. 
+Construct box structure given the cell matrix of lattice vectors. This 
+constructor will always return a `TriclinicCell` box type, unless the
+`UnitCellType` parameter is set manually to `OrthorhombicCell`
 
 ### Example
 ```julia
@@ -62,11 +81,12 @@ julia> unit_cell = [ 100   50    0
                        0    0  130 ];
 
 julia> box = Box(unit_cell,10)
-Box{3, Float64}
-  unit cell: [100.0 50.0 0.0; 0.0 120.0 0.0; 0.0 0.0 130.0]
+Box{TriclinicCell, 3, Float64, 9}
+  unit cell matrix: [100.0 50.0 0.0; 0.0 120.0 0.0; 0.0 0.0 130.0]
   cutoff: 10.0
-  number of cells on each dimension: [16, 13, 14] (lcell: 1)
-  Total number of cells: 2912
+  number of computing cells on each dimension: [17, 14, 15]
+  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells: 3570
 
 ```
 
@@ -92,7 +112,6 @@ function Box(
   unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
  
   nc_min = @. floor.(Int,unit_cell_max/cutoff) 
-#  @assert count(nc_min .== 0) == 0 "Cutoff greater than maximum unit cell size. "
   cell_size_max = unit_cell_max ./ nc_min
   cell_size = cell_size_max/lcell
 
@@ -131,19 +150,27 @@ end
 """
 
 ```
-Box(sides::AbstractVector, cutoff; T::DataType=Float64, lcell::Int=1)
+Box(
+  sides::AbstractVector, 
+  cutoff, 
+  T::DataType, 
+  lcell::Int=1,
+  UnitCellType=OrthorhombicCell
+)
 ```
 
-For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side. 
+For orthorhombic unit cells, `Box` can be initialized with a vector of the 
+length of each side. 
 
 ### Example
 ```julia
 julia> box = Box([120,150,100],10)
-Box{3, Float64}
-  unit cell: [120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0]
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0]
   cutoff: 10.0
-  number of cells on each dimension: [13, 16, 11] (lcell: 1)
-  Total number of cells: 2288
+  number of computing cells on each dimension: [14, 17, 12]
+  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells: 2856
 
 ```
 
@@ -188,6 +215,8 @@ Box(
 
 $(TYPEDEF)
 
+$(TYPEDFIELDS)
+
 Copies particle coordinates and associated index, to build contiguous particle lists
 in memory when building the cell lists. This strategy duplicates the particle coordinates
 data, but is probably worth the effort.
@@ -206,6 +235,8 @@ Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
 
 $(TYPEDEF)
 
+$(TYPEDFIELDS)
+
 This structure contains the cell linear index and the information 
 about if this cell is in the border of the box (such that its 
 neighbouring cells need to be wrapped) 
@@ -220,6 +251,10 @@ Base.zero(::Type{Cell{N,T}}) where {N,T} =
   Cell{N,T}(0,CartesianIndex{N}(ntuple(i->0,N)),zeros(SVector{N,T}))
 
 """
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
 
 Auxiliary structure to contain projected particles in large and
 and dense systems.
@@ -289,7 +324,11 @@ end
 """
 
 ```
-CellList(x::AbstractVector{SVector{N,T}},box::Box,parallel=true) where {N,T}
+CellList(
+  x::AbstractVector{SVector{N,T}},
+  box::Box;
+  parallel::Bool=true
+) where {N,T} 
 ```
 
 Function that will initialize a `CellList` structure from scracth, given a vector
@@ -305,7 +344,8 @@ julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
 
 julia> cl = CellListMap.CellList(x,box)
 CellList{3, Float64}
-  with 15597 cells with particles.
+  1800 cells with real particles.
+  161084 particles in computing box, including images.
 
 ```
 
@@ -343,13 +383,17 @@ end
 """
 
 ```
-CellList(x::AbstractVector{SVector{N,T}},y::AbstractVector{SVector{N,T}},box::Box;parallel=true) where {N,T}
+CellList(
+  x::AbstractVector{SVector{N,T}},
+  y::AbstractVector{SVector{N,T}},
+  box::Box;
+  parallel::Bool=true
+) where {N,T} 
 ```
 
 Function that will initialize a `CellListPair` structure from scracth, given two vectors
 of particle coordinates and a `Box`, which contain the size ofthe system, cutoff, etc. The cell lists
 will be constructed for the largest vector, and a reference to the smallest vector is annotated.
-
 
 ### Example
 
@@ -361,9 +405,9 @@ julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
 julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box)
-CellListMap.CellListPair{3, Float64}
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
    1000 particles in the smallest vector.
-   7452 cells with particles.
+   1767 cells with particles.
 
 ```
 
@@ -483,7 +527,17 @@ end
 
 """
 
-Set one index of a cell list
+```
+add_particle_to_celllist!(
+  ip,
+  x::SVector{N,T},
+  box,
+  cl::CellList{N,T};
+  real_particle::Bool=true
+) where {N,T}
+```
+
+Adds one particle to the cell lists, updating all necessary arrays.
 
 """
 function add_particle_to_celllist!(
@@ -525,7 +579,6 @@ function add_particle_to_celllist!(
   fp[icell] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
   return cl
 end
-
 
 """
 
