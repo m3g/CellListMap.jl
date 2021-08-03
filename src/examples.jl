@@ -1,7 +1,7 @@
 import Random
 
 #
-# In this test we compute the average displacement of the x coordinates of the atoms
+# In this test we compute the average displacement of the x coordinates of the particles
 #              
 function test1(;N=100_000,parallel=true,x=nothing)
 
@@ -27,8 +27,9 @@ function test1(;N=100_000,parallel=true,x=nothing)
     0.,box,cl,
     parallel=parallel
   )
-  return avg_dx
 
+  correct_result = 100.5799271448272
+  return avg_dx ≈ correct_result, avg_dx
 end
 
 #
@@ -244,7 +245,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
   cutoff = +Inf
   for v in x
     iy = rand(1:N2)
-    cutoff = min(CellListMap.distance(v,y[iy]),cutoff)
+    cutoff = min(CellListMap.norm(v-y[iy]),cutoff)
   end 
    
   # Define box sides
@@ -339,7 +340,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
 
   @inline dot(x::SVector{3,Float64},y::SVector{3,Float64}) = x[1]*y[1] + x[2]*y[2] + x[3]*y[3]
   
-  function compute_pairwise_mean_cell_lists!(x,y,i,j,d2,hist,velocities,rbins,sides)
+  function compute_pairwise_mean_cell_lists!(x,y,i,j,d2,hist,velocities,rbins)
     d = x - y
     r = sqrt(d2)
     ibin = searchsortedfirst(rbins, r) - 1
@@ -349,8 +350,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
   end
 
   function reduce_hist(hist,hist_threaded)
-    hist = hist_threaded[1]
-    for i in 2:Threads.nthreads()
+    for i in 1:Threads.nthreads()
       hist[1] .+= hist_threaded[i][1]
       hist[2] .+= hist_threaded[i][2]
     end
@@ -377,16 +377,14 @@ function florpi(;N=100_000,cd=true,parallel=true)
   positions = reshape(reinterpret(SVector{3,Float64},positions),n)
   velocities = reshape(reinterpret(SVector{3,Float64},velocities),n)
 
-  box = Box(Lbox, r_max)
+  box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=1) 
   cl = CellList(positions,box,parallel=parallel)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
   # Needs this to stabilize the type of velocities and hist, probably
-  function barrier(f,velocities,rbins,Lbox,hist,positions,box,cl,reduce_hist,parallel)
+  function barrier(f!,velocities,rbins,hist,box,cl,reduce_hist,parallel)
     hist = map_pairwise!(
-      (x,y,i,j,d2,hist) -> compute_pairwise_mean_cell_lists!(
-         x,y,i,j,d2,hist,velocities,rbins,Lbox
-      ),
+      (x,y,i,j,d2,hist) -> f!(x,y,i,j,d2,hist,velocities,rbins),
       hist, box, cl,
       reduce=reduce_hist,
       parallel=parallel
@@ -395,11 +393,19 @@ function florpi(;N=100_000,cd=true,parallel=true)
   end
 
   hist = barrier(compute_pairwise_mean_cell_lists!,
-    velocities,rbins,Lbox,hist,positions,box,cl,reduce_hist,parallel)
+    velocities,rbins,hist,box,cl,reduce_hist,parallel)
 
   n_pairs = hist[1]
   mean_v_r = hist[2]
   mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0]./n_pairs[n_pairs .> 0]
-  return mean_v_r
+
+  correct_result = [ 
+   0.0007883474482652579
+  -0.0035662371878635722
+  -0.00040742008823982926
+   0.0003623877989466509
+  -0.0010441334538614498
+  ]
+  return mean_v_r ≈ correct_result, mean_v_r
 
 end

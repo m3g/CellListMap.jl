@@ -111,7 +111,7 @@ using Test
   box = Box(sides,cutoff,lcell=1)
   cl = CellList(x,y,box)
 
-  naive = CellListMap.map_naive_two!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
+  naive = CellListMap.map_naive!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,x,y,box)
   @test map_pairwise!(
     (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
     0.0,box,cl,parallel=false
@@ -137,7 +137,7 @@ using Test
   N = 100_000
   x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
   y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
-  @test CellListMap.test1(parallel=true,x=x) ≈ CellListMap.test1(parallel=false,x=x)
+  @test CellListMap.test1(parallel=true,x=x)[2] ≈ CellListMap.test1(parallel=false,x=x)[2]
   @test CellListMap.test2(parallel=true,x=x) ≈ CellListMap.test2(parallel=false,x=x)
   @test CellListMap.test3(parallel=true,x=x) ≈ CellListMap.test3(parallel=false,x=x)
   @test CellListMap.test4(parallel=true,x=x) ≈ CellListMap.test4(parallel=false,x=x)
@@ -159,34 +159,34 @@ using Test
   iyx = CellListMap.test6(parallel=true,x=y,y=x) 
   @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
 
-  # Test resizing of the cell lists
-  x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
-  box = Box([0.83,0.41,0.97],0.1)
-  cl = CellList(x,box) 
-  @test length(cl.cwp) == 924
-
-  box = Box([0.33,0.41,0.97],0.1)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 924 
-
-  box = Box([0.83,0.81,0.97],0.1)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  x .= 0.9*x
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  x .= 1.2*x
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  box = Box([0.83,0.81,0.97],0.2)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 1598
-
-  box = Box([0.83,0.81,0.97],0.05)
-  cl = UpdateCellList!(x,box,cl)   
-  @test length(cl.cwp) == 8737
+#  # Test resizing of the cell lists
+#  x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
+#  box = Box([0.83,0.41,0.97],0.1)
+#  cl = CellList(x,box) 
+#  @test length(cl.cwp) == 924
+#
+#  box = Box([0.33,0.41,0.97],0.1)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 924 
+#
+#  box = Box([0.83,0.81,0.97],0.1)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  x .= 0.9*x
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  x .= 1.2*x
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  box = Box([0.83,0.81,0.97],0.2)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 1598
+#
+#  box = Box([0.83,0.81,0.97],0.05)
+#  cl = UpdateCellList!(x,box,cl)   
+#  @test length(cl.cwp) == 8737
 
 end

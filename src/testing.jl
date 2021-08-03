@@ -1,13 +1,19 @@
-#
-# Function that uses the naive algorithm, for testing
-#
-function map_naive!(f,output,x,box)
+"""
+
+```
+map_naive!(f,output,x,box)
+```
+
+Function that uses the naive pairwise mapping algorithm, for testing.
+
+"""
+function map_naive!(f,output,x,box::Box)
   @unpack unit_cell, cutoff_sq = box
   for i in 1:length(x)-1
     xᵢ = x[i]
     for j in i+1:length(x)
-      xⱼ = wrap_relative_to(x[j],xᵢ,unit_cell)
-      d2 = distance_sq(xᵢ,xⱼ)
+      xⱼ = wrap_relative_to(x[j],xᵢ,box)
+      d2 = norm_sqr(xᵢ - xⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,xⱼ,i,j,d2,output)
       end
@@ -16,16 +22,13 @@ function map_naive!(f,output,x,box)
   return output
 end
 
-#
-# Function that uses the naive algorithm, for testing
-#
-function map_naive_two!(f,output,x,y,box)
+function map_naive!(f,output,x,y,box::Box)
   @unpack unit_cell, cutoff_sq = box
   for i in 1:length(x)
     xᵢ = x[i]
     for j in 1:length(y)
-      yⱼ = wrap_relative_to(y[j],xᵢ,unit_cell)
-      d2 = distance_sq(xᵢ,yⱼ)
+      yⱼ = wrap_relative_to(y[j],xᵢ,box)
+      d2 = norm_sqr(xᵢ - yⱼ)
       if d2 <= cutoff_sq
         output = f(xᵢ,yⱼ,i,j,d2,output)
       end
@@ -44,37 +47,168 @@ Auxiliary function to view the particles of a computing box, including images cr
 for computing purposes.
 
 ### Example
+
 ```julia
 julia> box = Box([ 100 50; 50 100 ],10);
 
-julia> p = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
+julia> x = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
 
-julia> cl = CellList(p,box);
+julia> cl = CellList(x,box);
 
-julia> x, y = CellListMap.view_celllist_particles(cl);
+julia> p = CellListMap.view_celllist_particles(cl);
 
 julia> using Plots
 
-julia> scatter(x,y,label=nothing,xlims=(-10,180),ylims=(-10,180))
+julia> scatter(Tuple.(p),label=nothing,xlims=(-10,180),ylims=(-10,180))
 
 ```
 
 """
-function view_celllist_particles(cl::CellList{N,T},box::Box) where {N,T}
-  @unpack nc = box
-  @unpack cwp, ncp, fp, np = cl
-  x = Vector{SVector{N,T}}(undef,ncp)
+function view_celllist_particles(cl::CellList{N,T}) where {N,T}
+  @unpack ncp, np = cl
+  x = Vector{SVector{N,T}}(undef,ncp[1])
   ip = 0
   for p in cl.fp
-    p.index == 0 && continue
-    ip += 1
-    x[ip] = p.coordinates
-    while np[p.index].index > 0
+    while p.index > 0
       ip += 1
       x[ip] = p.coordinates
       p = np[p.index]
     end
   end
-  return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp]
+  return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp[1]]
 end
 
+test_map(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
+test_naive(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
+
+function check_random_cells(N,M=2)
+  local x, box
+  ntrial = 0
+  p = Progress(10000,0.5)
+  while ntrial < 10000
+    unit_cell_matrix = 10*rand(SMatrix{N,N,Float64})
+    cutoff = max(0.01,rand())
+    if !check_unit_cell(unit_cell_matrix,cutoff,printerr=false)
+      continue
+    end
+    box = Box(unit_cell_matrix,cutoff)    
+    if prod(box.nc) > 100000
+      continue
+    end
+    ntrial += 1
+    next!(p)
+    x = 100 .* rand(SVector{N,Float64},M)
+    for i in eachindex(x)
+      x[i] = x[i] .- 50  
+    end
+    cl = CellList(x,box)
+    if !(test_map(box,cl) ≈ test_naive(box,x))
+      println("FOUND PROBLEMATIC SETUP.")
+      return x, box
+    end
+  end
+  println(" ALL PASSED! ")
+  return x, box
+end
+
+function drawbox(box::Box{UnitCellType,2}) where UnitCellType
+  S = SVector{2,Float64}
+  m = box.unit_cell.matrix
+  x = [S(0.,0.)]
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,2]))
+  push!(x,S(m[:,2]))
+  push!(x,S(0.,0.))
+  return x
+end
+
+function drawbox(box::Box{UnitCellType,3}) where UnitCellType
+  S = SVector{3,Float64}
+  m = box.unit_cell.matrix
+  x = [S(0.,0.,0.)]
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,2]))
+  push!(x,S(m[:,2]))
+  push!(x,S(0.,0.,0.))
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,3]))
+  push!(x,S(m[:,3]))
+  push!(x,S(0.,0.,0.))
+  push!(x,S(m[:,2]))
+  push!(x,S(m[:,2] + m[:,3]))
+  push!(x,S(m[:,2]))
+  push!(x,S(0.,0.,0.))
+  push!(x,S(m[:,1]))
+  push!(x,S(m[:,1] + m[:,2]))
+  push!(x,S(m[:,1] + m[:,2]) + m[:,3])
+  push!(x,S(m[:,1] + m[:,3]))
+  push!(x,S(m[:,3]))
+  push!(x,S(m[:,3]) + m[:,2])
+  push!(x,S(m[:,1] + m[:,2]) + m[:,3])
+  return x
+end
+
+"""
+
+```
+draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
+```
+
+This function creates a plot of the computing cell, in two dimensions.
+
+"""
+function draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
+  cl = CellList(x,box)
+  box_points = drawbox(box)
+  p = view_celllist_particles(cl)
+  plt = Main.plot()
+  Main.plot!(plt,Tuple.(box_points),label=:none)
+  Main.scatter!(plt,Tuple.(p),label=:none,markeralpha=0.3)
+  Main.scatter!(plt,Tuple.(wrap_to_first.(x,Ref(box))),label=:none)
+  xmin = minimum(el[1] for el in p) - 3*box.cell_size[1]
+  xmin = minimum(el[1] for el in p) - 3*box.cell_size[1]
+  xmax = maximum(el[1] for el in p) + 3*box.cell_size[1]
+  ymin = minimum(el[2] for el in p) - 3*box.cell_size[2]
+  ymax = maximum(el[2] for el in p) + 3*box.cell_size[2]
+  Main.plot!(plt,
+    aspect_ratio=1,framestyle=:box,xrotation=60,
+    xlims=(xmin,xmax),
+    ylims=(ymin,ymax),
+    xticks=(round.(digits=3,xmin:box.cell_size[1]:xmax)),
+    yticks=(round.(digits=3,ymin:box.cell_size[2]:ymax)),
+  )
+  return plt
+end
+
+"""
+
+```
+draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
+```
+
+This function creates a plot of the computing cell, in three dimensions.
+
+"""
+function draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
+  cl = CellList(x,box)
+  box_points = drawbox(box)
+  p = view_celllist_particles(cl)
+  plt = Main.plot()
+  Main.plot!(plt,Tuple.(box_points),label=:none)
+  Main.scatter!(plt,Tuple.(p),label=:none,markeralpha=0.3)
+  Main.scatter!(plt,Tuple.(wrap_to_first.(x,Ref(box))),label=:none,markeralpha=0.3)
+  lims = Vector{Float64}[] 
+  for i in 1:3
+    push!(lims, [ -2*box.cell_size[i], box.nc[i] + 2*box.cell_size[i] ])
+  end
+  Main.plot!(plt,
+    aspect_ratio=1,framestyle=:box,xrotation=60,yrotation=-70,zrotation=0,
+    xlims=lims[1],
+    ylims=lims[2],
+    zlims=lims[3],
+    xticks=(round.(digits=3,lims[1][1]:box.cell_size[1]:lims[1][2])),
+    yticks=(round.(digits=3,lims[2][1]:box.cell_size[2]:lims[2][2])),
+    zticks=(round.(digits=3,lims[3][1]:box.cell_size[3]:lims[3][2])),
+  )
+  return plt
+end
