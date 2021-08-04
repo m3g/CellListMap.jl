@@ -53,7 +53,7 @@ function test2(;N=100_000,parallel=true,x=nothing)
   cl = CellList(x,box,parallel=parallel)
 
   # Function to be evalulated for each pair: build distance histogram
-  function build_histogram!(x,y,d2,hist) 
+  function build_histogram!(d2,hist) 
     d = sqrt(d2)
     ibin = floor(Int,d) + 1
     hist[ibin] += 1
@@ -65,7 +65,7 @@ function test2(;N=100_000,parallel=true,x=nothing)
 
   # Run pairwise computation
   hist = (N/(N*(N-1)/2)) * map_pairwise!(
-    (x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),
+    (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
     hist,box,cl,
     parallel=parallel
   )
@@ -98,7 +98,7 @@ function test3(;N=100_000,parallel=true,x=nothing)
   mass = [ 5 * x[i][1] for i in 1:N ]
 
   # Function to be evalulated for each pair: build distance histogram
-  function potential(x,y,i,j,d2,u,mass) 
+  function potential(i,j,d2,u,mass) 
     d = sqrt(d2)
     u = u - 9.8*mass[i]*mass[j]/d
     return u
@@ -106,7 +106,7 @@ function test3(;N=100_000,parallel=true,x=nothing)
 
   # Run pairwise computation
   u = map_pairwise!(
-    (x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),
+    (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass),
     0.0,box,cl,
     parallel=parallel
   )
@@ -205,6 +205,8 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,box,cl;reduce=reduce_mind, parallel=parallel
   )
+
+  # Take the square root of the minimum distance to return
   return (mind[1],mind[2],sqrt(mind[3]))
 
 end
@@ -277,6 +279,8 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,box,cl;reduce=reduce_mind,parallel=parallel
   )
+
+  # Take the square root of the minimum distance to return
   return (mind[1],mind[2],sqrt(mind[3]))
 
 end
