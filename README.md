@@ -13,8 +13,8 @@ It allows the fast computation of any quantity from the pairs that are within th
       2. [Histogram of distances](#histogram-of-distances) 
       3. [Gravitational potential](#gravitational-potential) 
       4. [Gravitational force](#gravitational-force) 
-      5. [Nearest neighbor](#nearest-neighbor) 
-      6. [Neighbour list](#neighbor-list) 
+      5. [Nearest neighbour](#nearest-neighbour) 
+      6. [Neighbour list](#neighbour-list) 
       7. [Periodic boundary conditions](#periodic-boundary-conditions)
 4. [Parallelization splitting and reduction](#parallelization-splitting-and-reduction)
       1. [Custom reduction functions](#custom-reduction-functions) 
@@ -180,7 +180,7 @@ forces = map_pairwise!(
 
 The example above can be run with `CellListMap.test4()`. 
 
-### Nearest neighbor
+### Nearest neighbour
 
 Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
 
@@ -227,7 +227,7 @@ The example above can be run with `CellListMap.test5()`. The example `CellListMa
 
 ### Neighbour list
 
-In this example we compute the complete neighbor list, of all pairs of particles which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the particles and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
+In this example we compute the complete neighbour list, of all pairs of particles which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the particles and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
 
 ```julia
 # Function to be evalulated for each pair: push pair if d<cutoff
@@ -334,7 +334,7 @@ end
 
 ### Custom reduction functions
 
-In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
+In some cases, as in the [Nearest neighbour](#nearest-neighbour) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
 ```julia
 mind = map_pairwise!( 
   (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,box,cl;
@@ -440,7 +440,7 @@ The full test is available [at this](https://github.com/lmiq/PairVelocities) rep
 
 If you use this software and need to cite it, please use the following reference:
 
-Martínez, Leandro. (2021, June 11). CellListMap.jl: Flexible implementation of cell lists to map the calculations of short-ranged particle-pair dependent functions, such as forces, energies, neighbor lists, etc. Zenodo. http://doi.org/10.5281/zenodo.4927541
+Martínez, Leandro. (2021, June 11). CellListMap.jl: Flexible implementation of cell lists to map the calculations of short-ranged particle-pair dependent functions, such as forces, energies, neighbour lists, etc. Zenodo. http://doi.org/10.5281/zenodo.4927541
 
 
 

@@ -286,7 +286,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 end
 
 #
-# In this test we compute the complete neighbor list of particles, meaning all the pairs
+# In this test we compute the complete neighbour list of particles, meaning all the pairs
 # that are within the cutoff distance
 #
 function test7(;N=100_000,parallel=true,x=nothing)
