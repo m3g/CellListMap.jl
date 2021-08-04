@@ -1,6 +1,6 @@
 # CellListMap.jl
 
-This package is for computing short-ranged particle interactions or any other property that is dependent on the distances between pairs of three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
+This package is for computing interactions or any other property that is dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists, using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
 
 It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
@@ -45,24 +45,23 @@ while if two distinct sets of points are provided (`n*m` pairs), it is called wi
 ```julia
 map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
 ```
-where the `cl` variable contains the cell lists built from the coordinates of the system, and `box` contains the system box properties.
+where the `cl` variable of type `CellList` or `CellListPair` contains the cell lists built from the coordinates of the system, and `box` contains the system box properties.
 
 These functions will run over every pair of particles which are closer than `box.cutoff` and compute the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the (squared) cutoff, a function `f` of the coordinates
-of the two particles will be computed. 
+in the `Box` structure. If the distance is smaller than the cutoff, a user defined function `f` of the coordinates of the two particles will be computed. 
 
 The function `f` receives six arguments as input: 
 ```julia
 f(x,y,i,j,d2,output)
 ```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it. With that, it is possible to compute an average property of the distance of the particles or, for example, build a histogram. The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise!` must be always of the form:
+Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it.  The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise!` must be always of the form:
 ```julia
 function f(x,y,i,j,d2,output)
   # update output
   return output
 end
 ```
-and the user can define more or less parameters using closures, as shown in the examples.
+and the user can define more or less parameters or additional data required to compute the function using closures, as shown in the examples.
 
 Parallel calculations are the default if more than one thread is available. Use `parallel=false` as an optional argument to `map_pairwise!` to run the serial version instead.
 
@@ -104,11 +103,11 @@ The example above can be run with `CellListMap.test1()`.
 ### Histogram of distances
 
 Computing the histogram of the distances between particles (considering the same particles as in the above example). Again,
-we use a closure to remove the indexes of the particles from the computation, because they are not needed. The distance, on the other side, is needed in this example:
+we use a closure to remove the positions and indexes of the particles from the function arguments, because they are not needed. The distance, on the other side, is needed in this example:
 
 ```julia
 # Function that accumulates the histogram of distances
-function build_histogram!(x,y,d2,hist)
+function build_histogram!(d2,hist)
   d = sqrt(d2)
   ibin = floor(Int,d) + 1
   hist[ibin] += 1
@@ -121,7 +120,7 @@ normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation
 hist = normalization * map_pairwise!(
-  (x,y,i,j,d2,hist) -> build_histogram!(x,y,d2,hist),
+  (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
   hist,box,cl
 )
 
@@ -137,15 +136,15 @@ In this test we compute the "gravitational potential", assigning to each particl
 # masses
 const mass = rand(N)
 
-# Function to be evalulated for each pair 
-function potential(x,y,i,j,d2,u,mass)
+# Function to be evaluated for each pair 
+function potential(i,j,d2,mass,u)
   d = sqrt(d2)
   u = u - 9.8*mass[i]*mass[j]/d
   return u
 end
 
 # Run pairwise computation
-u = map_pairwise!((x,y,i,j,d2,u) -> potential(x,y,i,j,d2,u,mass),0.0,box,cl)
+u = map_pairwise!((x,y,i,j,d2,u) -> potential(i,j,d2,mass,u),0.0,box,cl)
 ```
 
 The example above can be run with `CellListMap.test3()`. 
@@ -187,15 +186,15 @@ Here we compute the indexes of the particles that satisfy the minimum distance b
 
 ```julia
 # Number of particles, sides and cutoff
-N1=1_500,
+N1=1_500
 N2=1_500_000
 sides = [250,250,250]
 cutoff = 10.
 box = Box(sides,cutoff)
 
 # Particle positions
-x = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N1 ]
-y = [ box.sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
+x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N1 ]
+y = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N2 ]
 
 # Initialize auxiliary linked lists (largest set!)
 cl = CellList(x,y,box)
@@ -211,7 +210,7 @@ function reduce_mind(output,output_threaded)
       mind = output_threaded[i]
     end
   end
-  return (mind[1],mind[2],mind[3])
+  return mind
 end
 
 # Initial value
@@ -224,7 +223,7 @@ mind = map_pairwise!(
 )
 ```
 
-The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points it is a faster method than usual ball-tree methods. 
+The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
 ### Neighbour list
 
@@ -243,7 +242,7 @@ end
 # Reduction function
 function reduce_pairs(pairs,pairs_threaded)
   pairs = pairs_threaded[1]
-  for i in 2:nthreads()
+  for i in 2:Threads.nthreads()
     append!(pairs,pairs_threaded[i])
   end
   return pairs
@@ -256,8 +255,7 @@ pairs = Tuple{Int,Int,Float64}[]
 pairs = map_pairwise!(
   (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs,cutoff),
   pairs,box,cl,
-  reduce=reduce_pairs,
-  parallel=parallel
+  reduce=reduce_pairs
 )
 ```
 
@@ -352,7 +350,7 @@ function reduce_mind(output,output_threaded)
       mind = output_threaded[i]
     end
   end
-  return (mind[1],mind[2],mind[3])
+  return mind
 end
 ```
 This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.  
@@ -396,7 +394,7 @@ for i in 1:nsteps
   # work with the final forces vector
   ...
   # Reset forces_threaded
-  for i in 1:nthreads()
+  for i in 1:Threads.nthreads()
     @. forces_threaded[i] = zero(SVector{3,Float64}) 
   end
 end
