@@ -621,3 +621,152 @@ function UpdateCellList!(
 
   return cl_pair
 end
+
+
+
+"""
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+Structure that contains the cell lists information.
+
+"""
+Base.@kwdef struct CellListSIMD{N,T}
+  " *mutable* number of cells with real particles. "
+  ncwp::Vector{Int}
+  " *mutable* number of particles in the computing box "
+  ncp::Vector{Int}
+  " Auxiliary array to annotate if the cell contains real particles. "
+  contains_real::Vector{Bool}
+  " Indices of the unique cells with real particles. "
+  cwp::Vector{Cell{N,T}}
+  " Vector containing cell lists "
+  list::Vector{Vector{ParticleWithIndex{N,T}}}
+  " Number of particles of cell. "
+  npcell::Vector{Int}
+  " Auxiliar array to store projected particles. "
+  projected_particles::Vector{Vector{ProjectedParticle{N,T}}}
+end
+function Base.show(io::IO,::MIME"text/plain",cl::CellListSIMD)
+  println(typeof(cl))
+  println("  $(cl.ncwp[1]) cells with real particles.")
+  println("  $(cl.ncp[1]) particles in computing box, including images.")
+end
+
+function CellListSIMD(
+  x::AbstractVector{<:AbstractVector},
+  box::Box{UnitCellType,N,T};
+  parallel::Bool=true
+) where {UnitCellType,N,T} 
+  number_of_cells = prod(box.nc)
+  # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
+  number_of_particles = ceil(Int,1.2*length(x))
+  ncwp = [0]
+  ncp = [0]
+  cwp = Vector{Cell{N,T}}(undef,number_of_cells)
+  contains_real = Vector{Bool}(undef,number_of_cells)
+
+  npercell = ceil(Int,1.2*number_of_particles/number_of_cells)
+  list = [ Vector{ParticleWithIndex{N,T}}(undef,npercell) for i in 1:number_of_cells ]
+
+  npcell = Vector{Int}(undef,number_of_cells)
+  projected_particles = [ Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads() ]
+
+  cl = CellListSIMD{N,T}(
+    ncwp,
+    ncp,
+    contains_real,
+    cwp,
+    list,
+    npcell,
+    projected_particles
+  )
+  return UpdateCellList!(x,box,cl,parallel=parallel)
+end
+
+function UpdateCellList!(
+  x::AbstractVector{<:AbstractVector},
+  box::Box,
+  cl::CellListSIMD{N,T};
+  parallel::Bool=true
+) where {N,T}
+  @unpack contains_real, cwp, list, npcell, projected_particles = cl
+
+  number_of_cells = prod(box.nc)
+  if number_of_cells > length(cwp) 
+    number_of_cells = ceil(Int,1.2*number_of_cells) # some margin in case of box size variations
+    resize!(contains_real,number_of_cells)
+    resize!(cwp,number_of_cells)
+    resize!(npcell,number_of_cells)
+  end
+
+  cl.ncwp[1] = 0
+  fill!(contains_real,false)
+  fill!(cwp,zero(Cell{N,T}))
+  fill!(npcell,0)
+
+  #
+  # The following part cannot be *easily* paralelized, because 
+  # there is concurrency on the construction of the cell lists
+  #
+
+  #
+  # Add virtual particles to edge cells
+  #
+  for (ip,particle) in pairs(x)
+    p = SVector{N,T}(wrap_to_first(particle,box))
+    cl = replicate_particle!(ip,p,box,cl)
+  end
+  #
+  # Add true particles, such that the first particle of each cell is
+  # always a true particle
+  #
+  for (ip,particle) in pairs(x)
+    p = SVector{N,T}(wrap_to_first(particle,box))
+    cl = add_particle_to_celllist!(ip,p,box,cl) 
+  end
+
+  maximum_npcell = maximum(npcell)
+  if maximum_npcell > length(projected_particles[1])
+    for i in 1:nthreads()
+      resize!(projected_particles[i],ceil(Int,1.2*maximum_npcell))
+    end
+  end
+
+  return cl
+end
+
+function add_particle_to_celllist!(
+  ip,
+  x::SVector{N,T},
+  box,
+  cl::CellListSIMD{N,T};
+  real_particle::Bool=true
+) where {N,T}
+  @unpack contains_real, ncp, ncwp, cwp, list, npcell = cl
+  ncp[1] += 1
+  icell_cartesian = particle_cell(x,box)
+  icell = cell_linear_index(box.nc,icell_cartesian)
+  #
+  # Cells starting with real particles are annotated to be run over
+  #
+  if real_particle && (!contains_real[icell])
+    contains_real[icell] = true
+    ncwp[1] += 1
+    cwp[ncwp[1]] = Cell{N,T}(
+      icell,
+      icell_cartesian,
+      cell_center(icell_cartesian,box)
+    )
+  end
+  npcell[icell] += 1
+
+  if npcell[icell] > length(list[icell])
+    resize!(list[icell],ceil(Int,1.2*length(list[icell])))
+  end
+  list[icell][npcell[icell]] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
+  return cl
+
+end
