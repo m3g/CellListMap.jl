@@ -430,9 +430,9 @@ Thus, besides being useful for following the progress of a long run, it is usefu
 
 The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. 
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.5.2.png>
+<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.5.3.png>
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.5.2.png>
+<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.5.3.png>
 
 The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. These benchmarks were run on an Intel i7 8th gen laptop, with 4 cores (8 threads). 
 
