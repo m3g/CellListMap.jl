@@ -223,13 +223,12 @@ data, but is probably worth the effort.
 
 """
 struct ParticleWithIndex{N,T}
-  index::Int
   index_original::Int
   coordinates::SVector{N,T}
   real::Bool
 end
 Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
-  ParticleWithIndex{N,T}(0,0,zeros(SVector{N,T}),false)
+  ParticleWithIndex{N,T}(0,zeros(SVector{N,T}),false)
 
 """
 
@@ -285,10 +284,8 @@ Base.@kwdef struct CellList{N,T}
   contains_real::Vector{Bool}
   " Indices of the unique cells with real particles. "
   cwp::Vector{Cell{N,T}}
-  " First particle of cell. "
-  fp::Vector{ParticleWithIndex{N,T}}
-  " Next particle of cell "
-  np::Vector{ParticleWithIndex{N,T}}
+  " Vector containing cell lists "
+  list::Vector{Vector{ParticleWithIndex{N,T}}}
   " Number of particles of cell. "
   npcell::Vector{Int}
   " Auxiliar array to store projected particles. "
@@ -362,8 +359,10 @@ function CellList(
   ncp = [0]
   cwp = Vector{Cell{N,T}}(undef,number_of_cells)
   contains_real = Vector{Bool}(undef,number_of_cells)
-  fp = Vector{ParticleWithIndex{N,T}}(undef,number_of_cells)
-  np = Vector{ParticleWithIndex{N,T}}(undef,number_of_particles)
+
+  npercell = ceil(Int,1.2*number_of_particles/number_of_cells)
+  list = [ Vector{ParticleWithIndex{N,T}}(undef,npercell) for i in 1:number_of_cells ]
+
   npcell = Vector{Int}(undef,number_of_cells)
   projected_particles = [ Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads() ]
 
@@ -372,8 +371,7 @@ function CellList(
     ncp,
     contains_real,
     cwp,
-    fp,
-    np,
+    list,
     npcell,
     projected_particles
   )
@@ -476,22 +474,19 @@ function UpdateCellList!(
   cl::CellList{N,T};
   parallel::Bool=true
 ) where {N,T}
-  @unpack contains_real, cwp, fp, np, npcell, projected_particles = cl
+  @unpack contains_real, cwp, list, npcell, projected_particles = cl
 
   number_of_cells = prod(box.nc)
   if number_of_cells > length(cwp) 
     number_of_cells = ceil(Int,1.2*number_of_cells) # some margin in case of box size variations
     resize!(contains_real,number_of_cells)
     resize!(cwp,number_of_cells)
-    resize!(fp,number_of_cells)
     resize!(npcell,number_of_cells)
   end
 
   cl.ncwp[1] = 0
   fill!(contains_real,false)
   fill!(cwp,zero(Cell{N,T}))
-  fill!(fp,zero(ParticleWithIndex{N,T}))
-  fill!(np,zero(ParticleWithIndex{N,T}))
   fill!(npcell,0)
 
   #
@@ -547,7 +542,7 @@ function add_particle_to_celllist!(
   cl::CellList{N,T};
   real_particle::Bool=true
 ) where {N,T}
-  @unpack contains_real, ncp, ncwp, cwp, fp, np, npcell = cl
+  @unpack contains_real, ncp, ncwp, cwp, list, npcell = cl
   ncp[1] += 1
   icell_cartesian = particle_cell(x,box)
   icell = cell_linear_index(box.nc,icell_cartesian)
@@ -563,21 +558,14 @@ function add_particle_to_celllist!(
       cell_center(icell_cartesian,box)
     )
   end
-  if fp[icell].index == 0
-    npcell[icell] = 1
-  else
-    npcell[icell] += 1
+  npcell[icell] += 1
+
+  if npcell[icell] > length(list[icell])
+    resize!(list[icell],ceil(Int,2*length(list[icell])))
   end
-  if ncp[1] > length(np) 
-    old_length = length(np)
-    resize!(np,ceil(Int,1.2*old_length))
-    for i in old_length+1:length(np)
-      np[i] = zero(ParticleWithIndex{N,T}) 
-    end
-  end
-  np[ncp[1]] = fp[icell]
-  fp[icell] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
+  list[icell][npcell[icell]] = ParticleWithIndex(ip,x,real_particle) 
   return cl
+
 end
 
 """
@@ -621,3 +609,6 @@ function UpdateCellList!(
 
   return cl_pair
 end
+
+
+
