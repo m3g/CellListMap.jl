@@ -119,7 +119,6 @@ function map_pairwise_parallel!(
   return output
 end
 
-
 #
 # Inner loop for Orthorhombic cells is faster because we can guarantee that
 # there are not repeated computations even if running over half of the cells.
