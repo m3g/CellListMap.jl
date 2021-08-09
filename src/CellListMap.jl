@@ -7,7 +7,6 @@ using StaticArrays
 using Setfield
 using Base.Threads
 using LinearAlgebra: dot, norm, norm_sqr, cross
-using LoopVectorization
 
 export Box
 export CellList, UpdateCellList!

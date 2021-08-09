@@ -65,26 +65,23 @@ julia> scatter(Tuple.(p),label=nothing,xlims=(-10,180),ylims=(-10,180))
 
 """
 function view_celllist_particles(cl::CellList{N,T}) where {N,T}
-  @unpack ncp, np = cl
-  x = Vector{SVector{N,T}}(undef,ncp[1])
-  ip = 0
-  for p in cl.fp
-    while p.index > 0
-      ip += 1
-      x[ip] = p.coordinates
-      p = np[p.index]
+  x = SVector{N,T}[]
+  for icell in 1:length(cl.list)
+    for ip in 1:cl.npcell[icell]
+      p = cl.list[icell][ip]
+      push!(x,p.coordinates)
     end
   end
-  return [SVector{N,T}(ntuple(j -> x[i][j],N)) for i in 1:ncp[1]]
+  return x
 end
 
 test_map(box,cl) = map_pairwise!((x,y,i,j,d2,s) -> s += d2, 0., box, cl, parallel=false)
 test_naive(box,x) = CellListMap.map_naive!((x,y,i,j,d2,s) -> s += d2, 0., x, box)
 
-function check_random_cells(N,M=2)
+function check_random_cells(N,M=2;show_progress=true)
   local x, box
   ntrial = 0
-  p = Progress(10000,0.5)
+  show_progress && (p = Progress(10000,0.5))
   while ntrial < 10000
     unit_cell_matrix = 10*rand(SMatrix{N,N,Float64})
     cutoff = max(0.01,rand())
@@ -96,19 +93,19 @@ function check_random_cells(N,M=2)
       continue
     end
     ntrial += 1
-    next!(p)
+    show_progress && (next!(p))
     x = 100 .* rand(SVector{N,Float64},M)
     for i in eachindex(x)
       x[i] = x[i] .- 50  
     end
     cl = CellList(x,box)
     if !(test_map(box,cl) ≈ test_naive(box,x))
-      println("FOUND PROBLEMATIC SETUP.")
-      return x, box
+      show_progress && println("FOUND PROBLEMATIC SETUP.")
+      return false, x, box
     end
   end
-  println(" ALL PASSED! ")
-  return x, box
+  show_progress && println(" ALL PASSED! ")
+  return true, x, box
 end
 
 function drawbox(box::Box{UnitCellType,2}) where UnitCellType

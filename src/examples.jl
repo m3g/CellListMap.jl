@@ -383,7 +383,7 @@ function florpi(;N=100_000,cd=true,parallel=true)
 
   box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=1) 
   #cl = CellList(positions,box,parallel=parallel)
-  cl = CellListMap.CellListSIMD(positions,box,parallel=parallel)
+  cl = CellListMap.CellList(positions,box,parallel=parallel)
   hist = (zeros(Int,length(rbins)-1), zeros(Float64,length(rbins)-1))
 
   # Needs this to stabilize the type of velocities and hist, probably
