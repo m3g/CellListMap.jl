@@ -439,11 +439,11 @@ function inner_loop!(
       pⱼ = cl.list[cell.icell][j]
       xpⱼ = pⱼ.coordinates
       d2 = norm_sqr(xpᵢ - xpⱼ)
-      within_cutoff = (d2 <= cutoff_sq)
-      i_orig = pᵢ.index_original
-      j_orig = pⱼ.index_original
-      output_temp = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      output = (1-within_cutoff)*output + within_cutoff*output_temp
+      if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pⱼ.index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
     end
   end
 
@@ -483,11 +483,11 @@ function cell_output!(
       pⱼ = pp[j]
       xpⱼ = pⱼ.coordinates
       d2 = norm_sqr(xpᵢ - xpⱼ)
-      within_cutoff = (d2 <= cutoff_sq)
-      i_orig = pᵢ.index_original
-      j_orig = pⱼ.index_original
-      output_temp = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
-      output = (1-within_cutoff)*output + within_cutoff*output_temp
+      if d2 <= cutoff_sq
+        i_orig = pᵢ.index_original
+        j_orig = pⱼ.index_original
+        output = f(xpᵢ,xpⱼ,i_orig,j_orig,d2,output)
+      end
     end
   end
 

@@ -764,7 +764,7 @@ function add_particle_to_celllist!(
   npcell[icell] += 1
 
   if npcell[icell] > length(list[icell])
-    resize!(list[icell],ceil(Int,1.2*length(list[icell])))
+    resize!(list[icell],ceil(Int,2*length(list[icell])))
   end
   list[icell][npcell[icell]] = ParticleWithIndex(ncp[1],ip,x,real_particle) 
   return cl
