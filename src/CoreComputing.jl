@@ -192,7 +192,7 @@ function inner_loop!(
   for i in 1:cl.npcell[cell.icell]-1
     pᵢ = cl.list[cell.icell][i]
     xpᵢ = pᵢ.coordinates
-    @inbounds for j in i+1:cl.npcell[cell.icell]
+    for j in i+1:cl.npcell[cell.icell]
       pⱼ = cl.list[cell.icell][j]
       xpⱼ = pⱼ.coordinates
       d2 = norm_sqr(xpᵢ - xpⱼ)
@@ -236,7 +236,7 @@ function cell_output!(
     n = partition!(pp, el -> el.xproj - xproj <= cutoff)
 
     # Compute the interactions 
-    @inbounds for j in 1:n
+    for j in 1:n
       pⱼ = pp[j]
       xpⱼ = pⱼ.coordinates
       d2 = norm_sqr(xpᵢ - xpⱼ)
