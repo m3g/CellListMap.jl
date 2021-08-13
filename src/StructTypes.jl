@@ -506,11 +506,12 @@ function UpdateCellList!(
   # Reset cell (resize if needed, and reset values)
   reset!(cl,box)
 
+
   #
   # Add particles to cell list
   #
-  nt = nthreads()
-  if !parallel || length(x) < nt
+  nt = min(length(x)÷250,nthreads())
+  if !parallel || nt < 2
     cl = add_particles!(x,box,0,cl)
   else
     # Indices of the atoms that will be added by each thread
@@ -551,7 +552,7 @@ function UpdateCellList!(
           if cl.npcell[icell] > length(cl.list[icell]) 
             resize!(cl.list[icell],cl.npcell[icell])
           end
-          @simd for ip in 1:clt[it].npcell[icell]
+          for ip in 1:clt[it].npcell[icell]
             cl.list[icell][nprev + ip] = clt[it].list[icell][ip] 
           end
         end
@@ -561,7 +562,7 @@ function UpdateCellList!(
 
   maximum_npcell = maximum(npcell)
   if maximum_npcell > length(projected_particles[1])
-    for i in 1:nt
+    for i in 1:nthreads()
       resize!(projected_particles[i],ceil(Int,1.2*maximum_npcell))
     end
   end
@@ -573,16 +574,20 @@ function add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
   #
   # Add virtual particles to edge cells
   #
-  for (ip,particle) in pairs(x)
-    p = SVector{N,T}(wrap_to_first(particle,box))
+  for ip in eachindex(x)
+    xp = x[ip] 
+    p = SVector{N,T}(ntuple(i->xp[i],N)) # in case the input was not static
+    p = wrap_to_first(p,box)
     cl = replicate_particle!(ishift+ip,p,box,cl)
   end
   #
   # Add true particles, such that the first particle of each cell is
   # always a true particle
   #
-  for (ip,particle) in pairs(x)
-    p = SVector{N,T}(wrap_to_first(particle,box))
+  for ip in eachindex(x)
+    xp = x[ip]
+    p = SVector{N,T}(ntuple(i->xp[i],N))
+    p = wrap_to_first(p,box)
     cl = add_particle_to_celllist!(ishift+ip,p,box,cl) 
   end
   return cl
@@ -633,8 +638,8 @@ function add_particle_to_celllist!(
     resize!(list[icell],ceil(Int,2*length(list[icell])))
   end
   list[icell][npcell[icell]] = ParticleWithIndex(ip,x,real_particle) 
-  return cl
 
+  return cl
 end
 
 """
