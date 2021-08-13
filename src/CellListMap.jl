@@ -54,7 +54,10 @@ desired computation.
 
 ## Example
 
-Computing the mean absolute difference in `x` position between random particles, remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does not use the indices or the distance, such that we remove them from the parameters by using a closure.
+Computing the mean absolute difference in `x` position between random particles, 
+remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does 
+not use the indices or the distance, such that we remove them from the parameters 
+by using a closure.
 
 ```julia-repl
 julia> n = 100_000;
