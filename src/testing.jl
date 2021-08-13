@@ -209,3 +209,44 @@ function draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
   )
   return plt
 end
+
+function compare_cells(cl1::CellList,cl2::CellList)
+  if cl1.contains_real != cl2.contains_real
+    println("contains_real differ.")
+  end
+  if cl1.ncp != cl2.ncp
+    println("ncp differ.")
+  end
+  if cl1.ncwp != cl2.ncwp
+    println("ncwp differ.")
+  end
+  if length(cl1.npcell) != length(cl2.npcell)
+    println("lengths of npcell differ.")
+  else
+    differ = false
+    for i in 1:length(cl1.npcell) 
+      if cl1.npcell[i] != cl2.npcell[i] 
+        differ = true
+      end
+    end
+    if differ 
+      println("npcell contents differ.")
+    end
+  end
+  if length(cl1.list) != length(cl2.list)
+    println("lengths of list differ.")
+  end
+  if length(cl1.projected_particles) != length(cl2.projected_particles)
+    println("length of project_particles differ.")
+  end
+  if cl1.ncwp != cl2.ncwp
+    println("ncwp differ.")
+  else
+    sum_cwp1 = sum(cl1.cwp[i].icell for i in 1:cl1.ncwp[1])
+    sum_cwp2 = sum(cl2.cwp[i].icell for i in 1:cl2.ncwp[1])
+    if sum_cwp1 != sum_cwp2
+      println("The lists of cells with particles (cwp) differ.")
+    end
+  end
+end
+
