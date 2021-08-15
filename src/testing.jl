@@ -171,12 +171,12 @@ function draw_computing_cell(x, box::Box{UnitCellType,2}) where UnitCellType
     ymin = minimum(el[2] for el in p) - 3 * box.cell_size[2]
     ymax = maximum(el[2] for el in p) + 3 * box.cell_size[2]
     Main.plot!(plt,
-    aspect_ratio=1,framestyle=:box,xrotation=60,
-    xlims=(xmin, xmax),
-    ylims=(ymin, ymax),
-    xticks=(round.(digits=3, xmin:box.cell_size[1]:xmax)),
-    yticks=(round.(digits=3, ymin:box.cell_size[2]:ymax)),
-  )
+        aspect_ratio=1,framestyle=:box,xrotation=60,
+        xlims=(xmin, xmax),
+        ylims=(ymin, ymax),
+        xticks=(round.(digits=3, xmin:box.cell_size[1]:xmax)),
+        yticks=(round.(digits=3, ymin:box.cell_size[2]:ymax)),
+    )
     return plt
 end
 
@@ -202,14 +202,14 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}) where UnitCellType
         push!(lims, [ -2 * box.cell_size[i], box.nc[i] + 2 * box.cell_size[i] ])
     end
     Main.plot!(plt,
-    aspect_ratio=1,framestyle=:box,xrotation=60,yrotation=-70,zrotation=0,
-    xlims=lims[1],
-    ylims=lims[2],
-    zlims=lims[3],
-    xticks=(round.(digits=3, lims[1][1]:box.cell_size[1]:lims[1][2])),
-    yticks=(round.(digits=3, lims[2][1]:box.cell_size[2]:lims[2][2])),
-    zticks=(round.(digits=3, lims[3][1]:box.cell_size[3]:lims[3][2])),
-  )
+        aspect_ratio=1,framestyle=:box,xrotation=60,yrotation=-70,zrotation=0,
+        xlims=lims[1],
+        ylims=lims[2],
+        zlims=lims[3],
+        xticks=(round.(digits=3, lims[1][1]:box.cell_size[1]:lims[1][2])),
+        yticks=(round.(digits=3, lims[2][1]:box.cell_size[2]:lims[2][2])),
+        zticks=(round.(digits=3, lims[3][1]:box.cell_size[3]:lims[3][2])),
+    )
     return plt
 end
 
