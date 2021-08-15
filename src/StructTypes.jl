@@ -128,7 +128,7 @@ function Box(
         ranges,
         cell_size,
         unit_cell_max
-  )
+    )
 end
 Box(
     unit_cell_matrix::AbstractMatrix,
@@ -187,14 +187,14 @@ function Box(
     # Build unit cell matrix from lengths
     unit_cell_matrix = SMatrix{N,N,T,N*N}( 
         ntuple(N*N) do i
-          c = cart_idxs[i]
-          if c[1] == c[2] 
-              return sides[c[1]] 
-          else
-              return zero(T)
-          end
+            c = cart_idxs[i]
+            if c[1] == c[2] 
+                return sides[c[1]] 
+            else
+                return zero(T)
+            end
         end
-      )
+    )
     return Box(
         unit_cell_matrix,
         cutoff,
@@ -369,13 +369,13 @@ function init_cell_list(x,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
     projected_particles = 
         [ Vector{ProjectedParticle{N,T}}(undef,0) for _ in 1:nthreads() ]
 
-  cl = CellList{N,T}(
-      n_cells_with_real_particles,
-      n_particles,
-      list,
-      projected_particles
-  )
-  return cl
+    cl = CellList{N,T}(
+        n_cells_with_real_particles,
+        n_particles,
+        list,
+        projected_particles
+    )
+    return cl
 end
 
 function reset_lists!(cl::CellList{N,T}) where {N,T}
@@ -610,9 +610,9 @@ function add_particle_to_celllist!(
     # Cell information
     #
     if cell.n_particles == 0
-      @set! cell.icell = icell
-      @set! cell.cartesian_index = icell_cartesian
-      @set! cell.center = cell_center(icell_cartesian,box)
+        @set! cell.icell = icell
+        @set! cell.cartesian_index = icell_cartesian
+        @set! cell.center = cell_center(icell_cartesian,box)
     end
     #
     # Cells with real particles are annotated to be run over
