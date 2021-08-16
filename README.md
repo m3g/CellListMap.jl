@@ -273,7 +273,7 @@ Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cut
 julia> box = Box([ 1.0  0.5
                      0  1.0 ], 0.1);
 
-julia> x = 10*rand(SVector{2,Float64},1000);
+julia> x = 10*[ rand(2) for _ in 1:1000 ];
 ```
 We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:
 ```julia
