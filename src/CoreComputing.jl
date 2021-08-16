@@ -33,8 +33,8 @@ function map_pairwise_serial!(
     @unpack n_cells_with_real_particles = cl
     show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
     for i in 1:n_cells_with_real_particles
-        icell = cl.cell_index_in_list[i] 
-        output = inner_loop!(f, box, icell, cl, output) 
+        cellᵢ = cl.cells[cl.cell_indices_real[i]]
+        output = inner_loop!(f, box, cellᵢ, cl, output) 
         show_progress && next!(p)
     end
     return output
@@ -53,8 +53,8 @@ function map_pairwise_parallel!(
     show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
     @threads for it in 1:nthreads() 
         for i in splitter(it, n_cells_with_real_particles)
-            icell = cl.cell_index_in_list[i]
-            output_threaded[it] = inner_loop!(f, box, icell, cl, output_threaded[it]) 
+            cellᵢ = cl.cells[cl.cell_indices_real[i]]
+            output_threaded[it] = inner_loop!(f, box, cellᵢ, cl, output_threaded[it]) 
             show_progress && next!(p)
         end
     end 
@@ -128,31 +128,30 @@ end
 # there are not repeated computations even if running over half of the cells.
 #
 function inner_loop!(
-    f,box::Box{TriclinicCell},icell,
+    f,box::Box{TriclinicCell},cellᵢ,
     cl::CellList{N,T},
     output
 ) where {N,T}
     @unpack cutoff, cutoff_sq, nc = box
-    cell = cl.lists[icell]
 
     for neighbour_cell in neighbour_cells_all(box)
-        jc_cartesian = cell.cartesian + neighbour_cell
-        jc = cell_linear_index(nc, jc_cartesian)
+        jc_cartesian = cell.cartesian_index + neighbour_cell
+        jc_linear = cell_linear_index(nc,jc_cartesian)
+        cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
 
-       # Vector connecting cell centers
-        if jc == cell.index
+        # Vector connecting cell centers
+        if cellⱼ.index == cellᵢ.index
             Δc = SVector{N,T}(ntuple(i -> 1, N))
         else
-            Δc = cell_center(jc_cartesian, box) - cell.center 
+            Δc = cellⱼ.center - cellᵢ.center 
         end
         Δc = Δc / norm(Δc)
-        pp = project_particles(jc_cartesian, cl, Δc, cell, box)
+        pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
 
-        for i in 1:cell.n_particles
-            pᵢ = cell.particles[i]
+        for i in 1:cellᵢ.n_particles
+            pᵢ = cellᵢ.particles[i]
             (!pᵢ.real) && continue
             xpᵢ = pᵢ.coordinates
-            i_orig = pᵢ.index
 
             # Partition pp array according to the current projections. This
             # is faster than it looks, because after the first partitioning, the
@@ -160,17 +159,16 @@ function inner_loop!(
             # will only run over most elements. Avoiding this partitioning or
             # trying to sort the array before always resulted to be much more
             # expensive. 
-            xproj = dot(xpᵢ - cell.center, Δc)
+            xproj = dot(xpᵢ - cellᵢ.center, Δc)
             n = partition!(pp, el -> el.xproj - xproj <= cutoff)
 
             for j in 1:n
                 pⱼ = pp[j]
-                j_orig = pⱼ.index
-                if i_orig < j_orig
+                if pᵢ.index < pⱼ.index
                     xpⱼ = pⱼ.coordinates
                     d2 = norm_sqr(xpᵢ - xpⱼ)
                     if d2 <= cutoff_sq
-                        output = f(xpᵢ, xpⱼ, i_orig, j_orig, d2, output)
+                        output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
                     end
                 end
             end
@@ -185,19 +183,18 @@ end
 # there are not repeated computations even if running over half of the cells.
 #
 function inner_loop!(
-    f,box::Box{OrthorhombicCell},icell,
+    f,box::Box{OrthorhombicCell},cellᵢ,
     cl::CellList{N,T},
     output
 ) where {N,T}
     @unpack cutoff_sq = box
-    cell = cl.lists[icell]
 
-  # loop over list of non-repeated particles of cell ic
-    for i in 1:cell.n_particles - 1
-        pᵢ = cell.particles[i]
+    # loop over list of non-repeated particles of cell ic
+    for i in 1:cellᵢ.n_particles - 1
+        pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
-        for j in i + 1:cell.n_particles
-            pⱼ = cell.particles[j]
+        for j in i + 1:cellᵢ.n_particles
+            pⱼ = cellᵢ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -207,7 +204,11 @@ function inner_loop!(
     end
 
     for jcell in neighbour_cells(box)
-        output = cell_output!(f, box, cell, cl, output, cell.cartesian + jcell)
+        jc_linear = cell_linear_index(box.nc,cellᵢ.cartesian_index + jcell)
+        if cl.cell_indices[jc_linear] != 0
+            cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
+            output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output)
+        end
     end
 
     return output
@@ -216,23 +217,23 @@ end
 function cell_output!(
     f,
     box::Box{OrthorhombicCell},
-    cell,
+    cellᵢ,
+    cellⱼ,
     cl::CellList{N,T},
     output,
-    jc_cartesian
 ) where {N,T}
-    @unpack cutoff, cutoff_sq = box
+    @unpack cutoff, cutoff_sq, nc = box
 
     # Vector connecting cell centers
-    Δc = cell_center(jc_cartesian, box) - cell.center 
+    Δc = cellⱼ.center - cellᵢ.center 
     Δc = Δc / norm(Δc)
-    pp = project_particles(jc_cartesian, cl, Δc, cell, box)
+    pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
 
     # Loop over particles of cell icell
-    for i in 1:cell.n_particles
-        pᵢ = cell.particles[i]
+    for i in 1:cellᵢ.n_particles
+        pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
-        xproj = dot(xpᵢ - cell.center, Δc)
+        xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
         # Partition pp array according to the current projections
         n = partition!(pp, el -> el.xproj - xproj <= cutoff)
@@ -254,27 +255,21 @@ end
 """
 
 ```
-project_particles(jc_cartesian,cl,Δc,icell,box)
+project_particles!(projected_particles,cellⱼ,cellᵢ,Δc)
 ```
 
-Projects all particles of the cell of cartesian coordinates
-`jc_cartesian` into the unnitary vector `Δc` with direction
-connecting `icell.center` and the center of cell `jc_cartesian`. 
-Returns a view of the array of projected particles, with length
-equal to the number of particles of cell `jc_cartesian`. 
+Projects all particles of the cell `cellⱼ` into unnitary vector `Δc` with direction 
+connecting the centers of `cellⱼ` and `cellᵢ`. Modifies `projected_particles`, and 
+returns a view of `projected particles1, with length equal to the number of 
+particles of cell `cellⱼ`.
 
 """
-function project_particles(jc_cartesian, cl::CellList, Δc, cellᵢ, box)
-    @unpack nc = box
-    projected_particles = cl.projected_particles[threadid()]
-    jc = cell_linear_index(nc, jc_cartesian)
-    cellⱼ = cl.list[cl.cell_index_in_list[jc]]
+function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc)
     @inbounds for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
         xpⱼ = pⱼ.coordinates
         xproj = dot(xpⱼ - cellᵢ.center, Δc)
-        xreal = pⱼ.real
-        projected_particles[j] = ProjectedParticle(pⱼ.index, xproj, xpⱼ, xreal) 
+        projected_particles[j] = ProjectedParticle(pⱼ.index, xproj, xpⱼ, pⱼ.real) 
     end
     pp = @view(projected_particles[1:cellⱼ.n_particles])
     return pp
@@ -293,8 +288,9 @@ function inner_loop!(
     xpᵢ = wrap_to_first(cl.small[i], box)
     ic = particle_cell(xpᵢ, box)
     for neighbour_cell in neighbour_cells_all(box)
-        jc = cell_linear_index(nc, neighbour_cell + ic)
-        cellⱼ = cl.large.list[cl.large.cell_index_in_list[jc]]
+        jc_cartesian = neighbour_cell + ic
+        jc_linear = cell_linear_index(nc,jc_cartesian) 
+        cellⱼ = cl.large.list[cl.large.cell_indices[jc_linear]]
         # loop over particles of cellⱼ
         for j in 1:cellⱼ.n_particles
             pⱼ = cellⱼ.particles[j]

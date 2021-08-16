@@ -66,8 +66,10 @@ julia> scatter(Tuple.(p),label=nothing,xlims=(-10,180),ylims=(-10,180))
 """
 function view_celllist_particles(cl::CellList{N,T}) where {N,T}
     x = SVector{N,T}[]
-    for cell in cl.lists
-        for p in 1:cell.particles
+    for icell in 1:cl.n_cells_with_particles
+        cell = cl.cells[icell]  
+        for ip in 1:cell.n_particles
+            p = cell.particles[ip]
             push!(x, p.coordinates)
         end
     end
@@ -157,8 +159,8 @@ draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
 This function creates a plot of the computing cell, in two dimensions.
 
 """
-function draw_computing_cell(x, box::Box{UnitCellType,2}) where UnitCellType
-    cl = CellList(x, box)
+function draw_computing_cell(x, box::Box{UnitCellType,2};parallel=parallel) where UnitCellType
+    cl = CellList(x, box, parallel=parallel)
     box_points = drawbox(box)
     p = view_celllist_particles(cl)
     plt = Main.plot()
@@ -189,8 +191,8 @@ draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
 This function creates a plot of the computing cell, in three dimensions.
 
 """
-function draw_computing_cell(x, box::Box{UnitCellType,3}) where UnitCellType
-    cl = CellList(x, box)
+function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=parallel) where UnitCellType
+    cl = CellList(x, box, parallel=parallel)
     box_points = drawbox(box)
     p = view_celllist_particles(cl)
     plt = Main.plot()
