@@ -319,14 +319,14 @@ particles for cross-computation of interactions
 
 """
 @with_kw struct CellListPair{V,N,T}
-    small::V
-    large::CellList{N,T}
+    small::CellList{N,T}
+    large::V
     swap::Bool
 end      
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
     print(typeof(cl),"\n")
-    print("   $(length(cl.small)) particles in the smallest vector.\n")
-    print("   $(cl.large.n_cells_with_real_particles) cells with real particles.")
+    print("   $(length(cl.large)) particles in the largest vector.\n")
+    print("   $(cl.small.n_cells_with_real_particles) cells with real particles.")
 end
   
 """
@@ -430,17 +430,19 @@ CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
 
 """
 function CellList(
-    x::AbstractVector{SVector{N,T}},
-    y::AbstractVector{SVector{N,T}},
-    box::Box;
+    x::AbstractVector{<:AbstractVector},
+    y::AbstractVector{<:AbstractVector},
+    box::Box{UnitCellType,N,T};
     parallel::Bool=true
-) where {N,T} 
+) where {UnitCellType,N,T} 
     if length(x) <= length(y)
-        y_cl = CellList(y,box,parallel=parallel)
-        cl_pair = CellListPair(small=x,large=y_cl,swap=false)
-    else
+        y_static = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in y ]
         x_cl = CellList(x,box,parallel=parallel)
-        cl_pair = CellListPair(small=y,large=x_cl,swap=true)
+        cl_pair = CellListPair(small=x_cl,large=y_static,swap=true)
+    else
+        x_static = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
+        y_cl = CellList(y,box,parallel=parallel)
+        cl_pair = CellListPair(small=y_cl,large=x_static,swap=false)
     end
     return cl_pair
 end
