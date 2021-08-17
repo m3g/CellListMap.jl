@@ -134,7 +134,7 @@ function inner_loop!(
 ) where {N,T}
     @unpack cutoff, cutoff_sq, nc = box
 
-    for neighbour_cell in neighbour_cells_all(box)
+    for neighbour_cell in neighbour_cells(box)
         jc_cartesian = cellᵢ.cartesian_index + neighbour_cell
         jc_linear = cell_linear_index(nc,jc_cartesian)
         # if cellⱼ is empty, cycle
@@ -207,7 +207,7 @@ function inner_loop!(
         end
     end
 
-    for jcell in neighbour_cells(box)
+    for jcell in neighbour_cells_forward(box)
         jc_linear = cell_linear_index(box.nc,cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
@@ -291,7 +291,7 @@ function inner_loop!(
     @unpack nc, cutoff_sq = box
     xpᵢ = wrap_to_first(cl.large[i], box)
     ic = particle_cell(xpᵢ, box)
-    for neighbour_cell in neighbour_cells_all(box)
+    for neighbour_cell in neighbour_cells(box)
         jc_cartesian = neighbour_cell + ic
         jc_linear = cell_linear_index(nc,jc_cartesian) 
         # If cellⱼ is empty, cycle
