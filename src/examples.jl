@@ -397,8 +397,10 @@ function florpi(;N=100_000,cd=true,parallel=true)
         return hist
     end
   
-    hist = barrier(compute_pairwise_mean_cell_lists!,
-    velocities,rbins,hist,box,cl,reduce_hist,parallel)
+    hist = barrier(
+        compute_pairwise_mean_cell_lists!,
+        velocities,rbins,hist,box,cl,reduce_hist,parallel
+    )
   
     n_pairs = hist[1]
     mean_v_r = hist[2]

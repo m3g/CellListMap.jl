@@ -76,8 +76,16 @@ function view_celllist_particles(cl::CellList{N,T}) where {N,T}
     return x
 end
 
-test_map(box,cl) = map_pairwise!((x, y, i, j, d2, s) -> s += d2, 0., box, cl, parallel=false)
+test_map(box,cl;parallel=false) = map_pairwise!((x, y, i, j, d2, s) -> s += d2, 0., box, cl, parallel=parallel)
 test_naive(box,x) = CellListMap.map_naive!((x, y, i, j, d2, s) -> s += d2, 0., x, box)
+function simple_test(box,x;parallel=false)
+    cl = CellList(x,box)
+    r_naive = test_naive(box,x)
+    r_map = test_map(box,cl,parallel=parallel)
+    println("naive = $r_naive")
+    println("map   = $r_map")
+    return "Test passed: $(r_naive ≈ r_map)" 
+end
 
 function check_random_cells(N, M=2;show_progress=true)
     local x, box
@@ -159,7 +167,7 @@ draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
 This function creates a plot of the computing cell, in two dimensions.
 
 """
-function draw_computing_cell(x, box::Box{UnitCellType,2};parallel=parallel) where UnitCellType
+function draw_computing_cell(x, box::Box{UnitCellType,2};parallel=true) where UnitCellType
     cl = CellList(x, box, parallel=parallel)
     box_points = drawbox(box)
     p = view_celllist_particles(cl)
@@ -191,7 +199,7 @@ draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
 This function creates a plot of the computing cell, in three dimensions.
 
 """
-function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=parallel) where UnitCellType
+function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where UnitCellType
     cl = CellList(x, box, parallel=parallel)
     box_points = drawbox(box)
     p = view_celllist_particles(cl)

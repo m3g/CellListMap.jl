@@ -378,7 +378,11 @@ function reset!(cl::CellList{N,T},box) where{N,T}
     end
     for i in 1:cl.n_cells_with_particles
         index = cl.cell_indices[i]
-        cl.cells[index] = Cell{N,T}(n_particles=0,particles=cl.cells[i].particles)
+        cl.cells[index] = Cell{N,T}(
+            n_particles=0,
+            contains_real=false,
+            particles=cl.cells[i].particles
+        )
     end
     cl = CellList{N,T}(
         n_particles = 0,
@@ -489,7 +493,6 @@ function UpdateCellList!(
     cl::CellList{N,T};
     parallel::Bool=true
 ) where {N,T}
-    @unpack cells, projected_particles = cl
 
     # Reset cell (resize if needed, and reset values)
     cl = reset!(cl,box)
@@ -524,14 +527,10 @@ function UpdateCellList!(
         for it in 1:nt
             # Accumulate number of particles
             @set! cl.n_particles += clt[it].n_particles
-            for icell in 1:clt[it].number_of_cells
-                list_index = clt[it].cell_indices[icell]
-                if list_index == 0 # empty cell
-                    continue
-                end
-                cell = clt[it].cells[list_index]
+            for icell in 1:clt[it].n_cells_with_particles
+                cell = clt[it].cells[icell]
                 linear_index = cell.linear_index
-                # If cell was yet not initialized in merge, copy 
+                # If cell was yet not initialized in merge, push it to the list
                 if cl.cell_indices[linear_index] == 0
                     @set! cl.n_cells_with_particles += 1
                     if length(cl.cells) >= cl.n_cells_with_particles
@@ -540,18 +539,30 @@ function UpdateCellList!(
                         push!(cl.cells,cell)
                     end
                     cl.cell_indices[linear_index] = cl.n_cells_with_particles
+                    if cell.contains_real
+                        @set! cl.n_cells_with_real_particles += 1
+                        cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index] 
+                    end
                 # Append particles to initialized cells
                 else
                     cell_index = cl.cell_indices[linear_index]
                     prevcell = cl.cells[cell_index] 
+                    n_particles_old = prevcell.n_particles
                     @set! prevcell.n_particles += cell.n_particles
-                    append!(prevcell.particles,cell.particles)
+                    if prevcell.n_particles > length(prevcell.particles)
+                        resize!(prevcell.particles,prevcell.n_particles)
+                    end
+                    for ip in 1:cell.n_particles
+                        prevcell.particles[n_particles_old+ip] = cell.particles[ip]
+                    end
                     cl.cells[cell_index] = prevcell
-                end
-                # Check if this a new cell with real particles
-                if (!cl.cells[cl.cell_indices[linear_index]].contains_real) && cell.contains_real 
-                    @set! cl.n_cells_with_real_particles += 1
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index]
+                    if (!cl.cells[cl.cell_indices[linear_index]].contains_real) && cell.contains_real 
+                        cl_cell = cl.cells[cl.cell_indices[linear_index]]
+                        @set! cl_cell.contains_real = true
+                        cl.cells[cl.cell_indices[linear_index]] = cl_cell
+                        @set! cl.n_cells_with_real_particles += 1
+                        cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index]
+                    end
                 end
             end
         end
@@ -561,12 +572,12 @@ function UpdateCellList!(
     for i in 1:cl.n_cells_with_particles
         maxnp = max(maxnp,cl.cells[i].n_particles)
     end
-    if maxnp > length(projected_particles[1])
+    if maxnp > length(cl.projected_particles[1])
         for i in 1:nthreads()
-            resize!(projected_particles[i],ceil(Int,1.2*maxnp))
+            resize!(cl.projected_particles[i],ceil(Int,1.2*maxnp))
         end
     end
-  
+
     return cl
 end
 

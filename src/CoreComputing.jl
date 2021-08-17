@@ -135,12 +135,16 @@ function inner_loop!(
     @unpack cutoff, cutoff_sq, nc = box
 
     for neighbour_cell in neighbour_cells_all(box)
-        jc_cartesian = cell.cartesian_index + neighbour_cell
+        jc_cartesian = cellᵢ.cartesian_index + neighbour_cell
         jc_linear = cell_linear_index(nc,jc_cartesian)
+        # if cellⱼ is empty, cycle
+        if cl.cell_indices[jc_linear] == 0
+            continue
+        end
         cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
 
         # Vector connecting cell centers
-        if cellⱼ.index == cellᵢ.index
+        if cellⱼ.linear_index == cellᵢ.linear_index
             Δc = SVector{N,T}(ntuple(i -> 1, N))
         else
             Δc = cellⱼ.center - cellᵢ.center 
@@ -290,7 +294,11 @@ function inner_loop!(
     for neighbour_cell in neighbour_cells_all(box)
         jc_cartesian = neighbour_cell + ic
         jc_linear = cell_linear_index(nc,jc_cartesian) 
-        cellⱼ = cl.large.list[cl.large.cell_indices[jc_linear]]
+        # If cellⱼ is empty, cycle
+        if cl.large.cell_indices[jc_linear] == 0
+            continue
+        end
+        cellⱼ = cl.large.cells[cl.large.cell_indices[jc_linear]]
         # loop over particles of cellⱼ
         for j in 1:cellⱼ.n_particles
             pⱼ = cellⱼ.particles[j]
