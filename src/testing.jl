@@ -215,47 +215,59 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=parallel) whe
     return plt
 end
 
-function compare_cells(cl1::CellList, cl2::CellList)
+function compare_cells(cl1::CellList{N,T}, cl2::CellList) where {N,T}
   
-    " Vector containing cell lists of cells with particles. "
-    lists::Vector{Cell{N,T}}
-
     if cl1.n_cells_with_real_particles != cl2.n_cells_with_real_particles
         println("n_cells_with_real_particles differ")
     end
     if cl1.n_particles != cl2.n_particles
         println("n_particles differ")
     end
-    if cl1.cell_index_in_list[1:n_cells_with_real_particles] != 
-       cl2.cell_index_in_list[1:n_cells_with_real_particles] != 
-       println("cell_index_in_list differ")
+    if sum(cl1.cell_indices[1:cl1.n_cells_with_particles]) != 
+       sum(cl2.cell_indices[1:cl2.n_cells_with_particles]) != 
+       println("cell_indices differ")
+    end
+    if sum(cl1.cell_indices_real[1:cl1.n_cells_with_real_particles]) != 
+       sum(cl2.cell_indices_real[1:cl2.n_cells_with_real_particles]) != 
+       println("cell_indices_real differ")
     end
     if length(cl1.projected_particles) != length(cl2.projected_particles)
         println("length of project_particles differ.")
     end
-    if length(cl1.lists) != length(cl2.lists)
-        println("lengths of lists differ")
+    if length(cl1.cells) != length(cl2.cells)
+        println("lengths of cells lists differ")
     else
-        for i in 1:length(cl1.lists)
-            ci = cl1.lists[i]
-            cj = cl2.lists[j]
+        differ = false
+        for i in 1:cl1.n_cells_with_particles
+            if differ 
+                break
+            end
+            ci = cl1.cells[i]
+            cj = cl2.cells[i]
             if ci.linear_index != cj.linear_index
-                println("linear index differ")
+                println("linear index differ") 
+                differ = true
             end
             if ci.cartesian_index != cj.cartesian_index
                 println("cartesian_index differ")
+                differ = true
             end
             if !(ci.center ≈ cj.center)
                 println("centers differ")
+                differ = true
             end
-            if ci.contains_real_particles != cj.contains_real_particles
-                println("contains_real_particles differ")
+            if ci.contains_real != cj.contains_real
+                println("contains_real differ")
+                differ = true
             end
             if ci.n_particles != cj.n_particles
                 println("n_particles differ")
+                differ = true
             end
-            if sum(p -> p.index, ci.particles) != sum(p -> p.index, cj.particles)
+            if sum(p -> p.index, ci.particles[1:ci.n_particles]) != 
+               sum(p -> p.index, cj.particles[1:cj.n_particles])
                 println("particles of cells differ")
+                differ = true
             end
         end
     end
