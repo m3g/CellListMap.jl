@@ -108,7 +108,7 @@ function check_random_cells(N, M=2;show_progress=true)
             x[i] = x[i] .- 50  
         end
         cl = CellList(x, box)
-        if !(test_map(box, cl) ≈ test_naive(box, x))
+        if !(test_map(box, cl) ≈ test_naive(x, box))
             show_progress && println("FOUND PROBLEMATIC SETUP.")
             return false, x, box
         end
