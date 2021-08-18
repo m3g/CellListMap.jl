@@ -7,7 +7,7 @@ struct TriclinicCell end
 struct OrthorhombicCell end
 
 struct UnitCell{UnitCellType,N,T,M}
-  matrix::SMatrix{N,N,T,M}
+    matrix::SMatrix{N,N,T,M}
 end
 
 """
@@ -48,14 +48,14 @@ Total number of cells: 2448
 
 """
 Base.@kwdef struct Box{UnitCellType,N,T,M}
-  unit_cell::UnitCell{UnitCellType,N,T,M}
-  lcell::Int
-  nc::SVector{N,Int}
-  cutoff::T
-  cutoff_sq::T
-  ranges::SVector{N,UnitRange{Int}}
-  cell_size::SVector{N,T}
-  unit_cell_max::SVector{N,T}
+    unit_cell::UnitCell{UnitCellType,N,T,M}
+    lcell::Int
+    nc::SVector{N,Int}
+    cutoff::T
+    cutoff_sq::T
+    ranges::SVector{N,UnitRange{Int}}
+    cell_size::SVector{N,T}
+    unit_cell_max::SVector{N,T}
 end
 
 """
@@ -92,59 +92,59 @@ Box{TriclinicCell, 3, Float64, 9}
 
 """
 function Box(
-  unit_cell_matrix::AbstractMatrix, 
-  cutoff, 
-  T::DataType, 
-  lcell::Int=1,
-  UnitCellType=TriclinicCell
+    unit_cell_matrix::AbstractMatrix, 
+    cutoff, 
+    T::DataType, 
+    lcell::Int=1,
+    UnitCellType=TriclinicCell
 )
 
-  s = size(unit_cell_matrix)
-  unit_cell_matrix = SMatrix{s[1],s[2],Float64,s[1]*s[2]}(unit_cell_matrix)
+    s = size(unit_cell_matrix)
+    unit_cell_matrix = SMatrix{s[1],s[2],Float64,s[1]*s[2]}(unit_cell_matrix)
 
-  @assert lcell >= 1 "lcell must be greater or equal to 1"
+    @assert lcell >= 1 "lcell must be greater or equal to 1"
 
-  N = size(unit_cell_matrix)[1]
-  @assert N == size(unit_cell_matrix)[2] "Unit cell matrix must be square."
-  @assert check_unit_cell(unit_cell_matrix,cutoff) " Unit cell matrix does not satisfy required conditions."
+    N = size(unit_cell_matrix)[1]
+    @assert N == size(unit_cell_matrix)[2] "Unit cell matrix must be square."
+    @assert check_unit_cell(unit_cell_matrix,cutoff) " Unit cell matrix does not satisfy required conditions."
 
-  unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
-  unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
+    unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
+    unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
  
-  nc_min = @. floor.(Int,unit_cell_max/cutoff) 
-  cell_size_max = unit_cell_max ./ nc_min
-  cell_size = cell_size_max/lcell
+    nc_min = @. floor.(Int,unit_cell_max/cutoff) 
+    cell_size_max = unit_cell_max ./ nc_min
+    cell_size = cell_size_max/lcell
 
-  nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2*lcell)
+    nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2*lcell)
 
-  #ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
-  ranges = SVector{N,UnitRange{Int}}(ntuple(i->-1:1,N))
-  return Box{UnitCellType,N,T,N*N}(
-    unit_cell,
-    lcell, 
-    nc,
-    cutoff,
-    cutoff^2,
-    ranges,
-    cell_size,
-    unit_cell_max
-  )
+    #ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
+    ranges = SVector{N,UnitRange{Int}}(ntuple(i->-1:1,N))
+    return Box{UnitCellType,N,T,N*N}(
+        unit_cell,
+        lcell, 
+        nc,
+        cutoff,
+        cutoff^2,
+        ranges,
+        cell_size,
+        unit_cell_max
+    )
 end
 Box(
-  unit_cell_matrix::AbstractMatrix,
-  cutoff;
-  T::DataType=Float64,
-  lcell::Int=1,
-  UnitCellType=TriclinicCell
+    unit_cell_matrix::AbstractMatrix,
+    cutoff;
+    T::DataType=Float64,
+    lcell::Int=1,
+    UnitCellType=TriclinicCell
 ) = Box(unit_cell_matrix,cutoff,T,lcell,UnitCellType)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
-  println(typeof(box))
-  println("  unit cell matrix: ", box.unit_cell.matrix) 
-  println("  cutoff: ", box.cutoff)
-  println("  number of computing cells on each dimension: ",box.nc)
-  println("  computing cell sizes: ", box.cell_size, " (lcell: ",box.lcell,")")
-  print("  Total number of cells: ", prod(box.nc))
+    println(typeof(box))
+    println("  unit cell matrix: ", box.unit_cell.matrix) 
+    println("  cutoff: ", box.cutoff)
+    println("  number of computing cells on each dimension: ",box.nc)
+    println("  computing cell sizes: ", box.cell_size, " (lcell: ",box.lcell,")")
+    print("  Total number of cells: ", prod(box.nc))
 end
 
 """
@@ -176,40 +176,89 @@ Box{OrthorhombicCell, 3, Float64, 9}
 
 """
 function Box(
-  sides::AbstractVector, 
-  cutoff, 
-  T::DataType, 
-  lcell::Int=1,
-  UnitCellType=OrthorhombicCell
+    sides::AbstractVector, 
+    cutoff, 
+    T::DataType, 
+    lcell::Int=1,
+    UnitCellType=OrthorhombicCell
 )
-  N = length(sides)
-  cart_idxs = CartesianIndices((1:N,1:N))
-  # Build unit cell matrix from lengths
-  unit_cell_matrix = SMatrix{N,N,T,N*N}( 
-    ntuple(N*N) do i
-      c = cart_idxs[i]
-      if c[1] == c[2] 
-        return sides[c[1]] 
-      else
-        return zero(T)
-      end
-    end
-  )
-  return Box(
-    unit_cell_matrix,
-    cutoff,
-    T,
-    lcell,
-    UnitCellType
-  ) 
+    N = length(sides)
+    cart_idxs = CartesianIndices((1:N,1:N))
+    # Build unit cell matrix from lengths
+    unit_cell_matrix = SMatrix{N,N,T,N*N}( 
+        ntuple(N*N) do i
+            c = cart_idxs[i]
+            if c[1] == c[2] 
+                return sides[c[1]] 
+            else
+                return zero(T)
+            end
+        end
+    )
+    return Box(
+        unit_cell_matrix,
+        cutoff,
+        T,
+        lcell,
+        UnitCellType
+    ) 
 end
 Box(
-  sides::AbstractVector,
-  cutoff;
-  T::DataType=Float64,
-  lcell::Int=1,
-  UnitCellType=OrthorhombicCell
+    sides::AbstractVector,
+    cutoff;
+    T::DataType=Float64,
+    lcell::Int=1,
+    UnitCellType=OrthorhombicCell
 ) = Box(sides,cutoff,T,lcell,UnitCellType)
+
+"""
+
+```
+Box(
+    limits::Limits,
+    cutoff;
+    T::DataType=Float64,
+    lcell::Int=1
+)
+```
+
+This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
+the coordinates of the particles involved, and constructs a `Box` with size larger than
+the maximum coordinates ranges of all particles plus the cutoff. This is used to 
+emulate pairwise interactions in non-periodic boxes.
+
+### Examples
+
+```jldoctest
+julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
+
+julia> box = Box(limits(x),10)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [109.99633932875878 0.0 0.0; 0.0 109.99780283179763 0.0; 0.0 0.0 109.99587254766517]
+  cutoff: 10.0
+  number of computing cells on each dimension: [12, 12, 12]
+  computing cell sizes: [10.999633932875877, 10.999780283179764, 10.999587254766517] (lcell: 1)
+  Total number of cells: 1728
+
+julia> y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
+
+julia> box = Box(limits(x,y),10)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [159.99787690924168 0.0 0.0; 0.0 159.98878289444897 0.0; 0.0 0.0 109.99587254766517]
+  cutoff: 10.0
+  number of computing cells on each dimension: [18, 17, 12]
+  computing cell sizes: [10.666525127282778, 10.665918859629931, 10.999587254766517] (lcell: 1)
+  Total number of cells: 3672
+
+```
+
+"""
+Box(
+    limits::Limits,
+    cutoff;
+    T::DataType=Float64,
+    lcell::Int=1
+) = Box(limits.limits .+ cutoff,cutoff,T,lcell) 
 
 """
 
@@ -223,12 +272,12 @@ data, but is probably worth the effort.
 
 """
 struct ParticleWithIndex{N,T}
-  index_original::Int
-  coordinates::SVector{N,T}
-  real::Bool
+    index::Int
+    coordinates::SVector{N,T}
+    real::Bool
 end
 Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
-  ParticleWithIndex{N,T}(0,zeros(SVector{N,T}),false)
+    ParticleWithIndex{N,T}(0,zeros(SVector{N,T}),false)
 
 """
 
@@ -241,13 +290,21 @@ about if this cell is in the border of the box (such that its
 neighbouring cells need to be wrapped) 
 
 """
-struct Cell{N,T}
-  icell::Int
-  cartesian::CartesianIndex{N}
-  center::SVector{N,T}
+Base.@kwdef struct Cell{N,T}
+    linear_index::Int = 0
+    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i->0,N))
+    center::SVector{N,T} = zeros{SVector{N,T}}
+    contains_real::Bool = false
+    n_particles::Int = 0
+    particles::Vector{ParticleWithIndex{N,T}} = Vector{ParticleWithIndex{N,T}}(undef,0)
 end
-Base.zero(::Type{Cell{N,T}}) where {N,T} =
-  Cell{N,T}(0,CartesianIndex{N}(ntuple(i->0,N)),zeros(SVector{N,T}))
+function Cell{N,T}(icell_cartesian::CartesianIndex,box::Box) where {N,T}
+    return Cell{N,T}(
+        linear_index=cell_linear_index(box.nc,icell_cartesian),
+        cartesian_index=icell_cartesian,
+        center=cell_center(icell_cartesian,box)
+    )
+end
 
 """
 
@@ -259,11 +316,11 @@ Auxiliary structure to contain projected particles in large and
 and dense systems.
 
 """
-struct ProjectedParticle{N,T}
-  index_original::Int
-  xproj::T
-  coordinates::SVector{N,T}
-  real::Bool
+Base.@kwdef struct ProjectedParticle{N,T}
+    index::Int = 0
+    xproj::T = zero(T)
+    coordinates::SVector{N,T} = zeros(SVector{N,T})
+    real::Bool = false
 end
 
 """
@@ -276,25 +333,28 @@ Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{N,T}
-  " *mutable* number of cells with real particles. "
-  ncwp::Vector{Int}
-  " *mutable* number of particles in the computing box "
-  ncp::Vector{Int}
-  " Auxiliary array to annotate if the cell contains real particles. "
-  contains_real::Vector{Bool}
-  " Indices of the unique cells with real particles. "
-  cwp::Vector{Cell{N,T}}
-  " Vector containing cell lists "
-  list::Vector{Vector{ParticleWithIndex{N,T}}}
-  " Number of particles of cell. "
-  npcell::Vector{Int}
-  " Auxiliar array to store projected particles. "
-  projected_particles::Vector{Vector{ProjectedParticle{N,T}}}
+    " Number of cells. "
+    number_of_cells::Int = 0
+    " *mutable* number of particles in the computing box. "
+    n_particles::Int = 0
+    " *mutable* number of cells with real particles. "
+    n_cells_with_real_particles::Int = 0
+    " *mutable* number of cells with particles, real or images. "
+    n_cells_with_particles::Int = 0
+    " Auxiliary array that contains the indexes in list of the cells with particles, real or images. "
+    cell_indices::Vector{Int} = zeros(Int,number_of_cells)
+    " Auxiliary array that contains the indexes in the cells with real particles. "
+    cell_indices_real::Vector{Int} = zeros(Int,number_of_cells)
+    " Vector containing cell lists of cells with particles. "
+    cells::Vector{Cell{N,T}} = Cell{N,T}[]
+    " Auxiliar array to store projected particles. "
+    projected_particles::Vector{Vector{ProjectedParticle{N,T}}} = 
+        [ Vector{ProjectedParticle{N,T}}(undef,0) for _ in 1:nthreads() ]
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
-  println(typeof(cl))
-  println("  $(cl.ncwp[1]) cells with real particles.")
-  println("  $(cl.ncp[1]) particles in computing box, including images.")
+    println(typeof(cl))
+    println("  $(cl.n_cells_with_real_particles) cells with real particles.")
+    println("  $(cl.n_particles) particles in computing box, including images.")
 end
 
 """
@@ -308,23 +368,23 @@ particles for cross-computation of interactions
 
 """
 @with_kw struct CellListPair{V,N,T}
-  small::V
-  large::CellList{N,T}
-  swap::Bool
+    small::CellList{N,T}
+    large::V
+    swap::Bool
 end      
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
-  print(typeof(cl),"\n")
-  print("   $(length(cl.small)) particles in the smallest vector.\n")
-  print("   $(cl.large.ncwp[1]) cells with particles.")
+    print(typeof(cl),"\n")
+    print("   $(length(cl.large)) particles in the largest vector.\n")
+    print("   $(cl.small.n_cells_with_real_particles) cells with real particles.")
 end
   
 """
 
 ```
 CellList(
-  x::AbstractVector{AbstractVector},
-  box::Box{UnitCellType,N,T};
-  parallel::Bool=true
+    x::AbstractVector{AbstractVector},
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true
 ) where {UnitCellType,N,T} 
 ```
 
@@ -348,44 +408,52 @@ CellList{3, Float64}
 
 """
 function CellList(
-  x::AbstractVector{<:AbstractVector},
-  box::Box{UnitCellType,N,T};
-  parallel::Bool=true
+    x::AbstractVector{<:AbstractVector},
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true
 ) where {UnitCellType,N,T} 
-  number_of_cells = prod(box.nc)
-  # number_of_particles is a lower bound, will be resized when necessary to incorporate particle images
-  number_of_particles = ceil(Int,1.2*length(x))
-  ncwp = [0]
-  ncp = [0]
-  cwp = Vector{Cell{N,T}}(undef,number_of_cells)
-  contains_real = Vector{Bool}(undef,number_of_cells)
+    cl = CellList{N,T}(number_of_cells=prod(box.nc))
+    return UpdateCellList!(x,box,cl,parallel=parallel)
+end
 
-  npercell = ceil(Int,1.2*number_of_particles/number_of_cells)
-  list = [ Vector{ParticleWithIndex{N,T}}(undef,npercell) for i in 1:number_of_cells ]
-
-  npcell = Vector{Int}(undef,number_of_cells)
-  projected_particles = [ Vector{ProjectedParticle{N,T}}(undef,0) for i in 1:nthreads() ]
-
-  cl = CellList{N,T}(
-    ncwp,
-    ncp,
-    contains_real,
-    cwp,
-    list,
-    npcell,
-    projected_particles
-  )
-  return UpdateCellList!(x,box,cl,parallel=parallel)
+function reset!(cl::CellList{N,T},box) where{N,T}
+    number_of_cells = ceil(Int,1.2*prod(box.nc)) # some margin in case of box size variations
+    if number_of_cells > length(cl.cells) 
+        resize!(cl.cells,number_of_cells)
+        resize!(cl.cell_indices,number_of_cells)
+        @. cl.cell_indices = 0
+        resize!(cl.cell_indices_real,number_of_cells)
+        @. cl.cell_indices_real = 0
+    end
+    for i in 1:cl.n_cells_with_particles
+        index = cl.cell_indices[i]
+        cl.cells[index] = Cell{N,T}(
+            n_particles=0,
+            contains_real=false,
+            particles=cl.cells[i].particles
+        )
+    end
+    cl = CellList{N,T}(
+        n_particles = 0,
+        number_of_cells = number_of_cells,
+        n_cells_with_real_particles = 0,
+        n_cells_with_particles = 0,
+        cell_indices = cl.cell_indices,
+        cell_indices_real = cl.cell_indices_real,
+        cells=cl.cells,
+        projected_particles = cl.projected_particles
+    )
+    return cl
 end
 
 """
 
 ```
 CellList(
-  x::AbstractVector{<:AbstractVector},
-  y::AbstractVector{<:AbstractVector},
-  box::Box{UnitCellType,N,T};
-  parallel::Bool=true
+    x::AbstractVector{<:AbstractVector},
+    y::AbstractVector{<:AbstractVector},
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true
 ) where {UnitCellType,N,T} 
 ```
 
@@ -411,19 +479,21 @@ CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
 
 """
 function CellList(
-  x::AbstractVector{SVector{N,T}},
-  y::AbstractVector{SVector{N,T}},
-  box::Box;
-  parallel::Bool=true
-) where {N,T} 
-  if length(x) <= length(y)
-    y_cl = CellList(y,box,parallel=parallel)
-    cl_pair = CellListPair(small=x,large=y_cl,swap=false)
-  else
-    x_cl = CellList(x,box,parallel=parallel)
-    cl_pair = CellListPair(small=y,large=x_cl,swap=true)
-  end
-  return cl_pair
+    x::AbstractVector{<:AbstractVector},
+    y::AbstractVector{<:AbstractVector},
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true
+) where {UnitCellType,N,T} 
+    if length(x) <= length(y)
+        y_static = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in y ]
+        x_cl = CellList(x,box,parallel=parallel)
+        cl_pair = CellListPair(small=x_cl,large=y_static,swap=true)
+    else
+        x_static = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
+        y_cl = CellList(y,box,parallel=parallel)
+        cl_pair = CellListPair(small=y_cl,large=x_static,swap=false)
+    end
+    return cl_pair
 end
 
 """
@@ -469,66 +539,122 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 
 """
 function UpdateCellList!(
-  x::AbstractVector{<:AbstractVector},
-  box::Box,
-  cl::CellList{N,T};
-  parallel::Bool=true
+    x::AbstractVector{<:AbstractVector},
+    box::Box,
+    cl::CellList{N,T};
+    parallel::Bool=true
 ) where {N,T}
-  @unpack contains_real, cwp, list, npcell, projected_particles = cl
 
-  number_of_cells = prod(box.nc)
-  if number_of_cells > length(cwp) 
-    number_of_cells = ceil(Int,1.2*number_of_cells) # some margin in case of box size variations
-    resize!(contains_real,number_of_cells)
-    resize!(cwp,number_of_cells)
-    resize!(npcell,number_of_cells)
-  end
+    # Reset cell (resize if needed, and reset values)
+    cl = reset!(cl,box)
 
-  cl.ncwp[1] = 0
-  fill!(contains_real,false)
-  fill!(cwp,zero(Cell{N,T}))
-  fill!(npcell,0)
-
-  #
-  # The following part cannot be *easily* paralelized, because 
-  # there is concurrency on the construction of the cell lists
-  #
-
-  #
-  # Add virtual particles to edge cells
-  #
-  for (ip,particle) in pairs(x)
-    p = SVector{N,T}(wrap_to_first(particle,box))
-    cl = replicate_particle!(ip,p,box,cl)
-  end
-  #
-  # Add true particles, such that the first particle of each cell is
-  # always a true particle
-  #
-  for (ip,particle) in pairs(x)
-    p = SVector{N,T}(wrap_to_first(particle,box))
-    cl = add_particle_to_celllist!(ip,p,box,cl) 
-  end
-
-  maximum_npcell = maximum(npcell)
-  if maximum_npcell > length(projected_particles[1])
-    for i in 1:nthreads()
-      resize!(projected_particles[i],ceil(Int,1.2*maximum_npcell))
+    #
+    # Add particles to cell list
+    #
+    nt = min(length(x)÷250,nthreads())
+    if !parallel || nt < 2
+        cl = add_particles!(x,box,0,cl)
+    else
+        # Indices of the atoms that will be added by each thread
+        idx_thread = Vector{UnitRange}(undef,nt)
+        nperthread = length(x)÷nt
+        nrem = length(x) - nt*nperthread
+        first = 1
+        for it in 1:nt
+            nx = nperthread
+            (it <= nrem) && (nx += 1)
+            idx_thread[it] = first:(first-1)+nx
+            first += nx
+        end
+        # Cell lists to be built by each thread
+        clt = [ CellList{N,T}(number_of_cells=prod(box.nc)) for _ in 1:nt ]
+        @threads for it in 1:nt
+            xt = @view(x[idx_thread[it]])  
+            clt[it] = add_particles!(xt,box,idx_thread[it][1]-1,clt[it])
+        end
+        #
+        # Merge threaded cell lists
+        #
+        for it in 1:nt
+            # Accumulate number of particles
+            @set! cl.n_particles += clt[it].n_particles
+            for icell in 1:clt[it].n_cells_with_particles
+                cell = clt[it].cells[icell]
+                linear_index = cell.linear_index
+                # If cell was yet not initialized in merge, push it to the list
+                if cl.cell_indices[linear_index] == 0
+                    @set! cl.n_cells_with_particles += 1
+                    if length(cl.cells) >= cl.n_cells_with_particles
+                        cl.cells[cl.n_cells_with_particles] = cell 
+                    else
+                        push!(cl.cells,cell)
+                    end
+                    cl.cell_indices[linear_index] = cl.n_cells_with_particles
+                    if cell.contains_real
+                        @set! cl.n_cells_with_real_particles += 1
+                        cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index] 
+                    end
+                # Append particles to initialized cells
+                else
+                    cell_index = cl.cell_indices[linear_index]
+                    prevcell = cl.cells[cell_index] 
+                    n_particles_old = prevcell.n_particles
+                    @set! prevcell.n_particles += cell.n_particles
+                    if prevcell.n_particles > length(prevcell.particles)
+                        resize!(prevcell.particles,prevcell.n_particles)
+                    end
+                    for ip in 1:cell.n_particles
+                        prevcell.particles[n_particles_old+ip] = cell.particles[ip]
+                    end
+                    cl.cells[cell_index] = prevcell
+                    if (!cl.cells[cl.cell_indices[linear_index]].contains_real) && cell.contains_real 
+                        cl_cell = cl.cells[cl.cell_indices[linear_index]]
+                        @set! cl_cell.contains_real = true
+                        cl.cells[cl.cell_indices[linear_index]] = cl_cell
+                        @set! cl.n_cells_with_real_particles += 1
+                        cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index]
+                    end
+                end
+            end
+        end
     end
-  end
+  
+    maxnp = 0
+    for i in 1:cl.n_cells_with_particles
+        maxnp = max(maxnp,cl.cells[i].n_particles)
+    end
+    if maxnp > length(cl.projected_particles[1])
+        for i in 1:nthreads()
+            resize!(cl.projected_particles[i],ceil(Int,1.2*maxnp))
+        end
+    end
 
-  return cl
+    return cl
+end
+
+function add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
+    #
+    # Add particles to cell lists
+    #
+    for ip in eachindex(x)
+        xp = x[ip] 
+        p = SVector{N,T}(ntuple(i->xp[i],N)) # in case the input was not static
+        p = wrap_to_first(p,box)
+        cl = add_particle_to_celllist!(ishift+ip,p,box,cl) # add real particle
+        cl = replicate_particle!(ishift+ip,p,box,cl) # add virtual particles to border cells
+    end
+    return cl
 end
 
 """
 
 ```
 add_particle_to_celllist!(
-  ip,
-  x::SVector{N,T},
-  box,
-  cl::CellList{N,T};
-  real_particle::Bool=true
+    ip,
+    x::SVector{N,T},
+    box,
+    cl::CellList{N,T};
+    real_particle::Bool=true
 ) where {N,T}
 ```
 
@@ -536,36 +662,67 @@ Adds one particle to the cell lists, updating all necessary arrays.
 
 """
 function add_particle_to_celllist!(
-  ip,
-  x::SVector{N,T},
-  box,
-  cl::CellList{N,T};
-  real_particle::Bool=true
+    ip,
+    x::SVector{N,T},
+    box,
+    cl::CellList{N,T};
+    real_particle::Bool=true
 ) where {N,T}
-  @unpack contains_real, ncp, ncwp, cwp, list, npcell = cl
-  ncp[1] += 1
-  icell_cartesian = particle_cell(x,box)
-  icell = cell_linear_index(box.nc,icell_cartesian)
-  #
-  # Cells starting with real particles are annotated to be run over
-  #
-  if real_particle && (!contains_real[icell])
-    contains_real[icell] = true
-    ncwp[1] += 1
-    cwp[ncwp[1]] = Cell{N,T}(
-      icell,
-      icell_cartesian,
-      cell_center(icell_cartesian,box)
-    )
-  end
-  npcell[icell] += 1
+    @unpack n_particles,
+            n_cells_with_real_particles,
+            n_cells_with_particles,
+            cell_indices,
+            cell_indices_real,
+            cells = cl
 
-  if npcell[icell] > length(list[icell])
-    resize!(list[icell],ceil(Int,2*length(list[icell])))
-  end
-  list[icell][npcell[icell]] = ParticleWithIndex(ip,x,real_particle) 
-  return cl
+    # Cell of this particle
+    n_particles += 1 
+    icell_cartesian = particle_cell(x,box)
+    icell_linear = cell_linear_index(box.nc,icell_cartesian)
 
+    #
+    # If cell was empty, initialize cell
+    #
+    if cell_indices[icell_linear] == 0
+        n_cells_with_particles += 1
+        cell_indices[icell_linear] = n_cells_with_particles
+        cell = Cell{N,T}(icell_cartesian,box)
+    else
+        cell = cells[cell_indices[icell_linear]]
+    end
+    #
+    # Cells with real particles are annotated to be run over
+    #
+    if real_particle && (!cell.contains_real)
+        @set! cell.contains_real = true
+        n_cells_with_real_particles += 1
+        cell_indices_real[n_cells_with_real_particles] = cell_indices[icell_linear] 
+    end
+
+    #
+    # Add particle to cell list
+    #
+    @set! cell.n_particles += 1
+    if cell.n_particles > length(cell.particles)
+        resize!(cell.particles,ceil(Int,2*cell.n_particles))
+    end
+    cell.particles[cell.n_particles] = ParticleWithIndex(ip,x,real_particle) 
+
+    #
+    # Update (imutable) cell in list
+    #
+    @set! cl.n_particles = n_particles
+    @set! cl.cell_indices = cell_indices
+    @set! cl.cell_indices_real = cell_indices_real
+    @set! cl.n_cells_with_particles = n_cells_with_particles
+    @set! cl.n_cells_with_real_particles = n_cells_with_real_particles
+    if length(cl.cells) >= cell_indices[icell_linear]
+        cl.cells[cell_indices[icell_linear]] = cell
+    else
+        push!(cl.cells,cell)
+    end
+
+    return cl
 end
 
 """
@@ -595,19 +752,19 @@ julia> cl = UpdateCellList!(x,y,box,cl); # update lists
 
 """
 function UpdateCellList!(
-  x::AbstractVector{<:AbstractVector},
-  y::AbstractVector{<:AbstractVector},
-  box::Box{UnitCellType,N,T},cl_pair::CellListPair;
-  parallel::Bool=true
+    x::AbstractVector{<:AbstractVector},
+    y::AbstractVector{<:AbstractVector},
+    box::Box{UnitCellType,N,T},cl_pair::CellListPair;
+    parallel::Bool=true
 ) where {UnitCellType,N,T}
 
-  if length(x) <= length(y)
-    UpdateCellList!(y,box,cl_pair.large,parallel=parallel)
-  else
-    UpdateCellList!(x,box,cl_pair.large,parallel=parallel)
-  end
+    if length(x) <= length(y)
+        cl_pair = UpdateCellList!(y,box,cl_pair.large,parallel=parallel)
+    else
+        cl_pair = UpdateCellList!(x,box,cl_pair.large,parallel=parallel)
+    end
 
-  return cl_pair
+    return cl_pair
 end
 
 

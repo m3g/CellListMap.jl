@@ -11,6 +11,7 @@ using LinearAlgebra: dot, norm, norm_sqr, cross
 export Box
 export CellList, UpdateCellList!
 export map_pairwise!
+export limits
 export TriclinicCell
 export OrthorhombicCell
 
@@ -54,7 +55,10 @@ desired computation.
 
 ## Example
 
-Computing the mean absolute difference in `x` position between random particles, remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does not use the indices or the distance, such that we remove them from the parameters by using a closure.
+Computing the mean absolute difference in `x` position between random particles, 
+remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does 
+not use the indices or the distance, such that we remove them from the parameters 
+by using a closure.
 
 ```julia-repl
 julia> n = 100_000;
@@ -75,22 +79,22 @@ julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx
 
 """
 function map_pairwise!(f::F, output, box::Box, cl; 
-  # Parallelization options
-  parallel::Bool=true,
-  output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
-  reduce::Function=reduce,
-  show_progress::Bool=false,
+    # Parallelization options
+    parallel::Bool=true,
+    output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
+    reduce::Function=reduce,
+    show_progress::Bool=false,
 ) where {F} # Needed for specialization for this function (avoids some allocations)
-  if parallel && nthreads() > 1
-    output = map_pairwise_parallel!(f,output,box,cl;
-      output_threaded=output_threaded,
-      reduce=reduce,
-      show_progress=show_progress
-    )
-  else
-    output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
-  end
-  return output
+    if parallel && nthreads() > 1
+        output = map_pairwise_parallel!(f,output,box,cl;
+            output_threaded=output_threaded,
+            reduce=reduce,
+            show_progress=show_progress
+        )
+    else
+        output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
+    end
+    return output
 end
 
 """
@@ -103,27 +107,27 @@ The same but to evaluate some function between pairs of the particles of the vec
 
 """
 function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
-  # Parallelization options
-  parallel::Bool=true,
-  output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
-  reduce::F2=reduce,
-  show_progress::Bool=false
+    # Parallelization options
+    parallel::Bool=true,
+    output_threaded=(parallel ? [ deepcopy(output) for i in 1:nthreads() ] : nothing),
+    reduce::F2=reduce,
+    show_progress::Bool=false
 ) where {F1,F2} # Needed for specialization for this function (avoids some allocations) 
-  if cl.swap 
-    fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
-  else
-    fswap = f
-  end
-  if parallel && nthreads() > 1
-    output = map_pairwise_parallel!(fswap,output,box,cl;
-      output_threaded=output_threaded,
-      reduce=reduce,
-      show_progress=show_progress
-    )
-  else
-    output = map_pairwise_serial!(fswap,output,box,cl,show_progress=show_progress)
-  end
-  return output
+    if cl.swap 
+        fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
+    else
+        fswap = f
+    end
+    if parallel && nthreads() > 1
+        output = map_pairwise_parallel!(fswap,output,box,cl;
+            output_threaded=output_threaded,
+            reduce=reduce,
+            show_progress=show_progress
+        )
+    else
+        output = map_pairwise_serial!(fswap,output,box,cl,show_progress=show_progress)
+    end
+    return output
 end
 
 #
