@@ -229,7 +229,7 @@ emulate pairwise interactions in non-periodic boxes.
 
 ### Examples
 
-```jldoctest
+```julia
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),10)

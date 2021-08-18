@@ -10,7 +10,7 @@ dimension `NxN`
 
 ### Example
 
-```jldoctest
+```julia
 julia> unit_cell_matrix = [ 10 0
                             0 10 ];
 
