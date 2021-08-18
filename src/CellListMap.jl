@@ -11,6 +11,7 @@ using LinearAlgebra: dot, norm, norm_sqr, cross
 export Box
 export CellList, UpdateCellList!
 export map_pairwise!
+export limits
 export TriclinicCell
 export OrthorhombicCell
 

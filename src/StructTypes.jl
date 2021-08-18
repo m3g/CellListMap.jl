@@ -213,6 +213,55 @@ Box(
 
 """
 
+```
+Box(
+    limits::Limits,
+    cutoff;
+    T::DataType=Float64,
+    lcell::Int=1
+)
+```
+
+This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
+the coordinates of the particles involved, and constructs a `Box` with size larger than
+the maximum coordinates ranges of all particles plus the cutoff. This is used to 
+emulate pairwise interactions in non-periodic boxes.
+
+### Examples
+
+```jldoctest
+julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
+
+julia> box = Box(limits(x),10)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [109.99633932875878 0.0 0.0; 0.0 109.99780283179763 0.0; 0.0 0.0 109.99587254766517]
+  cutoff: 10.0
+  number of computing cells on each dimension: [12, 12, 12]
+  computing cell sizes: [10.999633932875877, 10.999780283179764, 10.999587254766517] (lcell: 1)
+  Total number of cells: 1728
+
+julia> y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
+
+julia> box = Box(limits(x,y),10)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [159.99787690924168 0.0 0.0; 0.0 159.98878289444897 0.0; 0.0 0.0 109.99587254766517]
+  cutoff: 10.0
+  number of computing cells on each dimension: [18, 17, 12]
+  computing cell sizes: [10.666525127282778, 10.665918859629931, 10.999587254766517] (lcell: 1)
+  Total number of cells: 3672
+
+```
+
+"""
+Box(
+    limits::Limits,
+    cutoff;
+    T::DataType=Float64,
+    lcell::Int=1
+) = Box(limits.limits .+ cutoff,cutoff,T,lcell) 
+
+"""
+
 $(TYPEDEF)
 
 $(TYPEDFIELDS)

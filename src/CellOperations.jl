@@ -1,7 +1,7 @@
 """
 
 ```
-wrap_to_cell_fraction(x,unit_cell_matrix)
+wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
 Obtaint the coordinates of `x` as a fraction of unit cell vectors, first
@@ -10,13 +10,13 @@ dimension `NxN`
 
 ### Example
 
-```
+```jldoctest
 julia> unit_cell_matrix = [ 10 0
                             0 10 ];
 
 julia> x = [ 15, 13 ];
 
-julia> wrap_to_cell_fraction(x,unit_cell_matrix)
+julia> wrap_cell_fraction(x,unit_cell_matrix)
 2-element Vector{Float64}:
  0.5
  0.3
@@ -398,6 +398,54 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
     return check
 end
 
+"""
+
+Structure that contains the maximum lengths on each direction,
+to dispatch on the construction of boxes without periodic boundary
+conditions.
+
+"""
+struct Limits{T<:AbstractVector} 
+    limits::T
+end
+
+"""
+
+```
+limits(x::AbstractVector{<:AbstractVector})
+```
+
+Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
+to be used to set a box without effective periodic boundary conditions.
+
+"""
+function limits(x::AbstractVector{<:AbstractVector})
+    xmin = similar(x[1])
+    xmax = similar(x[1])
+    xmin .= +Inf
+    xmax .= -Inf
+    for v in x
+       @. xmin = min(xmin,v)       
+       @. xmax = max(xmax,v)       
+    end
+    return Limits(xmax .- xmin)
+end
+"""
+
+```
+limits(x::T,y::T) where T<:AbstractVector{<:AbstractVector})
+```
+
+Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`
+and `y`, to used to set a box without effective periodic boundary conditions.
+
+"""
+function limits(x::T,y::T) where T<:AbstractVector{<:AbstractVector}
+    xlims = limits(x)
+    ylims = limits(y)
+    return Limits(max.(xlims.limits,ylims.limits))
+end
+
 #
 # The following functions are not being used anymore in CellListMap, but may
 # be useful if this is split in into a sepparate package for playing with
@@ -488,3 +536,4 @@ function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
     end
     return r_min, r_max
 end
+
