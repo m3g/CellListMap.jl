@@ -164,7 +164,7 @@ function inner_loop!(
             # trying to sort the array before always resulted to be much more
             # expensive. 
             xproj = dot(xpᵢ - cellᵢ.center, Δc)
-            n = partition!(pp, el -> el.xproj - xproj <= cutoff)
+            n = partition!(pp, el -> abs(el.xproj - xproj) <= cutoff)
 
             for j in 1:n
                 pⱼ = pp[j]
@@ -240,7 +240,7 @@ function cell_output!(
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
         # Partition pp array according to the current projections
-        n = partition!(pp, el -> el.xproj - xproj <= cutoff)
+        n = partition!(pp, el -> abs(el.xproj - xproj) <= cutoff)
 
         # Compute the interactions 
         for j in 1:n
