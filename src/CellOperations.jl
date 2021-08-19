@@ -400,38 +400,6 @@ end
 
 """
 
-Structure that contains the maximum lengths on each direction,
-to dispatch on the construction of boxes without periodic boundary
-conditions.
-
-"""
-struct Limits{T<:AbstractVector} 
-    limits::T
-end
-
-"""
-
-```
-limits(x::AbstractVector{<:AbstractVector})
-```
-
-Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
-to be used to set a box without effective periodic boundary conditions.
-
-"""
-function limits(x::AbstractVector{<:AbstractVector})
-    xmin = similar(x[1])
-    xmax = similar(x[1])
-    xmin .= +Inf
-    xmax .= -Inf
-    for v in x
-       @. xmin = min(xmin,v)       
-       @. xmax = max(xmax,v)       
-    end
-    return Limits(xmax .- xmin)
-end
-"""
-
 ```
 limits(x::T,y::T) where T<:AbstractVector{<:AbstractVector})
 ```
