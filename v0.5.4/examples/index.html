@@ -104,12 +104,29 @@ mind = ( 0, 0, +Inf )
 mind = map_pairwise!( 
   (x,y,i,j,d2,mind) -&gt; f(i,j,d2,mind),
   mind,box,cl;reduce=reduce_mind
-)</code></pre><p>The example above can be run with <code>CellListMap.test5()</code>. The example <code>CellListMap.test6()</code> of <a href="https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219">examples.jl</a> describes a similar problem but <em>without</em> periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. </p><h2 id="Neighbour-list"><a class="docs-heading-anchor" href="#Neighbour-list">Neighbour list</a><a id="Neighbour-list-1"></a><a class="docs-heading-anchor-permalink" href="#Neighbour-list" title="Permalink"></a></h2><p>In this example we compute the complete neighbour list, of all pairs of particles which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the particles and the corresponding distance. The empty <code>pairs</code> output array will be split in one vector for each thread, and reduced with a custom reduction function. </p><pre><code class="language-julia hljs"># Function to be evalulated for each pair: push pair if d&lt;cutoff
-function push_pair!(i,j,d2,pairs,cutoff)
+)</code></pre><p>The example above can be run with <code>CellListMap.test5()</code>. The example <code>CellListMap.test6()</code> of <a href="https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219">examples.jl</a> describes a similar problem but <em>without</em> periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. </p><h2 id="Neighbour-list"><a class="docs-heading-anchor" href="#Neighbour-list">Neighbour list</a><a id="Neighbour-list-1"></a><a class="docs-heading-anchor-permalink" href="#Neighbour-list" title="Permalink"></a></h2><p>Obs: The package provides a <code>neighbourlist</code> function that implements this calculation, and can be used with:</p><pre><code class="language-julia-repl hljs">julia&gt; box = Box(sides,cutoff)
+
+julia&gt; cl = CellList(x,y,box)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   1500000 particles in the reference vector.
+   1440 cells with real particles of target vector.
+
+julia&gt; CellListMap.neighbourlist(box,cl)
+602882-element Vector{Tuple{Int64, Int64, Float64}}:
+ (89, 1, 7.540726921707267)
+ (1113, 9, 8.868103242326466)
+ (660, 25, 6.384673918633141)
+ (482, 57, 8.259716098064608)
+ (189, 65, 6.251864921270615)
+ ⋮
+ (733, 1499960, 5.84040412313063)
+ (1362, 1499968, 9.790301512741848)
+ (1164, 1499968, 8.076434679245747)
+ (632, 1499992, 5.3515755610344105)
+</code></pre><p>The returning array contains tuples with the index of the particle in the first vector, the index of the particule in the second vector, and their distance.</p><p>The implementation of this function follows the principles below.   The empty <code>pairs</code> output array will be split in one vector for each thread, and reduced with a custom reduction function. </p><pre><code class="language-julia hljs"># Function to be evalulated for each pair: push pair
+function push_pair!(i,j,d2,pairs)
   d = sqrt(d2)
-  if d &lt; cutoff
-    push!(pairs,(i,j,d))
-  end
+  push!(pairs,(i,j,d))
   return pairs
 end
 
@@ -127,7 +144,7 @@ pairs = Tuple{Int,Int,Float64}[]
 
 # Run pairwise computation
 pairs = map_pairwise!(
-  (x,y,i,j,d2,pairs) -&gt; push_pair!(i,j,d2,pairs,cutoff),
+  (x,y,i,j,d2,pairs) -&gt; push_pair!(i,j,d2,pairs),
   pairs,box,cl,
   reduce=reduce_pairs
-)</code></pre><p>The full example can be run with <code>CellListMap.test7()</code>. </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../pbc/">Periodic conditions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.5 on <span class="colophon-date" title="Thursday 19 August 2021 17:39">Thursday 19 August 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+)</code></pre><p>The full example can be run with <code>CellListMap.test7()</code>. </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../pbc/">Periodic conditions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.5 on <span class="colophon-date" title="Thursday 19 August 2021 20:31">Thursday 19 August 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
