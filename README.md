@@ -1,7 +1,7 @@
 
-<center>
+<p align=center>
 <img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/logo.svg>
-</center>
+</p>
 
 # CellListMap.jl
 
