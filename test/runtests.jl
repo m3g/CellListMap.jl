@@ -1,6 +1,16 @@
 using CellListMap
 using StaticArrays
 using Test
+using Documenter
+
+DocMeta.setdocmeta!(
+    CellListMap,
+    :DocTestSetup,
+    :(using CellListMap);
+    recursive=true
+)
+#CellListMap._update_module_doc()
+doctest(CellListMap)
 
 @testset "CellListMap.jl" begin
 

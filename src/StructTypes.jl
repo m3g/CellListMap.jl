@@ -33,6 +33,8 @@ be initialized with the box size and cutoff.
 ## Examples
 
 ```jldoctest
+julia> using CellListMap
+
 julia> sides = [250,250,250];
 
 julia> cutoff = 10;
@@ -45,6 +47,9 @@ Box{OrthorhombicCell, 3, Float64, 9}
   computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
   Total number of cells: 19683
 
+```
+
+```julia
 julia> box = Box([ 10  0  0 
                     0 10  5
                     0  0 10 ], 1)
@@ -150,12 +155,12 @@ Box(
 ) = Box(unit_cell_matrix,cutoff,T,lcell,UnitCellType)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
-    println(typeof(box))
-    println("  unit cell matrix: ", box.unit_cell.matrix) 
-    println("  cutoff: ", box.cutoff)
-    println("  number of computing cells on each dimension: ",box.nc)
-    println("  computing cell sizes: ", box.cell_size, " (lcell: ",box.lcell,")")
-    print("  Total number of cells: ", prod(box.nc))
+    println(io,typeof(box))
+    println(io,"  unit cell matrix: ", box.unit_cell.matrix) 
+    println(io,"  cutoff: ", box.cutoff)
+    println(io,"  number of computing cells on each dimension: ",box.nc)
+    println(io,"  computing cell sizes: ", box.cell_size, " (lcell: ",box.lcell,")")
+    print(io,"  Total number of cells: ", prod(box.nc))
 end
 
 """

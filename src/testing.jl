@@ -281,3 +281,15 @@ function compare_cells(cl1::CellList{N,T}, cl2::CellList) where {N,T}
     end
 end
 
+#
+# Function to be able to doc-test the README.md file:
+# https://discourse.julialang.org/t/validity-of-package-documentation-and-examples/66217/20
+#
+function _update_module_doc()
+    path = joinpath(@__DIR__, "..", "README.md")
+    text = read(path, String)
+    # The code blocks in the README.md should be julia blocks for the syntax highlighter.
+    text = replace(text, "```julia" => "```jldoctest")
+    @doc text MyModule
+end
+_update_module_doc()
