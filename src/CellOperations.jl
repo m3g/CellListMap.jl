@@ -10,7 +10,7 @@ dimension `NxN`
 
 ### Example
 
-```julia
+```julia-repl
 julia> unit_cell_matrix = [ 10 0
                             0 10 ];
 
@@ -40,7 +40,7 @@ first unit cell with all-positive coordinates.
 
 ### Example
 
-```
+```julia-repl
 julia> unit_cell_matrix = [ 10 0
                             0 10 ];
 
@@ -396,6 +396,25 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
     end
 
     return check
+end
+
+"""
+```
+limits(x::AbstractVector{<:AbstractVector})
+```
+Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
+to be used to set a box without effective periodic boundary conditions.
+"""
+function limits(x::AbstractVector{<:AbstractVector})
+    xmin = similar(x[1])
+    xmax = similar(x[1])
+    xmin .= +Inf
+    xmax .= -Inf
+    for v in x
+       @. xmin = min(xmin,v)       
+       @. xmax = max(xmax,v)       
+    end
+    return Limits(xmax .- xmin)
 end
 
 """
