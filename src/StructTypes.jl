@@ -12,6 +12,17 @@ end
 
 """
 
+Structure that contains the maximum lengths on each direction,
+to dispatch on the construction of boxes without periodic boundary
+conditions.
+
+"""
+struct Limits{T<:AbstractVector} 
+    limits::T
+end
+
+"""
+
 $(TYPEDEF)
 
 $(TYPEDFIELDS)
@@ -21,7 +32,7 @@ be initialized with the box size and cutoff.
 
 ## Examples
 
-```julia-repl
+```jldoctest
 julia> sides = [250,250,250];
 
 julia> cutoff = 10;
