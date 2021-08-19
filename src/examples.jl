@@ -231,18 +231,6 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
         N2 = length(y)
     end
   
-          # Boundaries
-    xmin = [ +Inf, +Inf, +Inf ]
-    xmax = [ -Inf, -Inf, -Inf ]
-    for v in x
-        @. xmin = min(xmin, v)
-        @. xmax = max(xmax, v)
-    end
-    for v in y
-        @. xmin = min(xmin, v)
-        @. xmax = max(xmax, v)
-    end
-     
     # Obtain one upper bound for dmin by computing one distance for each element
     # of the smallest vector
     cutoff = +Inf
@@ -251,9 +239,8 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
         cutoff = min(CellListMap.norm(v - y[iy]), cutoff)
     end 
      
-    # Define box sides
-    sides = (xmax - xmin) .+ cutoff
-    box = Box(sides, cutoff)
+    # Define box, since no PBC are used, define sizes with limits(x,y) 
+    box = Box(limits(x,y), cutoff)
   
     # Initialize auxiliary linked lists (largest set!)
     cl = CellList(x, y, box, parallel=parallel)
@@ -288,7 +275,7 @@ end
 
 #
 # In this test we compute the complete neighbour list of particles, meaning all the pairs
-    # that are within the cutoff distance
+# that are within the cutoff distance
 #
 function test7(;N=100_000,parallel=true,x=nothing)
 
