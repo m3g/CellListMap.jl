@@ -4,7 +4,7 @@
 
 Orthorhombic periodic boundary conditions allow some special methods that are faster than those for general cells. To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the ctuoff. For example:
 
-```jldoctest
+```julia-repl
 julia> box = Box([100,70,130],12)
 Box{OrthorhombicCell, 3, Float64, 9}
   unit cell matrix: [100.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 130.0]
@@ -22,14 +22,14 @@ Let us illustrate building a two-dimensional cell, for easier visualization. A m
 
 Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cutoff=0.1`): 
 
-```julia
+```julia-repl
 julia> box = Box([ 1.0  0.5
                      0  1.0 ], 0.1);
 
 julia> x = 10*rand(SVector{2,Float64},1000);
 ```
 We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:
-```julia
+```julia-repl
 julia> using Plots
 
 julia> CellListMap.draw_computing_cell(x,box)
@@ -39,7 +39,7 @@ julia> CellListMap.draw_computing_cell(x,box)
 
 The construction of the cell list is, as always, done with:
 
-```julia
+```julia-repl
 julia> cl = CellList(x,box)
 CellList{2, Float64}
   109 cells with real particles.
@@ -51,7 +51,7 @@ Upon construction of the cell lists, the particles are replicated to fill a rect
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:
 
-```julia
+```julia-repl
 julia> box = Box([ 50.  0. 00. 
                     0. 30. 30.          
                     0. 00. 50. ],  2.)
@@ -59,6 +59,8 @@ julia> box = Box([ 50.  0. 00.
 julia> x = 100*rand(SVector{3,Float64},10000);
 
 julia> p = [ CellListMap.wrap_to_first(x,box) for x in x ];
+
+julia> using Plots
 
 julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
 ```
@@ -70,7 +72,7 @@ to work with an arbitrary 3D lattice, Which in this case looks like:
 
 To avoid the use of periodic boundary conditions it is enough to define an Orthorhombic box with lengths in each direction that are larger than the limits of the coordinates of the particles plus the cutoff. This can be done automatically with the `limits` function. The box must be constructed with:
 
-```jdoctest
+```julia-repl
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),12)
@@ -84,7 +86,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
 
 or, for computing the interaction between two disjoint sets of particles, call the `limits` function with two arguments:
 
-```jdoctest
+```julia-repl
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> y = [ [120,180,100] .* rand(3) for i in 1:100_000 ];

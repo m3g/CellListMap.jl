@@ -3,7 +3,8 @@
 These entries can be viewed at the `Julia` REPL `Julia` using 
 
 ```julia-repl
-julia> ? function_name
+julia> ? 
+help?> function_name
 ```
 
 ```@autodocs

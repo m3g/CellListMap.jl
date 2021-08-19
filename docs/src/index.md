@@ -6,8 +6,11 @@ It allows the fast computation of any quantity from the pairs that are within th
 
 ## Installation
 
-```julia
-julia> ] add CellListMap
+```julia-repl
+julia> import Pkg
+
+julia> Pkg.add("CellListMap")
+
 ```
 
 ## Overview

@@ -32,7 +32,7 @@ be initialized with the box size and cutoff.
 
 ## Examples
 
-```jldoctest
+```julia-repl
 julia> using CellListMap
 
 julia> sides = [250,250,250];
@@ -49,7 +49,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
 
 ```
 
-```julia
+```julia-repl
 julia> box = Box([ 10  0  0 
                     0 10  5
                     0  0 10 ], 1)
@@ -91,7 +91,7 @@ constructor will always return a `TriclinicCell` box type, unless the
 `UnitCellType` parameter is set manually to `OrthorhombicCell`
 
 ### Example
-```julia
+```julia-repl
 julia> unit_cell = [ 100   50    0 
                        0  120    0
                        0    0  130 ];
@@ -179,7 +179,7 @@ For orthorhombic unit cells, `Box` can be initialized with a vector of the
 length of each side. 
 
 ### Example
-```julia
+```julia-repl
 julia> box = Box([120,150,100],10)
 Box{OrthorhombicCell, 3, Float64, 9}
   unit cell matrix: [120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0]
@@ -245,7 +245,7 @@ emulate pairwise interactions in non-periodic boxes.
 
 ### Examples
 
-```julia
+```julia-repl
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),10)

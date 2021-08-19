@@ -2,6 +2,7 @@ import Pkg
 Pkg.add("Documenter")
 using Documenter
 using CellListMap
+DocMeta.setdocmeta!(CellListMap, :DocTestSetup, :(using CellListMap); recursive=true)
 push!(LOAD_PATH,"../src/")
 makedocs(
     modules=[CellListMap],

@@ -34,7 +34,7 @@ It allows the fast computation of any quantity from the pairs that are within th
 
 ## Installation
 
-```julia
+```julia-repl
 julia> ] add CellListMap
 ```
 
@@ -274,14 +274,14 @@ Let us illustrate building a two-dimensional cell, for easier visualization. A m
 
 Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cutoff=0.1`): 
 
-```julia
+```julia-repl
 julia> box = Box([ 1.0  0.5
                      0  1.0 ], 0.1);
 
 julia> x = 10*[ rand(2) for _ in 1:1000 ];
 ```
 We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:
-```julia
+```julia-repl
 julia> using Plots
 
 julia> CellListMap.draw_computing_cell(x,box)
@@ -291,7 +291,7 @@ julia> CellListMap.draw_computing_cell(x,box)
 
 The construction of the cell list is, as always, done with:
 
-```julia
+```julia-repl
 julia> cl = CellList(x,box)
 CellList{2, Float64}
   109 cells with real particles.
@@ -303,7 +303,7 @@ Upon construction of the cell lists, the particles are replicated to fill a rect
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:
 
-```julia
+```julia-repl
 julia> box = Box([ 50.  0. 00. 
                     0. 30. 30.          
                     0. 00. 50. ],  2.)
