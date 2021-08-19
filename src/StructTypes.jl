@@ -384,14 +384,14 @@ particles for cross-computation of interactions
 
 """
 @with_kw struct CellListPair{V,N,T}
-    small::CellList{N,T}
-    large::V
+    ref::V
+    target::CellList{N,T}
     swap::Bool
 end      
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
-    print(typeof(cl),"\n")
-    print("   $(length(cl.large)) particles in the largest vector.\n")
-    print("   $(cl.small.n_cells_with_real_particles) cells with real particles.")
+    print(io,typeof(cl),"\n")
+    print(io,"   $(length(cl.ref)) particles in the reference vector.\n")
+    print(io,"   $(cl.target.n_cells_with_real_particles) cells with real particles of target vector.")
 end
   
 """
@@ -469,13 +469,15 @@ CellList(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
-    parallel::Bool=true
+    parallel::Bool=true,
+    autoswap::Bool=true
 ) where {UnitCellType,N,T} 
 ```
 
 Function that will initialize a `CellListPair` structure from scracth, given two vectors
-of particle coordinates and a `Box`, which contain the size ofthe system, cutoff, etc. The cell lists
-will be constructed for the largest vector, and a reference to the smallest vector is annotated.
+of particle coordinates and a `Box`, which contain the size of the system, cutoff, etc.
+By default, the cell list will be constructed for smallest vector, but this is not always
+the optimal choice. Using `autoswap=false` the cell list is constructed for the second (`y`)
 
 ### Example
 
@@ -488,8 +490,13 @@ julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box)
 CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
-   1000 particles in the smallest vector.
-   1767 cells with particles.
+   10000 particles in the reference vector.
+   961 cells with real particles of target vector.
+
+julia> cl = CellList(x,y,box,autoswap=false)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   1000 particles in the reference vector.
+   7389 cells with real particles of target vector.
 
 ```
 
@@ -498,17 +505,19 @@ function CellList(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
-    parallel::Bool=true
+    parallel::Bool=true,
+    autoswap=true
 ) where {UnitCellType,N,T} 
-    if length(x) <= length(y)
-        y_static = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in y ]
-        x_cl = CellList(x,box,parallel=parallel)
-        cl_pair = CellListPair(small=x_cl,large=y_static,swap=true)
+    if length(x) >= length(y) || !autoswap
+        ref = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
+        target = CellList(y,box,parallel=parallel)
+        swap = false
     else
-        x_static = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
-        y_cl = CellList(y,box,parallel=parallel)
-        cl_pair = CellListPair(small=y_cl,large=x_static,swap=false)
+        ref = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in y ]
+        target = CellList(x,box,parallel=parallel)
+        swap = true
     end
+    cl_pair = CellListPair(ref=ref,target=target,swap=swap)
     return cl_pair
 end
 

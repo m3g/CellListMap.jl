@@ -94,8 +94,8 @@ function map_pairwise_serial!(
     cl::CellListPair{N,T}; 
     show_progress=show_progress
 ) where {F,N,T}
-    show_progress && (p = Progress(length(cl.large), dt=0))
-    for i in eachindex(cl.large)
+    show_progress && (p = Progress(length(cl.ref), dt=0))
+    for i in eachindex(cl.ref)
         output = inner_loop!(f, output, i, box, cl)
         show_progress && next!(p)
     end
@@ -112,9 +112,9 @@ function map_pairwise_parallel!(
     reduce::F2=reduce,
     show_progress=show_progress
 ) where {F1,F2,N,T}
-    show_progress && (p = Progress(length(cl.large), dt=1))
+    show_progress && (p = Progress(length(cl.ref), dt=1))
     @threads for it in 1:nthreads()
-        for i in splitter(it, length(cl.large))
+        for i in splitter(it, length(cl.ref))
             output_threaded[it] = inner_loop!(f, output_threaded[it], i, box, cl) 
             show_progress && next!(p)
         end
@@ -289,16 +289,16 @@ function inner_loop!(
     cl::CellListPair{N,T}
 ) where {N,T}
     @unpack nc, cutoff_sq = box
-    xpᵢ = wrap_to_first(cl.large[i], box)
+    xpᵢ = wrap_to_first(cl.ref[i], box)
     ic = particle_cell(xpᵢ, box)
     for neighbour_cell in neighbour_cells(box)
         jc_cartesian = neighbour_cell + ic
         jc_linear = cell_linear_index(nc,jc_cartesian) 
         # If cellⱼ is empty, cycle
-        if cl.small.cell_indices[jc_linear] == 0
+        if cl.target.cell_indices[jc_linear] == 0
             continue
         end
-        cellⱼ = cl.small.cells[cl.small.cell_indices[jc_linear]]
+        cellⱼ = cl.target.cells[cl.target.cell_indices[jc_linear]]
         # loop over particles of cellⱼ
         for j in 1:cellⱼ.n_particles
             pⱼ = cellⱼ.particles[j]

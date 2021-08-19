@@ -130,6 +130,9 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
     return output
 end
 
+# Utils
+include("./utils.jl")
+
 #
 # Test and example functions
 #
