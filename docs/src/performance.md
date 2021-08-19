@@ -31,9 +31,9 @@ The goal here is to provide a good implementation of cell lists. We compare it w
 
 ```@raw html
 <center>
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.5.3.png>
+<img src=https://raw.githubusercontent.com/lmiq/PairVelocities/main/data/cd_v0.5.3.png>
 <br>
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.5.3.png>
+<img src=https://raw.githubusercontent.com/lmiq/PairVelocities/main/data/cv_v0.5.3.png>
 </center>
 ```
 
