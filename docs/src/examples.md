@@ -160,15 +160,41 @@ The example above can be run with `CellListMap.test5()`. The example `CellListMa
 
 ## Neighbour list
 
-In this example we compute the complete neighbour list, of all pairs of particles which are closer than the desired cutoff. The implementation returns a vector of tuples, in which each tuple contains the indexes of the particles and the corresponding distance. The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
+Obs: The package provides a `neighbourlist` function that implements this calculation, and can be used with:
+
+```julia-repl
+julia> box = Box(sides,cutoff)
+
+julia> cl = CellList(x,y,box)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   1500000 particles in the reference vector.
+   1440 cells with real particles of target vector.
+
+julia> CellListMap.neighbourlist(box,cl)
+602882-element Vector{Tuple{Int64, Int64, Float64}}:
+ (89, 1, 7.540726921707267)
+ (1113, 9, 8.868103242326466)
+ (660, 25, 6.384673918633141)
+ (482, 57, 8.259716098064608)
+ (189, 65, 6.251864921270615)
+ ⋮
+ (733, 1499960, 5.84040412313063)
+ (1362, 1499968, 9.790301512741848)
+ (1164, 1499968, 8.076434679245747)
+ (632, 1499992, 5.3515755610344105)
+
+```
+
+The returning array contains tuples with the index of the particle in the first vector, the index of the particule in the second vector, and their distance.
+
+The implementation of this function follows the principles below. 
+ The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
 
 ```julia
-# Function to be evalulated for each pair: push pair if d<cutoff
-function push_pair!(i,j,d2,pairs,cutoff)
+# Function to be evalulated for each pair: push pair
+function push_pair!(i,j,d2,pairs)
   d = sqrt(d2)
-  if d < cutoff
-    push!(pairs,(i,j,d))
-  end
+  push!(pairs,(i,j,d))
   return pairs
 end
 
@@ -186,7 +212,7 @@ pairs = Tuple{Int,Int,Float64}[]
 
 # Run pairwise computation
 pairs = map_pairwise!(
-  (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs,cutoff),
+  (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs),
   pairs,box,cl,
   reduce=reduce_pairs
 )
