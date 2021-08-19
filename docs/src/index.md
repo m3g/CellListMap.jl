@@ -1,4 +1,4 @@
-# CellListMap
+# CellListMap.jl
 
 This package is for computing interactions or any other property that is dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists, using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
 
