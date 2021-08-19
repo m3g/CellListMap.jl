@@ -35,7 +35,7 @@ julia> using Plots
 julia> CellListMap.draw_computing_cell(x,box)
 ```
 
-<img src=./assets/lattice.png>
+<img src=../assets/lattice.png>
 
 The construction of the cell list is, as always, done with:
 
@@ -66,7 +66,7 @@ julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
 ```
 to work with an arbitrary 3D lattice, Which in this case looks like:
 
-<img src=./assets/3Dlattice.png>
+<img src=../assets/3Dlattice.png>
 
 ## Do not use periodic boundary conditions
 
