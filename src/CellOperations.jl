@@ -328,7 +328,7 @@ check_unit_cell(box::Box)
 ```
 
 Checks if the unit cell satisfies the conditions for using the minimum-image
-convention, with the same criteria used gy Gromacs. 
+convention. 
 
 """
 check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix,box.cutoff)

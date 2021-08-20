@@ -12,6 +12,10 @@ end
 
 """
 
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
 Structure that contains the maximum lengths on each direction,
 to dispatch on the construction of boxes without periodic boundary
 conditions.
