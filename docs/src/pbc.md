@@ -72,7 +72,7 @@ to work with an arbitrary 3D lattice, Which in this case looks like:
 <img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/3Dlattice.png>
 ```
 
-## Do not use periodic boundary conditions
+## Without periodic boundary conditions
 
 To avoid the use of periodic boundary conditions it is enough to define an Orthorhombic box with lengths in each direction that are larger than the limits of the coordinates of the particles plus the cutoff. This can be done automatically with the `limits` function. The box must be constructed with:
 
