@@ -129,7 +129,7 @@ box = Box(sides,cutoff)
 x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N1 ]
 y = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N2 ]
 
-# Initialize auxiliary linked lists (largest set!)
+# Initialize auxiliary linked lists
 cl = CellList(x,y,box)
 
 # Function that keeps the minimum distance

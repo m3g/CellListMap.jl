@@ -181,7 +181,7 @@ function test5(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
         y = [ sides .* rand(SVector{3,Float64}) for i in 1:N2 ]
     end
 
-    # Initialize auxiliary linked lists (largest set!)
+    # Initialize auxiliary linked lists
     cl = CellList(x, y, box, parallel=parallel)
 
     # Function that keeps the minimum distance
@@ -242,7 +242,7 @@ function test6(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
     # Define box, since no PBC are used, define sizes with limits(x,y) 
     box = Box(limits(x,y), cutoff)
   
-    # Initialize auxiliary linked lists (largest set!)
+    # Initialize auxiliary linked lists 
     cl = CellList(x, y, box, parallel=parallel)
   
     # Function that keeps the minimum distance
