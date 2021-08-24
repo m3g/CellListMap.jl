@@ -313,7 +313,7 @@ neighbouring cells need to be wrapped)
 Base.@kwdef struct Cell{N,T}
     linear_index::Int = 0
     cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i->0,N))
-    center::SVector{N,T} = zeros{SVector{N,T}}
+    center::SVector{N,T} = zeros(SVector{N,T})
     contains_real::Bool = false
     n_particles::Int = 0
     particles::Vector{ParticleWithIndex{N,T}} = Vector{ParticleWithIndex{N,T}}(undef,0)
@@ -332,8 +332,7 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Auxiliary structure to contain projected particles in large and
-and dense systems.
+Auxiliary structure to contain projected particles.
 
 """
 Base.@kwdef struct ProjectedParticle{N,T}
@@ -364,7 +363,7 @@ Base.@kwdef struct CellList{N,T}
     " Auxiliary array that contains the indexes in list of the cells with particles, real or images. "
     cell_indices::Vector{Int} = zeros(Int,number_of_cells)
     " Auxiliary array that contains the indexes in the cells with real particles. "
-    cell_indices_real::Vector{Int} = zeros(Int,number_of_cells)
+    cell_indices_real::Vector{Int} = zeros(Int,0)
     " Vector containing cell lists of cells with particles. "
     cells::Vector{Cell{N,T}} = Cell{N,T}[]
     " Auxiliar array to store projected particles. "
@@ -439,15 +438,12 @@ end
 function reset!(cl::CellList{N,T},box) where{N,T}
     number_of_cells = ceil(Int,1.2*prod(box.nc)) # some margin in case of box size variations
     if number_of_cells > length(cl.cells) 
-        resize!(cl.cells,number_of_cells)
         resize!(cl.cell_indices,number_of_cells)
         @. cl.cell_indices = 0
-        resize!(cl.cell_indices_real,number_of_cells)
         @. cl.cell_indices_real = 0
     end
     for i in 1:cl.n_cells_with_particles
-        index = cl.cell_indices[i]
-        cl.cells[index] = Cell{N,T}(
+        cl.cells[i] = Cell{N,T}(
             n_particles=0,
             contains_real=false,
             particles=cl.cells[i].particles
@@ -541,7 +537,8 @@ particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
 ```
 UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
-    box::Box,cl:CellList{N,T},
+    box::Box,
+    cl:CellList{N,T},
     parallel=true
 ) where {N,T}
 ```
@@ -621,7 +618,11 @@ function UpdateCellList!(
                     cl.cell_indices[linear_index] = cl.n_cells_with_particles
                     if cell.contains_real
                         @set! cl.n_cells_with_real_particles += 1
-                        cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index] 
+                        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
+                            push!(cl.cell_indices_real,cl.cell_indices[linear_index])
+                        else
+                            cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index] 
+                        end
                     end
                 # Append particles to initialized cells
                 else
@@ -641,7 +642,11 @@ function UpdateCellList!(
                         @set! cl_cell.contains_real = true
                         cl.cells[cl.cell_indices[linear_index]] = cl_cell
                         @set! cl.n_cells_with_real_particles += 1
-                        cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index]
+                        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
+                            push!(cl.cell_indices_real,cl.cell_indices[linear_index])
+                        else
+                            cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index]
+                        end
                     end
                 end
             end
@@ -725,7 +730,11 @@ function add_particle_to_celllist!(
     if real_particle && (!cell.contains_real)
         @set! cell.contains_real = true
         n_cells_with_real_particles += 1
-        cell_indices_real[n_cells_with_real_particles] = cell_indices[icell_linear] 
+        if n_cells_with_real_particles > length(cell_indices_real)
+            push!(cell_indices_real,cell_indices[icell_linear])
+        else
+            cell_indices_real[n_cells_with_real_particles] = cell_indices[icell_linear] 
+        end
     end
 
     #
@@ -760,7 +769,9 @@ end
 UpdateCellList!(
   x::AbstractVector{<:AbstractVector},
   y::AbstractVector{<:AbstractVector},
-  box::Box{UnitCellType,N,T},cl:CellListPair,parallel=true
+  box::Box{UnitCellType,N,T},
+  cl:CellListPair,
+  parallel=true
 ) where {UnitCellType,N,T}
 ```
 
@@ -788,9 +799,9 @@ function UpdateCellList!(
 ) where {UnitCellType,N,T}
 
     if length(x) <= length(y)
-        cl_pair = UpdateCellList!(y,box,cl_pair.large,parallel=parallel)
+        cl_pair = UpdateCellList!(y,box,cl_pair.target,parallel=parallel)
     else
-        cl_pair = UpdateCellList!(x,box,cl_pair.large,parallel=parallel)
+        cl_pair = UpdateCellList!(x,box,cl_pair.target,parallel=parallel)
     end
 
     return cl_pair
