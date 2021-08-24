@@ -52,7 +52,7 @@ cl = CellList(x,box)
 for i in 1:nsteps
   x = ... # new coordinates
   box = Box(sides,cutoff) # perhaps the box has changed
-  cl = UpdateCellList!(x,box) 
+  cl = UpdateCellList!(x,box,cl) 
 end
 ```
 
@@ -64,7 +64,7 @@ cl = CellList(x,y,box)
 for i in 1:nsteps
   x = ... # new coordinates
   box = Box(sides,cutoff) # perhaps the box has changed
-  cl = UpdateCellList!(x,y,box)
+  cl = UpdateCellList!(x,y,box,cl)
 end
 ```
 
