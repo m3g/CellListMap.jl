@@ -1,7 +1,7 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
-version = "0.5.4"
+version = "0.5.5"
 
 [deps]
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
