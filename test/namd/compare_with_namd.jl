@@ -28,6 +28,8 @@ end
 
   dir="./namd"
 
+  # Some orthorhombic cells
+
   unit_cell_matrix = [ 50.      0.      0.
                         0.     50.      0. 
                         0.      0.     50. ]
@@ -63,6 +65,8 @@ end
                         0.      0.     80. ]
   correct = -158.04751357760088
   @test test("$dir/o6.dcd", unit_cell_matrix, correct)
+
+  # Some triclinic cells
   
   unit_cell_matrix = [ 80.      0.     30.
                        30.     80.      0. 
