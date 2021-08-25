@@ -352,6 +352,8 @@ Structure that contains the cell lists information.
 
 """
 Base.@kwdef struct CellList{N,T}
+    " Number of real particles. "
+    n_real_particles::Int = 0
     " Number of cells. "
     number_of_cells::Int = 0
     " *mutable* number of particles in the computing box. "
@@ -371,9 +373,10 @@ Base.@kwdef struct CellList{N,T}
         [ Vector{ProjectedParticle{N,T}}(undef,0) for _ in 1:nthreads() ]
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
-    println(typeof(cl))
-    println("  $(cl.n_cells_with_real_particles) cells with real particles.")
-    println("  $(cl.n_particles) particles in computing box, including images.")
+    println(io,typeof(cl))
+    println(io,"  $(cl.n_real_particles) real particles.")
+    println(io,"  $(cl.n_cells_with_real_particles) cells with real particles.")
+    print(io,"  $(cl.n_particles) particles in computing box, including images.")
 end
 
 """
@@ -431,12 +434,15 @@ function CellList(
     box::Box{UnitCellType,N,T};
     parallel::Bool=true
 ) where {UnitCellType,N,T} 
-    cl = CellList{N,T}(number_of_cells=prod(box.nc))
+    cl = CellList{N,T}(
+        n_real_particles=length(x),
+        number_of_cells=prod(box.nc)
+    )
     return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
 function reset!(cl::CellList{N,T},box) where{N,T}
-    number_of_cells = ceil(Int,1.2*prod(box.nc)) # some margin in case of box size variations
+    number_of_cells = prod(box.nc) 
     if number_of_cells > length(cl.cells) 
         resize!(cl.cell_indices,number_of_cells)
         @. cl.cell_indices = 0
@@ -450,6 +456,7 @@ function reset!(cl::CellList{N,T},box) where{N,T}
         )
     end
     cl = CellList{N,T}(
+        n_real_particles = cl.n_real_particles, 
         n_particles = 0,
         number_of_cells = number_of_cells,
         n_cells_with_real_particles = 0,
@@ -523,14 +530,101 @@ end
 
 """
 
-```
-particles_per_cell(cl::CellList,box::Box)
-```
+$(TYPEDEF)
 
-Returns the average number of particles per computing cell.
+$(TYPEDEF)
+
+Auxiliary structure to carry threaded lists and ranges of particles to 
+be considered by each thread on parallel construction. 
 
 """
-particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
+@with_kw struct AuxThreaded{N,T}
+    idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef,0)
+    lists::Vector{CellList{N,T}} = Vector{CellList{N,T}}(undef,0)
+end
+function Base.show(io::IO,::MIME"text/plain",aux::AuxThreaded)
+    println(io,typeof(aux))
+    print(io," Auxiliary arrays for nthreads = ", length(aux.lists)) 
+end
+
+"""
+
+```
+AuxThreaded(cl::CellList{N,T}) where {N,T}
+```
+
+Constructor for the `AuxThreaded` type, to be passed to `UpdateCellList!` for in-place 
+update of cell lists. 
+
+## Example
+```julia-repl
+julia> box = Box([250,250,250],10);
+
+julia> x = [ 250*rand(3) for _ in 1:100_000 ];
+
+julia> cl = CellList(x,box);
+
+julia> aux = CellListMap.AuxThreaded(cl)
+CellListMap.AuxThreaded{3, Float64}
+ Auxiliary arrays for nthreads = 8
+
+julia> cl = UpdateCellList!(x,box,cl,aux)
+CellList{3, Float64}
+  100000 real particles.
+  31190 cells with real particles.
+  1134378 particles in computing box, including images.
+
+```
+"""
+function AuxThreaded(cl::CellList{N,T}) where {N,T}
+    aux = AuxThreaded{N,T}()
+    init_aux_threaded!(aux,cl)
+    return aux
+end
+
+"""
+
+```
+init_aux_threaded!(aux::AuxThreaded,cl::CellList)
+```
+
+Given an `AuxThreaded` object initialized with zero-length arrays,
+push `ntrheads` copies of `cl` into `aux.lists` and resize `aux.idxs`
+to the number of threads.  
+
+"""
+function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
+   nt = set_nt(cl)
+   push!(aux.lists,cl)
+   for it in 2:nt
+       push!(aux.lists,deepcopy(cl))
+   end
+   # Indices of the atoms that will be added by each thread
+   nrem = cl.n_real_particles%nt
+   nperthread = (cl.n_real_particles-nrem)÷nt
+   first = 1
+   for it in 1:nt
+       nx = nperthread
+       if it <= nrem
+           nx += 1
+       end
+       push!(aux.idxs,first:(first-1)+nx)
+       first += nx
+   end
+   return aux
+end
+
+"""
+
+```
+set_nt(cl) = max(1,min(cl.n_real_particles÷500,nthreads()))
+```
+
+Don't use all threads to build cell lists if the number of particles
+per thread is smaller than 500.
+
+"""
+set_nt(cl) = max(1,min(cl.n_real_particles÷500,nthreads()))
 
 """
 
@@ -568,58 +662,46 @@ function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
     cl::CellList{N,T};
-    parallel::Bool=true,
-    threaded_lists=nothing,
-    threaded_idxs=nothing
+    parallel::Bool=true
 ) where {N,T}
+    aux = AuxThreaded{N,T}()
+    if parallel && nthreads() > 1
+        init_aux_threaded!(aux,cl)
+    end
+    return UpdateCellList!(x,box,cl,aux,parallel=parallel)
+end
 
-    # Reset base cell list cell (resize if needed, and reset values)
-    cl = reset!(cl,box)
+function UpdateCellList!(
+    x::AbstractVector{<:AbstractVector},
+    box::Box,
+    cl::CellList{N,T},
+    aux::AuxThreaded{N,T};
+    parallel::Bool=true
+) where {N,T}
 
     #
     # Add particles to cell list
     #
-    nt = min(length(x)÷250,nthreads())
+    nt = set_nt(cl)
     if !parallel || nt < 2
+        cl = reset!(cl,box)
         cl = add_particles!(x,box,0,cl)
     else
-        if isnothing(threaded_lists)
-            threaded_lists = [ deepcopy(cl) for _ in 1:nt-1] 
-            for it in 1:nt-1
-                reset!(threaded_lists[it],box)
-            end
-        end
-        if isnothing(threaded_idxs)
-            threaded_idxs = Vector{UnitRange}(undef,nt)
-        end
-        # Indices of the atoms that will be added by each thread
-        nperthread = length(x)÷nt
-        nrem = length(x) - nt*nperthread
-        first = 1
-        for it in 1:nt
-            nx = nperthread
-            (it <= nrem) && (nx += 1)
-            threaded_idxs[it] = first:(first-1)+nx
-            first += nx
-        end
         # Cell lists to be built by each thread
         @threads for it in 1:nt
-            if it < nt
-                xt = @view(x[threaded_idxs[it+1]])  
-                threaded_lists[it] = add_particles!(xt,box,threaded_idxs[it][1]-1,threaded_lists[it])
-            else
-                xt = @view(x[threaded_idxs[1]])  
-                cl = add_particles!(xt,box,0,cl)
-            end
+             aux.lists[it] = reset!(aux.lists[it],box)
+             xt = @view(x[aux.idxs[it]])  
+             aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
         end
         #
         # Merge threaded cell lists
         #
-        for it in 1:nt-1
+        cl = aux.lists[1]
+        for it in 2:nt
             # Accumulate number of particles
-            @set! cl.n_particles += threaded_lists[it].n_particles
-            for icell in 1:threaded_lists[it].n_cells_with_particles
-                cell = threaded_lists[it].cells[icell]
+            @set! cl.n_particles += aux.lists[it].n_particles
+            for icell in 1:aux.lists[it].n_cells_with_particles
+                cell = aux.lists[it].cells[icell]
                 linear_index = cell.linear_index
                 # If cell was yet not initialized in merge, push it to the list
                 if cl.cell_indices[linear_index] == 0
@@ -782,7 +864,7 @@ function add_particle_to_celllist!(
     if n_cells_with_particles > length(cl.cells)
         push!(cl.cells,cell)
     else
-        cl.cells[n_cells_with_particles] = cell
+        cl.cells[cell_indices[linear_index]] = cell
     end
 
     return cl
@@ -832,5 +914,15 @@ function UpdateCellList!(
     return cl_pair
 end
 
+"""
+
+```
+particles_per_cell(cl::CellList,box::Box)
+```
+
+Returns the average number of particles per computing cell.
+
+"""
+particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
 
 
