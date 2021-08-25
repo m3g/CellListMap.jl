@@ -194,3 +194,5 @@ using Test
 #  @test length(cl.cwp) == 8737
 
 end
+
+include("./namd/compare_with_namd.jl")
