@@ -42,31 +42,35 @@ This function *must* return the updated `output` variable, being it mutable or n
 
 ## Preallocating auxiliary arrays: threaded output and cell lists
 
-### Preallocating the cell lists
+### Preallocating the cell lists and cell list auxiliary arrays
 
 The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrinked) on this update. 
 
 ```julia
 # Initialize cell lists with initial coordinates
 cl = CellList(x,box)
+# Allocate auxiliary arrays for threaded cell list construction
+aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
   x = ... # new coordinates
   box = Box(sides,cutoff) # perhaps the box has changed
-  cl = UpdateCellList!(x,box,cl) 
+  cl = UpdateCellList!(x,box,cl,aux) 
 end
 ```
 
 The procedure is identical if using two sets of coordinates, in which case, one would do:
 
 ```julia
-# Initialize cell lists with initial coordinates
 cl = CellList(x,y,box)
+aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
   x = ... # new coordinates
   box = Box(sides,cutoff) # perhaps the box has changed
-  cl = UpdateCellList!(x,y,box,cl)
+  cl = UpdateCellList!(x,y,box,cl,aux)
 end
 ```
+
+By passing the `aux` auxiliary structure, the `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater. 
 
 ### Preallocating threaded output auxiliary arrays
 
