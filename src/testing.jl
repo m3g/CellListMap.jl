@@ -76,10 +76,10 @@ function view_celllist_particles(cl::CellList{N,T}) where {N,T}
     return x
 end
 
-test_map(box,cl;parallel=false) = map_pairwise!((x, y, i, j, d2, s) -> s += d2, 0., box, cl, parallel=parallel)
+test_map(box,cl;parallel=true) = map_pairwise!((x, y, i, j, d2, s) -> s += d2, 0., box, cl, parallel=parallel)
 test_naive(x,box) = CellListMap.map_naive!((x, y, i, j, d2, s) -> s += d2, 0., x, box)
-function simple_test(x,box;parallel=false)
-    cl = CellList(x,box)
+function simple_test(x,box;parallel=true)
+    cl = CellList(x,box,parallel=parallel)
     r_naive = test_naive(x,box)
     r_map = test_map(box,cl,parallel=parallel)
     println("naive = $r_naive")
