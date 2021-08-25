@@ -164,18 +164,24 @@ end
 draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
 ```
 
+```
+draw_computing_cell(cl::CellList,box::Box{UnitCellType,2},x) where UnitCellType
+```
+
 This function creates a plot of the computing cell, in two dimensions.
 
 """
 function draw_computing_cell(x, box::Box{UnitCellType,2};parallel=true) where UnitCellType
     cl = CellList(x, box, parallel=parallel)
+    return draw_computing_cell(cl,box,x) 
+end
+function draw_computing_cell(cl::CellList, box::Box{UnitCellType,2}, x) where UnitCellType
     box_points = drawbox(box)
     p = view_celllist_particles(cl)
     plt = Main.plot()
     Main.plot!(plt, Tuple.(box_points), label=:none)
     Main.scatter!(plt, Tuple.(p), label=:none, markeralpha=0.3)
     Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box))), label=:none)
-    xmin = minimum(el[1] for el in p) - 3 * box.cell_size[1]
     xmin = minimum(el[1] for el in p) - 3 * box.cell_size[1]
     xmax = maximum(el[1] for el in p) + 3 * box.cell_size[1]
     ymin = minimum(el[2] for el in p) - 3 * box.cell_size[2]
