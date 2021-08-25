@@ -15,7 +15,8 @@ export limits
 export TriclinicCell
 export OrthorhombicCell
 
-include("./StructTypes.jl")
+include("./Box.jl")
+include("./CellLists.jl")
 include("./CellOperations.jl")
 include("./CoreComputing.jl")
 
