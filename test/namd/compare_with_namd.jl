@@ -11,7 +11,7 @@ function lj_NE(d2,u)
 end
 
 function getcoor(file)
-    traj = Chemfiles.Trajectory(file)
+    traj = redirect_stdout(() -> Chemfiles.Trajectory(file), devnull)
     frame = Chemfiles.read_step(traj,0)
     return reinterpret(reshape,SVector{3,Float64},Chemfiles.positions(frame))
 end
@@ -34,7 +34,7 @@ end
                         0.     50.      0. 
                         0.      0.     50. ]
   correct = 32230.01699504111
-  @test test("$dir/o1.dcd", unit_cell_matrix,correct)
+  @test test("$dir/o1.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = [ 80.      0.      0.
                         0.     70.      0. 
