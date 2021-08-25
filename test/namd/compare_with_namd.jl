@@ -26,53 +26,55 @@ end
 
 @testset "NAMD" begin
 
+  dir="./namd"
+
   unit_cell_matrix = [ 50.      0.      0.
                         0.     50.      0. 
                         0.      0.     50. ]
   correct = 32230.01699504111
-  @test test("./o1.dcd", unit_cell_matrix,correct)
+  @test test("$dir/o1.dcd", unit_cell_matrix,correct)
   
   unit_cell_matrix = [ 80.      0.      0.
                         0.     70.      0. 
                         0.      0.     50. ]
   correct = 1093.7225407797744
-  @test test("./o2.dcd", unit_cell_matrix, correct)
+  @test test("$dir/o2.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = [ 50.      0.     50.
                        50.     50.      0. 
                         0.     50.     50. ]
   correct = 1724.3195067566828
-  @test test("./o3.dcd", unit_cell_matrix, correct)
+  @test test("$dir/o3.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = transpose([ 70.7107   0.0      0.0
                                  35.3553  61.2372   0.0
                                  35.3553  20.4124  57.735 ])
   correct = 1754.0802503953591
-  @test test("./o4.dcd", unit_cell_matrix, correct)
+  @test test("$dir/o4.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = transpose([ 70.7107   0.0      0.0
                                  35.3553  61.2372   0.0
                                  35.3553  20.4124  57.735 ])
   correct = 1765.1389457850137
-  @test test("./o5.dcd", unit_cell_matrix, correct)
+  @test test("$dir/o5.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = [ 80.      0.      0.
                         0.     80.      0. 
                         0.      0.     80. ]
   correct = -158.04751357760088
-  @test test("./o6.dcd", unit_cell_matrix, correct)
+  @test test("$dir/o6.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = [ 80.      0.     30.
                        30.     80.      0. 
                         0.     40.     80. ]
   correct = -116.53213607052128
-  @test test("./t1.dcd", unit_cell_matrix, correct)
+  @test test("$dir/t1.dcd", unit_cell_matrix, correct)
   
   unit_cell_matrix = [ 50.      0.      0.
                        50.     50.      0. 
                         0.     50.     50. ]
   correct = 32096.48839031735
-  @test test("./t2.dcd", unit_cell_matrix, correct)
+  @test test("$dir/t2.dcd", unit_cell_matrix, correct)
 
 end
 
