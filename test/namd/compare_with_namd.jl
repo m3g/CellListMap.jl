@@ -13,6 +13,7 @@ end
 function getcoor(file)
     traj = redirect_stdout(() -> Chemfiles.Trajectory(file), devnull)
     frame = Chemfiles.read_step(traj,0)
+    Chemfiles.close(traj)
     return reinterpret(reshape,SVector{3,Float64},Chemfiles.positions(frame))
 end
 
@@ -104,6 +105,7 @@ end
   u = map_pairwise!((x,y,i,j,d2,u) -> lj_NE(d2,u),0.0,box,cl)
   @test u ≈ correct
 
+  # Test preallocated AuxThreaded struct
   aux = CellListMap.AuxThreaded(cl)
   coordinates = getcoor("$dir/t1.dcd")
   unit_cell_matrix = [ 80.      0.     30.
