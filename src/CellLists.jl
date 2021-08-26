@@ -313,23 +313,19 @@ construction of auxiliary arrays for threading, and nothing else.
 
 """
 function reset!(cl::CellList{N,T},box) where{N,T}
-    number_of_cells = prod(box.nc) 
-    if number_of_cells > length(cl.cells) 
-        resize!(cl.cell_indices,number_of_cells)
-        @. cl.cell_indices = 0
-        @. cl.cell_indices_real = 0
+    new_number_of_cells = prod(box.nc) 
+    if new_number_of_cells > cl.number_of_cells
+        resize!(cl.cell_indices,new_number_of_cells)
     end
     for i in 1:cl.n_cells_with_particles
-        cl.cells[i] = Cell{N,T}(
-            n_particles=0,
-            contains_real=false,
-            particles=cl.cells[i].particles
-        )
+        cl.cells[i] = Cell{N,T}(particles=cl.cells[i].particles)
     end
+    @. cl.cell_indices = 0
+    @. cl.cell_indices_real = 0
     cl = CellList{N,T}(
         n_real_particles = cl.n_real_particles, 
         n_particles = 0,
-        number_of_cells = number_of_cells,
+        number_of_cells = new_number_of_cells,
         n_cells_with_real_particles = 0,
         n_cells_with_particles = 0,
         cell_indices = cl.cell_indices,
@@ -521,6 +517,7 @@ function UpdateCellList!(
 
     # Add particles to cell list
     nt = set_nt(cl)
+    nt = 1
     if !parallel || nt < 2
         cl = reset!(cl,box)
         cl = add_particles!(x,box,0,cl)
@@ -691,6 +688,7 @@ function add_particle_to_celllist!(
         cell = cells[cell_indices[linear_index]]
         @set! cell.n_particles += 1
     end
+
     #
     # Cells with real particles are annotated to be run over
     #
