@@ -131,11 +131,8 @@ function Box(
     unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
     unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
  
-    nc_min = @. floor.(Int,unit_cell_max/cutoff) 
-    cell_size_max = unit_cell_max ./ nc_min
-    cell_size = cell_size_max/lcell
-
-    nc = SVector{N,Int}(ceil.(Int,unit_cell_max ./ cell_size) .+ 2*lcell)
+    cell_size = SVector{N,T}(ntuple(i->cutoff/lcell,N)...)
+    nc = SVector{N,Int}(ceil.(Int,(unit_cell_max .+ 2*cutoff) ./ cell_size))
 
     #ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
     ranges = SVector{N,UnitRange{Int}}(ntuple(i->-1:1,N))
