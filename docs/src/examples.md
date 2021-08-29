@@ -27,7 +27,7 @@ normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation (0.0 is the initial value)
 avg_dx = normalization * map_pairwise!(
-  (x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl 
+    (x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl 
 )
 ```
 
@@ -41,10 +41,10 @@ we use a closure to remove the positions and indexes of the particles from the f
 ```julia
 # Function that accumulates the histogram of distances
 function build_histogram!(d2,hist)
-  d = sqrt(d2)
-  ibin = floor(Int,d) + 1
-  hist[ibin] += 1
-  return hist
+    d = sqrt(d2)
+    ibin = floor(Int,d) + 1
+    hist[ibin] += 1
+    return hist
 end;
 
 # Initialize (and preallocate) the histogram
@@ -53,8 +53,8 @@ normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation
 hist = normalization * map_pairwise!(
-  (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
-  hist,box,cl
+    (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
+    hist,box,cl
 )
 
 ```
@@ -71,9 +71,9 @@ const mass = rand(N)
 
 # Function to be evaluated for each pair 
 function potential(i,j,d2,mass,u)
-  d = sqrt(d2)
-  u = u - 9.8*mass[i]*mass[j]/d
-  return u
+    d = sqrt(d2)
+    u = u - 9.8*mass[i]*mass[j]/d
+    return u
 end
 
 # Run pairwise computation
@@ -92,12 +92,12 @@ const mass = rand(N)
 
 # Function to be evalulated for each pair: build distance histogram
 function calc_forces!(x,y,i,j,d2,mass,forces)
-  G = 9.8*mass[i]*mass[j]/d2
-  d = sqrt(d2)
-  df = (G/d)*(x - y)
-  forces[i] = forces[i] - df
-  forces[j] = forces[j] + df
-  return forces
+    G = 9.8*mass[i]*mass[j]/d2
+    d = sqrt(d2)
+    df = (G/d)*(x - y)
+    forces[i] = forces[i] - df
+    forces[j] = forces[j] + df
+    return forces
 end
 
 # Initialize and preallocate forces
@@ -105,8 +105,8 @@ forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
 # Run pairwise computation
 forces = map_pairwise!(
-  (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
-  forces,box,cl
+    (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
+    forces,box,cl
 )
 
 ```
@@ -137,13 +137,13 @@ f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
 
 # We have to define our own reduce function here
 function reduce_mind(output,output_threaded)
-  mind = output_threaded[1]
-  for i in 2:Threads.nthreads()
-    if output_threaded[i][3] < mind[3]
-      mind = output_threaded[i]
+    mind = output_threaded[1]
+    for i in 2:Threads.nthreads()
+        if output_threaded[i][3] < mind[3]
+            mind = output_threaded[i]
+        end
     end
-  end
-  return mind
+    return mind
 end
 
 # Initial value
@@ -151,8 +151,8 @@ mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
 mind = map_pairwise!( 
-  (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
-  mind,box,cl;reduce=reduce_mind
+    (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
+    mind,box,cl;reduce=reduce_mind
 )
 ```
 
@@ -193,18 +193,18 @@ The implementation of this function follows the principles below.
 ```julia
 # Function to be evalulated for each pair: push pair
 function push_pair!(i,j,d2,pairs)
-  d = sqrt(d2)
-  push!(pairs,(i,j,d))
-  return pairs
+    d = sqrt(d2)
+    push!(pairs,(i,j,d))
+    return pairs
 end
 
 # Reduction function
 function reduce_pairs(pairs,pairs_threaded)
-  pairs = pairs_threaded[1]
-  for i in 2:Threads.nthreads()
-    append!(pairs,pairs_threaded[i])
-  end
-  return pairs
+    pairs = pairs_threaded[1]
+    for i in 2:Threads.nthreads()
+        append!(pairs,pairs_threaded[i])
+    end
+    return pairs
 end
 
 # Initialize output
@@ -212,9 +212,9 @@ pairs = Tuple{Int,Int,Float64}[]
 
 # Run pairwise computation
 pairs = map_pairwise!(
-  (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs),
-  pairs,box,cl,
-  reduce=reduce_pairs
+    (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs),
+    pairs,box,cl,
+    reduce=reduce_pairs
 )
 ```
 

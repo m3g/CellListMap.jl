@@ -10,10 +10,10 @@ and, for scalars and vectors, the reduction is just the sum of the output per th
 ```julia
 reduce(output::Number,output_threaded) = sum(output_threaded)
 function reduce(output::Vector,output_threaded) 
-  for i in 1:nthreads()
-     @. output += output_threaded[i] 
-  end
-  return output
+    for i in 1:nthreads()
+         @. output += output_threaded[i] 
+    end
+    return output
 end
 ```
 
@@ -22,20 +22,20 @@ end
 In some cases, as in the [Nearest neighbour](#nearest-neighbour) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
 ```julia
 mind = map_pairwise!( 
-  (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,box,cl;
-  reduce=reduce_mind
+    (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,box,cl;
+    reduce=reduce_mind
 )
 ```
 where here the `reduce` function is set to be the custom function that keeps the tuple associated to the minimum distance obtained between threads:
 ```julia
 function reduce_mind(output,output_threaded)
-  mind = output_threaded[1]
-  for i in 2:Threads.nthreads()
-    if output_threaded[i][3] < mind[3]
-      mind = output_threaded[i]
+    mind = output_threaded[1]
+    for i in 2:Threads.nthreads()
+        if output_threaded[i][3] < mind[3]
+            mind = output_threaded[i]
+        end
     end
-  end
-  return mind
+    return mind
 end
 ```
 This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.  
@@ -52,9 +52,9 @@ cl = CellList(x,box)
 # Allocate auxiliary arrays for threaded cell list construction
 aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
-  x = ... # new coordinates
-  box = Box(sides,cutoff) # perhaps the box has changed
-  cl = UpdateCellList!(x,box,cl,aux) 
+    x = ... # new coordinates
+    box = Box(sides,cutoff) # perhaps the box has changed
+    cl = UpdateCellList!(x,box,cl,aux) 
 end
 ```
 
@@ -64,9 +64,9 @@ The procedure is identical if using two sets of coordinates, in which case, one 
 cl = CellList(x,y,box)
 aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
-  x = ... # new coordinates
-  box = Box(sides,cutoff) # perhaps the box has changed
-  cl = UpdateCellList!(x,y,box,cl,aux)
+    x = ... # new coordinates
+    box = Box(sides,cutoff) # perhaps the box has changed
+    cl = UpdateCellList!(x,y,box,cl,aux)
 end
 ```
 
@@ -79,13 +79,13 @@ On parallel runs, note that `output_threaded` is, by default, initialized on the
 forces = zeros(SVector{3,Float64},N)
 forces_threaded = [ deepcopy(forces) for i in 1:nthreads() ]
 for i in 1:nsteps
-  map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
-  # work with the final forces vector
-  ...
-  # Reset forces_threaded
-  for i in 1:Threads.nthreads()
-    @. forces_threaded[i] = zero(SVector{3,Float64}) 
-  end
+    map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
+    # work with the final forces vector
+    ...
+    # Reset forces_threaded
+    for i in 1:Threads.nthreads()
+        @. forces_threaded[i] = zero(SVector{3,Float64}) 
+    end
 end
 ```
 In this case, the `forces` vector will be updated by the default reduction method.

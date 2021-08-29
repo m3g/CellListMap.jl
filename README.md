@@ -55,8 +55,8 @@ f(x,y,i,j,d2,output)
 Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it.  The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise!` must be always of the form:
 ```julia
 function f(x,y,i,j,d2,output)
-  # update output
-  return output
+    # update output
+    return output
 end
 ```
 and the user can define more or less parameters or additional data required to compute the function using closures, as shown in the examples.
