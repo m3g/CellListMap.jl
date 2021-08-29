@@ -163,27 +163,16 @@ The example above can be run with `CellListMap.test5()`. The example `CellListMa
 Obs: The package provides a `neighbourlist` function that implements this calculation, and can be used with:
 
 ```julia-repl
-julia> box = Box(sides,cutoff)
+julia> x = [ rand(3) for i in 1:10_000 ];
 
-julia> cl = CellList(x,y,box)
-CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
-   1500000 particles in the reference vector.
-   1440 cells with real particles of target vector.
-
-julia> CellListMap.neighbourlist(box,cl)
-602882-element Vector{Tuple{Int64, Int64, Float64}}:
- (89, 1, 7.540726921707267)
- (1113, 9, 8.868103242326466)
- (660, 25, 6.384673918633141)
- (482, 57, 8.259716098064608)
- (189, 65, 6.251864921270615)
+julia> CellListMap.neighbourlist(x,0.05)
+24778-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 62, 0.028481068525796384)
  ⋮
- (733, 1499960, 5.84040412313063)
- (1362, 1499968, 9.790301512741848)
- (1164, 1499968, 8.076434679245747)
- (632, 1499992, 5.3515755610344105)
-
+ (9954, 1749, 0.04887502372299809)
+ (9974, 124, 0.040110356034451795)
 ```
+or `CellListMap.neighbourlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
 The returning array contains tuples with the index of the particle in the first vector, the index of the particule in the second vector, and their distance.
 
