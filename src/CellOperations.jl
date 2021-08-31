@@ -253,7 +253,6 @@ of points. Returns a `SVector{N,T}`
 @inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
     SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - one(T)/2 - box.lcell), N))
 
-
 """
 
 ```
