@@ -360,8 +360,8 @@ function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true) where T
 
     Random.seed!(321)
     Lbox = T[boxsize,boxsize,boxsize]
-    positions = boxsize .* rand(T, 3, n_halos)
-    velocities = rand(T, 3, n_halos)
+    positions = convert.(T,boxsize .* rand(Float64, 3, n_halos))
+    velocities = convert.(T,rand(Float64, 3, n_halos))
     rbins = T[0.,2.,4.,6.,8.,10.]
     r_max = maximum(rbins)
   
