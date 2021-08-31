@@ -328,9 +328,9 @@ end
 #
 # florpi
 #
-function florpi(;N=100_000,cd=true,parallel=true)
+function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true) where T
 
-    @inline dot(x::SVector{3,Float64}, y::SVector{3,Float64}) = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]
+    @inline dot(x::SVector{3,T}, y::SVector{3,T}) = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]
     
     function compute_pairwise_mean_cell_lists!(x, y, i, j, d2, hist, velocities, rbins)
         d = x - y
@@ -352,26 +352,26 @@ function florpi(;N=100_000,cd=true,parallel=true)
     n_halos = N
   
     if cd
-        density = 10^5 / 250^3  # density of the original problem
-        boxsize = (n_halos / density)^(1 / 3)
+        density = T(10^5 / 250^3)  # density of the original problem
+        boxsize = T((n_halos/density)^(1/3))
     else
-        boxsize = 250.
+        boxsize = T(250.)
     end
-    
+
     Random.seed!(321)
-    Lbox = [boxsize,boxsize,boxsize]
-    positions = boxsize .* rand(Float64, 3, n_halos)
-    velocities = rand(Float64, 3, n_halos)
-    rbins = [0.,2.,4.,6.,8.,10.]
+    Lbox = T[boxsize,boxsize,boxsize]
+    positions = boxsize .* rand(T, 3, n_halos)
+    velocities = rand(T, 3, n_halos)
+    rbins = T[0.,2.,4.,6.,8.,10.]
     r_max = maximum(rbins)
   
     n = size(positions)[2]
-    positions = reshape(reinterpret(SVector{3,Float64}, positions), n)
-    velocities = reshape(reinterpret(SVector{3,Float64}, velocities), n)
+    positions = reshape(reinterpret(SVector{3,T}, positions), n)
+    velocities = reshape(reinterpret(SVector{3,T}, velocities), n)
   
-    box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=1) 
+    box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=1, T=T) 
     cl = CellList(positions, box, parallel=parallel)
-    hist = (zeros(Int, length(rbins) - 1), zeros(Float64, length(rbins) - 1))
+    hist = (zeros(Int, length(rbins) - 1), zeros(T, length(rbins) - 1))
   
     # Needs this to stabilize the type of velocities and hist, probably
     function barrier(f!, velocities, rbins, hist, box, cl, reduce_hist, parallel)
