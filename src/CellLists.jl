@@ -70,11 +70,9 @@ $(TYPEDFIELDS)
 Auxiliary structure to contain projected particles.
 
 """
-Base.@kwdef struct ProjectedParticle{N,T}
-    index::Int = 0
+Base.@kwdef struct ProjectedParticle{T}
+    index_in_cell::Int = 0
     xproj::T = zero(T)
-    coordinates::SVector{N,T} = zeros(SVector{N,T})
-    real::Bool = false
 end
 
 """
@@ -104,8 +102,8 @@ Base.@kwdef struct CellList{N,T}
     " Vector containing cell lists of cells with particles. "
     cells::Vector{Cell{N,T}} = Cell{N,T}[]
     " Auxiliar array to store projected particles. "
-    projected_particles::Vector{Vector{ProjectedParticle{N,T}}} = 
-        [ Vector{ProjectedParticle{N,T}}(undef,0) for _ in 1:nthreads() ]
+    projected_particles::Vector{Vector{ProjectedParticle{T}}} = 
+        [ Vector{ProjectedParticle{T}}(undef,0) for _ in 1:nthreads() ]
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
     println(io,typeof(cl))
