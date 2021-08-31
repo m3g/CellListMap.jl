@@ -114,10 +114,10 @@ Box{TriclinicCell, 3, Float64, 9}
 function Box(
     unit_cell_matrix::AbstractMatrix, 
     cutoff, 
-    T::DataType, 
+    ::Type{T}=Float64,
     lcell::Int=1,
-    UnitCellType=TriclinicCell
-)
+    ::Type{UnitCellType}=TriclinicCell
+) where {T,UnitCellType}
 
     s = size(unit_cell_matrix)
     unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(unit_cell_matrix)
@@ -195,10 +195,10 @@ Box{OrthorhombicCell, 3, Float64, 9}
 function Box(
     sides::AbstractVector, 
     cutoff, 
-    T::DataType, 
+    ::Type{T}=Float64,
     lcell::Int=1,
-    UnitCellType=OrthorhombicCell
-)
+    ::Type{UnitCellType}=OrthorhombicCell
+) where {T,UnitCellType}
     N = length(sides)
     cart_idxs = CartesianIndices((1:N,1:N))
     # Build unit cell matrix from lengths
