@@ -84,7 +84,7 @@ This is slightly cheaper than for general cells.
 @inline function wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
     sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
     x = mod.(x,sides)
-    x = @. ifelse(x < 0, x + sides, x)
+    x = @. ifelse(x < zero(T), x + sides, x)
     return x
 end
 
@@ -151,10 +151,11 @@ end
 #
 # Wrap a single coordinate
 #
-@inline function _wrap_single_coordinate(x,s)
-    if x >= s/2
+@inline function _wrap_single_coordinate(x::T,s::T) where T
+    half = T(0.5)*s
+    if x >= half
         x = x - s
-    elseif x < -s/2
+    elseif x < -half
         x = x + s
     end
     return x
@@ -251,7 +252,7 @@ of points. Returns a `SVector{N,T}`
 
 """
 @inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - 0.5 - box.lcell), N))
+    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - T(0.5) - box.lcell), N))
 
 
 """
