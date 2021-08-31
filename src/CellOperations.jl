@@ -151,7 +151,7 @@ end
 #
 # Wrap a single coordinate
 #
-@inline function _wrap_single_coordinate(x::T,s::T) where T
+@inline function _wrap_single_coordinate(x,s)
     if x >= s/2
         x = x - s
     elseif x < -s/2
