@@ -73,7 +73,7 @@ elements with values satisfying `by(el)`. Returns the number of elements
 that satisfy the condition.
 
 """
-function partition!(x::AbstractVector, by)
+function partition!(by, x::AbstractVector)
     iswap = 1
     @inbounds for i in eachindex(x)
         if by(x[i])
@@ -164,10 +164,10 @@ function inner_loop!(
             # trying to sort the array before always resulted to be much more
             # expensive. 
             xproj = dot(xpᵢ - cellᵢ.center, Δc)
-            n = partition!(pp, el -> abs(el.xproj - xproj) <= cutoff)
+            n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
 
             for j in 1:n
-                pⱼ = pp[j]
+                @inbounds pⱼ = cellⱼ.particles[pp[j].index_in_cell]
                 if pᵢ.index < pⱼ.index
                     xpⱼ = pⱼ.coordinates
                     d2 = norm_sqr(xpᵢ - xpⱼ)
@@ -240,11 +240,11 @@ function cell_output!(
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
         # Partition pp array according to the current projections
-        n = partition!(pp, el -> abs(el.xproj - xproj) <= cutoff)
+        n = partition!(el -> norm_sqr(el.xproj - xproj) <= cutoff_sq, pp)
 
         # Compute the interactions 
         for j in 1:n
-            pⱼ = pp[j]
+            @inbounds pⱼ = cellⱼ.particles[pp[j].index_in_cell]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -269,11 +269,10 @@ particles of cell `cellⱼ`.
 
 """
 function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc)
-    @inbounds for j in 1:cellⱼ.n_particles
+    @inbounds @simd for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
-        xpⱼ = pⱼ.coordinates
-        xproj = dot(xpⱼ - cellᵢ.center, Δc)
-        projected_particles[j] = ProjectedParticle(pⱼ.index, xproj, xpⱼ, pⱼ.real) 
+        xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
+        projected_particles[j] = ProjectedParticle(j, xproj) 
     end
     pp = @view(projected_particles[1:cellⱼ.n_particles])
     return pp
@@ -281,7 +280,7 @@ end
 
 #
 # Inner loop of cross-interaction computations. If the two sets
-# are large, this might(?) be improved by computing two sepparate
+# are large, this might(?) be improved by computing two separate
 # cell lists and using projection and partitioning.
 #
 function inner_loop!(
