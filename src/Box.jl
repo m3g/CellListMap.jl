@@ -120,7 +120,7 @@ function Box(
 )
 
     s = size(unit_cell_matrix)
-    unit_cell_matrix = SMatrix{s[1],s[2],Float64,s[1]*s[2]}(unit_cell_matrix)
+    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(unit_cell_matrix)
 
     @assert lcell >= 1 "lcell must be greater or equal to 1"
 
