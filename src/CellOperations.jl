@@ -398,9 +398,11 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
 end
 
 """
+
 ```
 limits(x::AbstractVector{<:AbstractVector})
 ```
+
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
 to be used to set a box without effective periodic boundary conditions.
 """
