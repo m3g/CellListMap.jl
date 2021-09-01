@@ -145,7 +145,7 @@ function inner_loop!(
 
         # Vector connecting cell centers
         if cellⱼ.linear_index == cellᵢ.linear_index
-            Δc = SVector{N,T}(ntuple(i -> 1, N))
+            Δc = SVector{N,T}(ntuple(i -> one(T), N))
         else
             Δc = cellⱼ.center - cellᵢ.center 
         end
