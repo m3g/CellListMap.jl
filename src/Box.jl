@@ -114,9 +114,9 @@ Box{TriclinicCell, 3, Float64, 9}
 function Box(
     unit_cell_matrix::AbstractMatrix, 
     cutoff, 
-    ::Type{T}=Float64,
-    lcell::Int=1,
-    ::Type{UnitCellType}=TriclinicCell
+    ::Type{T},
+    lcell::Int,
+    ::Type{UnitCellType}
 ) where {T,UnitCellType}
 
     s = size(unit_cell_matrix)
@@ -195,9 +195,9 @@ Box{OrthorhombicCell, 3, Float64, 9}
 function Box(
     sides::AbstractVector, 
     cutoff, 
-    ::Type{T}=Float64,
-    lcell::Int=1,
-    ::Type{UnitCellType}=OrthorhombicCell
+    ::Type{T},
+    lcell::Int,
+    ::Type{UnitCellType}
 ) where {T,UnitCellType}
     N = length(sides)
     cart_idxs = CartesianIndices((1:N,1:N))
@@ -242,7 +242,8 @@ Box(
 This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
 the coordinates of the particles involved, and constructs a `Box` with size larger than
 the maximum coordinates ranges of all particles plus the cutoff. This is used to 
-emulate pairwise interactions in non-periodic boxes.
+emulate pairwise interactions in non-periodic boxes. The output box is always an `Orthorhombic`
+cell.
 
 ### Examples
 
@@ -275,4 +276,4 @@ Box(
     cutoff;
     T::DataType=Float64,
     lcell::Int=1
-) = Box(limits.limits .+ cutoff,cutoff,T,lcell) 
+) = Box(limits.limits .+ cutoff,cutoff, T,lcell, OrthorhombicCell) 
