@@ -15,12 +15,12 @@ data, but is probably worth the effort.
 
 """
 struct ParticleWithIndex{N,T}
-    index::Int
-    coordinates::SVector{N,T}
+    index::Int32
     real::Bool
+    coordinates::SVector{N,T}
 end
 Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
-    ParticleWithIndex{N,T}(0,zeros(SVector{N,T}),false)
+    ParticleWithIndex{N,T}(Int32(0),false,zeros(SVector{N,T}))
 
 """
 
@@ -703,7 +703,7 @@ function add_particle_to_celllist!(
     #
     # Add particle to cell list
     #
-    p = ParticleWithIndex(ip,x,real_particle) 
+    p = ParticleWithIndex(Int32(ip),real_particle,x) 
     if cell.n_particles > length(cell.particles)
         push!(cell.particles,p)
     else
