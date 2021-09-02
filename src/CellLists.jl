@@ -11,7 +11,8 @@ $(TYPEDFIELDS)
 
 Copies particle coordinates and associated index, to build contiguous particle lists
 in memory when building the cell lists. This strategy duplicates the particle coordinates
-data, but is probably worth the effort.
+data, but is probably worth the effort. The index is a 32bit integer such 
+that the complete struct has 32bytes.
 
 """
 struct ParticleWithIndex{N,T}
@@ -67,12 +68,15 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Auxiliary structure to contain projected particles.
+Auxiliary structure to contain projected particles. Types of 
+scalars are chosen such that with a `SVector{3,Float64}` the
+complete struct has 32bytes.
 
 """
-Base.@kwdef struct ProjectedParticle{T}
-    index_in_cell::Int = 0
-    xproj::T = zero(T)
+Base.@kwdef struct ProjectedParticle{N,T}
+    index::Int32
+    xproj::Float32
+    coordinates::SVector{N,T}
 end
 
 """
@@ -102,8 +106,8 @@ Base.@kwdef struct CellList{N,T}
     " Vector containing cell lists of cells with particles. "
     cells::Vector{Cell{N,T}} = Cell{N,T}[]
     " Auxiliar array to store projected particles. "
-    projected_particles::Vector{Vector{ProjectedParticle{T}}} = 
-        [ Vector{ProjectedParticle{T}}(undef,0) for _ in 1:nthreads() ]
+    projected_particles::Vector{Vector{ProjectedParticle{N,T}}} = 
+        [ Vector{ProjectedParticle{N,T}}(undef,0) for _ in 1:nthreads() ]
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
     println(io,typeof(cl))

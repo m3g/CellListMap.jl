@@ -167,7 +167,7 @@ function inner_loop!(
             n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
 
             for j in 1:n
-                @inbounds pⱼ = cellⱼ.particles[pp[j].index_in_cell]
+                @inbounds pⱼ = pp[j]
                 if pᵢ.index < pⱼ.index
                     xpⱼ = pⱼ.coordinates
                     d2 = norm_sqr(xpᵢ - xpⱼ)
@@ -243,8 +243,8 @@ function cell_output!(
         n = partition!(el -> norm_sqr(el.xproj - xproj) <= cutoff_sq, pp)
 
         # Compute the interactions 
-        for j in 1:n
-            @inbounds pⱼ = cellⱼ.particles[pp[j].index_in_cell]
+        for j in 1:n 
+            @inbounds pⱼ = pp[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -272,7 +272,7 @@ function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc)
     @inbounds @simd for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
-        projected_particles[j] = ProjectedParticle(j, xproj) 
+        projected_particles[j] = ProjectedParticle(pⱼ.index, Float32(xproj), pⱼ.coordinates) 
     end
     pp = @view(projected_particles[1:cellⱼ.n_particles])
     return pp
