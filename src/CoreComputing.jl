@@ -143,41 +143,36 @@ function inner_loop!(
         end
         cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
 
+        # Vector connecting cell centers
         if cellⱼ.linear_index == cellᵢ.linear_index
-            for i in 1:cellᵢ.n_particles
-                @inbounds pᵢ = cellᵢ.particles[i]
-                (!pᵢ.real) && continue
-                xpᵢ = pᵢ.coordinates
-                for j in 1:cellⱼ.n_particles
-                    @inbounds pⱼ = cellⱼ.particles[j]
-                    if pᵢ.index < pⱼ.index
-                        xpⱼ = pⱼ.coordinates
-                        d2 = norm_sqr(xpᵢ - xpⱼ)
-                        if d2 <= cutoff_sq
-                            output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
-                        end
-                    end
-                end
-            end
+            Δc = SVector{N,T}(ntuple(i -> one(T), N))
         else
-            # use projection scheme
             Δc = cellⱼ.center - cellᵢ.center 
-            Δc_norm = norm(Δc)
-            Δc = Δc / norm(Δc)
-            pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
-            n = partition!(el -> abs(el.xproj - Δc_norm/2) <= cutoff, pp)
-            for i in 1:cellᵢ.n_particles
-                @inbounds pᵢ = cellᵢ.particles[i]
-                (!pᵢ.real) && continue
-                xpᵢ = pᵢ.coordinates
-                for j in 1:n
-                    @inbounds pⱼ = pp[j]
-                    if pᵢ.index < pⱼ.index
-                        xpⱼ = pⱼ.coordinates
-                        d2 = norm_sqr(xpᵢ - xpⱼ)
-                        if d2 <= cutoff_sq
-                            output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
-                        end
+        end
+        Δc = Δc / norm(Δc)
+        pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
+
+        for i in 1:cellᵢ.n_particles
+            pᵢ = cellᵢ.particles[i]
+            (!pᵢ.real) && continue
+            xpᵢ = pᵢ.coordinates
+
+            # Partition pp array according to the current projections. This
+            # is faster than it looks, because after the first partitioning, the
+            # array will be almost correct, and essentially the algorithm
+            # will only run over most elements. Avoiding this partitioning or
+            # trying to sort the array before always resulted to be much more
+            # expensive. 
+            xproj = dot(xpᵢ - cellᵢ.center, Δc)
+            n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
+
+            for j in 1:n
+                @inbounds pⱼ = pp[j]
+                if pᵢ.index < pⱼ.index
+                    xpⱼ = pⱼ.coordinates
+                    d2 = norm_sqr(xpᵢ - xpⱼ)
+                    if d2 <= cutoff_sq
+                        output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
                     end
                 end
             end
@@ -235,15 +230,17 @@ function cell_output!(
 
     # Vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center 
-    Δc_norm = norm(Δc)
-    Δc = Δc / Δc_norm
+    Δc = Δc / norm(Δc)
     pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
-    n = partition!(el -> abs(el.xproj - Δc_norm/2) <= cutoff, pp)
 
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
-        @inbounds pᵢ = cellᵢ.particles[i]
+        pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
+        xproj = dot(xpᵢ - cellᵢ.center, Δc)
+    
+        # Partition pp array according to the current projections
+        n = partition!(el -> norm_sqr(el.xproj - xproj) <= cutoff_sq, pp)
 
         # Compute the interactions 
         for j in 1:n 
