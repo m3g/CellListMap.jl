@@ -32,9 +32,10 @@ function map_pairwise_serial!(
 ) where {F,N,T}
     @unpack n_cells_with_real_particles = cl
     show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
+    threadid = 1
     for i in 1:n_cells_with_real_particles
         cellᵢ = cl.cells[cl.cell_indices_real[i]]
-        output = inner_loop!(f, box, cellᵢ, cl, output) 
+        output = inner_loop!(f, box, cellᵢ, cl, output, threadid) 
         show_progress && next!(p)
     end
     return output
@@ -51,10 +52,11 @@ function map_pairwise_parallel!(
 ) where {F1,F2,N,T}
     @unpack n_cells_with_real_particles = cl
     show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
-    @threads for it in 1:nthreads() 
-        for i in splitter(it, n_cells_with_real_particles)
+    @threads for threadid in 1:nthreads() 
+        for i in splitter(threadid, n_cells_with_real_particles)
             cellᵢ = cl.cells[cl.cell_indices_real[i]]
-            output_threaded[it] = inner_loop!(f, box, cellᵢ, cl, output_threaded[it]) 
+            output_threaded[threadid] = 
+                inner_loop!(f, box, cellᵢ, cl, output_threaded[threadid], threadid) 
             show_progress && next!(p)
         end
     end 
@@ -113,9 +115,10 @@ function map_pairwise_parallel!(
     show_progress=show_progress
 ) where {F1,F2,N,T}
     show_progress && (p = Progress(length(cl.ref), dt=1))
-    @threads for it in 1:nthreads()
-        for i in splitter(it, length(cl.ref))
-            output_threaded[it] = inner_loop!(f, output_threaded[it], i, box, cl) 
+    @threads for threadid in 1:nthreads()
+        for i in splitter(threadid, length(cl.ref))
+            output_threaded[threadid] = 
+                inner_loop!(f, output_threaded[threadid], i, box, cl) 
             show_progress && next!(p)
         end
     end 
@@ -130,7 +133,8 @@ end
 function inner_loop!(
     f,box::Box{TriclinicCell},cellᵢ,
     cl::CellList{N,T},
-    output
+    output,
+    threadid 
 ) where {N,T}
     @unpack cutoff, cutoff_sq, nc = box
 
@@ -164,7 +168,7 @@ function inner_loop!(
             Δc = cellⱼ.center - cellᵢ.center 
             Δc_norm = norm(Δc)
             Δc = Δc / Δc_norm
-            pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+            pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
             for i in 1:cellᵢ.n_particles
                 pᵢ = cellᵢ.particles[i]
                 (!pᵢ.real) && continue
@@ -203,7 +207,8 @@ end
 function inner_loop!(
     f,box::Box{OrthorhombicCell},cellᵢ,
     cl::CellList{N,T},
-    output
+    output,
+    threadid
 ) where {N,T}
     @unpack cutoff_sq = box
 
@@ -225,7 +230,7 @@ function inner_loop!(
         jc_linear = cell_linear_index(box.nc,cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
-            output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output)
+            output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output, threadid)
         end
     end
 
@@ -239,6 +244,7 @@ function cell_output!(
     cellⱼ,
     cl::CellList{N,T},
     output,
+    threadid
 ) where {N,T}
     @unpack cutoff, cutoff_sq, nc = box
 
@@ -246,7 +252,7 @@ function cell_output!(
     Δc = cellⱼ.center - cellᵢ.center 
     Δc_norm = norm(Δc)
     Δc = Δc / Δc_norm
-    pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+    pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
     if length(pp) == 0
         return output
     end
