@@ -242,15 +242,14 @@ function cell_output!(
     for i in 1:cellᵢ.n_particles
         pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
-#        xproj = dot(xpᵢ - cellᵢ.center, Δc)
+        xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
-#        # Partition pp array according to the current projections
-#       n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
+        # Partition pp array according to the current projections
+        n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
 
         # Compute the interactions 
-#        for j in 1:n 
-#            @inbounds pⱼ = pp[j]
-        for pⱼ in pp
+        for j in 1:n 
+            @inbounds pⱼ = pp[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
