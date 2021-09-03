@@ -143,14 +143,15 @@ function inner_loop!(
         end
         cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
 
-        # Vector connecting cell centers
+        # Vector connecting cell centers # voltar: deve estar errado
         if cellⱼ.linear_index == cellᵢ.linear_index
             Δc = SVector{N,T}(ntuple(i -> one(T), N))
         else
             Δc = cellⱼ.center - cellᵢ.center 
         end
-        Δc = Δc / norm(Δc)
-        pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
+        Δc_norm = norm(Δc)
+        Δc = Δc / Δc_norm
+        pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
 
         for i in 1:cellᵢ.n_particles
             pᵢ = cellᵢ.particles[i]
@@ -230,21 +231,26 @@ function cell_output!(
 
     # Vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center 
-    Δc = Δc / norm(Δc)
-    pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc)
+    Δc_norm = norm(Δc)
+    Δc = Δc / Δc_norm
+    pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+    if length(pp) == 0
+        return output
+    end
 
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
-        xproj = dot(xpᵢ - cellᵢ.center, Δc)
+#        xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
-        # Partition pp array according to the current projections
-        n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
+#        # Partition pp array according to the current projections
+#       n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
 
         # Compute the interactions 
-        for j in 1:n 
-            @inbounds pⱼ = pp[j]
+#        for j in 1:n 
+#            @inbounds pⱼ = pp[j]
+        for pⱼ in pp
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -268,13 +274,17 @@ returns a view of `projected particles1, with length equal to the number of
 particles of cell `cellⱼ`.
 
 """
-function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc)
-    @inbounds @simd for j in 1:cellⱼ.n_particles
+function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+    iproj = 0
+    @inbounds for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
-        projected_particles[j] = ProjectedParticle(pⱼ.index, Float32(xproj), pⱼ.coordinates) 
+        if abs(xproj) - Δc_norm/2 <= cutoff 
+            iproj += 1
+            projected_particles[iproj] = ProjectedParticle(pⱼ.index, Float32(xproj), pⱼ.coordinates) 
+        end
     end
-    pp = @view(projected_particles[1:cellⱼ.n_particles])
+    pp = @view(projected_particles[1:iproj])
     return pp
 end
 
