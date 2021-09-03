@@ -143,37 +143,50 @@ function inner_loop!(
         end
         cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
 
-        # Vector connecting cell centers # voltar: deve estar errado
+        # same cell
         if cellⱼ.linear_index == cellᵢ.linear_index
-            Δc = SVector{N,T}(ntuple(i -> one(T), N))
-        else
-            Δc = cellⱼ.center - cellᵢ.center 
-        end
-        Δc_norm = norm(Δc)
-        Δc = Δc / Δc_norm
-        pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
-
-        for i in 1:cellᵢ.n_particles
-            pᵢ = cellᵢ.particles[i]
-            (!pᵢ.real) && continue
-            xpᵢ = pᵢ.coordinates
-
-            # Partition pp array according to the current projections. This
-            # is faster than it looks, because after the first partitioning, the
-            # array will be almost correct, and essentially the algorithm
-            # will only run over most elements. Avoiding this partitioning or
-            # trying to sort the array before always resulted to be much more
-            # expensive. 
-            xproj = dot(xpᵢ - cellᵢ.center, Δc)
-            n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
-
-            for j in 1:n
-                @inbounds pⱼ = pp[j]
-                if pᵢ.index < pⱼ.index
+            for i in 1:cellᵢ.n_particles-1
+                pᵢ = cellᵢ.particles[i]
+                (!pᵢ.real) && continue
+                xpᵢ = pᵢ.coordinates
+                for j in i+1:cellᵢ.n_particles
+                    @inbounds pⱼ = cellᵢ.particles[j]
                     xpⱼ = pⱼ.coordinates
                     d2 = norm_sqr(xpᵢ - xpⱼ)
                     if d2 <= cutoff_sq
                         output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                    end
+                end
+            end
+        # neighbour cells
+        else
+            # Vector connecting cell centers # voltar: deve estar errado
+            Δc = cellⱼ.center - cellᵢ.center 
+            Δc_norm = norm(Δc)
+            Δc = Δc / Δc_norm
+            pp = project_particles!(cl.projected_particles[threadid()],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+            for i in 1:cellᵢ.n_particles
+                pᵢ = cellᵢ.particles[i]
+                (!pᵢ.real) && continue
+                xpᵢ = pᵢ.coordinates
+
+                # Partition pp array according to the current projections. This
+                # is faster than it looks, because after the first partitioning, the
+                # array will be almost correct, and essentially the algorithm
+                # will only run over most elements. Avoiding this partitioning or
+                # trying to sort the array before always resulted to be much more
+                # expensive. 
+                xproj = dot(xpᵢ - cellᵢ.center, Δc)
+                n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
+
+                for j in 1:n
+                    @inbounds pⱼ = pp[j]
+                    if pᵢ.index < pⱼ.index
+                        xpⱼ = pⱼ.coordinates
+                        d2 = norm_sqr(xpᵢ - xpⱼ)
+                        if d2 <= cutoff_sq
+                            output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                        end
                     end
                 end
             end
@@ -264,13 +277,14 @@ end
 """
 
 ```
-project_particles!(projected_particles,cellⱼ,cellᵢ,Δc)
+project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
 ```
 
 Projects all particles of the cell `cellⱼ` into unnitary vector `Δc` with direction 
 connecting the centers of `cellⱼ` and `cellᵢ`. Modifies `projected_particles`, and 
-returns a view of `projected particles1, with length equal to the number of 
-particles of cell `cellⱼ`.
+returns a view of `projected particles, where only the particles for which
+the projection on the direction of the cell centers still allows the particle
+to be within the cutoff distance of any point of the other cell.
 
 """
 function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
