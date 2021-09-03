@@ -240,7 +240,7 @@ function cell_output!(
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
         # Partition pp array according to the current projections
-        n = partition!(el -> norm_sqr(el.xproj - xproj) <= cutoff_sq, pp)
+        n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
 
         # Compute the interactions 
         for j in 1:n 
