@@ -168,7 +168,7 @@ function inner_loop!(
             Δc = cellⱼ.center - cellᵢ.center 
             Δc_norm = norm(Δc)
             Δc = Δc / Δc_norm
-            pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+            pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,box)
             for i in 1:cellᵢ.n_particles
                 pᵢ = cellᵢ.particles[i]
                 (!pᵢ.real) && continue
@@ -252,7 +252,7 @@ function cell_output!(
     Δc = cellⱼ.center - cellᵢ.center 
     Δc_norm = norm(Δc)
     Δc = Δc / Δc_norm
-    pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+    pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,box)
     if length(pp) == 0
         return output
     end
@@ -283,7 +283,7 @@ end
 """
 
 ```
-project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,box)
 ```
 
 Projects all particles of the cell `cellⱼ` into unnitary vector `Δc` with direction 
@@ -293,12 +293,15 @@ the projection on the direction of the cell centers still allows the particle
 to be within the cutoff distance of any point of the other cell.
 
 """
-function project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,cutoff)
+function project_particles!(
+    projected_particles,cellⱼ,cellᵢ,
+    Δc,Δc_norm,box::Box{UnitCellType,N}
+) where {UnitCellType,N}
     iproj = 0
     @inbounds for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
-        if abs(xproj) - Δc_norm/2 <= cutoff 
+        if abs(xproj) <= box.cutoff + min(Δc_norm,box.cutoff*sqrt(N))/2
             iproj += 1
             projected_particles[iproj] = ProjectedParticle(pⱼ.index, Float32(xproj), pⱼ.coordinates) 
         end

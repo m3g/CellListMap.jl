@@ -328,7 +328,7 @@ end
 #
 # florpi
 #
-function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true) where T
+function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true,lcell=1) where T
 
     @inline dot(x::SVector{3,T}, y::SVector{3,T}) = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]
     
@@ -369,7 +369,7 @@ function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true) where T
     positions = reshape(reinterpret(SVector{3,T}, positions), n)
     velocities = reshape(reinterpret(SVector{3,T}, velocities), n)
   
-    box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=1, T=T) 
+    box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=lcell, T=T) 
     cl = CellList(positions, box, parallel=parallel)
     hist = (zeros(Int, length(rbins) - 1), zeros(T, length(rbins) - 1))
   
