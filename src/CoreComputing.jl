@@ -301,7 +301,8 @@ function project_particles!(
     @inbounds for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
-        if abs(xproj) <= box.cutoff + min(Δc_norm,box.cutoff*sqrt(N))/2
+#        if abs(xproj) <= box.cutoff + min(Δc_norm,box.cutoff*sqrt(N))/2
+        if abs(xproj) <= box.cutoff + Δc_norm/2
             iproj += 1
             projected_particles[iproj] = ProjectedParticle(pⱼ.index, Float32(xproj), pⱼ.coordinates) 
         end
