@@ -297,12 +297,16 @@ function project_particles!(
     projected_particles,cellⱼ,cellᵢ,
     Δc,Δc_norm,box::Box{UnitCellType,N}
 ) where {UnitCellType,N}
+    if box.lcell == 1
+        margin = Δc_norm/2 # half of the distance between centers
+    else
+        margin = box.cutoff*sqrt(N)/2 # half of the diagonal of the box
+    end
     iproj = 0
     @inbounds for j in 1:cellⱼ.n_particles
         pⱼ = cellⱼ.particles[j]
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
-#        if abs(xproj) <= box.cutoff + min(Δc_norm,box.cutoff*sqrt(N))/2
-        if abs(xproj) <= box.cutoff + Δc_norm/2
+        if abs(xproj) <= box.cutoff + margin
             iproj += 1
             projected_particles[iproj] = ProjectedParticle(pⱼ.index, Float32(xproj), pⱼ.coordinates) 
         end
