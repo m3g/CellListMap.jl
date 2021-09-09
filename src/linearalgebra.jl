@@ -8,7 +8,7 @@ norm_sqr(v::AbstractVector{T}) where T
 standard arrays. 
 
 """
-function norm_sqr(v::AbstractVector{T}) where T
+@inline function norm_sqr(v::AbstractVector{T}) where T
     n2 = zero(T)
     @simd for x in v
         n2 += x^2
@@ -26,7 +26,7 @@ norm(v::AbstractVector{T}) where T
 standard arrays. Thus we define our own `norm(x) = norm_sqr(x)`.
 
 """
-norm(v) = sqrt(norm_sqr(v))
+@inline norm(v) = sqrt(norm_sqr(v))
 
 """
 
@@ -38,7 +38,7 @@ dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2}
 that is not relevant here).
 
 """
-function dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2}
+@inline function dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2}
     @assert length(x) == length(y)
     d = zero(promote_type(T1,T2))
     @inbounds @simd for i in eachindex(x)
