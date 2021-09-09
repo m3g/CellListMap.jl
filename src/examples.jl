@@ -330,7 +330,7 @@ end
 #
 function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true,lcell=1) where T
 
-    @inline dot(x::SVector{3,T}, y::SVector{3,T}) = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]
+    @inline dot(x::SVector{3,T}, y::SVector{3,T}) where T = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]
     
     function compute_pairwise_mean_cell_lists!(x, y, i, j, d2, hist, velocities, rbins)
         d = x - y

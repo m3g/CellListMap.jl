@@ -519,7 +519,6 @@ function UpdateCellList!(
 
     # Add particles to cell list
     nt = set_nt(cl)
-    nt = 1
     if !parallel || nt < 2
         cl = reset!(cl,box)
         cl = add_particles!(x,box,0,cl)
