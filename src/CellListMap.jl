@@ -6,7 +6,7 @@ using Parameters
 using StaticArrays
 using Setfield
 using Base.Threads
-using LinearAlgebra: dot, norm, norm_sqr, cross
+using LinearAlgebra: cross
 
 export Box
 export CellList, UpdateCellList!
@@ -15,6 +15,7 @@ export limits
 export TriclinicCell
 export OrthorhombicCell
 
+include("./linearalgebra.jl")
 include("./Box.jl")
 include("./CellLists.jl")
 include("./CellOperations.jl")
