@@ -305,6 +305,36 @@ end
 """
 
 ```
+function CellList(
+    x::AbstractMatrix,
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true
+) where {UnitCellType,N,T} 
+```
+
+Reinterprets the matrix `x` as vectors of static vectors and calls the
+equivalent function with the reinterprted input. The first dimension of the 
+matrix must be the dimension of the points (`2` or `3`).
+
+"""
+function CellList(
+    x::AbstractMatrix,
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true
+) where {UnitCellType,N,T} 
+    @assert size(x,1) == N "First dimension of input matrix must be $N"
+    x_re = reinterpret(reshape, SVector{N,T}, x)
+    cl = CellList{N,T}(
+        n_real_particles=length(x_re),
+        number_of_cells=prod(box.nc)
+    )
+    return UpdateCellList!(x_re,box,cl,parallel=parallel)
+end
+
+
+"""
+
+```
 reset!(cl::CellList{N,T},box) where{N,T}
 ```
 
@@ -400,6 +430,37 @@ end
 """
 
 ```
+function CellList(
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true,
+    autoswap=true
+) where {UnitCellType,N,T} 
+```
+
+Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
+equivalent function with the reinterprted input. The first dimension of the 
+matrices must be the dimension of the points (`2` or `3`).
+
+"""
+function CellList(
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true,
+    autoswap=true
+) where {UnitCellType,N,T} 
+    @assert size(x,1) == N "First dimension of input matrix must be $N"
+    @assert size(y,1) == N "First dimension of input matrix must be $N"
+    x_re = reinterpret(reshape, SVector{N,T}, x)
+    y_re = reinterpret(reshape, SVector{N,T}, x)
+    CellList(x_re,y_re,box,parallel=parallel,autoswap=autoswap)
+end
+
+"""
+
+```
 UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
@@ -442,6 +503,33 @@ function UpdateCellList!(
         init_aux_threaded!(aux,cl)
     end
     return UpdateCellList!(x,box,cl,aux,parallel=parallel)
+end
+
+"""
+
+```
+function UpdateCellList!(
+    x::AbstractMatrix,
+    box::Box,
+    cl::CellList{N,T};
+    parallel::Bool=true
+) where {N,T}
+```
+
+Reinterprets the matrix `x` as vectors of static vectors and calls the
+equivalent function with the reinterprted input. The first dimension of the 
+matrix must be the dimension of the points (`2` or `3`).
+
+"""
+function UpdateCellList!(
+    x::AbstractMatrix,
+    box::Box,
+    cl::CellList{N,T};
+    parallel::Bool=true
+) where {N,T}
+    @assert size(x,1) == N "First dimension of input matrix must be $N"
+    x_re = reinterpret(reshape, SVector{N,T}, x)
+    return UpdateCellList!(x_re,box,cl,parallel=parallel)
 end
 
 """
@@ -548,6 +636,35 @@ function UpdateCellList!(
     end
 
     return cl
+end
+
+"""
+
+```
+function UpdateCellList!(
+    x::AbstractMatrix,
+    box::Box,
+    cl::CellList{N,T},
+    aux::AuxThreaded{N,T};
+    parallel::Bool=true
+) where {N,T}
+```
+
+Reinterprets the matrix `x` as vectors of static vectors and calls the
+equivalent function with the reinterprted input. The first dimension of the 
+matrix must be the dimension of the points (`2` or `3`).
+
+"""
+function UpdateCellList!(
+    x::AbstractMatrix,
+    box::Box,
+    cl::CellList{N,T},
+    aux::AuxThreaded{N,T};
+    parallel::Bool=true
+) where {N,T}
+    @assert size(x,1) == N "First dimension of input matrix must be $N"
+    x_re = reinterpret(reshape, SVector{N,T}, x)
+    return UpdateCellList!(x_re,box,cl,aux,parallel=parallel)
 end
 
 """
@@ -779,6 +896,37 @@ end
 
 ```
 function UpdateCellList!(
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T},
+    cl_pair::CellListPair;
+    parallel::Bool=true
+) where {UnitCellType,N,T}
+```
+
+Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
+equivalent function with the reinterprted input. The first dimension of the 
+matrices must be the dimension of the points (`2` or `3`).
+
+"""
+function UpdateCellList!(
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T},
+    cl_pair::CellListPair;
+    parallel::Bool=true
+) where {UnitCellType,N,T}
+    @assert size(x,1) == N "First dimension of input matrix must be $N"
+    @assert size(y,1) == N "First dimension of input matrix must be $N"
+    x_re = reinterpret(reshape, SVector{N,T}, x)
+    y_re = reinterpret(reshape, SVector{N,T}, x)
+    return UpdateCellList!(x_re,y_re,box,cl_pair,parallel=parallel)
+end
+
+"""
+
+```
+function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T},
@@ -858,6 +1006,39 @@ function UpdateCellList!(
     end
     cl_pair = CellListPair(ref=cl_pair.ref,target=target,swap=cl_pair.swap)
     return cl_pair
+end
+
+"""
+
+```
+function UpdateCellList!(
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T},
+    cl_pair::CellListPair,
+    aux::AuxThreaded{N,T};
+    parallel::Bool=true
+) where {UnitCellType,N,T}
+```
+
+Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
+equivalent function with the reinterprted input. The first dimension of the 
+matrices must be the dimension of the points (`2` or `3`).
+
+"""
+function UpdateCellList!(
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T},
+    cl_pair::CellListPair,
+    aux::AuxThreaded{N,T};
+    parallel::Bool=true
+) where {UnitCellType,N,T}
+    @assert size(x,1) == N "First dimension of input matrix must be $N"
+    @assert size(y,1) == N "First dimension of input matrix must be $N"
+    x_re = reinterpret(reshape, SVector{N,T}, x)
+    y_re = reinterpret(reshape, SVector{N,T}, x)
+    return UpdateCellList!(x_re,y_re,box,cl_pair,aux,parallel=parallel)
 end
 
 """
