@@ -164,7 +164,7 @@ function inner_loop!(
             end
         # neighbour cells
         else
-            # Vector connecting cell centers # voltar: deve estar errado
+            # Vector connecting cell centers
             Δc = cellⱼ.center - cellᵢ.center 
             Δc_norm = norm(Δc)
             Δc = Δc / Δc_norm

@@ -128,11 +128,24 @@ function Box(
     @assert N == size(unit_cell_matrix)[2] "Unit cell matrix must be square."
     @assert check_unit_cell(unit_cell_matrix,cutoff) " Unit cell matrix does not satisfy required conditions."
 
-    unit_cell = UnitCell{UnitCellType,N,T,N*N}(SMatrix{N,N,T,N*N}(unit_cell_matrix))
-    unit_cell_max = sum(@view(unit_cell_matrix[:,i]) for i in 1:N) 
- 
-    cell_size = SVector{N,T}(ntuple(i->cutoff/lcell,N)...)
-    nc = SVector{N,Int}(ceil.(Int,(unit_cell_max .+ 2*cutoff) ./ cell_size))
+    unit_cell = UnitCell{UnitCellType,N,T,N*N}(unit_cell_matrix)
+    unit_cell_max = sum(unit_cell_matrix[:,i] for i in 1:N) 
+
+    # To use the advantages of Orthorhombic cells, box size must
+    # be  multiple of the cell size. In some pathological cases this
+    # may be bad for performance, because we are increasing the 
+    # effective cell cutoff
+    if UnitCellType == OrthorhombicCell
+        nc = floor.(Int,lcell*unit_cell_max/cutoff)
+        cell_size = unit_cell_max ./ nc 
+        nc = nc .+ 2*lcell 
+    # For triclinic cells we have to use the ceil here, because we need
+    # to major the number of cells, when the box size is not a multiple of
+    # the cell size
+    else
+        cell_size = SVector{N,T}(ntuple(i->cutoff/lcell,N)...)
+        nc = ceil.(Int,(unit_cell_max .+ 2*cutoff) ./ cell_size)
+    end
 
     #ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
     ranges = SVector{N,UnitRange{Int}}(ntuple(i->-1:1,N))
