@@ -87,28 +87,68 @@ function simple_test(x,box;parallel=true)
     return "Test passed: $(r_naive ≈ r_map)" 
 end
 
-function check_random_cells(N, M=2;show_progress=true)
+function check_random_cells(
+    N=3, M=10;
+    show_progress=true,
+    lcell=1,
+    parallel=false,
+    UnitCellType=OrthorhombicCell
+)
     local x, box
     ntrial = 0
     show_progress && (p = Progress(10000, 0.5))
-    while ntrial < 10000
-        unit_cell_matrix = 10 * rand(SMatrix{N,N,Float64})
-        cutoff = max(0.01, rand())
-        if !check_unit_cell(unit_cell_matrix, cutoff, printerr=false)
-            continue
+    while ntrial < 2000
+        unit_cell_matrix = zeros(SMatrix{N,N,Float64})
+        if UnitCellType == OrthorhombicCell
+            for i in 1:N
+                @set! unit_cell_matrix[i,i] = 1 + 10*rand()
+            end
+        else
+            for i in 1:N, j in 1:N
+                @set! unit_cell_matrix[i,j] = 1 + 10*rand()
+            end
         end
-        box = Box(unit_cell_matrix, cutoff)    
+        cutoff = 1 + rand()
+        try 
+            if !check_unit_cell(unit_cell_matrix, cutoff, printerr=false)
+                continue
+            end
+        catch
+            @show unit_cell_matrix, cutoff
+            return false
+        end
+        if UnitCellType == OrthorhombicCell
+            box = Box([unit_cell_matrix[i,i] for i in 1:N], cutoff, lcell=lcell)    
+        else
+            box = Box(unit_cell_matrix, cutoff, lcell=lcell)    
+        end
         if prod(box.nc) > 100000
             continue
         end
-        ntrial += 1
         show_progress && (next!(p))
-        x = 100 .* rand(SVector{N,Float64}, M)
+        x = 10 * rand(SVector{N,Float64}, M)
         for i in eachindex(x)
             x[i] = x[i] .- 50  
         end
-        cl = CellList(x, box)
-        if !(test_map(box, cl) ≈ test_naive(x, box))
+        cl = CellList(x, box, parallel=parallel)
+        test = test_map(box, cl, parallel=parallel) 
+        if test ≈ 0
+            continue
+        end
+        ntrial += 1
+        if !(test ≈ test_naive(x, box))
+            show_progress && println("FOUND PROBLEMATIC SETUP.")
+            return false, x, box
+        else
+
+        end
+        if parallel 
+            aux = AuxThreaded(cl)
+            cl = UpdateCellList!(x, box, cl, aux, parallel=parallel)
+        else
+            cl = UpdateCellList!(x, box, cl, parallel=parallel)
+        end
+        if !(test_map(box, cl, parallel=parallel) ≈ test_naive(x, box))
             show_progress && println("FOUND PROBLEMATIC SETUP.")
             return false, x, box
         end
@@ -286,3 +326,36 @@ function compare_cells(cl1::CellList{N,T}, cl2::CellList) where {N,T}
         end
     end
 end
+
+function check_cl(cl,box;mark)
+    for i in 1:cl.n_cells_with_particles-1
+        cellᵢ = cl.cells[i]
+        for j in i+1:cl.n_cells_with_particles
+            cellⱼ = cl.cells[j]
+            for ip in 1:cellᵢ.n_particles
+                xᵢ = cellᵢ.particles[ip]
+                for jp in 1:cellⱼ.n_particles
+                    xⱼ = cellⱼ.particles[jp]
+                    if norm(xᵢ.coordinates - xⱼ.coordinates) ≈ 0
+                        println("duplicate found:") 
+                        @show mark
+                        @show Threads.threadid()
+                        @show i, j, cellᵢ.linear_index, cellⱼ.linear_index
+                        @show cellᵢ.n_particles
+                        @show cellⱼ.n_particles
+                        @show xᵢ
+                        @show xⱼ
+                        @show particle_cell(xᵢ.coordinates,box)
+                        @show particle_cell(xⱼ.coordinates,box)
+                        @show cell_linear_index(box.nc,particle_cell(xᵢ.coordinates,box))
+                        @show cell_linear_index(box.nc,particle_cell(xⱼ.coordinates,box))
+                        error()
+                    end
+                end
+            end
+        end
+    end
+end
+
+
+

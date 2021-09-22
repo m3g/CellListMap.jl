@@ -47,8 +47,19 @@ using Test
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
 
     # Test random triclinic boxes
-    @test CellListMap.check_random_cells(3,5,show_progress=false)[1] == true
-    @test CellListMap.check_random_cells(2,5,show_progress=false)[1] == true
+    for N in 2:3, 
+        M in rand(10:20), 
+        UnitCellType in [ TriclinicCell, OrthorhombicCell],
+        parallel in [ false, true ],
+        lcell in 1:3
+        @test CellListMap.check_random_cells(
+            N,M,
+            UnitCellType=UnitCellType,
+            parallel=parallel,
+            lcell=lcell,
+            show_progress=false
+        )[1] 
+    end
 
     # Function to be evalulated for each pair: build distance histogram
     function build_histogram!(d2,hist)
