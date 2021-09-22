@@ -46,10 +46,10 @@ using Test
     box = Box(sides,cutoff,lcell=5); cl = CellList(x,box)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
 
-    # Test random triclinic boxes
+    # Test random cells of all possible types
     for N in 2:3, 
         M in rand(10:20), 
-        UnitCellType in [ TriclinicCell, OrthorhombicCell],
+        UnitCellType in [ TriclinicCell, OrthorhombicCell ],
         parallel in [ false, true ],
         lcell in 1:3
         @test CellListMap.check_random_cells(
