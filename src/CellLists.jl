@@ -338,7 +338,7 @@ end
 reset!(cl::CellList{N,T},box) where{N,T}
 ```
 
-Restes a cell list, by setting everything to zero, but retaining
+Resets a cell list, by setting everything to zero, but retaining
 the allocated `particles` and `projected_particles` vectors. The 
 `n_real_particles` number is also preserved, because it is used for
 construction of auxiliary arrays for threading, and nothing else.
