@@ -803,11 +803,10 @@ function add_particle_to_celllist!(
             @set! cell.center = cell_center(cell.cartesian_index,box)
             @set! cell.contains_real = false
         end
-        @set! cell.n_particles = 1
     else
         cell = cells[cell_indices[linear_index]]
-        @set! cell.n_particles += 1
     end
+    @set! cell.n_particles += 1
 
     #
     # Cells with real particles are annotated to be run over
