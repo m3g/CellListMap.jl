@@ -256,6 +256,9 @@ function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
        end
        push!(aux.idxs,first:(first-1)+nx)
        first += nx
+       cl_tmp = aux.lists[it]
+       @set! cl_tmp.n_real_particles = length(aux.idxs[it]) 
+       aux.lists[it] = cl_tmp
    end
    return aux
 end
@@ -339,12 +342,10 @@ reset!(cl::CellList{N,T},box) where{N,T}
 ```
 
 Resets a cell list, by setting everything to zero, but retaining
-the allocated `particles` and `projected_particles` vectors. The 
-`n_real_particles` number is also preserved, because it is used for
-construction of auxiliary arrays for threading, and nothing else.
+the allocated `particles` and `projected_particles` vectors.
 
 """
-function reset!(cl::CellList{N,T},box) where{N,T}
+function reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
     new_number_of_cells = prod(box.nc) 
     if new_number_of_cells > cl.number_of_cells
         resize!(cl.cell_indices,new_number_of_cells)
@@ -355,7 +356,7 @@ function reset!(cl::CellList{N,T},box) where{N,T}
     @. cl.cell_indices = 0
     @. cl.cell_indices_real = 0
     cl = CellList{N,T}(
-        n_real_particles = cl.n_real_particles, 
+        n_real_particles = n_real_particles, 
         n_particles = 0,
         number_of_cells = new_number_of_cells,
         n_cells_with_real_particles = 0,
@@ -608,12 +609,12 @@ function UpdateCellList!(
     # Add particles to cell list
     nt = set_nt(cl)
     if !parallel || nt < 2
-        cl = reset!(cl,box)
+        cl = reset!(cl,box,length(x))
         cl = add_particles!(x,box,0,cl)
     else
         # Cell lists to be built by each thread
         @threads for it in 1:nt
-             aux.lists[it] = reset!(aux.lists[it],box)
+             aux.lists[it] = reset!(aux.lists[it],box,length(aux.idxs[it]))
              xt = @view(x[aux.idxs[it]])  
              aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
         end
@@ -703,6 +704,7 @@ merge cell lists computed in parallel threads.
 function merge_cell_lists!(cl::CellList,aux::CellList)
     # Accumulate number of particles
     @set! cl.n_particles += aux.n_particles
+    @set! cl.n_real_particles += aux.n_real_particles
     for icell in 1:aux.n_cells_with_particles
         cell = aux.cells[icell]
         linear_index = cell.linear_index
