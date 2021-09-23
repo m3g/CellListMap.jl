@@ -350,7 +350,7 @@ function reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
     if new_number_of_cells > cl.number_of_cells
         resize!(cl.cell_indices,new_number_of_cells)
     end
-    for i in 1:cl.n_cells_with_particles
+    for i in 1:length(cl.cells)
         cl.cells[i] = Cell{N,T}(particles=cl.cells[i].particles)
     end
     @. cl.cell_indices = 0
