@@ -721,9 +721,9 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             if cell.contains_real
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                    push!(cl.cell_indices_real,cl.cell_indices[linear_index])
+                    push!(cl.cell_indices_real,cl.n_cells_with_particles)
                 else
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index] 
+                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.n_cells_with_particles
                 end
             end
         # Append particles to initialized cells
