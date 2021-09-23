@@ -711,10 +711,10 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
         # If cell was yet not initialized in merge, push it to the list
         if cl.cell_indices[linear_index] == 0
             @set! cl.n_cells_with_particles += 1
-            if length(cl.cells) >= cl.n_cells_with_particles
-                cl.cells[cl.n_cells_with_particles] = cell 
-            else
+            if cl.n_cells_with_particles > length(cl.cells)
                 push!(cl.cells,cell)
+            else
+                cl.cells[cl.n_cells_with_particles] = cell 
             end
             cl.cell_indices[linear_index] = cl.n_cells_with_particles
             if cell.contains_real
