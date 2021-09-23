@@ -708,8 +708,9 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
     for icell in 1:aux.n_cells_with_particles
         cell = aux.cells[icell]
         linear_index = cell.linear_index
+        cell_index = cl.cell_indices[linear_index]
         # If cell was yet not initialized in merge, push it to the list
-        if cl.cell_indices[linear_index] == 0
+        if cell_index == 0
             @set! cl.n_cells_with_particles += 1
             if cl.n_cells_with_particles > length(cl.cells)
                 push!(cl.cells,cell)
@@ -727,7 +728,6 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             end
         # Append particles to initialized cells
         else
-            cell_index = cl.cell_indices[linear_index]
             prevcell = cl.cells[cell_index] 
             n_particles_old = prevcell.n_particles
             @set! prevcell.n_particles += cell.n_particles
@@ -737,18 +737,18 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             for ip in 1:cell.n_particles
                 prevcell.particles[n_particles_old+ip] = cell.particles[ip]
             end
-            cl.cells[cell_index] = prevcell
-            if (!cl.cells[cl.cell_indices[linear_index]].contains_real) && cell.contains_real 
-                cl_cell = cl.cells[cl.cell_indices[linear_index]]
-                @set! cl_cell.contains_real = true
-                cl.cells[cl.cell_indices[linear_index]] = cl_cell
+            # If the previous cell didn't contain real particles, but the current one
+            # does, update
+            if !prevcell.contains_real && cell.contains_real 
+                @set! prevcell.contains_real = true
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                    push!(cl.cell_indices_real,cl.cell_indices[linear_index])
+                    push!(cl.cell_indices_real,cell_index)
                 else
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.cell_indices[linear_index]
+                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
                 end
             end
+            cl.cells[cell_index] = prevcell
         end
     end
     return cl
