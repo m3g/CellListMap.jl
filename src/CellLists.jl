@@ -606,6 +606,7 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
 
+
     # Add particles to cell list
     nt = set_nt(cl)
     if !parallel || nt < 2
@@ -835,14 +836,12 @@ function add_particle_to_celllist!(
     # Update (imutable) cell in list
     #
     @set! cl.n_particles = n_particles
-    @set! cl.cell_indices = cell_indices
-    @set! cl.cell_indices_real = cell_indices_real
     @set! cl.n_cells_with_particles = n_cells_with_particles
     @set! cl.n_cells_with_real_particles = n_cells_with_real_particles
     if n_cells_with_particles > length(cl.cells)
-        push!(cl.cells,cell)
+        push!(cells,cell)
     else
-        cl.cells[cell_indices[linear_index]] = cell
+        cells[cell_indices[linear_index]] = cell
     end
 
     return cl
