@@ -792,9 +792,11 @@ function add_particle_to_celllist!(
     #
     # Check if this is the first particle of this cell
     #
-    if cell_indices[linear_index] == 0
+    cell_index = cell_indices[linear_index]
+    if cell_index == 0
         n_cells_with_particles += 1
         cell_indices[linear_index] = n_cells_with_particles
+        cell_index = cell_indices[linear_index]
         if n_cells_with_particles > length(cells)
             cell = Cell{N,T}(cartesian_index,box)
         else
@@ -804,10 +806,11 @@ function add_particle_to_celllist!(
             @set! cell.center = cell_center(cell.cartesian_index,box)
             @set! cell.contains_real = false
         end
+        @set! cell.n_particles = 1
     else
-        cell = cells[cell_indices[linear_index]]
+        cell = cells[cell_index]
+        @set! cell.n_particles += 1
     end
-    @set! cell.n_particles += 1
 
     #
     # Cells with real particles are annotated to be run over
@@ -816,9 +819,9 @@ function add_particle_to_celllist!(
         @set! cell.contains_real = true
         n_cells_with_real_particles += 1
         if n_cells_with_real_particles > length(cell_indices_real)
-            push!(cell_indices_real,cell_indices[linear_index])
+            push!(cell_indices_real,cell_index)
         else
-            cell_indices_real[n_cells_with_real_particles] = cell_indices[linear_index] 
+            cell_indices_real[n_cells_with_real_particles] = cell_index 
         end
     end
 
@@ -841,7 +844,7 @@ function add_particle_to_celllist!(
     if n_cells_with_particles > length(cl.cells)
         push!(cells,cell)
     else
-        cells[cell_indices[linear_index]] = cell
+        cells[cell_index] = cell
     end
 
     return cl
