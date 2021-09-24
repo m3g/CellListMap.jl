@@ -150,7 +150,7 @@ function inner_loop!(
         # same cell
         if cellⱼ.linear_index == cellᵢ.linear_index
             for i in 1:cellᵢ.n_particles-1
-                pᵢ = cellᵢ.particles[i]
+                @inbounds pᵢ = cellᵢ.particles[i]
                 (!pᵢ.real) && continue
                 xpᵢ = pᵢ.coordinates
                 for j in i+1:cellᵢ.n_particles
@@ -170,7 +170,7 @@ function inner_loop!(
             Δc = Δc / Δc_norm
             pp = project_particles!(cl.projected_particles[threadid],cellⱼ,cellᵢ,Δc,Δc_norm,box)
             for i in 1:cellᵢ.n_particles
-                pᵢ = cellᵢ.particles[i]
+                @inbounds pᵢ = cellᵢ.particles[i]
                 (!pᵢ.real) && continue
                 xpᵢ = pᵢ.coordinates
 
@@ -214,10 +214,10 @@ function inner_loop!(
 
     # loop over list of non-repeated particles of cell ic
     for i in 1:cellᵢ.n_particles - 1
-        pᵢ = cellᵢ.particles[i]
+        @inbounds pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
         for j in i + 1:cellᵢ.n_particles
-            pⱼ = cellᵢ.particles[j]
+            @inbounds pⱼ = cellᵢ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -259,7 +259,7 @@ function cell_output!(
 
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
-        pᵢ = cellᵢ.particles[i]
+        @inbounds pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
     
@@ -337,7 +337,7 @@ function inner_loop!(
         cellⱼ = cl.target.cells[cl.target.cell_indices[jc_linear]]
         # loop over particles of cellⱼ
         for j in 1:cellⱼ.n_particles
-            pⱼ = cellⱼ.particles[j]
+            @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
