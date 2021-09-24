@@ -300,7 +300,7 @@ function project_particles!(
     if box.lcell == 1
         margin = box.cutoff + Δc_norm/2 # half of the distance between centers
     else
-        margin = box.cutoff*(1 + sqrt(N)/2) # half of the diagonal of the box
+        margin = box.cutoff*(1 + sqrt(N)/2) # half of the diagonal of the cutoff-box
     end
     iproj = 0
     @inbounds for j in 1:cellⱼ.n_particles
