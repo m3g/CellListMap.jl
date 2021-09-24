@@ -703,6 +703,9 @@ merge cell lists computed in parallel threads.
 
 """
 function merge_cell_lists!(cl::CellList,aux::CellList)
+    # One should never get here if the lists do not share the same
+    # computing box
+    @assert cl.number_of_cells == aux.number_of_cells
     # Accumulate number of particles
     @set! cl.n_particles += aux.n_particles
     @set! cl.n_real_particles += aux.n_real_particles
@@ -713,18 +716,32 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
         # If cell was yet not initialized in merge, push it to the list
         if cell_index == 0
             @set! cl.n_cells_with_particles += 1
-            if cl.n_cells_with_particles > length(cl.cells)
-                push!(cl.cells,cell)
+            cell_index = cl.n_cells_with_particles
+            if cell_index > length(cl.cells)
+                push!(cl.cells,deepcopy(cell))
             else
-                cl.cells[cl.n_cells_with_particles] = cell 
+                prevcell = cl.cells[cell_index]
+                @set! prevcell.linear_index = cell.linear_index
+                @set! prevcell.cartesian_index = cell.cartesian_index
+                @set! prevcell.center = cell.center
+                @set! prevcell.n_particles = cell.n_particles
+                for ip in 1:cell.n_particles
+                    p = cell.particles[ip]
+                    if ip > length(prevcell.particles)
+                        push!(prevcell.particles,p)
+                    else
+                        prevcell.particles[ip] = p
+                    end
+                end
+                cl.cells[cell_index] = prevcell 
             end
-            cl.cell_indices[linear_index] = cl.n_cells_with_particles
+            cl.cell_indices[linear_index] = cell_index
             if cell.contains_real
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                    push!(cl.cell_indices_real,cl.n_cells_with_particles)
+                    push!(cl.cell_indices_real,cell_index)
                 else
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cl.n_cells_with_particles
+                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
                 end
             end
         # Append particles to initialized cells
@@ -777,40 +794,42 @@ function add_particle_to_celllist!(
     cl::CellList{N,T};
     real_particle::Bool=true
 ) where {N,T}
-    @unpack n_particles,
-            n_cells_with_real_particles,
+    @unpack n_cells_with_real_particles,
             n_cells_with_particles,
             cell_indices,
             cell_indices_real,
             cells = cl
 
+    # Increase the counter of number of particles of this list
+    @set! cl.n_particles += 1
     # Cell of this particle
-    n_particles += 1 
     cartesian_index = particle_cell(x,box)
     linear_index = cell_linear_index(box.nc,cartesian_index)
 
-    #
-    # Check if this is the first particle of this cell
-    #
+    # Check if this is the first particle of this cell, if it is,
+    # initialize a new cell, or reset a previously allocated one
     cell_index = cell_indices[linear_index]
+
     if cell_index == 0
         n_cells_with_particles += 1
-        cell_indices[linear_index] = n_cells_with_particles
-        cell_index = cell_indices[linear_index]
-        if n_cells_with_particles > length(cells)
-            cell = Cell{N,T}(cartesian_index,box)
+        cell_index = n_cells_with_particles
+        cell_indices[linear_index] = cell_index
+        if cell_index > length(cells)
+            push!(cells,Cell{N,T}(cartesian_index,box))
         else
-            cell = cells[n_cells_with_particles]
+            cell = cells[cell_index]
             @set! cell.linear_index = linear_index
             @set! cell.cartesian_index = cartesian_index
             @set! cell.center = cell_center(cell.cartesian_index,box)
             @set! cell.contains_real = false
+            @set! cell.n_particles = 0
+            cells[cell_index] = cell
         end
-        @set! cell.n_particles = 1
-    else
-        cell = cells[cell_index]
-        @set! cell.n_particles += 1
     end
+
+    # Increase particle counter for this cell
+    cell = cells[cell_index]
+    @set! cell.n_particles += 1
 
     #
     # Cells with real particles are annotated to be run over
@@ -838,14 +857,9 @@ function add_particle_to_celllist!(
     #
     # Update (imutable) cell in list
     #
-    @set! cl.n_particles = n_particles
     @set! cl.n_cells_with_particles = n_cells_with_particles
     @set! cl.n_cells_with_real_particles = n_cells_with_real_particles
-    if n_cells_with_particles > length(cl.cells)
-        push!(cells,cell)
-    else
-        cells[cell_index] = cell
-    end
+    cells[cell_index] = cell
 
     return cl
 end
