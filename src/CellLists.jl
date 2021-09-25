@@ -717,6 +717,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
         if cell_index == 0
             @set! cl.n_cells_with_particles += 1
             cell_index = cl.n_cells_with_particles
+            cl.cell_indices[linear_index] = cell_index
             if cell_index > length(cl.cells)
                 push!(cl.cells,deepcopy(cell))
             else
@@ -725,6 +726,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
                 @set! prevcell.cartesian_index = cell.cartesian_index
                 @set! prevcell.center = cell.center
                 @set! prevcell.n_particles = cell.n_particles
+                @set! prevcell.contains_real = cell.contains_real
                 for ip in 1:cell.n_particles
                     p = cell.particles[ip]
                     if ip > length(prevcell.particles)
@@ -735,7 +737,6 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
                 end
                 cl.cells[cell_index] = prevcell 
             end
-            cl.cell_indices[linear_index] = cell_index
             if cell.contains_real
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
