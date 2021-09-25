@@ -184,36 +184,6 @@ using Test
     @test CellListMap.packmol_test(parallel=true,
         sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
 
-#    # Test resizing of the cell lists
-#    x = [ rand(SVector{3,Float64}) for i in 1:1000 ]
-#    box = Box([0.83,0.41,0.97],0.1)
-#    cl = CellList(x,box) 
-#    @test length(cl.cwp) == 924
-#
-#    box = Box([0.33,0.41,0.97],0.1)
-#    cl = UpdateCellList!(x,box,cl)   
-#    @test length(cl.cwp) == 924 
-#
-#    box = Box([0.83,0.81,0.97],0.1)
-#    cl = UpdateCellList!(x,box,cl)   
-#    @test length(cl.cwp) == 1598
-#
-#    x .= 0.9*x
-#    cl = UpdateCellList!(x,box,cl)   
-#    @test length(cl.cwp) == 1598
-#
-#    x .= 1.2*x
-#    cl = UpdateCellList!(x,box,cl)   
-#    @test length(cl.cwp) == 1598
-#
-#    box = Box([0.83,0.81,0.97],0.2)
-#    cl = UpdateCellList!(x,box,cl)   
-#    @test length(cl.cwp) == 1598
-#
-#    box = Box([0.83,0.81,0.97],0.05)
-#    cl = UpdateCellList!(x,box,cl)   
-#    @test length(cl.cwp) == 8737
-
 end
 
 include("./namd/compare_with_namd.jl")
