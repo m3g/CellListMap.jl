@@ -695,6 +695,58 @@ end
 """
 
 ```
+copydata!(cell1::Cell,cell2::Cell)
+```
+
+Copies the data from `cell2` to `cell1`, meaning that particles are
+copied element-wise from `cell2` to `cell1`, with the `particles` array
+of `cell1` being resized (increased) if necessary.
+
+"""
+function copydata!(cell1::Cell,cell2::Cell)
+    @set! cell1.linear_index = cell2.linear_index
+    @set! cell1.cartesian_index = cell2.cartesian_index
+    @set! cell1.center = cell2.center
+    @set! cell1.n_particles = cell2.n_particles
+    @set! cell1.contains_real = cell2.contains_real
+    for ip in 1:cell2.n_particles
+        p = cell2.particles[ip]
+        if ip > length(cell1.particles)
+            push!(cell1.particles,p)
+        else
+            cell1.particles[ip] = p
+        end
+    end
+    return cell1
+end
+
+"""
+```
+append_particles!(cell1::Cell,cell2::Cell)
+```
+
+Add the particles of `cell2` to `cell1`, updating the cell data and, if necessary,
+resizing (increasing) the `particles` array of `cell1`
+
+"""
+function append_particles!(cell1::Cell,cell2::Cell)
+    if cell2.contains_real
+        @set! cell1.contains_real = true
+    end
+    n_particles_old = cell1.n_particles
+    @set! cell1.n_particles += cell2.n_particles
+    if cell1.n_particles > length(cell1.particles)
+        resize!(cell1.particles,cell1.n_particles)
+    end
+    for ip in 1:cell2.n_particles
+        cell1.particles[n_particles_old+ip] = cell2.particles[ip]
+    end
+    return cell1
+end
+
+"""
+
+```
 merge_cell_lists!(cl::CellList,aux::CellList)
 ```
 
@@ -721,21 +773,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             if cell_index > length(cl.cells)
                 push!(cl.cells,deepcopy(cell))
             else
-                prevcell = cl.cells[cell_index]
-                @set! prevcell.linear_index = cell.linear_index
-                @set! prevcell.cartesian_index = cell.cartesian_index
-                @set! prevcell.center = cell.center
-                @set! prevcell.n_particles = cell.n_particles
-                @set! prevcell.contains_real = cell.contains_real
-                for ip in 1:cell.n_particles
-                    p = cell.particles[ip]
-                    if ip > length(prevcell.particles)
-                        push!(prevcell.particles,p)
-                    else
-                        prevcell.particles[ip] = p
-                    end
-                end
-                cl.cells[cell_index] = prevcell 
+                cl.cells[cell_index] = copydata!(cl.cells[cell_index],cell)
             end
             if cell.contains_real
                 @set! cl.n_cells_with_real_particles += 1
@@ -747,19 +785,9 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             end
         # Append particles to initialized cells
         else
-            prevcell = cl.cells[cell_index] 
-            n_particles_old = prevcell.n_particles
-            @set! prevcell.n_particles += cell.n_particles
-            if prevcell.n_particles > length(prevcell.particles)
-                resize!(prevcell.particles,prevcell.n_particles)
-            end
-            for ip in 1:cell.n_particles
-                prevcell.particles[n_particles_old+ip] = cell.particles[ip]
-            end
             # If the previous cell didn't contain real particles, but the current one
-            # does, update
-            if !prevcell.contains_real && cell.contains_real 
-                @set! prevcell.contains_real = true
+            # does, update the list information 
+            if !cl.cells[cell_index].contains_real && cell.contains_real 
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real,cell_index)
@@ -767,7 +795,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
                     cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
                 end
             end
-            cl.cells[cell_index] = prevcell
+            cl.cells[cell_index] = append_particles!(cl.cells[cell_index],cell)
         end
     end
     return cl
