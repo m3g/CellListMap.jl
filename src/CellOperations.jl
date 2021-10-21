@@ -1,18 +1,13 @@
 """
 ```
-translate_to_minimum_image(x::T,side::T) where T
+fix_upper_boundary(x::T,side) where T
 ```
 
-Translates a wrapped coordinate to its minimum (positive) image in the box.
+Move `x` to `x -side` if `x == side`, because we use the convention
+that the boundary belongs to the next cell.
 
 """
-@inline function translate_to_minimum_image(x::T,side) where T
-    x = ifelse(x < zero(T), x + side, x)
-    # the next necessary if x = -1e17 for example, because we use the convention
-    # that the frontier belongs to the next cell, and mod(-1e-17,1) == 1
-    x = ifelse(x == side, zero(T), x)
-    return x
-end
+@inline fix_upper_boundary(x::T,side) where T = ifelse(x == side, zero(T), x)
 
 """
 
@@ -41,7 +36,7 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 """
 @inline function wrap_cell_fraction(x,unit_cell_matrix)
     p = mod.(unit_cell_matrix\x,1)
-    p = @. translate_to_minimum_image(p,1)
+    p = fix_upper_boundary.(p,1)
     return p
 end
 
@@ -100,7 +95,7 @@ This is slightly cheaper than for general cells.
 @inline function wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
     sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
     x = mod.(x,sides)
-    x = @. translate_to_minimum_image(x,sides)
+    x = fix_upper_boundary.(x,sides)
     return x
 end
 
