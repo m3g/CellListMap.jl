@@ -88,13 +88,16 @@ function map_pairwise!(f::F, output, box::Box, cl;
     show_progress::Bool=false,
 ) where {F} # Needed for specialization for this function (avoids some allocations)
     if parallel && nthreads() > 1
-        output = map_pairwise_parallel!(f,output,box,cl;
+        output = map_pairwise_parallel!(
+            f,output,box,cl;
             output_threaded=output_threaded,
             reduce=reduce,
             show_progress=show_progress
         )
     else
-        output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
+        output = map_pairwise_serial!(
+            f,output,box,cl,show_progress=show_progress
+        )
     end
     return output
 end
