@@ -22,7 +22,15 @@ using Test
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
     # Add some pathological coordinates
     x[1] = -sides/2
+    x[2] = -sides/2 + @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[3] = -sides/2 + @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
+    x[4] = sides/2 + @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[5] = sides/2 + @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
     x[10] = sides
+    x[11] = sides + @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[12] = sides + @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
+    x[13] = @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[14] = @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
     x[100] = @SVector [sides[1]/2, -sides[2]/2, 2*sides[3]]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
 
