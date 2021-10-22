@@ -721,7 +721,9 @@ set of particles in parallel list construction.
 function add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
     for ip in eachindex(x)
         xp = x[ip] 
-        p = SVector{N,T}(ntuple(i->strip_value(xp[i]),N)) # in case the input was not static
+        # This converts the coordinates to static arrays, if necessary, and possibly
+        # removes decorations (like units) from the quantities
+        p = SVector{N,T}(ntuple(i->strip_value(xp[i]),N))
         p = wrap_to_first(p,box)
         cl = add_particle_to_celllist!(ishift+ip,p,box,cl) # add real particle
         cl = replicate_particle!(ishift+ip,p,box,cl) # add virtual particles to border cells
