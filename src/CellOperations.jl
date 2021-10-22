@@ -416,15 +416,17 @@ limits(x::AbstractVector{<:AbstractVector})
 
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
 to be used to set a box without effective periodic boundary conditions.
+
 """
 function limits(x::AbstractVector{<:AbstractVector})
-    xmin = similar(x[1])
-    xmax = similar(x[1])
-    xmin .= +Inf
-    xmax .= -Inf
+    xmin = similar(strip_coordinate.(x[1]))
+    xmax = similar(strip_coordinate.(x[1]))
+    xmin .= typemax(eltype(xmin))
+    xmax .= typemin(eltype(xmax))
     for v in x
-       @. xmin = min(xmin,v)       
-       @. xmax = max(xmax,v)       
+        v = strip_coordinate.(v) 
+        @. xmin = min(xmin,v)       
+        @. xmax = max(xmax,v)       
     end
     return Limits(xmax .- xmin)
 end
