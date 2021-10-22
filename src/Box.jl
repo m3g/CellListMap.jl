@@ -120,11 +120,11 @@ function Box(
 ) where {T,UnitCellType}
 
     # remove units or other decorations, if any
-    cutoff = strip_coordinate(cutoff)
-    unit_cell_matrix = strip_coordinate.(unit_cell_matrix)
+    cutoff = strip_value(cutoff)
+    unit_cell_matrix = strip_value.(unit_cell_matrix)
 
     s = size(unit_cell_matrix)
-    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(strip_coordinate.(unit_cell_matrix))
+    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(strip_value.(unit_cell_matrix))
 
     @assert lcell >= 1 "lcell must be greater or equal to 1"
 
@@ -216,7 +216,7 @@ function Box(
     lcell::Int,
     ::Type{UnitCellType}
 ) where {T,UnitCellType}
-    sides = strip_coordinate.(sides)
+    sides = strip_value.(sides)
     N = length(sides)
     cart_idxs = CartesianIndices((1:N,1:N))
     # Build unit cell matrix from lengths
@@ -295,6 +295,6 @@ Box(
     T::DataType=Float64,
     lcell::Int=1
 ) = Box(
-    limits.limits .+ strip_coordinate(cutoff),
+    limits.limits .+ strip_value(cutoff),
     cutoff, T, lcell, OrthorhombicCell
 ) 

@@ -672,7 +672,7 @@ end
 """
 
 ```
-strip_coordinate(x)
+strip_value(x)
 ```
 
 This function by default does nothing, but it can be overloaded to remove decorations from
@@ -693,7 +693,7 @@ julia> x = [ sides .* rand(SVector{3,Float64})u"nm" for i in 1:5 ]
  [24.572857402685223 nm, 17.079711089908244 nm, 27.137908845124624 nm]
  [22.222703192699257 nm, 177.77658095653265 nm, 134.81396187256172 nm]
 
- julia> CellListMap.strip_coordinate(x::Unitful.Quantity) = Unitful.ustrip(x) 
+ julia> CellListMap.strip_value(x::Unitful.Quantity) = Unitful.ustrip(x) 
 
  julia> cl = CellList(x,box) # now x can be passed to CellList
 CellList{3, Float64}
@@ -704,7 +704,7 @@ CellList{3, Float64}
 ```
 
 """
-@inline strip_coordinate(x) = x
+@inline strip_value(x) = x
 
 """
 
@@ -721,7 +721,7 @@ set of particles in parallel list construction.
 function add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
     for ip in eachindex(x)
         xp = x[ip] 
-        p = SVector{N,T}(ntuple(i->strip_coordinate(xp[i]),N)) # in case the input was not static
+        p = SVector{N,T}(ntuple(i->strip_value(xp[i]),N)) # in case the input was not static
         p = wrap_to_first(p,box)
         cl = add_particle_to_celllist!(ishift+ip,p,box,cl) # add real particle
         cl = replicate_particle!(ishift+ip,p,box,cl) # add virtual particles to border cells
