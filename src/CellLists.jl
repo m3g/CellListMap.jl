@@ -619,11 +619,28 @@ function UpdateCellList!(
              xt = @view(x[aux.idxs[it]])  
              aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
         end
+
         # Merge threaded cell lists
-        cl = aux.lists[1]
-        for it in 2:nt
-            cl = merge_cell_lists!(cl,aux.lists[it])
+        #cl = aux.lists[1]
+        #for it in 2:nt
+        #    cl = merge_cell_lists!(cl,aux.lists[it])
+        #end
+
+        # Merge threaded cell lists
+        n_merge = isodd(nt) ? nt - 1 : nt
+        while n_merge > 1
+            half = n_merge ÷ 2
+            @threads for i in 1:half
+                aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
+            end
+            n_merge = half
         end
+        if isodd(nt)
+            cl = merge_cell_lists!(aux.lists[1],aux.lists[nt])
+        else
+            cl = aux.lists[1]
+        end
+
     end
   
     # allocate, or update the auxiliary projected_particles arrays
