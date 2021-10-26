@@ -22,6 +22,7 @@ function test_newcl(file,unit_cell,correct,lcell)
     box = Box(unit_cell, 10., lcell=lcell)
     cl = CellList(coordinates,box)
     u = map_pairwise!((x,y,i,j,d2,u) -> lj_NE(d2,u),0.0,box,cl)
+    @show u
     return u ≈ correct
 end
 

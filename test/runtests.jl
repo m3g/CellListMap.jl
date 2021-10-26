@@ -166,9 +166,15 @@ using Test
     @test CellListMap.test4(parallel=true,x=x) ≈ CellListMap.test4(parallel=false,x=x)
     @test count(CellListMap.test5(parallel=true,x=x,y=y) .≈ CellListMap.test5(parallel=false,x=x,y=y)) == 3
 
+    function pair_match(p1,p2) 
+        p1[3] ≈ p2[3] || return false 
+        p1[1] == p2[1] && p1[2] == p2[2] && return true
+        p1[1] == p2[2] && p1[2] == p2[1] && return true
+    end
     pairs1 = sort!(CellListMap.test7(parallel=true,x=x),by=x->x[3])
     pairs2 = sort!(CellListMap.test7(parallel=false,x=x),by=x->x[3])
-    @test count([ count(pairs1[i] .≈ pairs2[i]) == 3 for i in 1:length(pairs1) ]) == length(pairs1)
+    @test length(pairs1) == length(pairs2)
+    @test count(pair_match.(pairs1,pairs2)) == length(pairs1)
 
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]

@@ -240,27 +240,30 @@ to the number of threads.
 
 """
 function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
-   nt = set_nt(cl)
-   push!(aux.lists,cl)
-   for it in 2:nt
-       push!(aux.lists,deepcopy(cl))
-   end
-   # Indices of the atoms that will be added by each thread
-   nrem = cl.n_real_particles%nt
-   nperthread = (cl.n_real_particles-nrem)÷nt
-   first = 1
-   for it in 1:nt
-       nx = nperthread
-       if it <= nrem
-           nx += 1
-       end
-       push!(aux.idxs,first:(first-1)+nx)
-       first += nx
-       cl_tmp = aux.lists[it]
-       @set! cl_tmp.n_real_particles = length(aux.idxs[it]) 
-       aux.lists[it] = cl_tmp
-   end
-   return aux
+    nt = set_nt(cl)
+    for it in 1:nt
+        if it > length(aux.lists)
+            push!(aux.lists, deepcopy(cl))
+        else
+            aux.lists[it] = deepcopy(cl)
+        end
+    end
+    # Indices of the atoms that will be added by each thread
+    nrem = cl.n_real_particles%nt
+    nperthread = (cl.n_real_particles-nrem)÷nt
+    first = 1
+    for it in 1:nt
+        nx = nperthread
+        if it <= nrem
+            nx += 1
+        end
+        push!(aux.idxs,first:(first-1)+nx)
+        first += nx
+        cl_tmp = aux.lists[it]
+        @set! cl_tmp.n_real_particles = length(aux.idxs[it]) 
+        aux.lists[it] = cl_tmp
+    end
+    return aux
 end
 
 """
@@ -606,7 +609,6 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
 
-
     # Add particles to cell list
     nt = set_nt(cl)
     if !parallel || nt < 2
@@ -619,26 +621,23 @@ function UpdateCellList!(
              xt = @view(x[aux.idxs[it]])  
              aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
         end
-
-        # Merge threaded cell lists
-        #cl = aux.lists[1]
-        #for it in 2:nt
-        #    cl = merge_cell_lists!(cl,aux.lists[it])
+        # Tree-Merge of threaded cell lists
+        #n_merge = isodd(nt) ? nt - 1 : nt
+        #while n_merge > 1
+        #    half = n_merge ÷ 2
+        #    @threads for i in 1:half
+        #        aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
+        #    end
+        #    n_merge = half
         #end
-
-        # Merge threaded cell lists
-        n_merge = isodd(nt) ? nt - 1 : nt
-        while n_merge > 1
-            half = n_merge ÷ 2
-            @threads for i in 1:half
-                aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
-            end
-            n_merge = half
-        end
-        if isodd(nt)
-            cl = merge_cell_lists!(aux.lists[1],aux.lists[nt])
-        else
-            cl = aux.lists[1]
+        #if isodd(nt)
+        #    aux.lists[1] = merge_cell_lists!(aux.lists[1],aux.lists[nt])
+        #end
+        #cl = reset!(cl,box,length(x))
+        #cl = merge_cell_lists!(cl,aux.lists[1])
+        cl = reset!(cl,box,0)
+        for it in 1:nt
+            cl = merge_cell_lists!(cl,aux.lists[it])
         end
 
     end

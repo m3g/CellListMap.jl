@@ -1,0 +1,5 @@
+[deps]
+CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
+Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

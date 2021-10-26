@@ -272,59 +272,101 @@ end
 function compare_cells(cl1::CellList{N,T}, cl2::CellList) where {N,T}
   
     if cl1.n_cells_with_real_particles != cl2.n_cells_with_real_particles
-        println("n_cells_with_real_particles differ")
+        println("Error: n_cells_with_real_particles differ")
     end
     if cl1.n_particles != cl2.n_particles
-        println("n_particles differ")
+        println("Error: n_particles differ")
     end
-    if sum(cl1.cell_indices[1:cl1.n_cells_with_particles]) != 
-       sum(cl2.cell_indices[1:cl2.n_cells_with_particles]) != 
-       println("cell_indices differ")
+    for i in 1:cl1.n_cells_with_particles
+        linear_index = 
+        j = findfirst(
+            isequal(cl1.cell_indices[i]),
+            @view(cl2.cell_indices[1:cl2.n_cells_with_particles])
+        )
+        if isnothing(j)
+            println(" Warning: cells_with_particles: Could not find index $(cl1.cell_indices[i])")
+            break
+        end
     end
-    if sum(cl1.cell_indices_real[1:cl1.n_cells_with_real_particles]) != 
-       sum(cl2.cell_indices_real[1:cl2.n_cells_with_real_particles]) != 
-       println("cell_indices_real differ")
+    for i in 1:cl1.n_cells_with_real_particles
+        j = findfirst(
+            isequal(cl1.cell_indices_real[i]),
+            @view(cl2.cell_indices_real[1:cl2.n_cells_with_real_particles])
+        )
+        if isnothing(j)
+            println(" Warning: cells_with_real_particles: Could not find index $(cl1.cell_indices_real[i])")
+            break
+        end
     end
     if length(cl1.projected_particles) != length(cl2.projected_particles)
-        println("length of project_particles differ.")
+        println("Error: length of project_particles differ.")
     end
+    ncheck = 0
+    nparticle_check = 0
     if length(cl1.cells) != length(cl2.cells)
-        println("lengths of cells lists differ")
+        println("Error: lengths of cells lists differ")
     else
         differ = false
         for i in 1:cl1.n_cells_with_particles
             if differ 
                 break
             end
+            ncheck += 1
             ci = cl1.cells[i]
-            cj = cl2.cells[i]
-            if ci.linear_index != cj.linear_index
-                println("linear index differ") 
+            j = findfirst(c -> c.linear_index == ci.linear_index, cl2.cells)
+            if isnothing(j)
+                println("Error: linear index of $(ci.linear_index) not found.") 
                 differ = true
-            end
-            if ci.cartesian_index != cj.cartesian_index
-                println("cartesian_index differ")
-                differ = true
-            end
-            if !(ci.center ≈ cj.center)
-                println("centers differ")
-                differ = true
-            end
-            if ci.contains_real != cj.contains_real
-                println("contains_real differ")
-                differ = true
-            end
-            if ci.n_particles != cj.n_particles
-                println("n_particles differ")
-                differ = true
-            end
-            if sum(p -> p.index, ci.particles[1:ci.n_particles]) != 
-               sum(p -> p.index, cj.particles[1:cj.n_particles])
-                println("particles of cells differ")
-                differ = true
+            else
+                cj = cl2.cells[j]
+                if ci.cartesian_index != cj.cartesian_index
+                    println("Error: cartesian_index differ")
+                    differ = true
+                end
+                if !(ci.center ≈ cj.center)
+                    println("Error: centers differ")
+                    differ = true
+                end
+                if ci.contains_real != cj.contains_real
+                    println("Error: contains_real differ")
+                    differ = true
+                end
+                if ci.n_particles != cj.n_particles
+                    println("Error: n_particles differ")
+                    differ = true
+                end
+                for p1 in ci.particles
+                    j = findfirst(p -> p.index == p1.index, cj.particles) 
+                    if isnothing(j)
+                        println("Error: could not find particle in cl2.")
+                        @show p1
+                        differ = true
+                    else
+                        nparticle_check += 1
+                        p2 = cj.particles[j]
+                        if p1 != p2 
+                            println("Error: particles differ. ")
+                            @show p1
+                            @show p2
+                            differ = true
+                            break
+                        end
+                    end
+                    differ && break
+                end
+                if sum(p -> p.index, ci.particles[1:ci.n_particles]) != 
+                   sum(p -> p.index, cj.particles[1:cj.n_particles])
+                    println("Error: particles of cells differ")
+                    differ = true
+                end
+                if differ
+                    println("Error: on cell with linear_index: $(ci.linear_index)")
+                end
             end
         end
     end
+    println(" Checked $ncheck of $(cl1.n_cells_with_particles) cells.")
+    println(" Checked $nparticle_check of $(cl1.n_particles) particles.")
 end
 
 function check_cl(cl,box;mark)
