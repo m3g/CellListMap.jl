@@ -149,16 +149,18 @@ function inner_loop!(
 
         # same cell
         if cellⱼ.linear_index == cellᵢ.linear_index
-            for i in 1:cellᵢ.n_particles-1
+            for i in 1:cellᵢ.n_particles
                 @inbounds pᵢ = cellᵢ.particles[i]
                 (!pᵢ.real) && continue
                 xpᵢ = pᵢ.coordinates
-                for j in i+1:cellᵢ.n_particles
+                for j in 1:cellᵢ.n_particles
                     @inbounds pⱼ = cellᵢ.particles[j]
-                    xpⱼ = pⱼ.coordinates
-                    d2 = norm_sqr(xpᵢ - xpⱼ)
-                    if d2 <= cutoff_sq
-                        output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                    if pᵢ.index < pⱼ.index
+                        xpⱼ = pⱼ.coordinates
+                        d2 = norm_sqr(xpᵢ - xpⱼ)
+                        if d2 <= cutoff_sq
+                            output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                        end
                     end
                 end
             end
