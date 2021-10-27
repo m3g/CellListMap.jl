@@ -618,28 +618,25 @@ function UpdateCellList!(
         # Cell lists to be built by each thread
         @threads for it in 1:nt
              aux.lists[it] = reset!(aux.lists[it],box,length(aux.idxs[it]))
-             xt = @view(x[aux.idxs[it]])  
-             aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
+             if length(aux.idxs[it]) > 0
+                xt = @view(x[aux.idxs[it]])  
+                aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
+             end
         end
         # Tree-Merge of threaded cell lists
-        #n_merge = isodd(nt) ? nt - 1 : nt
-        #while n_merge > 1
-        #    half = n_merge ÷ 2
-        #    @threads for i in 1:half
-        #        aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
-        #    end
-        #    n_merge = half
-        #end
-        #if isodd(nt)
-        #    aux.lists[1] = merge_cell_lists!(aux.lists[1],aux.lists[nt])
-        #end
-        #cl = reset!(cl,box,length(x))
-        #cl = merge_cell_lists!(cl,aux.lists[1])
-        cl = reset!(cl,box,0)
-        for it in 1:nt
-            cl = merge_cell_lists!(cl,aux.lists[it])
+        n_merge = isodd(nt) ? nt - 1 : nt
+        while n_merge > 1
+            half = n_merge ÷ 2
+            @threads for i in 1:half
+                aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
+            end
+            n_merge = half
         end
-
+        if isodd(nt)
+            aux.lists[1] = merge_cell_lists!(aux.lists[1],aux.lists[nt])
+        end
+        cl = reset!(cl,box,0)
+        cl = merge_cell_lists!(cl,aux.lists[1])
     end
   
     # allocate, or update the auxiliary projected_particles arrays
@@ -817,8 +814,8 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
     @set! cl.n_particles += aux.n_particles
     @set! cl.n_real_particles += aux.n_real_particles
     for icell in 1:aux.n_cells_with_particles
-        cell = aux.cells[icell]
-        linear_index = cell.linear_index
+        aux_cell = aux.cells[icell]
+        linear_index = aux_cell.linear_index
         cell_index = cl.cell_indices[linear_index]
         # If cell was yet not initialized in merge, push it to the list
         if cell_index == 0
@@ -826,11 +823,11 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             cell_index = cl.n_cells_with_particles
             cl.cell_indices[linear_index] = cell_index
             if cell_index > length(cl.cells)
-                push!(cl.cells,deepcopy(cell))
+                push!(cl.cells,deepcopy(aux_cell))
             else
-                cl.cells[cell_index] = copydata!(cl.cells[cell_index],cell)
+                cl.cells[cell_index] = copydata!(cl.cells[cell_index],aux_cell)
             end
-            if cell.contains_real
+            if aux_cell.contains_real
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real,cell_index)
@@ -842,7 +839,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
         else
             # If the previous cell didn't contain real particles, but the current one
             # does, update the list information 
-            if !cl.cells[cell_index].contains_real && cell.contains_real 
+            if !cl.cells[cell_index].contains_real && aux_cell.contains_real 
                 @set! cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real,cell_index)
@@ -850,7 +847,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
                     cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
                 end
             end
-            cl.cells[cell_index] = append_particles!(cl.cells[cell_index],cell)
+            cl.cells[cell_index] = append_particles!(cl.cells[cell_index],aux_cell)
         end
     end
     return cl
