@@ -76,6 +76,30 @@ function view_celllist_particles(cl::CellList{N,T}) where {N,T}
     return x
 end
 
+test_map2(box,cl;parallel=true) = 
+    map_pairwise!(
+        (x, y, i, j, d2, s) -> begin
+            s += 1
+        end,
+        0, box, cl, parallel=parallel
+    )
+
+function missing_pair(x1,x2)
+    for x in eachrow(x2)
+        found = false
+        for y in eachrow(x1)
+            (x[1] == y[1]) && (x[2] == y[2]) && (found = true)
+            (x[1] == y[2]) && (x[2] == y[1]) && (found = true)
+            if found
+                break
+            end
+        end
+        if !found
+            return x
+        end
+    end
+end
+
 test_map(box,cl;parallel=true) = map_pairwise!((x, y, i, j, d2, s) -> s += 1/d2, 0., box, cl, parallel=parallel)
 test_naive(x,box) = CellListMap.map_naive!((x, y, i, j, d2, s) -> s += 1/d2, 0., x, box)
 function simple_test(x,box;parallel=true)
