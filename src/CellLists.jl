@@ -241,7 +241,14 @@ to the number of threads.
 """
 function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
     nt = set_nt(cl)
-    for it in 1:nt
+    # the fact that aux.lists[1] and cl are the same is deliberate,
+    # because for not-so-large systems this makes a huge difference
+    # since it removes one step from the threaded cell list merging
+    # maybe  this will be revised at some point. This affects the choice
+    # of the strategy for threaded merging of lists. The alternative is
+    # to initialize here with `deepcopy(cl)` for all `aux.lists`.
+    push!(aux.lists, cl)
+    for it in 2:nt
         if it > length(aux.lists)
             push!(aux.lists, deepcopy(cl))
         else
@@ -635,8 +642,13 @@ function UpdateCellList!(
         if isodd(nt)
             aux.lists[1] = merge_cell_lists!(aux.lists[1],aux.lists[nt])
         end
-        cl = reset!(cl,box,0)
-        cl = merge_cell_lists!(cl,aux.lists[1])
+        cl = aux.lists[1]
+        # we choose for now the approach above, because resetting and copying
+        # the list takes too much, and the overhead is not accceptable for smaller
+        # systems (see `init_aux_threaded` for associated initialization). The
+        # alternative merging would be:
+        # cl = reset!(cl,box,0)
+        # cl = merge_cell_lists!(cl,aux.lists[1])
     end
   
     # allocate, or update the auxiliary projected_particles arrays
