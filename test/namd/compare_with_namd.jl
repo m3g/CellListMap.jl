@@ -1,6 +1,7 @@
 import Chemfiles
 using CellListMap
 using StaticArrays
+using Test
 
 const ε = 0.0441795
 const σ = 2*1.64009
@@ -22,7 +23,6 @@ function test_newcl(file,unit_cell,correct,lcell)
     box = Box(unit_cell, 10., lcell=lcell)
     cl = CellList(coordinates,box)
     u = map_pairwise!((x,y,i,j,d2,u) -> lj_NE(d2,u),0.0,box,cl)
-    @show u
     return u ≈ correct
 end
 
@@ -50,7 +50,7 @@ end
   correct = 1724.3195067566828
   @test test_newcl("$dir/o3.dcd", unit_cell, correct, lcell)
   
-  unit_cell= transpose([ 70.7107   0.0      0.0
+  unit_cell = transpose([ 70.7107   0.0      0.0
                          35.3553  61.2372   0.0
                          35.3553  20.4124  57.735 ])
   correct = 1754.0802503953591
