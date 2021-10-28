@@ -904,12 +904,12 @@ function add_particle_to_celllist!(
     # initialize a new cell, or reset a previously allocated one
     cell_index = cell_indices[linear_index]
 
-    particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
     if cell_index == 0
         n_cells_with_particles += 1
         cell_index = n_cells_with_particles
         cell_indices[linear_index] = cell_index
         if cell_index > length(cells)
+            particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
             push!(cells,Cell{N,T}(cartesian_index,box,sizehint=particles_sizehint))
         else
             cell = cells[cell_index]
