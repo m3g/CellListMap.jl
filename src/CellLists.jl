@@ -466,7 +466,7 @@ function CellList(
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,T}, x)
-    y_re = reinterpret(reshape, SVector{N,T}, x)
+    y_re = reinterpret(reshape, SVector{N,T}, y)
     CellList(x_re,y_re,box,parallel=parallel,autoswap=autoswap)
 end
 
@@ -1031,7 +1031,7 @@ function UpdateCellList!(
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,T}, x)
-    y_re = reinterpret(reshape, SVector{N,T}, x)
+    y_re = reinterpret(reshape, SVector{N,T}, y)
     return UpdateCellList!(x_re,y_re,box,cl_pair,parallel=parallel)
 end
 
@@ -1149,7 +1149,7 @@ function UpdateCellList!(
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,T}, x)
-    y_re = reinterpret(reshape, SVector{N,T}, x)
+    y_re = reinterpret(reshape, SVector{N,T}, y)
     return UpdateCellList!(x_re,y_re,box,cl_pair,aux,parallel=parallel)
 end
 
