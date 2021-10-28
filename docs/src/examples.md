@@ -90,7 +90,7 @@ In the following example, we update a force vector of for all particles.
 # masses
 const mass = rand(N)
 
-# Function to be evalulated for each pair: build distance histogram
+# Function to be evaluated for each pair: update force vector
 function calc_forces!(x,y,i,j,d2,mass,forces)
     G = 9.8*mass[i]*mass[j]/d2
     d = sqrt(d2)
@@ -174,13 +174,13 @@ julia> CellListMap.neighbourlist(x,0.05)
 ```
 or `CellListMap.neighbourlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
-The returning array contains tuples with the index of the particle in the first vector, the index of the particule in the second vector, and their distance.
+The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
 
 The implementation of this function follows the principles below. 
  The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
 
 ```julia
-# Function to be evalulated for each pair: push pair
+# Function to be evaluated for each pair: push pair
 function push_pair!(i,j,d2,pairs)
     d = sqrt(d2)
     push!(pairs,(i,j,d))
