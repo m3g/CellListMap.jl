@@ -54,11 +54,12 @@ Base.@kwdef struct Cell{N,T}
     n_particles::Int = 0
     particles::Vector{ParticleWithIndex{N,T}} = Vector{ParticleWithIndex{N,T}}(undef,0)
 end
-function Cell{N,T}(cartesian_index::CartesianIndex,box::Box) where {N,T}
+function Cell{N,T}(cartesian_index::CartesianIndex,box::Box; sizehint::Int=0) where {N,T}
     return Cell{N,T}(
         linear_index=cell_linear_index(box.nc,cartesian_index),
         cartesian_index=cartesian_index,
-        center=cell_center(cartesian_index,box)
+        center=cell_center(cartesian_index,box),
+        particles = Vector{ParticleWithIndex{N,T}}(undef,sizehint)
     )
 end
 
@@ -903,12 +904,13 @@ function add_particle_to_celllist!(
     # initialize a new cell, or reset a previously allocated one
     cell_index = cell_indices[linear_index]
 
+    particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
     if cell_index == 0
         n_cells_with_particles += 1
         cell_index = n_cells_with_particles
         cell_indices[linear_index] = cell_index
         if cell_index > length(cells)
-            push!(cells,Cell{N,T}(cartesian_index,box))
+            push!(cells,Cell{N,T}(cartesian_index,box,sizehint=particles_sizehint))
         else
             cell = cells[cell_index]
             @set! cell.linear_index = linear_index
