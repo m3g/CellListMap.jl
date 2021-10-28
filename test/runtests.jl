@@ -44,6 +44,17 @@ using Test
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false) ≈ naive
 
+    # Test the input as a matrix
+    xmat = zeros(3,N) 
+    for i in 1:N
+        for j in 1:3
+            xmat[j,i] = x[i][j] 
+        end
+    end
+    cl_mat = CellList(xmat,box)
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false) ≈ naive
+
     # Check if changing lcell breaks something
     box = Box(sides,cutoff,lcell=1); cl = CellList(x,box)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
