@@ -57,7 +57,6 @@ CellList{3, Float64}
 
 julia> map_pairwise!((x,y,i,j,d2,n) -> n += 1, 0, box, cl) # count neighbours
 23
-
 ```
 
 ## Non-allocating type conversion 
@@ -74,21 +73,18 @@ julia> x[1]
  0.5555681432511039 nm
  0.3112134334494392 nm
  0.6849761663523335 nm
-
  ```
 
  In order to use the type of coordinates without allocations and complications in `CellListMap`, just overload the `CellListMap.strip_value` function such that it converts a value of the given type to a float. For example, the `Unitful` package provides the `ustrip` function for that. We define, then:
 
  ```julia-repl
  julia> CellListMap.strip_value(x::Quantity) = Unitful.ustrip(x)
-
  ```
 
- such that it converts a single value of type `Quantity` to a standard float:
+such that it converts a single value of type `Quantity` to a standard float:
 ```julia-repl
 julia> CellListMap.strip_value(x[1][1])
 0.5555681432511039
-
 ```
 
 With that, the `Unitful` quantities can be passed to `CellList` without modification:
@@ -101,7 +97,6 @@ CellList{3, Float64}
   100 real particles.
   93 cells with real particles.
   167 particles in computing box, including images.
-
 ```
 
 
