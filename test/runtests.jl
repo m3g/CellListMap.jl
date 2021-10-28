@@ -52,8 +52,8 @@ using Test
         end
     end
     cl_mat = CellList(xmat,box)
-    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
-    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false) ≈ naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl_mat,parallel=true) ≈ naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl_mat,parallel=false) ≈ naive
 
     # Check if changing lcell breaks something
     box = Box(sides,cutoff,lcell=1); cl = CellList(x,box)
@@ -88,18 +88,9 @@ using Test
         return hist
     end
 
-    naive = CellListMap.map_naive!(
-        (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
-        zeros(Int,10),x,box
-    )
-    @test map_pairwise!(
-         (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
-         zeros(Int,10),box,cl,parallel=true
-    ) ≈ naive
-    @test map_pairwise!(
-         (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
-         zeros(Int,10),box,cl,parallel=false
-    ) ≈ naive
+    naive = CellListMap.map_naive!( (x,y,i,j,d2,hist) -> build_histogram!(d2,hist), zeros(Int,10),x,box)
+    @test map_pairwise!( (x,y,i,j,d2,hist) -> build_histogram!(d2,hist), zeros(Int,10),box,cl,parallel=true) ≈ naive
+    @test map_pairwise!( (x,y,i,j,d2,hist) -> build_histogram!(d2,hist), zeros(Int,10),box,cl,parallel=false) ≈ naive
 
     # Function to be evalulated for each pair: build distance histogram
     function potential(i,j,d2,u,mass)
@@ -128,44 +119,40 @@ using Test
     forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
     # Run pairwise computation
-    naive = CellListMap.map_naive!(
-        (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
-        copy(forces),x,box
-    )
-    @test map_pairwise!(
-        (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
-        copy(forces),box,cl,parallel=true
-    ) ≈ naive
-    @test map_pairwise!(
-        (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
-        copy(forces),box,cl,parallel=false
-    ) ≈ naive
+    naive = CellListMap.map_naive!( (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces), copy(forces),x,box)
+    @test map_pairwise!( (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces), copy(forces),box,cl,parallel=true) ≈ naive
+    @test map_pairwise!( (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces), copy(forces),box,cl,parallel=false) ≈ naive
 
     # Compute some properties of disjoint sets 
     box = Box(sides,cutoff,lcell=1)
     cl = CellList(x,y,box)
 
     naive = CellListMap.map_naive!((x,y,i,j,d2,u) -> potential(i,j,d2,u,mass),0.0,x,y,box)
-    @test map_pairwise!(
-        (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass),
-        0.0,box,cl,parallel=false
-    ) ≈ naive
-    @test map_pairwise!(
-        (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass),
-        0.0,box,cl,parallel=true
-    ) ≈ naive
+    @test map_pairwise!((x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=true) ≈ naive
+
+    # Test disjoint sets, with matrices
+    xmat = zeros(3,length(x))
+    for i in 1:length(x)
+        for j in 1:3
+            xmat[j,i] = x[i][j]
+        end
+    end
+    ymat = zeros(3,length(y))
+    for i in 1:length(y)
+        for j in 1:3
+            ymat[j,i] = y[i][j]
+        end
+    end
+    cl_mat = CellList(xmat,ymat,box)
+    @test map_pairwise!((x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0, box, cl_mat, parallel=false) ≈ naive
+    @test map_pairwise!((x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0, box, cl_mat, parallel=true) ≈ naive
 
     # Check different lcell
     box = Box(sides,cutoff,lcell=3)
     cl = CellList(x,y,box)
-    @test map_pairwise!(
-        (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass),
-        0.0,box,cl,parallel=false
-    ) ≈ naive
-    @test map_pairwise!(
-        (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass),
-        0.0,box,cl,parallel=true
-    ) ≈ naive
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=true) ≈ naive
 
     # Test the examples, to check further if the parallelization didn't break something
     N = 100_000
@@ -200,14 +187,10 @@ using Test
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
 
     # Test some fractional box lengths with the packmol test
-    @test CellListMap.packmol_test(parallel=false,
-        sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=TriclinicCell)[1]
-    @test CellListMap.packmol_test(parallel=true,
-        sides=[18.4,30.1,44], tol=2, UnitCellType=TriclinicCell)[1]
-    @test CellListMap.packmol_test(parallel=false,
-        sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=OrthorhombicCell)[1]
-    @test CellListMap.packmol_test(parallel=true,
-        sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
+    @test CellListMap.packmol_test(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=TriclinicCell)[1]
+    @test CellListMap.packmol_test(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=TriclinicCell)[1]
+    @test CellListMap.packmol_test(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=OrthorhombicCell)[1]
+    @test CellListMap.packmol_test(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
 
 end
 
