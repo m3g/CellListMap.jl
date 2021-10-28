@@ -2,7 +2,7 @@
 
 ## Orthorhombic periodic boundary conditions
 
-Orthorhombic periodic boundary conditions allow some special methods that are faster than those for general cells. To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the ctuoff. For example:
+Orthorhombic periodic boundary conditions allow some special methods that are faster than those for general cells. To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the cutoff. For example:
 
 ```julia-repl
 julia> box = Box([100,70,130],12)
@@ -104,7 +104,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
   Total number of cells: 2244
 ```
 
-Note that the unit cell length is, on each direction, the maximum coordinates of all particles plus the cutoff. This, this will avoid the computation of pairs of periodic images. The algorithms used for computing interactions in Orthorhombic cells will then be used.
+Note that the unit cell length is, on each direction, the maximum coordinates of all particles plus the cutoff. This will avoid the computation of pairs of periodic images. The algorithms used for computing interactions in Orthorhombic cells will then be used.
 
 
 
