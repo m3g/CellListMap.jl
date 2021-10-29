@@ -1,28 +1,29 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
-authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
+authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
 version = "0.6.4-DEV"
 
 [deps]
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
-
-[extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+DocStringExtensions = "0.8"
+Parameters = "0.12"
+ProgressMeter = "1.6"
+Setfield = "0.7"
 StaticArrays = "1"
 julia = "1"
-Parameters = "0.12"
-Setfield = "0.7"
-DocStringExtensions = "0.8"
-ProgressMeter = "1.6"
+
+[extras]
+Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Chemfiles"]

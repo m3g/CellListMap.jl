@@ -34,13 +34,13 @@ julia> x[1]
  0.5555681432511039 nm
  0.3112134334494392 nm
  0.6849761663523335 nm
- ```
+```
 
  In order to use the type of coordinates without allocations and complications in `CellListMap`, just overload the `CellListMap.strip_value` function such that it converts a value of the given type to a float. For example, the `Unitful` package provides the `ustrip` function for that. We define, then:
 
- ```julia-repl
- julia> CellListMap.strip_value(x::Quantity) = Unitful.ustrip(x)
- ```
+```julia-repl
+julia> CellListMap.strip_value(x::Quantity) = Unitful.ustrip(x)
+```
 
 such that it converts a single value of type `Quantity` to a standard float:
 ```julia-repl
