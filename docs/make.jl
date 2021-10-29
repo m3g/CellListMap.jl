@@ -13,8 +13,9 @@ makedocs(
         "Periodic conditions" => "pbc.md",
         "Parallelization" => "parallelization.md",
         "Performance" => "performance.md",
-        "Reference" => "reference.md",
+        "Options" => "options.md",
         "Help entries" => "help.md",
+        "Reference" => "reference.md",
     ]
 )
 deploydocs(
