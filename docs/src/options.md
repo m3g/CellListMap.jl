@@ -22,7 +22,7 @@ julia> map_pairwise!((x,y,i,j,d2,n) -> n += 1, 0, box, cl) # count neighbours
 
 ## Non-allocating type conversion 
 
-Internally, `CellListMap` works with static arrays  for optimal performance. However, sometimes the coordinates are provided using some custom type for which conversion to static arrays is not defined. For example, it is common to use coordinates with units:
+Internally, `CellListMap`  will perform operations on real numbers. However, sometimes the coordinates are provided using some custom type for which conversion to standard floats is not defined. For example, it is common to use coordinates with units:
 
 ```julia-repl
 julia> using Unitful
@@ -36,7 +36,7 @@ julia> x[1]
  0.6849761663523335 nm
 ```
 
- In order to use the type of coordinates without allocations and complications in `CellListMap`, just overload the `CellListMap.strip_value` function such that it converts a value of the given type to a float. For example, the `Unitful` package provides the `ustrip` function for that. We define, then:
+ In order to use the type of coordinates without allocations and other complications in `CellListMap`, just overload the `CellListMap.strip_value` function such that it converts a value of the given type to a float. For example, the `Unitful` package provides the `ustrip` function to convert values of the `Quantity` type to floats, by removing the units. We define, then:
 
 ```julia-repl
 julia> CellListMap.strip_value(x::Quantity) = Unitful.ustrip(x)
