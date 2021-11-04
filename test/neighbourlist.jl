@@ -96,6 +96,15 @@ end
         cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
         @test compare_nb_lists(cl,nb,self=false)
 
+        # Check random coordinates to test the limits more thoroughly
+        check_random_NN = true
+        for i in 1:500
+            x = rand(SVector{N,Float64},100); y = rand(SVector{N,Float64},50); 
+            nb = nl_NN(x,y,r); cl = CellListMap.neighbourlist(x,y,r,autoswap=false);
+            check_random_NN = compare_nb_lists(cl,nb,self=false)
+        end
+        @test check_random_NN
+
     end
 
 end
