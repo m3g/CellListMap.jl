@@ -408,6 +408,23 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
     return check
 end
 
+#
+# Compute the maximum and minimum coordinates of the vectors composing
+# the particle sets
+#
+function _minmax(x::AbstractVector{<:AbstractVector})
+    xmin = similar(strip_value.(x[1]))
+    xmax = similar(strip_value.(x[1]))
+    xmin .= typemax(eltype(xmin))
+    xmax .= typemin(eltype(xmax))
+    for v in x
+        v = strip_value.(v) 
+        @. xmin = min(xmin,v)       
+        @. xmax = max(xmax,v)       
+    end
+    return xmin, xmax
+end
+
 """
 
 ```
@@ -419,15 +436,7 @@ to be used to set a box without effective periodic boundary conditions.
 
 """
 function limits(x::AbstractVector{<:AbstractVector})
-    xmin = similar(strip_value.(x[1]))
-    xmax = similar(strip_value.(x[1]))
-    xmin .= typemax(eltype(xmin))
-    xmax .= typemin(eltype(xmax))
-    for v in x
-        v = strip_value.(v) 
-        @. xmin = min(xmin,v)       
-        @. xmax = max(xmax,v)       
-    end
+    xmin, xmax = _minmax(x)
     return Limits(xmax .- xmin)
 end
 
@@ -448,10 +457,22 @@ Returns the lengths of a orthorhombic box that encompasses all the particles def
 and `y`, to used to set a box without effective periodic boundary conditions.
 
 """
-function limits(x,y)
-    xlims = limits(x)
-    ylims = limits(y)
-    return Limits(max.(xlims.limits,ylims.limits))
+function limits(x::T,y::T) where T <: AbstractVector{<:AbstractVector}
+    xmin, xmax = _minmax(x)
+    ymin, ymax = _minmax(y)
+    xymin = min.(xmin,ymin)
+    xymax = max.(xmax,ymax)
+    return Limits(xymax .- xymin)
+end
+
+function limits(x::T,y::T) where T <: AbstractMatrix 
+    N = size(x,1)
+    M = size(y,1)
+    @assert N == M "The first dimension of the input matrices must be equal. "
+    @assert (N == 2 || N == 3) "The first dimension of the matrix must be the dimension (2 or 3)"
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
+    return limits(x_re,y_re)
 end
 
 #
