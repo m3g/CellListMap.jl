@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Examples · CellListMap.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li class="is-active"><a class="tocitem" href>Examples</a><ul class="internal"><li><a class="tocitem" href="#Histogram-of-distances"><span>Histogram of distances</span></a></li><li><a class="tocitem" href="#Gravitational-potential"><span>Gravitational potential</span></a></li><li><a class="tocitem" href="#Gravitational-force"><span>Gravitational force</span></a></li><li><a class="tocitem" href="#Nearest-neighbour"><span>Nearest neighbour</span></a></li><li><a class="tocitem" href="#Neighbour-list"><span>Neighbour list</span></a></li></ul></li><li><a class="tocitem" href="../pbc/">Periodic conditions</a></li><li><a class="tocitem" href="../parallelization/">Parallelization</a></li><li><a class="tocitem" href="../performance/">Performance</a></li><li><a class="tocitem" href="../options/">Options</a></li><li><a class="tocitem" href="../help/">Help entries</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Examples</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/m3g/CellListMap.jl/blob/master/docs/src/examples.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h1><p>The full code of the examples described here is available at the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples.jl">examples.jl</a> file. </p><h3 id="Mean-difference-of-coordinates"><a class="docs-heading-anchor" href="#Mean-difference-of-coordinates">Mean difference of coordinates</a><a id="Mean-difference-of-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Mean-difference-of-coordinates" title="Permalink"></a></h3><p>Computing the mean difference in <code>x</code> position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.</p><pre><code class="language-julia hljs">using CellListMap
+
+# System properties
+N = 100_000
+sides = [250,250,250]
+cutoff = 10
+
+# Particle positions
+x = [ sides .* rand(3) for i in 1:N ]
+
+# Initialize linked lists and box structures
+box = Box(sides,cutoff)
+cl = CellList(x,box)
+
+# Function to be evaluated from positions 
+f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
+normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
+
+# Run calculation (0.0 is the initial value)
+avg_dx = normalization * map_pairwise!(
+    (x,y,i,j,d2,sum_dx) -&gt; f(x,y,sum_dx), 0.0, box, cl 
+)</code></pre><p>The example above can be run with <code>CellListMap.test1()</code>. </p><h2 id="Histogram-of-distances"><a class="docs-heading-anchor" href="#Histogram-of-distances">Histogram of distances</a><a id="Histogram-of-distances-1"></a><a class="docs-heading-anchor-permalink" href="#Histogram-of-distances" title="Permalink"></a></h2><p>Computing the histogram of the distances between particles (considering the same particles as in the above example). Again, we use a closure to remove the positions and indexes of the particles from the function arguments, because they are not needed. The distance, on the other side, is needed in this example:</p><pre><code class="language-julia hljs"># Function that accumulates the histogram of distances
+function build_histogram!(d2,hist)
+    d = sqrt(d2)
+    ibin = floor(Int,d) + 1
+    hist[ibin] += 1
+    return hist
+end;
+
+# Initialize (and preallocate) the histogram
+hist = zeros(Int,10);
+normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
+
+# Run calculation
+hist = normalization * map_pairwise!(
+    (x,y,i,j,d2,hist) -&gt; build_histogram!(d2,hist),
+    hist,box,cl
+)
+</code></pre><p>The example above can be run with <code>CellListMap.test2()</code>. </p><h2 id="Gravitational-potential"><a class="docs-heading-anchor" href="#Gravitational-potential">Gravitational potential</a><a id="Gravitational-potential-1"></a><a class="docs-heading-anchor-permalink" href="#Gravitational-potential" title="Permalink"></a></h2><p>In this test we compute the &quot;gravitational potential&quot;, assigning to each particle a different mass. In this case, the closure is used to pass the masses to the function that computes the potential.</p><pre><code class="language-julia hljs"># masses
+const mass = rand(N)
+
+# Function to be evaluated for each pair 
+function potential(i,j,d2,mass,u)
+    d = sqrt(d2)
+    u = u - 9.8*mass[i]*mass[j]/d
+    return u
+end
+
+# Run pairwise computation
+u = map_pairwise!((x,y,i,j,d2,u) -&gt; potential(i,j,d2,mass,u),0.0,box,cl)</code></pre><p>The example above can be run with <code>CellListMap.test3()</code>. </p><h2 id="Gravitational-force"><a class="docs-heading-anchor" href="#Gravitational-force">Gravitational force</a><a id="Gravitational-force-1"></a><a class="docs-heading-anchor-permalink" href="#Gravitational-force" title="Permalink"></a></h2><p>In the following example, we update a force vector of for all particles.</p><pre><code class="language-julia hljs"># masses
+const mass = rand(N)
+
+# Function to be evaluated for each pair: update force vector
+function calc_forces!(x,y,i,j,d2,mass,forces)
+    G = 9.8*mass[i]*mass[j]/d2
+    d = sqrt(d2)
+    df = (G/d)*(x - y)
+    forces[i] = forces[i] - df
+    forces[j] = forces[j] + df
+    return forces
+end
+
+# Initialize and preallocate forces
+forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
+
+# Run pairwise computation
+forces = map_pairwise!(
+    (x,y,i,j,d2,forces) -&gt; calc_forces!(x,y,i,j,d2,mass,forces),
+    forces,box,cl
+)
+</code></pre><p>The example above can be run with <code>CellListMap.test4()</code>. </p><h2 id="Nearest-neighbour"><a class="docs-heading-anchor" href="#Nearest-neighbour">Nearest neighbour</a><a id="Nearest-neighbour-1"></a><a class="docs-heading-anchor-permalink" href="#Nearest-neighbour" title="Permalink"></a></h2><p>Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.</p><pre><code class="language-julia hljs"># Number of particles, sides and cutoff
+N1=1_500
+N2=1_500_000
+sides = [250,250,250]
+cutoff = 10.
+box = Box(sides,cutoff)
+
+# Particle positions
+x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N1 ]
+y = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N2 ]
+
+# Initialize auxiliary linked lists
+cl = CellList(x,y,box)
+
+# Function that keeps the minimum distance
+f(i,j,d2,mind) = d2 &lt; mind[3] ? (i,j,d2) : mind
+
+# We have to define our own reduce function here
+function reduce_mind(output,output_threaded)
+    mind = output_threaded[1]
+    for i in 2:Threads.nthreads()
+        if output_threaded[i][3] &lt; mind[3]
+            mind = output_threaded[i]
+        end
+    end
+    return mind
+end
+
+# Initial value
+mind = ( 0, 0, +Inf )
+
+# Run pairwise computation
+mind = map_pairwise!( 
+    (x,y,i,j,d2,mind) -&gt; f(i,j,d2,mind),
+    mind,box,cl;reduce=reduce_mind
+)</code></pre><p>The example above can be run with <code>CellListMap.test5()</code>. The example <code>CellListMap.test6()</code> of <a href="https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219">examples.jl</a> describes a similar problem but <em>without</em> periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. </p><h2 id="Neighbour-list"><a class="docs-heading-anchor" href="#Neighbour-list">Neighbour list</a><a id="Neighbour-list-1"></a><a class="docs-heading-anchor-permalink" href="#Neighbour-list" title="Permalink"></a></h2><p>Obs: The package provides a <code>neighbourlist</code> function that implements this calculation, and can be used with:</p><pre><code class="language-julia-repl hljs">julia&gt; x = [ rand(3) for i in 1:10_000 ];
+
+julia&gt; CellListMap.neighbourlist(x,0.05)
+24778-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 62, 0.028481068525796384)
+ ⋮
+ (9954, 1749, 0.04887502372299809)
+ (9974, 124, 0.040110356034451795)</code></pre><p>or <code>CellListMap.neighbourlist(x,y,r)</code> for computing the lists of pairs of two sets closer than <code>r</code>.</p><p>The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.</p><p>The implementation of this function follows the principles below.   The empty <code>pairs</code> output array will be split in one vector for each thread, and reduced with a custom reduction function. </p><pre><code class="language-julia hljs"># Function to be evaluated for each pair: push pair
+function push_pair!(i,j,d2,pairs)
+    d = sqrt(d2)
+    push!(pairs,(i,j,d))
+    return pairs
+end
+
+# Reduction function
+function reduce_pairs(pairs,pairs_threaded)
+    pairs = pairs_threaded[1]
+    for i in 2:Threads.nthreads()
+        append!(pairs,pairs_threaded[i])
+    end
+    return pairs
+end
+
+# Initialize output
+pairs = Tuple{Int,Int,Float64}[]
+
+# Run pairwise computation
+pairs = map_pairwise!(
+    (x,y,i,j,d2,pairs) -&gt; push_pair!(i,j,d2,pairs),
+    pairs,box,cl,
+    reduce=reduce_pairs
+)</code></pre><p>The full example can be run with <code>CellListMap.test7()</code>. </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../pbc/">Periodic conditions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Thursday 4 November 2021 20:40">Thursday 4 November 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
