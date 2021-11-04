@@ -195,3 +195,4 @@ using Test
 end
 
 include("./namd/compare_with_namd.jl")
+include("./neighbourlist.jl")
