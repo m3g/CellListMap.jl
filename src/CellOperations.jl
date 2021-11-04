@@ -411,7 +411,7 @@ end
 """
 
 ```
-limits(x::AbstractVector{<:AbstractVector})
+limits(x)
 ```
 
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
@@ -431,17 +431,24 @@ function limits(x::AbstractVector{<:AbstractVector})
     return Limits(xmax .- xmin)
 end
 
+function limits(x::AbstractMatrix) 
+    N = size(x,1)
+    @assert (N == 2 || N == 3) "The first dimension of the matrix must be the dimension (2 or 3)"
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    return limits(x_re)
+end
+
 """
 
 ```
-limits(x::T,y::T) where T<:AbstractVector{<:AbstractVector})
+limits(x,y)
 ```
 
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`
 and `y`, to used to set a box without effective periodic boundary conditions.
 
 """
-function limits(x::T,y::T) where T<:AbstractVector{<:AbstractVector}
+function limits(x,y)
     xlims = limits(x)
     ylims = limits(y)
     return Limits(max.(xlims.limits,ylims.limits))
@@ -538,3 +545,4 @@ function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
     return r_min, r_max
 end
 
+ 
