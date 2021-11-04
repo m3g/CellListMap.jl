@@ -76,7 +76,7 @@ function neighbourlist(box::Box, cl; parallel=true)
         push!(pairs, (i, j, d))
         return pairs
     end
-  
+
     # We have to define our own reduce function here (for the parallel version)
     function reduce_pairs(pairs, pairs_threaded)
         pairs = pairs_threaded[1]
@@ -131,11 +131,12 @@ end
 """
 
 ```
-neighbourlist(x,y,r;parallel=true)
+neighbourlist(x,y,r;parallel=true,autoswap=true)
 ```
 
 Computes the list of pairs of particles of `x` which are closer than `r` to
-the particles of `y`.
+the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
+the cost of the construction of the cell list. 
 
 ### Example
 ```julia-repl
@@ -154,8 +155,8 @@ julia> CellListMap.neighbourlist(x,y,0.05)
 ```
 
 """
-function neighbourlist(x,y,r;parallel=true)
+function neighbourlist(x,y,r;parallel=true,autoswap=true)
     box = Box(limits(x,y),r)
-    cl = CellList(x,y,box,parallel=parallel)
+    cl = CellList(x,y,box,parallel=parallel,autoswap=autoswap)
     return neighbourlist(box,cl,parallel=parallel)
 end
