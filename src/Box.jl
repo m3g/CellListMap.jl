@@ -289,12 +289,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
 ```
 
 """
-Box(
-    limits::Limits,
-    cutoff;
-    T::DataType=Float64,
-    lcell::Int=1
-) = Box(
-    limits.limits .+ strip_value(cutoff),
-    cutoff, T, lcell, OrthorhombicCell
-) 
+function Box(limits::Limits, cutoff; T::DataType=Float64, lcell::Int=1) 
+    sides = limits.limits .+ strip_value(cutoff)
+    Box(sides, cutoff, T, lcell, OrthorhombicCell) 
+end
