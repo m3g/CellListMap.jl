@@ -105,6 +105,15 @@ end
         end
         @test check_random_NN
 
+        # with different types
+        x = rand(Float32,N,500)
+        y = rand(Float32,N,1000)
+        nb = nl_NN(x,y,r)
+        cl = CellListMap.neighbourlist(x,y,r,autoswap=false)
+        @test compare_nb_lists(cl,nb,self=false)
+        cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
+        @test compare_nb_lists(cl,nb,self=false)
+
     end
 
 end
