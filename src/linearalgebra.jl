@@ -9,7 +9,7 @@ standard arrays.
 
 """
 @inline function norm_sqr(v::AbstractVector{T}) where T
-    n2 = zero(T)
+    n2 = zero(T)^2 # the square here is required for Units, for example
     @simd for x in v
         n2 += x^2
     end
@@ -31,16 +31,16 @@ standard arrays. Thus we define our own `norm(x) = norm_sqr(x)`.
 """
 
 ```
-dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2}
+dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 
 ```
 
 `LinearAlgebra.dot` is slower than this for standard arrays (likely more accurate, but
 that is not relevant here).
 
 """
-@inline function dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2}
+@inline function dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 
     @assert length(x) == length(y)
-    d = zero(promote_type(T1,T2))
+    d = zero(T1)*zero(T2)
     @inbounds @simd for i in eachindex(x)
         d += x[i]*y[i]
     end

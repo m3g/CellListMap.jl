@@ -1,5 +1,6 @@
 using CellListMap
 using StaticArrays
+using ForwardDiff
 using Test
 
 @testset "CellListMap.jl" begin
@@ -13,7 +14,7 @@ using Test
     end
 
     # Number of particles, sides and cutoff
-    sides = @SVector [250,250,250]
+    sides = @SVector [250.,250.,250.]
     cutoff = 10.
     box = Box(sides,cutoff)
 
@@ -191,6 +192,41 @@ using Test
     @test CellListMap.packmol_test(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=TriclinicCell)[1]
     @test CellListMap.packmol_test(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=OrthorhombicCell)[1]
     @test CellListMap.packmol_test(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
+    
+    # Testing the propagation of types in automatic differentiation
+    function func(x)
+        cutoff = eltype(x)(0.1)
+        sides = eltype(x).([1.,1.,1.])
+        box = Box(sides,cutoff)
+        cl = CellList(x,box)
+        s = zero(eltype(x[1]^2))
+        s = map_pairwise!(
+            (x,y,i,j,d2,s) -> s += d2,
+            s, box, cl,
+        )
+        return s
+    end
+
+    function grad(x)
+        g = similar(x)
+        cutoff = eltype(x)(0.1)
+        sides = eltype(x).([1.,1.,1.])
+        box = Box(sides,cutoff)
+        cl = CellList(x,box)
+        g .= zero(eltype(x))
+        map_pairwise!(
+            (x,y,i,j,d2,g) -> begin
+                dx = x - y
+                g[:,i] .+= 2*dx
+                g[:,j] .-= 2*dx
+                return g
+            end,
+            g, box, cl, parallel=false
+        )
+        return g
+    end
+    x = rand(3,1000)
+    @test grad(x) ≈ ForwardDiff.gradient(func, x) 
 
 end
 

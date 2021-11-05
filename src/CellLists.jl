@@ -16,12 +16,12 @@ that the complete struct has 32bytes.
 
 """
 struct ParticleWithIndex{N,T}
-    index::Int32
+    index::Int
     real::Bool
     coordinates::SVector{N,T}
 end
 Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
-    ParticleWithIndex{N,T}(Int32(0),false,zeros(SVector{N,T}))
+    ParticleWithIndex{N,T}(0,false,zeros(SVector{N,T}))
 
 """
 
@@ -75,8 +75,8 @@ complete struct has 32bytes.
 
 """
 Base.@kwdef struct ProjectedParticle{N,T}
-    index::Int32
-    xproj::Float32
+    index::Int
+    xproj::T
     coordinates::SVector{N,T}
 end
 
@@ -698,43 +698,6 @@ end
 """
 
 ```
-strip_value(x)
-```
-
-This function by default does nothing, but it can be overloaded to remove decorations from
-types of variables that contain more information that the coordinate itself. For example,
-it can be used to deal with `Unitful` coordinates internaly, without having to copy
-the coordinates prior to passing it to `CellList`. For example:
-
-```julia-repl
-julia> box = Box([100,100,100],10);
-
-julia> using Unitful
-
-julia> x = [ sides .* rand(SVector{3,Float64})u"nm" for i in 1:5 ]
-5-element Vector{SVector{3, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
- [204.13761649857798 nm, 221.72338544218846 nm, 68.39256684613026 nm]
- [240.3490051044633 nm, 39.133140818690904 nm, 93.46671201972323 nm]
- [59.905431855598714 nm, 18.420162158120924 nm, 246.09423563049683 nm]
- [24.572857402685223 nm, 17.079711089908244 nm, 27.137908845124624 nm]
- [22.222703192699257 nm, 177.77658095653265 nm, 134.81396187256172 nm]
-
- julia> CellListMap.strip_value(x::Unitful.Quantity) = Unitful.ustrip(x) 
-
- julia> cl = CellList(x,box) # now x can be passed to CellList
-CellList{3, Float64}
-  5 real particles.
-  5 cells with real particles.
-  7 particles in computing box, including images.
-
-```
-
-"""
-@inline strip_value(x) = x
-
-"""
-
-```
 add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
 ```
 
@@ -749,7 +712,7 @@ function add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
         xp = x[ip] 
         # This converts the coordinates to static arrays, if necessary, and possibly
         # removes decorations (like units) from the quantities
-        p = SVector{N,T}(ntuple(i->strip_value(xp[i]),N))
+        p = SVector{N,T}(ntuple(i->xp[i],N))
         p = wrap_to_first(p,box)
         cl = add_particle_to_celllist!(ishift+ip,p,box,cl) # add real particle
         cl = replicate_particle!(ishift+ip,p,box,cl) # add virtual particles to border cells
@@ -942,7 +905,7 @@ function add_particle_to_celllist!(
     #
     # Add particle to cell list
     #
-    p = ParticleWithIndex(Int32(ip),real_particle,x) 
+    p = ParticleWithIndex(ip,real_particle,x) 
     if cell.n_particles > length(cell.particles)
         push!(cell.particles,p)
     else

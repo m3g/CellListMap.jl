@@ -67,12 +67,12 @@ Total number of cells: 2448
 ```
 
 """
-Base.@kwdef struct Box{UnitCellType,N,T,M}
+Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M}
     unit_cell::UnitCell{UnitCellType,N,T,M}
     lcell::Int
     nc::SVector{N,Int}
     cutoff::T
-    cutoff_sq::T
+    cutoff_sq::TSQ
     ranges::SVector{N,UnitRange{Int}}
     cell_size::SVector{N,T}
     unit_cell_max::SVector{N,T}
@@ -84,7 +84,6 @@ end
 Box(
   unit_cell_matrix::AbstractMatrix, 
   cutoff, 
-  T::DataType, 
   lcell::Int=1,
   UnitCellType=TriclinicCell
 )
@@ -112,19 +111,14 @@ Box{TriclinicCell, 3, Float64, 9}
 
 """
 function Box(
-    unit_cell_matrix::AbstractMatrix, 
+    unit_cell_matrix::AbstractMatrix{T}, 
     cutoff, 
-    ::Type{T},
     lcell::Int,
     ::Type{UnitCellType}
 ) where {T,UnitCellType}
 
-    # remove units or other decorations, if any
-    cutoff = strip_value(cutoff)
-    unit_cell_matrix = strip_value.(unit_cell_matrix)
-
     s = size(unit_cell_matrix)
-    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(strip_value.(unit_cell_matrix))
+    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(unit_cell_matrix)
 
     @assert lcell >= 1 "lcell must be greater or equal to 1"
 
@@ -153,7 +147,7 @@ function Box(
 
     #ranges = ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix)
     ranges = SVector{N,UnitRange{Int}}(ntuple(i->-1:1,N))
-    return Box{UnitCellType,N,T,N*N}(
+    return Box{UnitCellType,N,T,typeof(cutoff^2),N*N}(
         unit_cell,
         lcell, 
         nc,
@@ -167,10 +161,9 @@ end
 Box(
     unit_cell_matrix::AbstractMatrix,
     cutoff;
-    T::DataType=Float64,
     lcell::Int=1,
     UnitCellType=TriclinicCell
-) = Box(unit_cell_matrix,cutoff,T,lcell,UnitCellType)
+) = Box(unit_cell_matrix,cutoff,lcell,UnitCellType)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box)
     println(io,typeof(box))
@@ -187,7 +180,6 @@ end
 Box(
   sides::AbstractVector, 
   cutoff, 
-  T::DataType, 
   lcell::Int=1,
   UnitCellType=OrthorhombicCell
 )
@@ -212,11 +204,20 @@ Box{OrthorhombicCell, 3, Float64, 9}
 function Box(
     sides::AbstractVector, 
     cutoff, 
-    ::Type{T},
     lcell::Int,
     ::Type{UnitCellType}
-) where {T,UnitCellType}
-    sides = strip_value.(sides)
+) where {UnitCellType}
+    if eltype(sides) <: Integer || typeof(cutoff) <: Integer
+        if cutoff isa Integer && eltype(sides) <: Integer
+            sides = convert.(Float64,sides)
+            cutoff = convert(eltype(sides),cutoff)
+        elseif eltype(sides) <: Integer
+            sides = convert.(typeof(cutoff),sides)
+        else
+            cutoff = convert(eltype(sides),cutoff)
+        end
+    end
+    T = typeof(cutoff)
     N = length(sides)
     cart_idxs = CartesianIndices((1:N,1:N))
     # Build unit cell matrix from lengths
@@ -230,21 +231,14 @@ function Box(
             end
         end
     )
-    return Box(
-        unit_cell_matrix,
-        cutoff,
-        T,
-        lcell,
-        UnitCellType
-    ) 
+    return Box(unit_cell_matrix,cutoff,lcell,UnitCellType) 
 end
 Box(
     sides::AbstractVector,
     cutoff;
-    T::DataType=Float64,
     lcell::Int=1,
     UnitCellType=OrthorhombicCell
-) = Box(sides,cutoff,T,lcell,UnitCellType)
+) = Box(sides,cutoff,lcell,UnitCellType)
 
 """
 
@@ -252,7 +246,6 @@ Box(
 Box(
     limits::Limits,
     cutoff;
-    T::DataType=Float64,
     lcell::Int=1
 )
 ```
@@ -289,7 +282,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
 ```
 
 """
-function Box(limits::Limits, cutoff; T::DataType=Float64, lcell::Int=1) 
-    sides = limits.limits .+ strip_value(cutoff)
-    Box(sides, cutoff, T, lcell, OrthorhombicCell) 
+function Box(limits::Limits, cutoff::T; lcell::Int=1) where T
+    sides = limits.limits .+ cutoff
+    return Box(sides, cutoff, lcell, OrthorhombicCell) 
 end

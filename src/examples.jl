@@ -369,7 +369,7 @@ function florpi(::Type{T}=Float64;N=100_000,cd=true,parallel=true,lcell=1) where
     positions = reshape(reinterpret(SVector{3,T}, positions), n)
     velocities = reshape(reinterpret(SVector{3,T}, velocities), n)
   
-    box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=lcell, T=T) 
+    box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=lcell) 
     cl = CellList(positions, box, parallel=parallel)
     hist = (zeros(Int, length(rbins) - 1), zeros(T, length(rbins) - 1))
   

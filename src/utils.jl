@@ -87,7 +87,7 @@ function neighbourlist(box::Box, cl; parallel=true)
     end
   
     # Initialize
-    pairs = Tuple{Int,Int,Float64}[]
+    pairs = Tuple{Int,Int,typeof(box.cutoff)}[]
   
     # Run pairwise computation
     pairs = map_pairwise!(
@@ -123,7 +123,7 @@ julia> CellListMap.neighbourlist(x,0.05)
 
 """
 function neighbourlist(x,r;parallel=true)
-    box = Box(limits(x),r,T=eltype(x[begin]))
+    box = Box(limits(x),r)
     cl = CellList(x,box,parallel=parallel)
     return neighbourlist(box,cl,parallel=parallel)
 end
@@ -156,7 +156,7 @@ julia> CellListMap.neighbourlist(x,y,0.05)
 
 """
 function neighbourlist(x,y,r;parallel=true,autoswap=true)
-    box = Box(limits(x,y),r,T=eltype(x[begin]))
+    box = Box(limits(x,y),r)
     cl = CellList(x,y,box,parallel=parallel,autoswap=autoswap)
     return neighbourlist(box,cl,parallel=parallel)
 end

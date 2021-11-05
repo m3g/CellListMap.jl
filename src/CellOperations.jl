@@ -183,7 +183,7 @@ provided.
 
 """
 @inline translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T} =
-    x + unit_cell_matrix*SVector{N,T}(ntuple(i -> indices[i],N))
+    x + unit_cell_matrix*SVector{N,Int}(ntuple(i -> indices[i],N))
 
 """
 
@@ -262,7 +262,7 @@ of points. Returns a `SVector{N,T}`
 
 """
 @inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - one(T)/2 - box.lcell), N))
+    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - box.lcell) - box.cell_size[i]/2, N))
 
 """
 
@@ -354,7 +354,7 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
         check = false
     end
 
-    if count(el -> el < 0, unit_cell_matrix) != 0
+    if count(el -> el < zero(eltype(unit_cell_matrix)), unit_cell_matrix) != 0
          printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
          check = false
     end
@@ -413,12 +413,11 @@ end
 # the particle sets
 #
 function _minmax(x::AbstractVector{<:AbstractVector})
-    xmin = similar(strip_value.(x[begin]))
-    xmax = similar(strip_value.(x[begin]))
+    xmin = similar(x[begin])
+    xmax = similar(x[begin])
     xmin .= typemax(eltype(xmin))
     xmax .= typemin(eltype(xmax))
     for v in x
-        v = strip_value.(v) 
         @. xmin = min(xmin,v)       
         @. xmax = max(xmax,v)       
     end
