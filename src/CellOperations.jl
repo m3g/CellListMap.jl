@@ -413,8 +413,8 @@ end
 # the particle sets
 #
 function _minmax(x::AbstractVector{<:AbstractVector})
-    xmin = similar(strip_value.(x[1]))
-    xmax = similar(strip_value.(x[1]))
+    xmin = similar(strip_value.(x[begin]))
+    xmax = similar(strip_value.(x[begin]))
     xmin .= typemax(eltype(xmin))
     xmax .= typemin(eltype(xmax))
     for v in x
