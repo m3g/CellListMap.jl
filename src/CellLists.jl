@@ -337,7 +337,7 @@ function CellList(
     parallel::Bool=true
 ) where {UnitCellType,N,T} 
     @assert size(x,1) == N "First dimension of input matrix must be $N"
-    x_re = reinterpret(reshape, SVector{N,T}, x)
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     cl = CellList{N,T}(
         n_real_particles=length(x_re),
         number_of_cells=prod(box.nc)
@@ -465,8 +465,8 @@ function CellList(
 ) where {UnitCellType,N,T} 
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
-    x_re = reinterpret(reshape, SVector{N,T}, x)
-    y_re = reinterpret(reshape, SVector{N,T}, y)
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     CellList(x_re,y_re,box,parallel=parallel,autoswap=autoswap)
 end
 
@@ -540,7 +540,7 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
     @assert size(x,1) == N "First dimension of input matrix must be $N"
-    x_re = reinterpret(reshape, SVector{N,T}, x)
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return UpdateCellList!(x_re,box,cl,parallel=parallel)
 end
 
@@ -691,7 +691,7 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
     @assert size(x,1) == N "First dimension of input matrix must be $N"
-    x_re = reinterpret(reshape, SVector{N,T}, x)
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return UpdateCellList!(x_re,box,cl,aux,parallel=parallel)
 end
 
@@ -1030,8 +1030,8 @@ function UpdateCellList!(
 ) where {UnitCellType,N,T}
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
-    x_re = reinterpret(reshape, SVector{N,T}, x)
-    y_re = reinterpret(reshape, SVector{N,T}, y)
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     return UpdateCellList!(x_re,y_re,box,cl_pair,parallel=parallel)
 end
 
@@ -1148,8 +1148,8 @@ function UpdateCellList!(
 ) where {UnitCellType,N,T}
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
-    x_re = reinterpret(reshape, SVector{N,T}, x)
-    y_re = reinterpret(reshape, SVector{N,T}, y)
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     return UpdateCellList!(x_re,y_re,box,cl_pair,aux,parallel=parallel)
 end
 
