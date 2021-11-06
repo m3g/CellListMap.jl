@@ -165,13 +165,18 @@ Box(
     UnitCellType=TriclinicCell
 ) = Box(unit_cell_matrix,cutoff,lcell,UnitCellType)
 
-function Base.show(io::IO,::MIME"text/plain",box::Box)
+function Base.show(io::IO,::MIME"text/plain",box::Box{UnitCellType,N}) where {UnitCellType,N}
     println(io,typeof(box))
-    println(io,"  unit cell matrix: ", box.unit_cell.matrix) 
-    println(io,"  cutoff: ", box.cutoff)
-    println(io,"  number of computing cells on each dimension: ",box.nc)
-    println(io,"  computing cell sizes: ", box.cell_size, " (lcell: ",box.lcell,")")
-    print(io,"  Total number of cells: ", prod(box.nc))
+    print(io,"  unit cell matrix = [ ") 
+    print(io,join(box.unit_cell.matrix[1:N,1],", "))
+    for i in 2:N
+        print(io,"; ",join(box.unit_cell.matrix[1:N,i],", "))
+    end
+    println(io," ]")
+    println(io,"  cutoff = ", box.cutoff)
+    println(io,"  number of computing cells on each dimension = ",box.nc)
+    println(io,"  computing cell sizes = [", join(box.cell_size,", "), "] (lcell: ",box.lcell,")")
+    print(io,"  Total number of cells = ", prod(box.nc))
 end
 
 """
