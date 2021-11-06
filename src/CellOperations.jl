@@ -389,7 +389,7 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
         check = false
     end
 
-    if count(el -> el < 0, unit_cell_matrix) != 0
+    if count(el -> el < zero(eltype(unit_cell_matrix)), unit_cell_matrix) != 0
          printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
          check = false
     end
