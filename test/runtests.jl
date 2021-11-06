@@ -196,7 +196,7 @@ using Test
     # Testing the propagation of types in automatic differentiation
     function func(x)
         cutoff = eltype(x)(0.1)
-        sides = eltype(x).([1.,1.,1.])
+        sides = eltype(x).(1. for _ in axes(x,1))
         box = Box(sides,cutoff)
         cl = CellList(x,box)
         s = zero(eltype(x[1]^2))
@@ -210,7 +210,7 @@ using Test
     function grad(x)
         g = similar(x)
         cutoff = eltype(x)(0.1)
-        sides = eltype(x).([1.,1.,1.])
+        sides = eltype(x).(1. for _ in axes(x,1))
         box = Box(sides,cutoff)
         cl = CellList(x,box)
         g .= zero(eltype(x))
@@ -226,6 +226,8 @@ using Test
         return g
     end
     x = rand(3,1000)
+    @test grad(x) ≈ ForwardDiff.gradient(func, x) 
+    x = rand(2,1000)
     @test grad(x) ≈ ForwardDiff.gradient(func, x) 
 
 end
