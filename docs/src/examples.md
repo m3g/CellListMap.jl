@@ -32,8 +32,7 @@ avg_dx = normalization * map_pairwise!(
 ```
 
 The example above can be run with `CellListMap.Examples.average_displacement()` and is available in the
-![average_displacement.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl).
-
+![average_displacement.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl) file.
 
 ## Histogram of distances
 
@@ -61,7 +60,8 @@ hist = normalization * map_pairwise!(
 
 ```
 
-The example above can be run with `CellListMap.test2()`. 
+The example above can be run with `CellListMap.Examples.distance_histogram()` and is available in the
+![distance_histogram.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl) file.
 
 ## Gravitational potential
 
@@ -82,7 +82,8 @@ end
 u = map_pairwise!((x,y,i,j,d2,u) -> potential(i,j,d2,mass,u),0.0,box,cl)
 ```
 
-The example above can be run with `CellListMap.test3()`. 
+The example above can be run with `CellListMap.Examples.gravitational_potential()` and is available in the
+![gravitational_potential.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_potential.jl) file.
 
 ## Gravitational force
 
@@ -113,7 +114,8 @@ forces = map_pairwise!(
 
 ```
 
-The example above can be run with `CellListMap.test4()`. 
+The example above can be run with `CellListMap.Examples.gravitational_force()` and is available in the
+![gravitational_force.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl) file.
 
 ## Nearest neighbour
 
@@ -158,7 +160,10 @@ mind = map_pairwise!(
 )
 ```
 
-The example above can be run with `CellListMap.test5()`. The example `CellListMap.test6()` of [examples.jl](https://github.com/m3g/CellListMap.jl/blob/8661ae692abf3f44094f1fc41076c464300729b6/src/examples.jl#L219) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
+The example above can be run with `CellListMap.Examples.nearest_neighbour()` and is available in the
+![nearest_neighbour.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour.jl) file.
+
+The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest_neighbour_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/src/examples/nearest_neighbour_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
 ## Neighbour list
 
@@ -209,4 +214,5 @@ pairs = map_pairwise!(
 )
 ```
 
-The full example can be run with `CellListMap.test7()`. 
+The full example can be run with `CellListMap.Examples.neighbourlist()`, available in the file 
+[neighbourlist.jl](https://github.com/m3g/CellListMap.jl/blob/src/examples/neighbourlist.jl).

@@ -164,7 +164,7 @@ using Test
     @test CellListMap.Examples.distance_histogram(parallel=true,x=x) ≈ CellListMap.Examples.distance_histogram(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_potential(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_potential(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_force(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_force(parallel=false,x=x)
-    @test count(CellListMap.Examples.minimum_distance(parallel=true,x=x,y=y) .≈ CellListMap.Examples.minimum_distance(parallel=false,x=x,y=y)) == 3
+    @test count(CellListMap.Examples.nearest_neighbour(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbour(parallel=false,x=x,y=y)) == 3
 
     function pair_match(p1,p2) 
         p1[3] ≈ p2[3] || return false 
@@ -178,14 +178,14 @@ using Test
 
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
-    @test count(CellListMap.Examples.minimum_distance_nopbc(parallel=true,x=x,y=y) .≈ CellListMap.Examples.minimum_distance_nopbc(parallel=false,x=x,y=y)) == 3
+    @test count(CellListMap.Examples.nearest_neighbour_nopbc(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbour_nopbc(parallel=false,x=x,y=y)) == 3
 
     # invert x and y to test swap
-    ixy = CellListMap.Examples.minimum_distance_nopbc(parallel=false,x=x,y=y) 
-    iyx = CellListMap.Examples.minimum_distance_nopbc(parallel=false,x=y,y=x) 
+    ixy = CellListMap.Examples.nearest_neighbour_nopbc(parallel=false,x=x,y=y) 
+    iyx = CellListMap.Examples.nearest_neighbour_nopbc(parallel=false,x=y,y=x) 
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
-    ixy = CellListMap.Examples.minimum_distance_nopbc(parallel=true,x=x,y=y) 
-    iyx = CellListMap.Examples.minimum_distance_nopbc(parallel=true,x=y,y=x) 
+    ixy = CellListMap.Examples.nearest_neighbour_nopbc(parallel=true,x=x,y=y) 
+    iyx = CellListMap.Examples.nearest_neighbour_nopbc(parallel=true,x=y,y=x) 
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
 
     # Test some fractional box lengths with the packmol test

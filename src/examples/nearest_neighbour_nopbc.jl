@@ -7,7 +7,7 @@ import Random
 # without periodic conditions. We need to define a special reducing function to the
 # parallel computation.
 #
-function minimum_distance_nopbc(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
+function nearest_neighbour_nopbc(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
     # Particle positions
     Random.seed!(321)
