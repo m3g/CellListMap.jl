@@ -159,39 +159,40 @@ using Test
     N = 100_000
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
-    @test CellListMap.test1(parallel=true,x=x)[2] ≈ CellListMap.test1(parallel=false,x=x)[2]
-    @test CellListMap.test2(parallel=true,x=x) ≈ CellListMap.test2(parallel=false,x=x)
-    @test CellListMap.test3(parallel=true,x=x) ≈ CellListMap.test3(parallel=false,x=x)
-    @test CellListMap.test4(parallel=true,x=x) ≈ CellListMap.test4(parallel=false,x=x)
-    @test count(CellListMap.test5(parallel=true,x=x,y=y) .≈ CellListMap.test5(parallel=false,x=x,y=y)) == 3
+    @test CellListMap.Examples.average_displacement(parallel=true)[1]  
+    @test CellListMap.Examples.average_displacement(parallel=false)[1]
+    @test CellListMap.Examples.distance_histogram(parallel=true,x=x) ≈ CellListMap.Examples.distance_histogram(parallel=false,x=x)
+    @test CellListMap.Examples.gravitational_potential(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_potential(parallel=false,x=x)
+    @test CellListMap.Examples.gravitational_force(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_force(parallel=false,x=x)
+    @test count(CellListMap.Examples.minimum_distance(parallel=true,x=x,y=y) .≈ CellListMap.Examples.minimum_distance(parallel=false,x=x,y=y)) == 3
 
     function pair_match(p1,p2) 
         p1[3] ≈ p2[3] || return false 
         p1[1] == p2[1] && p1[2] == p2[2] && return true
         p1[1] == p2[2] && p1[2] == p2[1] && return true
     end
-    pairs1 = sort!(CellListMap.test7(parallel=true,x=x),by=x->x[3])
-    pairs2 = sort!(CellListMap.test7(parallel=false,x=x),by=x->x[3])
+    pairs1 = sort!(CellListMap.Examples.neighbourlist(parallel=true,x=x),by=x->x[3])
+    pairs2 = sort!(CellListMap.Examples.neighbourlist(parallel=false,x=x),by=x->x[3])
     @test length(pairs1) == length(pairs2)
     @test count(pair_match.(pairs1,pairs2)) == length(pairs1)
 
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
-    @test count(CellListMap.test6(parallel=true,x=x,y=y) .≈ CellListMap.test6(parallel=false,x=x,y=y)) == 3
+    @test count(CellListMap.Examples.minimum_distance_nopbc(parallel=true,x=x,y=y) .≈ CellListMap.Examples.minimum_distance_nopbc(parallel=false,x=x,y=y)) == 3
 
     # invert x and y to test swap
-    ixy = CellListMap.test6(parallel=false,x=x,y=y) 
-    iyx = CellListMap.test6(parallel=false,x=y,y=x) 
+    ixy = CellListMap.Examples.minimum_distance_nopbc(parallel=false,x=x,y=y) 
+    iyx = CellListMap.Examples.minimum_distance_nopbc(parallel=false,x=y,y=x) 
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
-    ixy = CellListMap.test6(parallel=true,x=x,y=y) 
-    iyx = CellListMap.test6(parallel=true,x=y,y=x) 
+    ixy = CellListMap.Examples.minimum_distance_nopbc(parallel=true,x=x,y=y) 
+    iyx = CellListMap.Examples.minimum_distance_nopbc(parallel=true,x=y,y=x) 
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
 
     # Test some fractional box lengths with the packmol test
-    @test CellListMap.packmol_test(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=TriclinicCell)[1]
-    @test CellListMap.packmol_test(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=TriclinicCell)[1]
-    @test CellListMap.packmol_test(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=OrthorhombicCell)[1]
-    @test CellListMap.packmol_test(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
+    @test CellListMap.Examples.packmol(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=TriclinicCell)[1]
+    @test CellListMap.Examples.packmol(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=TriclinicCell)[1]
+    @test CellListMap.Examples.packmol(parallel=false, sides=[46.4,32.1,44.7], tol=3.14, UnitCellType=OrthorhombicCell)[1]
+    @test CellListMap.Examples.packmol(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
     
     # Testing the propagation of types in automatic differentiation
     function func(x)

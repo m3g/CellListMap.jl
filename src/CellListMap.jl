@@ -141,7 +141,7 @@ include("./utils.jl")
 #
 # Test and example functions
 #
-include("./examples.jl")
+include("./examples/examples.jl")
 include("./testing.jl")
 
 end # module

@@ -1,8 +1,8 @@
 # Examples
 
-The full code of the examples described here is available at the [examples.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples.jl) file. 
+The full code of the examples described here is available at the [examples](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/) directory. 
 
-### Mean difference of coordinates 
+## Mean difference of coordinates 
 
 Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.
 
@@ -31,7 +31,9 @@ avg_dx = normalization * map_pairwise!(
 )
 ```
 
-The example above can be run with `CellListMap.test1()`. 
+The example above can be run with `CellListMap.Examples.average_displacement()` and is available in the
+![average_displacement.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl).
+
 
 ## Histogram of distances
 
