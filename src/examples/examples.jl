@@ -10,4 +10,7 @@ include("./neighbourlist.jl")
 include("./pairwise_velocities.jl")
 include("./packmol.jl")
 
+#Requires Unitful and ForwardDiff, thus is not loaded
+#include("./generic_types.jl")
+
 end
