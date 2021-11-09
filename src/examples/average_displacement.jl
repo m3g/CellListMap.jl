@@ -30,6 +30,5 @@ function average_displacement(;N=100_000,parallel=true,x=nothing)
         parallel=parallel
     )
   
-    correct_result = 100.5799271448272
-    return avg_dx ≈ correct_result, avg_dx
+    return avg_dx
 end
