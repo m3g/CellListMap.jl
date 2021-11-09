@@ -45,19 +45,21 @@ function sumsq_measurements(x_input,sides,cutoff;parallel=false)
 
     # The dual type of measurement does not propagate well on
     # all operations of CellListMap, and also comes with a signficant
-    # cost, because they are mutable types. Therefore, it is better
+    # cost, because they are not isbits types. Therefore, it is better
     # to bypass the internal computations by closing over the 
     # input array and computing the result directly from the original
     # data. Here, `x_input` is the original array of coordinates
     # with uncertainties.  
-    function sum_sqr_pair(i,j,s,x_input)
-        d2 = norm_sqr(x_input[i] - x_input[j])
-        s += d2
+    function sum_sqr_pair(i,j,s,x_input,box)
+        xi = x_input[i]
+        xj = CellListMap.wrap_relative_to(x_input[j],xi,box)
+        s += norm_sqr(xi - xj)
         return s
     end
 
-    # Copy input matrix of measurements to matrix of floats
-    x = getproperty.(x_input,:val)  
+    # Copy input vector of coordinates with uncertainties to a vector
+    # of coordintes with values only
+    x = [ getproperty.(v,:val) for v in x_input ]
     
     # Build cell lists
     box = Box(sides,cutoff)
@@ -67,9 +69,9 @@ function sumsq_measurements(x_input,sides,cutoff;parallel=false)
     s = measurement(0.,0.)
 
     # And instead of using the `x` and `y` coordinates provided by the
-    # interface, we close over the `x_input` for the calculations.
+    # interface, we close over the `x_input` and `box` for the calculations.
     s = map_pairwise!(
-        (x,y,i,j,d2,s) -> sum_sqr_pair(i,j,s,x_input),
+        (x,y,i,j,d2,s) -> sum_sqr_pair(i,j,s,x_input,box),
         s, box, cl, parallel=parallel
     )
     return s
@@ -80,14 +82,15 @@ end
 #
 function generic_types(iprint=true;parallel=false)
 
-    # Data
+    #
+    # Compare analtical and finite-difference gradient. Note that we convert the `sides`
+    # and `cutoff` variables to the type of variable in `x`, to allow the propagation of the 
+    # dual numbers required to ForwardDiff and Unitful
+    #
     x = rand(3,1000)
     cutoff = 0.1 
     sides = [1.0, 1.0, 1.0]
 
-    # Compare analtical and finite-difference gradient. Note that we convert the `sides`
-    # and `cutoff` variables to the type of variable in `x`, to allow the propagation of the 
-    # dual numbers required to ForwardDiff and Unitful
     function sumsq_generic(x)
         cutoff_generic = eltype(x).(cutoff) # cutoff is closed over
         sides_generic = eltype(x).(sides) # sides is closed over
@@ -96,19 +99,23 @@ function generic_types(iprint=true;parallel=false)
     check_grad = sumsq_grad(x,sides,cutoff) ≈ ForwardDiff.gradient(sumsq_generic, x)
     iprint && println("Gradients are correct: ", check_grad)
 
+    #
     # Now let us propagate units
+    #
     x = rand(3,1000)u"nm"
     cutoff = 0.1u"nm"
     sides = [1.0, 1.0, 1.0]u"nm"
     runit = sumsq(x,sides,cutoff)
     iprint && println("Result with units: ", runit)
 
-    # Measurements, more general types, and optimal peformance
-    x = [ measurement(rand(),0.01*rand()) for i in 1:3, j in 1:1000 ]
+    #
+    # Propagating uncertainties with Measurements
+    #
+    x = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for j in 1:1000 ]
     cutoff = 0.1
     sides = [1.0, 1.0, 1.0]
     rmeasurement = sumsq_measurements(x,sides,cutoff,parallel=parallel)
-    iprint && println("Result with units: ", rmeasurement)
+    iprint && println("Result with uncertainty: ", rmeasurement)
 
     return check_grad, unit(runit), typeof(rmeasurement)
 end
