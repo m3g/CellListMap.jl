@@ -142,7 +142,7 @@ end
 
 $(TYPEDEF)
 
-$(TYPEDEF)
+$(TYPEDFIELDS)
 
 Auxiliary structure to carry threaded lists and ranges of particles to 
 be considered by each thread on parallel construction. 

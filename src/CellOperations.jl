@@ -61,7 +61,7 @@ julia> wrap_to_first(x,unit_cell_matrix)
 2-element Vector{Float64}:
  5.0
  3.0000000000000004
- ```
+```
 
 """
 @inline function wrap_to_first(x,unit_cell_matrix)
