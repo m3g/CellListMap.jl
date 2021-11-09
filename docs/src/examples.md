@@ -32,7 +32,7 @@ avg_dx = normalization * map_pairwise!(
 ```
 
 The example above can be run with `CellListMap.Examples.average_displacement()` and is available in the
-![average_displacement.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl) file.
+[average_displacement.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl) file.
 
 ## Histogram of distances
 
@@ -61,7 +61,7 @@ hist = normalization * map_pairwise!(
 ```
 
 The example above can be run with `CellListMap.Examples.distance_histogram()` and is available in the
-![distance_histogram.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl) file.
+[distance_histogram.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl) file.
 
 ## Gravitational potential
 
@@ -83,7 +83,7 @@ u = map_pairwise!((x,y,i,j,d2,u) -> potential(i,j,d2,mass,u),0.0,box,cl)
 ```
 
 The example above can be run with `CellListMap.Examples.gravitational_potential()` and is available in the
-![gravitational_potential.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_potential.jl) file.
+[gravitational_potential.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_potential.jl) file.
 
 ## Gravitational force
 
@@ -115,7 +115,7 @@ forces = map_pairwise!(
 ```
 
 The example above can be run with `CellListMap.Examples.gravitational_force()` and is available in the
-![gravitational_force.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl) file.
+[gravitational_force.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl) file.
 
 ## Nearest neighbour
 
@@ -161,9 +161,9 @@ mind = map_pairwise!(
 ```
 
 The example above can be run with `CellListMap.Examples.nearest_neighbour()` and is available in the
-![nearest_neighbour.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour.jl) file.
+[nearest_neighbour.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour.jl) file.
 
-The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest_neighbour_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/src/examples/nearest_neighbour_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
+The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest\_neighbour\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
 ## Neighbour list
 
@@ -314,7 +314,6 @@ julia> CellListMap.neighbourlist(x,cutoff)
  (934, 615, 0.08834318454969409 nm)
  (934, 692, 0.05002019032986014 nm)
 ```
-
 
 ### Automatic differentiation
 
