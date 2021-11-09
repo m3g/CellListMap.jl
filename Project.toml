@@ -23,9 +23,11 @@ julia = "1"
 [extras]
 Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 
 [targets]
-test = ["Test", "Chemfiles", "NearestNeighbors", "ForwardDiff" ]
+test = ["Test", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements" ]
