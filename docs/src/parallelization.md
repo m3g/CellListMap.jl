@@ -44,7 +44,7 @@ This function *must* return the updated `output` variable, being it mutable or n
 
 ### Preallocating the cell lists and cell list auxiliary arrays
 
-The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrinked) on this update. 
+The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrink) on this update. 
 
 ```julia
 # Initialize cell lists with initial coordinates
