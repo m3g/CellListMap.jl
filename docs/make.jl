@@ -22,5 +22,6 @@ deploydocs(
     repo = "github.com/m3g/CellListMap.jl.git",
     target = "build",
     branch = "gh-pages",
+    devbranch = "main", 
     versions = ["stable" => "v^", "v#.#" ],
 )
