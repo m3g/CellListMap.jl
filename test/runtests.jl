@@ -1,7 +1,9 @@
 using CellListMap
 using StaticArrays
-using ForwardDiff
 using Test
+
+# Loads Unitful and ForwardDiff
+include("../src/examples/generic_types.jl")
 
 @testset "CellListMap.jl" begin
 
@@ -159,8 +161,7 @@ using Test
     N = 100_000
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
-    @test CellListMap.Examples.average_displacement(parallel=true)[1]  
-    @test CellListMap.Examples.average_displacement(parallel=false)[1]
+    @test CellListMap.Examples.average_displacement(parallel=true) ≈ CellListMap.Examples.average_displacement(parallel=false)[1]
     @test CellListMap.Examples.distance_histogram(parallel=true,x=x) ≈ CellListMap.Examples.distance_histogram(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_potential(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_potential(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_force(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_force(parallel=false,x=x)
@@ -195,41 +196,7 @@ using Test
     @test CellListMap.Examples.packmol(parallel=true, sides=[18.4,30.1,44], tol=2, UnitCellType=OrthorhombicCell)[1]
     
     # Testing the propagation of types in automatic differentiation
-    function func(x)
-        cutoff = eltype(x)(0.1)
-        sides = eltype(x).(1. for _ in axes(x,1))
-        box = Box(sides,cutoff)
-        cl = CellList(x,box)
-        s = zero(eltype(x[1]^2))
-        s = map_pairwise!(
-            (x,y,i,j,d2,s) -> s += d2,
-            s, box, cl,
-        )
-        return s
-    end
-
-    function grad(x)
-        g = similar(x)
-        cutoff = eltype(x)(0.1)
-        sides = eltype(x).(1. for _ in axes(x,1))
-        box = Box(sides,cutoff)
-        cl = CellList(x,box)
-        g .= zero(eltype(x))
-        map_pairwise!(
-            (x,y,i,j,d2,g) -> begin
-                dx = x - y
-                g[:,i] .+= 2*dx
-                g[:,j] .-= 2*dx
-                return g
-            end,
-            g, box, cl, parallel=false
-        )
-        return g
-    end
-    x = rand(3,1000)
-    @test grad(x) ≈ ForwardDiff.gradient(func, x) 
-    x = rand(2,1000)
-    @test grad(x) ≈ ForwardDiff.gradient(func, x) 
+    @test generic_types(false) == (true,u"nm^2",Measurement{Float64})
 
 end
 
