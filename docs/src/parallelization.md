@@ -59,7 +59,6 @@ end
 ```
 
 The procedure is identical if using two sets of coordinates, in which case, one would do:
-
 ```julia
 cl = CellList(x,y,box)
 aux = CellListMap.AuxThreaded(cl)
