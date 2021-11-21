@@ -632,16 +632,16 @@ function UpdateCellList!(
              end
         end
         # Tree-Merge of threaded cell lists
-        n_merge = isodd(nt) ? nt - 1 : nt
+        n_merge = nt
         while n_merge > 1
             half = n_merge ÷ 2
             @threads for i in 1:half
                 aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
             end
+            if isodd(n_merge)
+                aux.lists[1]  = merge_cell_lists!(aux.lists[1],aux.lists[n_merge])
+            end
             n_merge = half
-        end
-        if isodd(nt)
-            aux.lists[1] = merge_cell_lists!(aux.lists[1],aux.lists[nt])
         end
         cl = aux.lists[1]
         # we choose for now the approach above, because resetting and copying
