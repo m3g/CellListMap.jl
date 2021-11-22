@@ -25,15 +25,30 @@ Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
 
 """
 
-```
-set_nt(cl) = max(1,min(cl.n_real_particles÷500,nthreads()))
-```
+$(TYPEDEF)
 
-Don't use all threads to build cell lists if the number of particles
-per thread is smaller than 500.
+$(TYPEDFIELDS)
+
+Structure to define the number of batches used in the parallel splitting of the calculations
+of the cell list construction and of the `map_pairwise` computation. It is initialized with
+a standard heuristic that returns at most the number of threads, but may return a smaller
+number if the system is small. The two parameters can be tunned for optimal performance of each
+step of the calculation (cell list construction and mapping of interactions). The construction
+of the cell lists require a larger number of particles for threading to be effective, Thus
+by default the system size that allows multi-threading is greater for this part of the calculation.  
 
 """
-set_nt(cl) = max(1,min(cl.n_real_particles÷500,nthreads()))
+struct NumberOfBatches
+    build_cell_lists::Int
+    map_computation::Int
+end
+Base.zero(::Type{NumberOfBatches}) = NumberOfBatches(0,0)
+Base.iszero(x::NumberOfBatches) = (iszero(x.build_cell_lists) && iszero(x.map_computation))
+function Base.show(io::IO,::MIME"text/plain",nbatches::NumberOfBatches)
+    println(io,typeof(nbatches))
+    println(io,"  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
+    print(io,"  Number of batches for function mapping: $(nbatches.map_computation)")
+end
 
 """
 
@@ -106,9 +121,11 @@ Base.@kwdef struct CellList{N,T}
     cell_indices_real::Vector{Int} = zeros(Int,0)
     " Vector containing cell lists of cells with particles. "
     cells::Vector{Cell{N,T}} = Cell{N,T}[]
+    " Number of batches for the parallel calculations. "
+    nbatches::NumberOfBatches = zero(NumberOfBatches)
     " Auxiliar array to store projected particles. "
     projected_particles::Vector{Vector{ProjectedParticle{N,T}}} = 
-        [ Vector{ProjectedParticle{N,T}}(undef,0) for _ in 1:nthreads() ]
+        Vector{Vector{ProjectedParticle{N,T}}}(undef,0)
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
     println(io,typeof(cl))
@@ -137,7 +154,53 @@ function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
     print(io,"   $(length(cl.ref)) particles in the reference vector.\n")
     print(io,"   $(cl.target.n_cells_with_real_particles) cells with real particles of target vector.")
 end
-  
+
+"""
+
+```
+set_number_of_batches!(cl,nbatches::NumberOfBatches)  
+```
+
+Functions that set the default number of batches for the construction of the cell lists, 
+and mapping computations. This is of course heuristic, and may not be the best choice for
+every problem.
+
+"""
+function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) where {N,T}  
+    if iszero(nbatches)
+        n_particles_per_cell = ceil(Int,particles_per_cell(cl)) 
+        nbatches = NumberOfBatches(
+            max(1,min(n_particles_per_cell÷3,nthreads())),
+            max(1,min(100*n_particles_per_cell,nthreads()))
+        )   
+    end
+    @set! cl.nbatches = nbatches
+    for _ in 1:cl.nbatches.map_computation
+        push!(cl.projected_particles,Vector{ProjectedParticle{N,T}}(undef,0))
+    end
+    return cl
+end
+set_number_of_batches!(cl::CellList) = set_number_of_batches!(cl) 
+
+function set_number_of_batches!(cl::CellListPair{N,T},nbatches::NumberOfBatches) where {N,T}
+    if iszero(nbatches)
+        n_particles_per_cell = ceil(Int,particles_per_cell(cl.target)) 
+        nbatches = NumberOfBatches(
+            max(1,min(n_particles_per_cell÷3,nthreads())),
+            max(1,length(cl.ref)÷2500)
+        )
+    end
+    target = cl.target
+    @set! target.nbatches = nbatches
+    # This below is not necessary
+    for _ in 1:target.nbatches.map_computation
+        push!(target.projected_particles,Vector{ProjectedParticle{N,T}}(undef,0))
+    end
+    @set! cl.target = target
+    return cl
+end
+set_number_of_batches!(cl::CellListPair) = set_number_of_batches!(cl,zero(NumberOfBatches)) 
+
 """
 
 $(TYPEDEF)
@@ -154,7 +217,7 @@ be considered by each thread on parallel construction.
 end
 function Base.show(io::IO,::MIME"text/plain",aux::AuxThreaded)
     println(io,typeof(aux))
-    print(io," Auxiliary arrays for nthreads = ", length(aux.lists)) 
+    print(io," Auxiliary arrays for nbatches = ", length(aux.lists)) 
 end
 
 """
@@ -241,7 +304,6 @@ to the number of threads.
 
 """
 function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
-    nt = set_nt(cl)
     # the fact that aux.lists[1] and cl are the same is deliberate,
     # because for not-so-large systems this makes a huge difference
     # since it removes one step from the threaded cell list merging
@@ -249,27 +311,28 @@ function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
     # of the strategy for threaded merging of lists. The alternative is
     # to initialize here with `deepcopy(cl)` for all `aux.lists`.
     push!(aux.lists, cl)
-    for it in 2:nt
-        if it > length(aux.lists)
+    nbatches = cl.nbatches.build_cell_lists
+    for ibatch in 2:nbatches
+        if ibatch > length(aux.lists)
             push!(aux.lists, deepcopy(cl))
         else
-            aux.lists[it] = deepcopy(cl)
+            aux.lists[ibatch] = deepcopy(cl)
         end
     end
     # Indices of the atoms that will be added by each thread
-    nrem = cl.n_real_particles%nt
-    nperthread = (cl.n_real_particles-nrem)÷nt
+    nrem = cl.n_real_particles%nbatches
+    nperthread = (cl.n_real_particles-nrem)÷nbatches
     first = 1
-    for it in 1:nt
+    for ibatch in 1:nbatches
         nx = nperthread
-        if it <= nrem
+        if ibatch <= nrem
             nx += 1
         end
         push!(aux.idxs,first:(first-1)+nx)
         first += nx
-        cl_tmp = aux.lists[it]
-        @set! cl_tmp.n_real_particles = length(aux.idxs[it]) 
-        aux.lists[it] = cl_tmp
+        cl_tmp = aux.lists[ibatch]
+        @set! cl_tmp.n_real_particles = length(aux.idxs[ibatch]) 
+        aux.lists[ibatch] = cl_tmp
     end
     return aux
 end
@@ -280,13 +343,16 @@ end
 CellList(
     x::AbstractVector{AbstractVector},
     box::Box{UnitCellType,N,T};
-    parallel::Bool=true
+    parallel::Bool=true,
+    nbatches=NumberOfBatches=zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
 ```
 
 Function that will initialize a `CellList` structure from scracth, given a vector
 or particle coordinates (a vector of vectors, typically of static vectors) 
-and a `Box`, which contain the size ofthe system, cutoff, etc.  
+and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
+systems, the number of parallel batches is equal to the number of threads, but it can
+be tunned for optimal performance in some cases.
 
 ### Example
 
@@ -307,12 +373,14 @@ CellList{3, Float64}
 function CellList(
     x::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
-    parallel::Bool=true
+    parallel::Bool=true,
+    nbatches::NumberOfBatches = zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
     cl = CellList{N,T}(
         n_real_particles=length(x),
         number_of_cells=prod(box.nc)
     )
+    cl = set_number_of_batches!(cl,nbatches)
     return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -322,7 +390,8 @@ end
 function CellList(
     x::AbstractMatrix,
     box::Box{UnitCellType,N,T};
-    parallel::Bool=true
+    parallel::Bool=true,
+    nbatches::NumberOfBatches=zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
 ```
 
@@ -334,7 +403,8 @@ matrix must be the dimension of the points (`2` or `3`).
 function CellList(
     x::AbstractMatrix,
     box::Box{UnitCellType,N,T};
-    parallel::Bool=true
+    parallel::Bool=true,
+    nbatches::NumberOfBatches=zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
@@ -342,9 +412,9 @@ function CellList(
         n_real_particles=length(x_re),
         number_of_cells=prod(box.nc)
     )
+    cl = set_number_of_batches!(cl,nbatches)
     return UpdateCellList!(x_re,box,cl,parallel=parallel)
 end
-
 
 """
 
@@ -375,6 +445,7 @@ function reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
         cell_indices = cl.cell_indices,
         cell_indices_real = cl.cell_indices_real,
         cells=cl.cells,
+        nbatches=cl.nbatches,
         projected_particles = cl.projected_particles
     )
     return cl
@@ -424,7 +495,8 @@ function CellList(
     y::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
-    autoswap=true
+    autoswap=true,
+    nbatches::NumberOfBatches = zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
     if length(x) >= length(y) || !autoswap
         ref = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
@@ -436,6 +508,7 @@ function CellList(
         swap = true
     end
     cl_pair = CellListPair(ref=ref,target=target,swap=swap)
+    cl_pair = set_number_of_batches!(cl_pair,nbatches)
     return cl_pair
 end
 
@@ -447,7 +520,8 @@ function CellList(
     y::AbstractMatrix,
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
-    autoswap=true
+    autoswap=true,
+    nbatches=zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
 ```
 
@@ -461,13 +535,14 @@ function CellList(
     y::AbstractMatrix,
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
-    autoswap=true
+    autoswap=true,
+    nbatches=zero(NumberOfBatches)
 ) where {UnitCellType,N,T} 
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
-    CellList(x_re,y_re,box,parallel=parallel,autoswap=autoswap)
+    CellList(x_re,y_re,box,parallel=parallel,autoswap=autoswap,nbatches=nbatches)
 end
 
 """
@@ -511,7 +586,7 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
     aux = AuxThreaded{N,T}()
-    if parallel && nthreads() > 1
+    if parallel && cl.nbatches.build_cell_lists > 1
         init_aux_threaded!(aux,cl)
     end
     return UpdateCellList!(x,box,cl,aux,parallel=parallel)
@@ -618,21 +693,21 @@ function UpdateCellList!(
 ) where {N,T}
 
     # Add particles to cell list
-    nt = set_nt(cl)
-    if !parallel || nt < 2
+    nbatches = cl.nbatches.build_cell_lists
+    if !parallel || nbatches == 1
         cl = reset!(cl,box,length(x))
         cl = add_particles!(x,box,0,cl)
-    else
+    else 
         # Cell lists to be built by each thread
-        @threads for it in 1:nt
-             aux.lists[it] = reset!(aux.lists[it],box,length(aux.idxs[it]))
-             if length(aux.idxs[it]) > 0
-                xt = @view(x[aux.idxs[it]])  
-                aux.lists[it] = add_particles!(xt,box,aux.idxs[it][1]-1,aux.lists[it])
+        @threads for ibatch in 1:nbatches
+             aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
+             if length(aux.idxs[ibatch]) > 0
+                xt = @view(x[aux.idxs[ibatch]])  
+                aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
              end
         end
         # Tree-Merge of threaded cell lists
-        n_merge = nt
+        n_merge = nbatches
         while n_merge > 1
             half = n_merge ÷ 2
             @threads for i in 1:half
@@ -658,7 +733,7 @@ function UpdateCellList!(
         maxnp = max(maxnp,cl.cells[i].n_particles)
     end
     if maxnp > length(cl.projected_particles[1])
-        for i in 1:nthreads()
+        for i in 1:length(cl.projected_particles)
             resize!(cl.projected_particles[i],maxnp)
         end
     end
@@ -961,7 +1036,7 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {UnitCellType,N,T}
     aux = AuxThreaded{N,T}()
-    if parallel && nthreads() > 1
+    if parallel && cl.target.nbatches.build_cell_lists > 1
         init_aux_threaded!(aux,cl_pair.target)
     end
     return UpdateCellList!(x,y,box,cl_pair,aux,parallel=parallel)
@@ -1122,9 +1197,9 @@ end
 particles_per_cell(cl::CellList,box::Box)
 ```
 
-Returns the average number of particles per computing cell.
+Returns the average number of real particles per computing cell.
 
 """
-particles_per_cell(cl::CellList,box::Box) = cl.ncp[1] / prod(box.nc)
+particles_per_cell(cl::CellList) = cl.n_real_particles / cl.number_of_cells
 
 

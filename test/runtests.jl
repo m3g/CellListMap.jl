@@ -68,6 +68,20 @@ include("../src/examples/generic_types.jl")
     box = Box(sides,cutoff,lcell=5); cl = CellList(x,box)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
 
+    # Test if changing the number of batches breaks anything
+    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(3,5))
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(1,1))
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(1,7))
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(7,1))
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(13,17))
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(4,16))
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
+
     # Test random cells of all possible types
     for N in 2:3, 
         M in rand(10:20), 
@@ -126,7 +140,9 @@ include("../src/examples/generic_types.jl")
     @test map_pairwise!( (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces), copy(forces),box,cl,parallel=true) ≈ naive
     @test map_pairwise!( (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces), copy(forces),box,cl,parallel=false) ≈ naive
 
+    #
     # Compute some properties of disjoint sets 
+    #
     box = Box(sides,cutoff,lcell=1)
     cl = CellList(x,y,box)
 
@@ -157,6 +173,20 @@ include("../src/examples/generic_types.jl")
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=true) ≈ naive
 
+    # Test if changing the number of batches breaks anything
+    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(1,1))
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(3,5))
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(7,1))
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(1,7))
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(4,16))
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(13,17))
+    @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
+
     # Test the examples, to check further if the parallelization didn't break something
     N = 100_000
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
@@ -166,7 +196,7 @@ include("../src/examples/generic_types.jl")
     @test CellListMap.Examples.gravitational_potential(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_potential(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_force(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_force(parallel=false,x=x)
     @test count(CellListMap.Examples.nearest_neighbour(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbour(parallel=false,x=x,y=y)) == 3
-
+    
     function pair_match(p1,p2) 
         p1[3] ≈ p2[3] || return false 
         p1[1] == p2[1] && p1[2] == p2[2] && return true

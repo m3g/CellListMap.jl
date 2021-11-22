@@ -30,7 +30,7 @@ function nearest_neighbour(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=noth
     # We have to define our own reduce function here (for the parallel version)
     function reduce_mind(output, output_threaded)
         mind = output_threaded[1]
-        for i in 2:Threads.nthreads()
+        for i in 2:length(output_threaded)
             if output_threaded[i][3] < mind[3]
                 mind = output_threaded[i]
             end

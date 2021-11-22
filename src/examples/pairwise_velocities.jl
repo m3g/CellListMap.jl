@@ -7,7 +7,9 @@ import Random
 # particles for which the distances are known. This histogram is useful in the study
 # galaxy motions, for example. 
 #
-function pairwise_velocities(::Type{T}=Float64;N=100_000,cd=true,parallel=true,lcell=1) where T
+function pairwise_velocities(::Type{T}=Float64;
+    N=100_000,cd=true,parallel=true,lcell=1,nbatches=zero(CellListMap.NumberOfBatches)
+) where T
 
     @inline dot(x::SVector{3,T}, y::SVector{3,T}) where T = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]
     
@@ -21,7 +23,7 @@ function pairwise_velocities(::Type{T}=Float64;N=100_000,cd=true,parallel=true,l
     end
   
     function reduce_hist(hist, hist_threaded)
-        for i in 1:Threads.nthreads()
+        for i in 1:length(hist_threaded)
             hist[1] .+= hist_threaded[i][1]
             hist[2] .+= hist_threaded[i][2]
         end
@@ -49,7 +51,7 @@ function pairwise_velocities(::Type{T}=Float64;N=100_000,cd=true,parallel=true,l
     velocities = reshape(reinterpret(SVector{3,T}, velocities), n)
   
     box = Box(Lbox, r_max, UnitCellType=OrthorhombicCell, lcell=lcell) 
-    cl = CellList(positions, box, parallel=parallel)
+    cl = CellList(positions, box, parallel=parallel, nbatches=nbatches)
     hist = (zeros(Int, length(rbins) - 1), zeros(T, length(rbins) - 1))
   
     # Needs this to stabilize the type of velocities and hist, probably

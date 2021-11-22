@@ -38,7 +38,7 @@ function neighbourlist(;N=100_000,parallel=true,x=nothing)
     # Reduction function
     function reduce_pairs(pairs, pairs_threaded)
         pairs = pairs_threaded[1]
-        for i in 2:Threads.nthreads()
+        for i in 2:length(pairs_threaded)
             append!(pairs, pairs_threaded[i])
         end
         return pairs

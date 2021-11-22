@@ -80,7 +80,7 @@ function neighbourlist(box::Box, cl; parallel=true)
     # We have to define our own reduce function here (for the parallel version)
     function reduce_pairs(pairs, pairs_threaded)
         pairs = pairs_threaded[1]
-        for i in 2:Threads.nthreads()
+        for i in 2:length(pairs_threaded)
             append!(pairs, pairs_threaded[i])
         end
         return pairs
