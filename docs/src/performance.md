@@ -2,13 +2,15 @@
 
 ## Optimizing the cell grid
 
-Until this is automatized (hopefully soon), the partition of the space into cells is dependent on a parameter `lcell` which can be passed to `Box`. For example:
+The partition of the space into cells is dependent on a parameter `lcell` which can be passed to `Box`. For example:
 ```julia
 box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 map_pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is between `lcell=1` and `lcell=6`, but for large and dense systems a larger value may be optimal. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The performance can be tested using the progress meter, as explained below.  
+This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is `lcell=1`, because in `CellListMap` implements a method to avoid spurious computations of distances on top of the cell lists, but for very dense systems, or for very large cutoffs (meaning, for situations in which the number of particles per cell may be very large), a greater `lcell` may provide a better performance. It is unlikely that `lcell > 3` is useful in any practical situation. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The performance can be tested using the progress meter, as explained below.  
+
+As a rough guide, `lcell > 1` is only worthwhile if the number of particles per cell is greater than  `~200-400`.  
 
 ## Output progress 
 
