@@ -14,6 +14,7 @@ export map_pairwise!
 export limits
 export TriclinicCell
 export OrthorhombicCell
+export NumberOfBatches
 
 include("./linearalgebra.jl")
 include("./Box.jl")
