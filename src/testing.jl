@@ -423,5 +423,29 @@ function check_cl(cl,box;mark)
     end
 end
 
+# Create a set of random particles with an atomic density simiilar to that
+# of water at room temperature and pressure.
+function xatomic(n=100_000;cutoff=12.,lcell=1)
+    atomic_density_of_water = 0.1 # atoms/ Angstrom^3
+    vol = n/atomic_density_of_water
+    l = vol^(1/3)
+    x = l*rand(3,n)
+    box = Box([l,l,l],cutoff,lcell=lcell)
+    return x, box
+end
+
+# Create a set of  random particles with the typical density of galaxies
+function xgalactic(n=8_000_000;cutoff=5.,lcell=1)
+    galactic_density = 12 # galaxyes per cubic mega-parsecs (https://doi.org/10.1093/mnras/106.2.121)
+    vol = n/galactic_density
+    l = vol^(1/3) # mega-parsecs
+    x = l*rand(3,n)
+    box = Box([l,l,l],cutoff,lcell=lcell)
+    return x, box
+end
+
+
+
+
 
 
