@@ -171,7 +171,7 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
         n_particles_per_cell = ceil(Int,particles_per_cell(cl)) 
         nbatches = NumberOfBatches(
             max(1,min(n_particles_per_cell÷3,nthreads())),
-            max(1,min(100*n_particles_per_cell,nthreads()))
+            4*nthreads()
         )   
     end
     @set! cl.nbatches = nbatches
