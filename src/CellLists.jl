@@ -167,13 +167,17 @@ every problem.
 
 """
 function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) where {N,T}  
-    if iszero(nbatches)
-        n_particles_per_cell = ceil(Int,particles_per_cell(cl)) 
-        nbatches = NumberOfBatches(
-            max(1,min(n_particles_per_cell÷3,nthreads())),
-            8*nthreads()
-        )   
+    if nbatches.build_cell_lists < 1 
+        n1 = _nbatches_build_cell_lists(cl)
+    else
+        n1 = nbatches.build_cell_lists
     end
+    if nbatches.map_computation < 1
+        n2 = 8*nthreads()
+    else
+        n2 = nbatches.map_computation
+    end
+    nbatches = NumberOfBatches(n1,n2)
     @set! cl.nbatches = nbatches
     for _ in 1:cl.nbatches.map_computation
         push!(cl.projected_particles,Vector{ProjectedParticle{N,T}}(undef,0))
@@ -181,21 +185,22 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
     return cl
 end
 set_number_of_batches!(cl::CellList) = set_number_of_batches!(cl) 
+_nbatches_build_cell_lists(cl) = max(1,min(ceil(Int,particles_per_cell(cl)/3),nthreads()))
 
 function set_number_of_batches!(cl::CellListPair{N,T},nbatches::NumberOfBatches) where {N,T}
-    if iszero(nbatches)
-        n_particles_per_cell = ceil(Int,particles_per_cell(cl.target)) 
-        nbatches = NumberOfBatches(
-            max(1,min(n_particles_per_cell÷3,nthreads())),
-            max(1,length(cl.ref)÷2500)
-        )
+    if nbatches.build_cell_lists < 1 
+        n1 = _nbatches_build_cell_lists(cl)
+    else
+        n1 = nbatches.build_cell_lists
     end
+    if nbatches.map_computation < 1
+        n2 = max(1,length(cl.ref)÷2500)
+    else
+        n2 = nbatches.map_computation
+    end
+    nbatches = NumberOfBatches(n1,n2)
     target = cl.target
     @set! target.nbatches = nbatches
-    # This below is not necessary
-    for _ in 1:target.nbatches.map_computation
-        push!(target.projected_particles,Vector{ProjectedParticle{N,T}}(undef,0))
-    end
     @set! cl.target = target
     return cl
 end
@@ -1194,12 +1199,13 @@ end
 """
 
 ```
-particles_per_cell(cl::CellList,box::Box)
+particles_per_cell(cl)
 ```
 
 Returns the average number of real particles per computing cell.
 
 """
 particles_per_cell(cl::CellList) = cl.n_real_particles / cl.number_of_cells
+particles_per_cell(cl::CellListPair) = particles_per_cell(cl.target)
 
 
