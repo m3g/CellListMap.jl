@@ -185,7 +185,7 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
     return cl
 end
 set_number_of_batches!(cl::CellList) = set_number_of_batches!(cl) 
-_nbatches_build_cell_lists(cl) = max(1,min(ceil(Int,particles_per_cell(cl)/3),nthreads()))
+_nbatches_build_cell_lists(cl) = max(1,min(ceil(Int,particles_per_cell(cl)/4),nthreads()))
 
 function set_number_of_batches!(cl::CellListPair{N,T},nbatches::NumberOfBatches) where {N,T}
     if nbatches.build_cell_lists < 1 
