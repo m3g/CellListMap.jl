@@ -174,7 +174,7 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
         n1 = nbatches.build_cell_lists
     end
     if nbatches.map_computation < 1
-        n2 = 2*nthreads()
+        n2 = 4*nthreads()
     else
         n2 = nbatches.map_computation
     end
