@@ -54,12 +54,14 @@ function map_pairwise_parallel!(
     @unpack n_cells_with_real_particles = cl
     show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
     nbatches = cl.nbatches.map_computation
-    @threads for ibatch in 1:nbatches
-        for i in splitter(ibatch, nbatches, n_cells_with_real_particles)
-            cellᵢ = cl.cells[cl.cell_indices_real[i]]
-            output_threaded[ibatch] = 
-                inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch) 
-            show_progress && next!(p)
+    @sync for ibatch in 1:nbatches
+        Threads.@spawn begin 
+            for i in splitter(ibatch, nbatches, n_cells_with_real_particles)
+                cellᵢ = cl.cells[cl.cell_indices_real[i]]
+                output_threaded[ibatch] = 
+                    inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch) 
+                show_progress && next!(p)
+            end
         end
     end 
     output = reduce(output, output_threaded)
@@ -118,10 +120,12 @@ function map_pairwise_parallel!(
 ) where {F1,F2,N,T}
     show_progress && (p = Progress(length(cl.ref), dt=1))
     nbatches = cl.target.nbatches.map_computation
-    @threads for ibatch in 1:nbatches
-        for i in splitter(ibatch, nbatches, length(cl.ref))
-            output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl) 
-            show_progress && next!(p)
+    @sync for ibatch in 1:nbatches
+        Threads.@spawn begin
+            for i in splitter(ibatch, nbatches, length(cl.ref))
+                output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl) 
+                show_progress && next!(p)
+            end
         end
     end 
     output = reduce(output, output_threaded)

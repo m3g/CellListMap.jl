@@ -174,7 +174,7 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
         n1 = nbatches.build_cell_lists
     end
     if nbatches.map_computation < 1
-        n2 = 2*nthreads()
+        n2 = 4*nthreads()
     else
         n2 = nbatches.map_computation
     end
@@ -745,19 +745,21 @@ function UpdateCellList!(
         cl = add_particles!(x,box,0,cl)
     else 
         # Cell lists to be built by each thread
-         @threads for ibatch in 1:nbatches
-            aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
-            if length(aux.idxs[ibatch]) > 0
-               xt = @view(x[aux.idxs[ibatch]])  
-               aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
+         @sync for ibatch in 1:nbatches
+            Threads.@spawn begin
+                aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
+                if length(aux.idxs[ibatch]) > 0
+                xt = @view(x[aux.idxs[ibatch]])  
+                aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
+                end
             end
         end
         # Tree-Merge of threaded cell lists
         n_merge = nbatches
         while n_merge > 1
             half = n_merge ÷ 2
-            @threads for i in 1:half
-                aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
+            @sync for i in 1:half
+                Threads.@spawn aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
             end
             if isodd(n_merge)
                 aux.lists[1]  = merge_cell_lists!(aux.lists[1],aux.lists[n_merge])
