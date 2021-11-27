@@ -163,7 +163,8 @@ set_number_of_batches!(cl,nbatches::NumberOfBatches)
 
 Functions that set the default number of batches for the construction of the cell lists, 
 and mapping computations. This is of course heuristic, and may not be the best choice for
-every problem.
+every problem. See the parameter `nbatches` of the construction of the cell lists for 
+tunning this.
 
 """
 function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) where {N,T}  
@@ -173,7 +174,7 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
         n1 = nbatches.build_cell_lists
     end
     if nbatches.map_computation < 1
-        n2 = 8*nthreads()
+        n2 = 2*nthreads()
     else
         n2 = nbatches.map_computation
     end
@@ -205,6 +206,46 @@ function set_number_of_batches!(cl::CellListPair{N,T},nbatches::NumberOfBatches)
     return cl
 end
 set_number_of_batches!(cl::CellListPair) = set_number_of_batches!(cl,zero(NumberOfBatches)) 
+
+"""
+
+```
+nbatches(cl)
+```
+
+Returns the number of batches for parallel processing that will be used in the pairwise function mappings associated to cell list `cl`. 
+It returns the `cl.nbatches.map_computation` value. This function is important because it must be used to set the number of copies
+of custom preallocated output arrays.
+
+A second argument can be provided, which may be `:map` or `:build`, in which case the function returns either the number of batches used 
+for pairwise mapping or for the construction of the cell lists. Since this second value is internal and does not affect the interface, 
+it can be usually ignored. 
+
+### Example
+
+```julia-repl
+julia> x = rand(3,1000); box = Box([1,1,1],0.1);
+
+julia> cl = CellList(x,box,nbatches=NumberOfBatches(2,16));
+
+julia> nbatches(cl)
+16
+
+julia> nbatches(cl,:map)
+16
+
+julia> nbatches(cl,:build)
+2
+```
+
+"""
+nbatches(cl::CellList) = cl.nbatches.map_computation
+function nbatches(cl::CellList,s::Symbol)
+    s == :map_computation || s == :map && return cl.nbatches.map_computation
+    s == :build_cell_lists || s == :build && return cl.nbatches.build_cell_lists
+end
+nbatches(cl::CellListPair) = nbatches(cl.target)
+nbatches(cl::CellListPair,s::Symbol) = nbatches(cl.target,s)
 
 """
 

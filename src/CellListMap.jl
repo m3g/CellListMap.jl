@@ -14,7 +14,7 @@ export map_pairwise!
 export limits
 export TriclinicCell
 export OrthorhombicCell
-export NumberOfBatches
+export NumberOfBatches, nbatches
 
 include("./linearalgebra.jl")
 include("./Box.jl")
@@ -84,7 +84,7 @@ julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx
 function map_pairwise!(f::F, output, box::Box, cl; 
     # Parallelization options
     parallel::Bool=true,
-    output_threaded=(parallel ? [ deepcopy(output) for i in 1:cl.nbatches.map_computation ] : nothing),
+    output_threaded=(parallel ? [ deepcopy(output) for i in 1:nbatches(cl) ] : nothing),
     reduce::Function=reduce,
     show_progress::Bool=false,
 ) where {F} # Needed for specialization for this function (avoids some allocations)
