@@ -745,12 +745,12 @@ function UpdateCellList!(
         cl = add_particles!(x,box,0,cl)
     else 
         # Cell lists to be built by each thread
-        @threads for ibatch in 1:nbatches
-             aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
-             if length(aux.idxs[ibatch]) > 0
-                xt = @view(x[aux.idxs[ibatch]])  
-                aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
-             end
+         for ibatch in 1:nbatches
+            aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
+            if length(aux.idxs[ibatch]) > 0
+               xt = @view(x[aux.idxs[ibatch]])  
+               aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
+            end
         end
         # Tree-Merge of threaded cell lists
         n_merge = nbatches
