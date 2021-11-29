@@ -167,10 +167,10 @@ The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest\_neighb
 ## Neighbour list
 
 !!! note 
-    The package provides a `neighbourlist` function that implements this calculation, and can be used with:
+    The package provides a `neighbourlist` function that implements this calculation. Without periodic boundary conditions, just do:
 
     ```julia-repl
-    julia> x = [ rand(3) for i in 1:10_000 ];
+    julia> x = [ rand(3) for _ in 1:10_000 ];
 
     julia> CellListMap.neighbourlist(x,0.05)
     24778-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -182,6 +182,24 @@ The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest\_neighb
     or `CellListMap.neighbourlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
     The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
+
+    If periodic boundary conditions are used, the `Box` and `CellList` must be constructed in advance:
+    ```julia-repl
+    julia> x = [ rand(3) for _ in 1:10_000 ]; 
+
+    julia> box = Box([1,1,1],0.1);
+
+    julia> cl = CellList(x,box);
+
+    julia> CellListMap.neighbourlist(box,cl)
+
+    julia> CellListMap.neighbourlist(box,cl)
+    209506-element Vector{Tuple{Int64, Int64, Float64}}:
+     (1, 121, 0.05553035041478053)
+     (1, 1589, 0.051415489701932444)
+     ⋮
+     (7469, 7946, 0.09760096646331885)
+    ```
 
 The implementation of the above function follows the principles below. 
  The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
