@@ -79,6 +79,28 @@ Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M}
 end
 
 """
+```
+_promote_types(cell,cutoff)
+```
+
+Promotes the types of the unit cell matrix (or sides) and cutoff to floats if one or both were input as integers. 
+
+"""
+function _promote_types(cell,cutoff)
+    if eltype(cell) <: Integer || typeof(cutoff) <: Integer
+        if cutoff isa Integer && eltype(cell) <: Integer
+            cell = convert.(Float64,cell)
+            cutoff = convert(eltype(cell),cutoff)
+        elseif eltype(cell) <: Integer
+            cell = convert.(typeof(cutoff),cell)
+        else
+            cutoff = convert(eltype(cell),cutoff)
+        end
+    end
+    return cell, cutoff
+end
+
+"""
 
 ```
 Box(
@@ -111,11 +133,13 @@ Box{TriclinicCell, 3, Float64, 9}
 
 """
 function Box(
-    unit_cell_matrix::AbstractMatrix{T}, 
+    unit_cell_matrix::AbstractMatrix, 
     cutoff, 
     lcell::Int,
     ::Type{UnitCellType}
-) where {T,UnitCellType}
+) where {UnitCellType}
+    unit_cell_matrix, cutoff = _promote_types(unit_cell_matrix, cutoff)
+    T = eltype(unit_cell_matrix)
 
     s = size(unit_cell_matrix)
     unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(unit_cell_matrix)
@@ -212,17 +236,8 @@ function Box(
     lcell::Int,
     ::Type{UnitCellType}
 ) where {UnitCellType}
-    if eltype(sides) <: Integer || typeof(cutoff) <: Integer
-        if cutoff isa Integer && eltype(sides) <: Integer
-            sides = convert.(Float64,sides)
-            cutoff = convert(eltype(sides),cutoff)
-        elseif eltype(sides) <: Integer
-            sides = convert.(typeof(cutoff),sides)
-        else
-            cutoff = convert(eltype(sides),cutoff)
-        end
-    end
-    T = typeof(cutoff)
+    sides, cutoff = _promote_types(sides, cutoff)
+    T = eltype(sides)
     N = length(sides)
     cart_idxs = CartesianIndices((1:N,1:N))
     # Build unit cell matrix from lengths
