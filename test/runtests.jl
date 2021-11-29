@@ -47,6 +47,24 @@ include("../src/examples/generic_types.jl")
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=false) ≈ naive
 
+    # Test updating the cell lists
+    new_cl = deepcopy(cl)
+    new_x = copy(x) .+ [rand(SVector{3,Float64}) for _ in 1:N ]
+    new_sides = sides + rand(SVector{3,Float64})
+    new_cutoff = cutoff + rand()
+    new_box = Box(sides,cutoff)
+    new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl)
+    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
+    new_box = Box([ 250   0  10 
+                     10 250   0 
+                      0   0 250 ],cutoff)
+    new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl)
+    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
+
     # Test the input as a matrix
     xmat = zeros(3,N) 
     for i in 1:N
