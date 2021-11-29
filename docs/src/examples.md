@@ -164,42 +164,44 @@ The example above can be run with `CellListMap.Examples.nearest_neighbour()` and
 
 The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest\_neighbour\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
-## Neighbour list
+## Neighbour lists
 
-!!! note 
-    The package provides a `neighbourlist` function that implements this calculation. Without periodic boundary conditions, just do:
+### The `CellListMap.neighbourlist` function
+The package provides a `neighbourlist` function that implements this calculation. Without periodic boundary conditions, just do:
 
-    ```julia-repl
-    julia> x = [ rand(3) for _ in 1:10_000 ];
+```julia-repl
+julia> x = [ rand(3) for _ in 1:10_000 ];
 
-    julia> CellListMap.neighbourlist(x,0.05)
-    24778-element Vector{Tuple{Int64, Int64, Float64}}:
-     (1, 62, 0.028481068525796384)
-     ⋮
-     (9954, 1749, 0.04887502372299809)
-     (9974, 124, 0.040110356034451795)
-    ```
-    or `CellListMap.neighbourlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
+julia> CellListMap.neighbourlist(x,0.05)
+24778-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 62, 0.028481068525796384)
+ ⋮
+ (9954, 1749, 0.04887502372299809)
+ (9974, 124, 0.040110356034451795)
+```
+or `CellListMap.neighbourlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
-    The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
+The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
 
-    If periodic boundary conditions are used, the `Box` and `CellList` must be constructed in advance:
-    ```julia-repl
-    julia> x = [ rand(3) for _ in 1:10_000 ]; 
+If periodic boundary conditions are used, the `Box` and `CellList` must be constructed in advance:
+```julia-repl
+julia> x = [ rand(3) for _ in 1:10_000 ]; 
 
-    julia> box = Box([1,1,1],0.1);
+julia> box = Box([1,1,1],0.1);
 
-    julia> cl = CellList(x,box);
+julia> cl = CellList(x,box);
 
-    julia> CellListMap.neighbourlist(box,cl)
+julia> CellListMap.neighbourlist(box,cl)
 
-    julia> CellListMap.neighbourlist(box,cl)
-    209506-element Vector{Tuple{Int64, Int64, Float64}}:
-     (1, 121, 0.05553035041478053)
-     (1, 1589, 0.051415489701932444)
-     ⋮
-     (7469, 7946, 0.09760096646331885)
-    ```
+julia> CellListMap.neighbourlist(box,cl)
+209506-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 121, 0.05553035041478053)
+ (1, 1589, 0.051415489701932444)
+ ⋮
+ (7469, 7946, 0.09760096646331885)
+```
+
+### Implementation
 
 The implementation of the above function follows the principles below. 
  The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
@@ -214,8 +216,7 @@ end
 
 # Reduction function
 function reduce_pairs(pairs,pairs_threaded)
-    pairs = pairs_threaded[1]
-    for i in 2:length(pairs_threaded)
+    for i in 1:length(pairs_threaded)
         append!(pairs,pairs_threaded[i])
     end
     return pairs
