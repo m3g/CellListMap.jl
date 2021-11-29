@@ -15,6 +15,7 @@ makedocs(
         "Parallelization" => "parallelization.md",
         "Performance" => "performance.md",
         "Options" => "options.md",
+        "From Python" => "python.md",
         "Help entries" => "help.md",
         "Reference" => "reference.md",
     ]
