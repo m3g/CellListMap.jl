@@ -11,7 +11,7 @@ function sumsq(x,sides,cutoff;parallel=false)
     box = Box(sides,cutoff)
     cl = CellList(x,box,parallel=parallel)
     s = zero(eltype(x[1]^2))
-    s = map_pairwise!(
+    s = map_pairwise(
         (x,y,i,j,d2,s) -> s += d2,
         s, box, cl, parallel=parallel
     )
@@ -70,7 +70,7 @@ function sumsq_measurements(x_input,sides,cutoff;parallel=false)
 
     # And instead of using the `x` and `y` coordinates provided by the
     # interface, we close over the `x_input` and `box` for the calculations.
-    s = map_pairwise!(
+    s = map_pairwise(
         (x,y,i,j,d2,s) -> sum_sqr_pair(i,j,s,x_input,box),
         s, box, cl, parallel=parallel
     )

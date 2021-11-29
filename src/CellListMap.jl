@@ -10,7 +10,7 @@ using LinearAlgebra: cross
 
 export Box
 export CellList, UpdateCellList!
-export map_pairwise!
+export map_pairwise!, map_pairwise
 export limits
 export TriclinicCell
 export OrthorhombicCell
@@ -134,6 +134,19 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
     end
     return output
 end
+
+"""
+
+```
+map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
+````
+
+is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the funciton is immutable, it may be 
+clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the 
+bang as a valid character. 
+
+"""
+const map_pairwise = map_pairwise!
 
 # Utils
 include("./utils.jl")

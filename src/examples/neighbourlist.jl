@@ -37,18 +37,17 @@ function neighbourlist(;N=100_000,parallel=true,x=nothing)
 
     # Reduction function
     function reduce_pairs(pairs, pairs_threaded)
-        pairs = pairs_threaded[1]
-        for i in 2:length(pairs_threaded)
+        for i in 1:length(pairs_threaded)
             append!(pairs, pairs_threaded[i])
         end
         return pairs
     end
 
-    # Initialize output
+    # Initialize empty output
     pairs = Tuple{Int,Int,Float64}[]
 
     # Run pairwise computation
-    pairs = map_pairwise!(
+    map_pairwise!(
         (x, y, i, j, d2, pairs) -> push_pair!(i, j, d2, pairs, cutoff),
         pairs,box,cl,
         reduce=reduce_pairs,

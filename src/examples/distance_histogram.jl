@@ -34,11 +34,14 @@ function distance_histogram(;N=100_000,parallel=true,x=nothing)
     hist = zeros(Int, 10)
 
     # Run pairwise computation
-    hist = (N / (N * (N - 1) / 2)) * map_pairwise!(
+    map_pairwise!(
         (x, y, i, j, d2, hist) -> build_histogram!(d2, hist),
-        hist,box,cl,
+        hist, box, cl,
         parallel=parallel
     )
-    return hist
 
+    # Normalization (convert to float)
+    hist = (N / (N * (N - 1) / 2)) * hist 
+
+    return hist
 end

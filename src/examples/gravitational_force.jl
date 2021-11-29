@@ -40,7 +40,7 @@ function gravitational_force(;N=100_000,parallel=true,x=nothing)
     forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
     # Run pairwise computation
-    forces = map_pairwise!(
+    map_pairwise!(
         (x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces),
         forces,box,cl,
         parallel=parallel

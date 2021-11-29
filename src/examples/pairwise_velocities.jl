@@ -55,8 +55,8 @@ function pairwise_velocities(::Type{T}=Float64;
     hist = (zeros(Int, length(rbins) - 1), zeros(T, length(rbins) - 1))
   
     # Needs this to stabilize the type of velocities and hist, probably
-    function barrier(f!, velocities, rbins, hist, box, cl, reduce_hist, parallel)
-        hist = map_pairwise!(
+    function barrier!(f!, velocities, rbins, hist, box, cl, reduce_hist, parallel)
+        map_pairwise!(
             (x, y, i, j, d2, hist) -> f!(x, y, i, j, d2, hist, velocities, rbins),
             hist, box, cl,
             reduce=reduce_hist,
@@ -65,7 +65,7 @@ function pairwise_velocities(::Type{T}=Float64;
         return hist
     end
   
-    hist = barrier(
+    barrier!(
         compute_pairwise_mean_cell_lists!,
         velocities,rbins,hist,box,cl,reduce_hist,parallel
     )

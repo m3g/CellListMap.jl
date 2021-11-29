@@ -54,7 +54,7 @@ function nearest_neighbour_nopbc(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,
     mind = (0, 0, +Inf)
   
     # Run pairwise computation
-    mind = map_pairwise!(
+    mind = map_pairwise(
         (x, y, i, j, d2, mind) -> f(i, j, d2, mind),
         mind,box,cl;reduce=reduce_mind,parallel=parallel
     )

@@ -55,7 +55,7 @@ function packmol(;parallel=false,sides=[46.4,31.5,18.7],tol=2.0,UnitCellType=Ort
 
     function u_pack(x,box::Box,cl::CellList)
         cl = UpdateCellList!(x,box,cl,parallel=false)
-        u = map_pairwise!(
+        u = map_pairwise(
             (x,y,i,j,d2,u) -> begin
                 u += (sqrt(d2) - box.cutoff)^2 # objective function
                 return u
