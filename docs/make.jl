@@ -10,9 +10,9 @@ makedocs(
     pages = [
         "Overview" => "index.md",
         "Examples" => "examples.md",
-        "Units, autodiff, etc." => "units_etc.md",
         "Periodic conditions" => "pbc.md",
         "Parallelization" => "parallelization.md",
+        "Units, autodiff, etc." => "units_etc.md",
         "Performance" => "performance.md",
         "Options" => "options.md",
         "From Python" => "python.md",
