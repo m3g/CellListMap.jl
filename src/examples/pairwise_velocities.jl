@@ -8,7 +8,7 @@ import Random
 # galaxy motions, for example. 
 #
 function pairwise_velocities(::Type{T}=Float64;
-    N=100_000,cd=true,parallel=true,lcell=1,nbatches=zero(CellListMap.NumberOfBatches)
+    N=100_000,cd=true,parallel=true,lcell=1,nbatches=(0,0)
 ) where T
 
     @inline dot(x::SVector{3,T}, y::SVector{3,T}) where T = x[1] * y[1] + x[2] * y[2] + x[3] * y[3]

@@ -42,6 +42,7 @@ struct NumberOfBatches
     build_cell_lists::Int
     map_computation::Int
 end
+NumberOfBatches(t::Tuple{Int,Int}) = NumberOfBatches(t[1],t[2])
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches(0,0)
 Base.iszero(x::NumberOfBatches) = (iszero(x.build_cell_lists) && iszero(x.map_computation))
 function Base.show(io::IO,::MIME"text/plain",nbatches::NumberOfBatches)
@@ -158,7 +159,7 @@ end
 """
 
 ```
-set_number_of_batches!(cl,nbatches::NumberOfBatches)  
+set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0))  
 ```
 
 Functions that set the default number of batches for the construction of the cell lists, 
@@ -167,7 +168,8 @@ every problem. See the parameter `nbatches` of the construction of the cell list
 tunning this.
 
 """
-function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) where {N,T}  
+function set_number_of_batches!(cl::CellList{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}  
+    nbatches = NumberOfBatches(nbatches)
     if nbatches.build_cell_lists < 1 
         n1 = _nbatches_build_cell_lists(cl)
     else
@@ -185,10 +187,10 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::NumberOfBatches) whe
     end
     return cl
 end
-set_number_of_batches!(cl::CellList) = set_number_of_batches!(cl) 
 _nbatches_build_cell_lists(cl) = max(1,min(ceil(Int,particles_per_cell(cl)/4),nthreads()))
 
-function set_number_of_batches!(cl::CellListPair{N,T},nbatches::NumberOfBatches) where {N,T}
+function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}
+    nbatches = NumberOfBatches(nbatches)
     if nbatches.build_cell_lists < 1 
         n1 = _nbatches_build_cell_lists(cl)
     else
@@ -205,7 +207,6 @@ function set_number_of_batches!(cl::CellListPair{N,T},nbatches::NumberOfBatches)
     @set! cl.target = target
     return cl
 end
-set_number_of_batches!(cl::CellListPair) = set_number_of_batches!(cl,zero(NumberOfBatches)) 
 
 """
 
@@ -226,7 +227,7 @@ it can be usually ignored.
 ```julia-repl
 julia> x = rand(3,1000); box = Box([1,1,1],0.1);
 
-julia> cl = CellList(x,box,nbatches=NumberOfBatches(2,16));
+julia> cl = CellList(x,box,nbatches=(2,16));
 
 julia> nbatches(cl)
 16
@@ -390,7 +391,7 @@ CellList(
     x::AbstractVector{AbstractVector},
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
-    nbatches=NumberOfBatches=zero(NumberOfBatches)
+    nbatches::Tuple{Int,Int}=(0,0)
 ) where {UnitCellType,N,T} 
 ```
 
@@ -420,11 +421,11 @@ function CellList(
     x::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
-    nbatches::NumberOfBatches = zero(NumberOfBatches)
+    nbatches::Tuple{Int,Int} = (0,0)
 ) where {UnitCellType,N,T} 
     cl = CellList{N,T}(
         n_real_particles=length(x),
-        number_of_cells=prod(box.nc)
+        number_of_cells=prod(box.nc),
     )
     cl = set_number_of_batches!(cl,nbatches)
     return UpdateCellList!(x,box,cl,parallel=parallel)
@@ -433,12 +434,7 @@ end
 """
 
 ```
-function CellList(
-    x::AbstractMatrix,
-    box::Box{UnitCellType,N,T};
-    parallel::Bool=true,
-    nbatches::NumberOfBatches=zero(NumberOfBatches)
-) where {UnitCellType,N,T} 
+function CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
 ```
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
@@ -446,20 +442,10 @@ equivalent function with the reinterprted input. The first dimension of the
 matrix must be the dimension of the points (`2` or `3`).
 
 """
-function CellList(
-    x::AbstractMatrix,
-    box::Box{UnitCellType,N,T};
-    parallel::Bool=true,
-    nbatches::NumberOfBatches=zero(NumberOfBatches)
-) where {UnitCellType,N,T} 
+function CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
-    cl = CellList{N,T}(
-        n_real_particles=length(x_re),
-        number_of_cells=prod(box.nc)
-    )
-    cl = set_number_of_batches!(cl,nbatches)
-    return UpdateCellList!(x_re,box,cl,parallel=parallel)
+    return CellList(x_re, box; kargs...)
 end
 
 """
@@ -505,6 +491,7 @@ CellList(
     y::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0,0),
     autoswap::Bool=true
 ) where {UnitCellType,N,T} 
 ```
@@ -541,10 +528,10 @@ function CellList(
     y::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
-    autoswap=true,
-    nbatches::NumberOfBatches = zero(NumberOfBatches)
+    nbatches::Tuple{Int,Int} = (0,0),
+    autoswap=true
 ) where {UnitCellType,N,T} 
-    if length(x) >= length(y) || !autoswap
+    if !autoswap || length(x) >= length(y)
         ref = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
         target = CellList(y,box,parallel=parallel)
         swap = false
@@ -561,14 +548,7 @@ end
 """
 
 ```
-function CellList(
-    x::AbstractMatrix,
-    y::AbstractMatrix,
-    box::Box{UnitCellType,N,T};
-    parallel::Bool=true,
-    autoswap=true,
-    nbatches=zero(NumberOfBatches)
-) where {UnitCellType,N,T} 
+CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
 ```
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
@@ -576,19 +556,12 @@ equivalent function with the reinterprted input. The first dimension of the
 matrices must be the dimension of the points (`2` or `3`).
 
 """
-function CellList(
-    x::AbstractMatrix,
-    y::AbstractMatrix,
-    box::Box{UnitCellType,N,T};
-    parallel::Bool=true,
-    autoswap=true,
-    nbatches=zero(NumberOfBatches)
-) where {UnitCellType,N,T} 
+function CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
     @assert size(x,1) == N "First dimension of input matrix must be $N"
     @assert size(y,1) == N "First dimension of input matrix must be $N"
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
-    CellList(x_re,y_re,box,parallel=parallel,autoswap=autoswap,nbatches=nbatches)
+    CellList(x_re,y_re, box; kargs...)
 end
 
 """

@@ -87,17 +87,17 @@ include("../src/examples/generic_types.jl")
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(3,5))
+    cl = CellList(x,box,nbatches=(3,5))
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
-    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(1,1))
+    cl = CellList(x,box,nbatches=(1,1))
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
-    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(1,7))
+    cl = CellList(x,box,nbatches=(1,7))
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
-    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(7,1))
+    cl = CellList(x,box,nbatches=(7,1))
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
-    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(13,17))
+    cl = CellList(x,box,nbatches=(13,17))
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
-    cl = CellList(x,box,nbatches=CellListMap.NumberOfBatches(4,16))
+    cl = CellList(x,box,nbatches=(4,16))
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,box,cl,parallel=true) ≈ naive
 
     # Test random cells of all possible types
@@ -192,17 +192,17 @@ include("../src/examples/generic_types.jl")
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=true) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(1,1))
+    cl = CellList(x,y,box,nbatches=(1,1))
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
-    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(3,5))
+    cl = CellList(x,y,box,nbatches=(3,5))
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
-    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(7,1))
+    cl = CellList(x,y,box,nbatches=(7,1))
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
-    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(1,7))
+    cl = CellList(x,y,box,nbatches=(1,7))
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
-    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(4,16))
+    cl = CellList(x,y,box,nbatches=(4,16))
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
-    cl = CellList(x,y,box,nbatches=CellListMap.NumberOfBatches(13,17))
+    cl = CellList(x,y,box,nbatches=(13,17))
     @test map_pairwise!( (x,y,i,j,d2,u) -> potential(i,j,d2,u,mass), 0.0,box,cl,parallel=false) ≈ naive
 
     # Test the examples, to check further if the parallelization didn't break something
