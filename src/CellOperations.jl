@@ -171,7 +171,6 @@ end
     return x
 end
 
-
 """
 
 ```
@@ -184,6 +183,98 @@ provided.
 """
 @inline translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T} =
     x + unit_cell_matrix*SVector{N,Int}(ntuple(i -> indices[i],N))
+
+"""
+```
+translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
+```
+
+Translates a complete set of coordinates given a set of indexes of unit-cells. Returns a new
+set of coordinates. 
+
+### Example
+
+```julia-repl
+julia> x = rand(SVector{2,Float64},100);
+
+julia> box = Box([1,1],0.1);
+
+julia> CellListMap.translation_image(x,box.unit_cell.matrix,(1,1))
+100-element Vector{SVector{2, Float64}}:
+ [1.847791110439223, 1.5989103939725295]
+ [1.3493293666090889, 1.4002971843576644]
+ [1.4111736701313218, 1.3471780214994182]
+ ⋮
+ [1.1548437388991908, 1.7034501001177493]
+ [1.4066300885242247, 1.2907398318754952]
+```
+
+"""
+function translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
+    x_new = similar(x)
+    for i in eachindex(x)
+        x_new[i] = translation_image(x[i],unit_cell_matrix,indices)
+    end
+    return x_new
+end
+
+"""
+
+```
+replicate_system!(x::AbstractVector,box::Box,ranges::Tuple)
+```
+
+Replicate the system (modifying the original array of coordinates) in all
+directions defined by the periodic system and by the range of unitary cells 
+of interest. `x` can be a `(N,M)` matrix, and the unit cell matrix can be
+provided instead of the `box`.
+
+## Example
+
+```julia-repl
+julia> x = rand(SVector{2,Float64},100);
+
+julia> box = Box([1,1],0.1);
+
+julia> CellListMap.replicate_system!(x,box,(0:0,-1:1))
+300-element Vector{SVector{2, Float64}}:
+ [0.7119987163255118, 0.6788616154460262]
+ [0.6188407316804118, 0.8497116428720384]
+ [0.21328895963244354, 0.48932085643862977]
+ ⋮
+ [0.4114499470191678, 1.1034376619603892]
+ [0.6094126258851252, 1.2328989485215263]
+```
+
+"""
+function replicate_system!(
+    x::AbstractVector{SVector{N,T}},
+    unit_cell_matrix::AbstractMatrix,
+    ranges::Tuple
+) where {N,T}
+    @assert length(ranges) == N "Tuple of ranges must have the same dimension as the vectors: $N"
+    i0 = ntuple(i -> 0, N)
+    imgs = Iterators.filter(!isequal(i0),
+        Iterators.product(ranges...)
+    )
+    x0 = copy(x)
+    for img in imgs
+        x_new = translation_image(x0,unit_cell_matrix,img)
+        append!(x,x_new)
+    end
+    return x
+end
+
+replicate_system!(x::AbstractVector,box::Box,ranges::Tuple) =
+    replicate_system!(x,box.unit_cell.matrix,ranges)
+
+function replicate_system!(x::AbstractMatrix{T},cell,ranges) where T
+    N = size(x,1)
+    x_re = [ SVector{N,T}(ntuple(i -> x[i,j], N)) for j in axes(x,2) ]
+    replicate_system!(x_re,cell,ranges)
+    x = Matrix(reinterpret(reshape,Float64,x_re))
+    return x
+end
 
 """
 
