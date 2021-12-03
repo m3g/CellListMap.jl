@@ -54,7 +54,7 @@ Internal function or structure - interface may change.
 Auxiliary function to view the particles of a computing box, including images created
 for computing purposes.
 
-### Example
+## Example
 
 ```julia-repl
 julia> box = Box([ 100 50; 50 100 ],10);

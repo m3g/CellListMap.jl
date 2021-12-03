@@ -7,7 +7,7 @@ neighbourlist(box, cl; parallel=true)
 Compute the neighbour list of a single set or set pairs of particles. Returns a vector of tuples
 with all indices of the particles that are within `box.cutoff`, and the distances.  
 
-### Example
+## Example
 ```julia-repl
 julia> x = [ rand(3) for i in 1:1000 ];
 
@@ -107,7 +107,7 @@ neighbourlist(x,r;parallel=true)
 
 Computes the list of pairs of particles in `x` which are closer to each other than `r`.
 
-### Example
+## Example
 ```julia-repl
 julia> x = [ rand(3) for i in 1:10_000 ];
 
@@ -138,7 +138,7 @@ Computes the list of pairs of particles of `x` which are closer than `r` to
 the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
 the cost of the construction of the cell list. 
 
-### Example
+## Example
 ```julia-repl
 julia> x = [ rand(3) for i in 1:10_000 ];
 

@@ -128,7 +128,7 @@ Construct box structure given the cell matrix of lattice vectors. This
 constructor will always return a `TriclinicCell` box type, unless the
 `UnitCellType` parameter is set manually to `OrthorhombicCell`
 
-### Example
+## Example
 ```julia-repl
 julia> unit_cell = [ 100   50    0 
                        0  120    0
@@ -270,7 +270,7 @@ Box(
 For orthorhombic unit cells, `Box` can be initialized with a vector of the 
 length of each side. 
 
-### Example
+## Example
 ```julia-repl
 julia> box = Box([120,150,100],10)
 Box{OrthorhombicCell, 3, Float64, 9}
@@ -316,7 +316,7 @@ the maximum coordinates ranges of all particles plus the cutoff. This is used to
 emulate pairwise interactions in non-periodic boxes. The output box is always an `Orthorhombic`
 cell.
 
-### Examples
+## Examples
 
 ```julia-repl
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];

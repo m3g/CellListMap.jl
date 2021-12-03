@@ -250,7 +250,7 @@ A second argument can be provided, which may be `:map` or `:build`, in which cas
 for pairwise mapping or for the construction of the cell lists. Since this second value is internal and does not affect the interface, 
 it can be usually ignored. 
 
-### Example
+## Example
 
 ```julia-repl
 julia> x = rand(3,1000); box = Box([1,1,1],0.1);
@@ -437,7 +437,7 @@ and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
 systems, the number of parallel batches is equal to the number of threads, but it can
 be tunned for optimal performance in some cases.
 
-### Example
+## Example
 
 ```julia-repl
 julia> box = Box([250,250,250],10);
@@ -541,7 +541,7 @@ of particle coordinates and a `Box`, which contain the size of the system, cutof
 By default, the cell list will be constructed for smallest vector, but this is not always
 the optimal choice. Using `autoswap=false` the cell list is constructed for the second (`y`)
 
-### Example
+## Example
 
 ```julia-repl
 julia> box = Box([250,250,250],10);
@@ -697,7 +697,7 @@ this function should be minimal, only associated with the spawning threads, or
 to expansion of the cell lists if the number of cells or number of particles 
 increased. 
 
-### Example
+## Example
 
 ```julia-repl
 julia> box = Box([250,250,250],10);
@@ -1172,7 +1172,7 @@ for disjoint sets of particles. It receives the preallocated `aux` structure to
 avoid reallocating auxiliary arrays necessary for the threaded construct of the
 lists. 
 
-### Example
+## Example
 
 ```julia-repl
 julia> box = Box([250,250,250],10);

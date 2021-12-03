@@ -27,7 +27,7 @@ Obtaint the coordinates of `x` as a fraction of unit cell vectors, first
 positive cell. `x` is a vector of dimension `N` and `cell` a matrix of 
 dimension `NxN`
 
-### Example
+## Example
 
 ```julia-repl
 julia> unit_cell_matrix = [ 10 0
@@ -61,7 +61,7 @@ Internal function or structure - interface may change.
 Wraps the coordinates of point `x` such that the returning coordinates are in the
 first unit cell with all-positive coordinates. 
 
-### Example
+## Example
 
 ```julia-repl
 julia> unit_cell_matrix = [ 10 0
@@ -232,7 +232,7 @@ translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
 Translates a complete set of coordinates given a set of indexes of unit-cells. Returns a new
 set of coordinates. 
 
-### Example
+## Example
 
 ```julia-repl
 julia> x = rand(SVector{2,Float64},100);
@@ -695,7 +695,7 @@ end
 """
 
 ```
-ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
+ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{2,2,T}) where T
 ```
 
 Internal function or structure - interface may change.
