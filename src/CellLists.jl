@@ -7,6 +7,10 @@
 
 $(TYPEDEF)
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 $(TYPEDFIELDS)
 
 Copies particle coordinates and associated index, to build contiguous particle lists
@@ -26,6 +30,10 @@ Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
 """
 
 $(TYPEDEF)
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 $(TYPEDFIELDS)
 
@@ -55,6 +63,10 @@ end
 
 $(TYPEDEF)
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 $(TYPEDFIELDS)
 
 This structure contains the cell linear index and the information 
@@ -83,6 +95,10 @@ end
 
 $(TYPEDEF)
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 $(TYPEDFIELDS)
 
 Auxiliary structure to contain projected particles. Types of 
@@ -99,6 +115,10 @@ end
 """
 
 $(TYPEDEF)
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 $(TYPEDFIELDS)
 
@@ -139,6 +159,10 @@ end
 
 $(TYPEDEF)
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 $(TYPEDFIELDS)
 
 Structure that will cointain the cell lists of two independent sets of
@@ -161,6 +185,10 @@ end
 ```
 set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0))  
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Functions that set the default number of batches for the construction of the cell lists, 
 and mapping computations. This is of course heuristic, and may not be the best choice for
@@ -251,6 +279,10 @@ nbatches(cl::CellListPair,s::Symbol) = nbatches(cl.target,s)
 """
 
 $(TYPEDEF)
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 $(TYPEDFIELDS)
 
@@ -344,6 +376,10 @@ end
 ```
 init_aux_threaded!(aux::AuxThreaded,cl::CellList)
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Given an `AuxThreaded` object initialized with zero-length arrays,
 push `ntrheads` copies of `cl` into `aux.lists` and resize `aux.idxs`
@@ -453,6 +489,10 @@ end
 ```
 reset!(cl::CellList{N,T},box) where{N,T}
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Resets a cell list, by setting everything to zero, but retaining
 the allocated `particles` and `projected_particles` vectors.
@@ -797,6 +837,10 @@ end
 add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
 ```
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 Add all particles in vector `x` to the cell list `cl`. `ishift` is the shift in particle
 index, meaning that particle `i` of vector `x` corresponds to the particle with original
 index `i+ishift`. The shift is used to construct cell lists from fractions of the original
@@ -821,6 +865,10 @@ end
 ```
 copydata!(cell1::Cell,cell2::Cell)
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Copies the data from `cell2` to `cell1`, meaning that particles are
 copied element-wise from `cell2` to `cell1`, with the `particles` array
@@ -849,6 +897,10 @@ end
 append_particles!(cell1::Cell,cell2::Cell)
 ```
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 Add the particles of `cell2` to `cell1`, updating the cell data and, if necessary,
 resizing (increasing) the `particles` array of `cell1`
 
@@ -873,6 +925,10 @@ end
 ```
 merge_cell_lists!(cl::CellList,aux::CellList)
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Merges an auxiliary `aux` cell list to `cl`, and returns the modified `cl`. Used to
 merge cell lists computed in parallel threads.
@@ -936,6 +992,10 @@ add_particle_to_celllist!(
     real_particle::Bool=true
 ) where {N,T}
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Adds one particle to the cell lists, updating all necessary arrays.
 

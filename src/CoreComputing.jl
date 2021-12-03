@@ -74,6 +74,10 @@ end
 partition!(x::AbstractVector,by)
 ```
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 Function that reorders `x` vector by putting in the first positions the
 elements with values satisfying `by(el)`. Returns the number of elements
 that satisfy the condition.
@@ -293,6 +297,10 @@ end
 ```
 project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,box)
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Projects all particles of the cell `cellⱼ` into unnitary vector `Δc` with direction 
 connecting the centers of `cellⱼ` and `cellᵢ`. Modifies `projected_particles`, and 

@@ -4,6 +4,10 @@
 map_naive!(f,output,x,box)
 ```
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 Function that uses the naive pairwise mapping algorithm, for testing.
 
 """
@@ -42,6 +46,10 @@ end
 ```
 view_celllist_particles(cl::CellList)
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Auxiliary function to view the particles of a computing box, including images created
 for computing purposes.

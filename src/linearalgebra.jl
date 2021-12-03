@@ -4,6 +4,10 @@
 norm_sqr(v::AbstractVector{T}) where T
 ```
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 `norm_sqr` from LinearAlgebra is not documented and is slower than this for
 standard arrays. 
 
@@ -22,6 +26,10 @@ end
 norm(v::AbstractVector{T}) where T
 ```
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 `norm_sqr` from LinearAlgebra is not documented and is slower than this for
 standard arrays. Thus we define our own `norm(x) = norm_sqr(x)`.
 
@@ -33,6 +41,10 @@ standard arrays. Thus we define our own `norm(x) = norm_sqr(x)`.
 ```
 dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 `LinearAlgebra.dot` is slower than this for standard arrays (likely more accurate, but
 that is not relevant here).
