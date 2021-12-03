@@ -14,6 +14,10 @@ end
 
 $(TYPEDEF)
 
+Internal function or structure - interface may change.
+
+# Extended help
+
 $(TYPEDFIELDS)
 
 Structure that contains the maximum lengths on each direction,
@@ -28,6 +32,10 @@ end
 """
 
 $(TYPEDEF)
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 $(TYPEDFIELDS)
 
@@ -79,9 +87,14 @@ Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M}
 end
 
 """
+
 ```
 _promote_types(cell,cutoff)
 ```
+
+Internal function or structure - interface may change.
+
+# Extended help
 
 Promotes the types of the unit cell matrix (or sides) and cutoff to floats if one or both were input as integers. 
 
@@ -206,6 +219,46 @@ end
 """
 
 ```
+cell_matrix_from_sides(sides::AbstractVector)
+```
+
+Internal function or structure - interface may change.
+
+# Extended help
+
+Function that returns the Orthorhombic unit cell matrix given a sides vector.
+
+## Example
+
+```
+julia> CellListMap.cell_matrix_from_sides([1,1,1])
+3×3 SMatrix{3, 3, Int64, 9} with indices SOneTo(3)×SOneTo(3):
+ 1  0  0
+ 0  1  0
+ 0  0  1
+```
+
+"""
+function cell_matrix_from_sides(sides::AbstractVector)
+    T = eltype(sides)
+    N = length(sides)
+    cart_idxs = CartesianIndices((1:N,1:N))
+    unit_cell_matrix = SMatrix{N,N,T,N*N}( 
+        ntuple(N*N) do i
+            c = cart_idxs[i]
+            if c[1] == c[2] 
+                return sides[c[1]] 
+            else
+                return zero(T)
+            end
+        end
+    )
+    return unit_cell_matrix
+end
+
+"""
+
+```
 Box(
   sides::AbstractVector, 
   cutoff, 
@@ -237,20 +290,7 @@ function Box(
     ::Type{UnitCellType}
 ) where {UnitCellType}
     sides, cutoff = _promote_types(sides, cutoff)
-    T = eltype(sides)
-    N = length(sides)
-    cart_idxs = CartesianIndices((1:N,1:N))
-    # Build unit cell matrix from lengths
-    unit_cell_matrix = SMatrix{N,N,T,N*N}( 
-        ntuple(N*N) do i
-            c = cart_idxs[i]
-            if c[1] == c[2] 
-                return sides[c[1]] 
-            else
-                return zero(T)
-            end
-        end
-    )
+    unit_cell_matrix = cell_matrix_from_sides(sides)
     return Box(unit_cell_matrix,cutoff,lcell,UnitCellType) 
 end
 Box(
