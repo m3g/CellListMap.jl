@@ -164,7 +164,7 @@ The example above can be run with `CellListMap.Examples.nearest_neighbor()` and 
 
 The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
-## neighbor lists
+## Neighbor lists
 
 ### The `CellListMap.neighborlist` function
 The package provides a `neighborlist` function that implements this calculation. Without periodic boundary conditions, just do:
