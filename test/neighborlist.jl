@@ -40,7 +40,7 @@ function compare_nb_lists(list_CL,list_NN;self=false)
     return true
 end
 
-@testset "neighbourlist" begin
+@testset "neighborlist" begin
 
     r = 0.1
 
@@ -55,22 +55,22 @@ end
         y = [ rand(SVector{N,Float64}) for _ in 1:500 ]
 
         nb = nl_NN(x,x,r)
-        cl = CellListMap.neighbourlist(x,r)
+        cl = CellListMap.neighborlist(x,r)
         @test compare_nb_lists(cl,nb,self=true)
 
         nb = nl_NN(x,y,r)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=false)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=false)
         @test compare_nb_lists(cl,nb,self=false)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=true)
         @test compare_nb_lists(cl,nb,self=false)
 
         # with x smaller than y
         x = [ rand(SVector{N,Float64}) for _ in 1:500 ]
         y = [ rand(SVector{N,Float64}) for _ in 1:1000 ]
         nb = nl_NN(x,y,r)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=false)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=false)
         @test compare_nb_lists(cl,nb,self=false)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=true)
         @test compare_nb_lists(cl,nb,self=false)
 
         # Using matrices as input
@@ -78,29 +78,29 @@ end
         y = rand(N,500)
 
         nb = nl_NN(x,x,r)
-        cl = CellListMap.neighbourlist(x,r)
+        cl = CellListMap.neighborlist(x,r)
         @test compare_nb_lists(cl,nb,self=true)
 
         nb = nl_NN(x,y,r)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=false)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=false)
         @test compare_nb_lists(cl,nb,self=false)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=true)
         @test compare_nb_lists(cl,nb,self=false)
 
         # with x smaller than y
         x = rand(N,500)
         y = rand(N,1000)
         nb = nl_NN(x,y,r)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=false)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=false)
         @test compare_nb_lists(cl,nb,self=false)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=true)
         @test compare_nb_lists(cl,nb,self=false)
 
         # Check random coordinates to test the limits more thoroughly
         check_random_NN = true
         for i in 1:500
             x = rand(SVector{N,Float64},100); y = rand(SVector{N,Float64},50); 
-            nb = nl_NN(x,y,r); cl = CellListMap.neighbourlist(x,y,r,autoswap=false);
+            nb = nl_NN(x,y,r); cl = CellListMap.neighborlist(x,y,r,autoswap=false);
             check_random_NN = compare_nb_lists(cl,nb,self=false)
         end
         @test check_random_NN
@@ -109,9 +109,9 @@ end
         x = rand(Float32,N,500)
         y = rand(Float32,N,1000)
         nb = nl_NN(x,y,r)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=false)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=false)
         @test compare_nb_lists(cl,nb,self=false)
-        cl = CellListMap.neighbourlist(x,y,r,autoswap=true)
+        cl = CellListMap.neighborlist(x,y,r,autoswap=true)
         @test compare_nb_lists(cl,nb,self=false)
 
     end

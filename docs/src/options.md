@@ -16,7 +16,7 @@ CellList{3, Float64}
   99 cells with real particles.
   162 particles in computing box, including images.
 
-julia> map_pairwise!((x,y,i,j,d2,n) -> n += 1, 0, box, cl) # count neighbours
+julia> map_pairwise!((x,y,i,j,d2,n) -> n += 1, 0, box, cl) # count neighbors
 23
 ```
 

@@ -71,7 +71,7 @@ $(TYPEDFIELDS)
 
 This structure contains the cell linear index and the information 
 about if this cell is in the border of the box (such that its 
-neighbouring cells need to be wrapped) 
+neighboring cells need to be wrapped) 
 
 """
 Base.@kwdef struct Cell{N,T}

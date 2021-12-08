@@ -5,7 +5,7 @@ import Random
 #
 # In this test we compute the minimum distance between two independent sets of particles
 #
-function nearest_neighbour(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
+function nearest_neighbor(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothing)
 
     # Number of particles, sides and cutoff
     sides = @SVector [250,250,250]

@@ -323,7 +323,7 @@ end
 """
 
 ```
-neighbour_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
+neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
 ```
 
 Internal function or structure - interface may change.
@@ -336,7 +336,7 @@ if the cells have sides of length `box.cell_size`. `N` can be
 `2` or `3`, for two- or three-dimensional systems.
 
 """
-function neighbour_cells_forward(box::Box{UnitCellType,3}) where UnitCellType 
+function neighbor_cells_forward(box::Box{UnitCellType,3}) where UnitCellType 
     @unpack lcell = box
     nb = Iterators.flatten((
         CartesianIndices((1:lcell,-lcell:lcell,-lcell:lcell)),
@@ -346,7 +346,7 @@ function neighbour_cells_forward(box::Box{UnitCellType,3}) where UnitCellType
     return nb
 end
 
-function neighbour_cells_forward(box::Box{UnitCellType,2}) where UnitCellType 
+function neighbor_cells_forward(box::Box{UnitCellType,2}) where UnitCellType 
     @unpack lcell = box
     nb = Iterators.flatten((
         CartesianIndices((1:lcell,-lcell:lcell)),
@@ -358,24 +358,24 @@ end
 """
 
 ```
-neighbour_cells(box::Box{UnitCellType,N}) where N
+neighbor_cells(box::Box{UnitCellType,N}) where N
 ```
 
 Internal function or structure - interface may change.
 
 # Extended help
 
-Function that returns the iterator of the cartesian indices of all neighbouring
+Function that returns the iterator of the cartesian indices of all neighboring
 cells of a cell if the cells have sides of `box.cell_size`. `N` can be
 `2` or `3`, for two- or three-dimensional systems.
 
 """
-function neighbour_cells(box::Box{UnitCellType,3}) where UnitCellType
+function neighbor_cells(box::Box{UnitCellType,3}) where UnitCellType
     @unpack lcell = box
     return CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
 end
 
-function neighbour_cells(box::Box{UnitCellType,2}) where UnitCellType  
+function neighbor_cells(box::Box{UnitCellType,2}) where UnitCellType  
     @unpack lcell = box
     return CartesianIndices((-lcell:lcell,-lcell:lcell))
 end

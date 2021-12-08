@@ -1,6 +1,6 @@
 # Calling from Python
 
-Callling `CellListMap` from python can be useful if lists of neighbours or other properties have to be computed many times, making the overhead of initializing Julia negligible. As the example and benchmark below demonstrates, the current implementation of cell lists in this package is faster than common alternatives available in the python ecosystem. 
+Callling `CellListMap` from python can be useful if lists of neighbors or other properties have to be computed many times, making the overhead of initializing Julia negligible. As the example and benchmark below demonstrates, the current implementation of cell lists in this package is faster than common alternatives available in the python ecosystem. 
 
 ## Installing
 
@@ -19,7 +19,7 @@ which, *on the first call only*, will install the latest stable version of Julia
 In [2]: jl.Pkg.add("CellListMap")
 ```
 
-## Calling `neighbourlist` 
+## Calling `neighborlist` 
 
 The typical input coordinates, in python, are a `numpy` array with shape `(N,dim)` where `N` is the number of particles and `dim` is the dimension
 of the space (2 or 3 for `CellListMap`). Here, we generate a set of `50,000` particles in three dimensions:
@@ -34,61 +34,61 @@ Julia is column-major, and python is row-major, thus if we want to use the funct
 In [3]: coords_t = coords.transpose()
 ```
 
-These transposed coordinates can be used in the `CellListMap.neighbourlist` function. For example:
+These transposed coordinates can be used in the `CellListMap.neighborlist` function. For example:
 ```python
 In [4]: from juliacall import Main as jl
 
 In [5]: jl.seval("using CellListMap")
 
-In [6]: neighbour_list = jl.CellListMap.neighbourlist(coords_t,0.05)
+In [6]: neighbor_list = jl.CellListMap.neighborlist(coords_t,0.05)
 ```
 which will return a list of tuples, containing all pairs of coordinates withing the cutoff (remember that the *first* call to a Julia function will always take longer than subsequent calls, because the function is JIT compiled):
 
 ```python
-In [12]: neighbour_list.shape
+In [12]: neighbor_list.shape
 Out[12]: (618774,)
 
-In [13]: neighbour_list[1]
+In [13]: neighbor_list[1]
 Out[13]: (1, 37197, 0.047189685889846615)
 ```
 Note that the third element of the tuple is the distance between the points.
 
 ### Benchmark
 
-To properly benchmark the `neighbourlist` function from `CellListMap`, let us first define a simple wrapper that will include the transposition of the coordinates in the time:
+To properly benchmark the `neighborlist` function from `CellListMap`, let us first define a simple wrapper that will include the transposition of the coordinates in the time:
 
 ```python
-In [14]: def neighbourlist(x,cutoff):
+In [14]: def neighborlist(x,cutoff):
     ...:     y = x.transpose()
-    ...:     nn = jl.CellListMap.neighbourlist(y,cutoff)
+    ...:     nn = jl.CellListMap.neighborlist(y,cutoff)
     ...:     return nn
     ...:
 
-In [15]: %timeit neighbourlist(coords,0.05)
+In [15]: %timeit neighborlist(coords,0.05)
 61.7 ms ± 707 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
 ```
 
-Let us compare this with the performance of a [inrange neighbourlist algorithm](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.cKDTree.query_ball_tree.html) from `scipy`:
+Let us compare this with the performance of a [inrange neighborlist algorithm](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.cKDTree.query_ball_tree.html) from `scipy`:
 
 ```python
 In [29]: from scipy.spatial import cKDTree
 
-In [30]: def neighbourlist_scipy(x,cutoff) : 
+In [30]: def neighborlist_scipy(x,cutoff) : 
     ...:     kd_tree = cKDTree(x)  
     ...:     pairs = kd_tree.query_pairs(r=0.05)  
     ...:     return pairs 
     ...:
 
-In [31]: %timeit neighbourlist_scipy(coords,0.05)
+In [31]: %timeit neighborlist_scipy(coords,0.05)
 206 ms ± 2.07 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 ```
 
 Just to confirm, this is the number of pairs that is being output in this test
 ```python
-In [32]: len(neighbourlist_scipy(x,cutoff)) # using Scipy
+In [32]: len(neighborlist_scipy(x,cutoff)) # using Scipy
 Out[32]: 618475
 
-In [20]: len(neighbourlist(coords,0.05)) # using CellListMap
+In [20]: len(neighborlist(coords,0.05)) # using CellListMap
 Out[20]: 618475
 ```
 
@@ -102,7 +102,7 @@ in `bash`, do:
 
 For the current example, this provides a small additional speedup:
 ```python
-In [11]: %timeit neighbourlist(coords,0.05)
+In [11]: %timeit neighborlist(coords,0.05)
 45.2 ms ± 2.67 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
 ```
 
@@ -116,10 +116,10 @@ julia> using CellListMap
 
 julia> x = rand(3,50_000);
 
-julia> @btime CellListMap.neighbourlist($x,0.05);
+julia> @btime CellListMap.neighborlist($x,0.05);
   32.786 ms (187997 allocations: 91.03 MiB)
 
-julia> @btime CellListMap.neighbourlist($x,0.05,parallel=false);
+julia> @btime CellListMap.neighborlist($x,0.05,parallel=false);
   51.328 ms (17543 allocations: 32.83 MiB)
 ```
 
@@ -195,7 +195,7 @@ Out[37]:
       3.0583808e7
 ```
 
-With this interface, however, it is not possible to pass additional parameters to the mapped function, and thus the additional parameters have to defined inside the called function (as the `cutoff` in the current example). This is not ideal, for example, for computing accelerations, which depend on the masses of the particles. In this case, currently, either just use Julia from start and closures, or use the `neighbourlist`  function to obtain the list of neighbours to then compute whatever property is desired from the list of pairs, although this is suboptimal in terms of performance.  
+With this interface, however, it is not possible to pass additional parameters to the mapped function, and thus the additional parameters have to defined inside the called function (as the `cutoff` in the current example). This is not ideal, for example, for computing accelerations, which depend on the masses of the particles. In this case, currently, either just use Julia from start and closures, or use the `neighborlist`  function to obtain the list of neighbors to then compute whatever property is desired from the list of pairs, although this is suboptimal in terms of performance.  
 
 
 

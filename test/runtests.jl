@@ -213,28 +213,28 @@ include("../src/examples/generic_types.jl")
     @test CellListMap.Examples.distance_histogram(parallel=true,x=x) ≈ CellListMap.Examples.distance_histogram(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_potential(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_potential(parallel=false,x=x)
     @test CellListMap.Examples.gravitational_force(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_force(parallel=false,x=x)
-    @test count(CellListMap.Examples.nearest_neighbour(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbour(parallel=false,x=x,y=y)) == 3
+    @test count(CellListMap.Examples.nearest_neighbor(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbor(parallel=false,x=x,y=y)) == 3
     
     function pair_match(p1,p2) 
         p1[3] ≈ p2[3] || return false 
         p1[1] == p2[1] && p1[2] == p2[2] && return true
         p1[1] == p2[2] && p1[2] == p2[1] && return true
     end
-    pairs1 = sort!(CellListMap.Examples.neighbourlist(parallel=true,x=x),by=x->x[3])
-    pairs2 = sort!(CellListMap.Examples.neighbourlist(parallel=false,x=x),by=x->x[3])
+    pairs1 = sort!(CellListMap.Examples.neighborlist(parallel=true,x=x),by=x->x[3])
+    pairs2 = sort!(CellListMap.Examples.neighborlist(parallel=false,x=x),by=x->x[3])
     @test length(pairs1) == length(pairs2)
     @test count(pair_match.(pairs1,pairs2)) == length(pairs1)
 
     x = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500 ]
     y = [ sides .* rand(SVector{3,Float64}) for i in 1:1_500_000 ]
-    @test count(CellListMap.Examples.nearest_neighbour_nopbc(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbour_nopbc(parallel=false,x=x,y=y)) == 3
+    @test count(CellListMap.Examples.nearest_neighbor_nopbc(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbor_nopbc(parallel=false,x=x,y=y)) == 3
 
     # invert x and y to test swap
-    ixy = CellListMap.Examples.nearest_neighbour_nopbc(parallel=false,x=x,y=y) 
-    iyx = CellListMap.Examples.nearest_neighbour_nopbc(parallel=false,x=y,y=x) 
+    ixy = CellListMap.Examples.nearest_neighbor_nopbc(parallel=false,x=x,y=y) 
+    iyx = CellListMap.Examples.nearest_neighbor_nopbc(parallel=false,x=y,y=x) 
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
-    ixy = CellListMap.Examples.nearest_neighbour_nopbc(parallel=true,x=x,y=y) 
-    iyx = CellListMap.Examples.nearest_neighbour_nopbc(parallel=true,x=y,y=x) 
+    ixy = CellListMap.Examples.nearest_neighbor_nopbc(parallel=true,x=x,y=y) 
+    iyx = CellListMap.Examples.nearest_neighbor_nopbc(parallel=true,x=y,y=x) 
     @test ( ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3] ) 
 
     # Test some fractional box lengths with the packmol test
@@ -249,4 +249,4 @@ include("../src/examples/generic_types.jl")
 end
 
 include("./namd/compare_with_namd.jl")
-include("./neighbourlist.jl")
+include("./neighborlist.jl")

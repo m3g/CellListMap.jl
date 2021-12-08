@@ -3,14 +3,14 @@ using StaticArrays
 import Random
 
 #
-# In this test we compute the complete neighbour list of particles, meaning all the pairs
+# In this test we compute the complete neighbor list of particles, meaning all the pairs
 # that are within the cutoff distance. This function is implemented in the 
 # 
-# CellListMap.neighbourlist
+# CellListMap.neighborlist
 #
 # routine. Here we illustrate how is is this implementation, to facilitate customization.
 #
-function neighbourlist(;N=100_000,parallel=true,x=nothing)
+function neighborlist(;N=100_000,parallel=true,x=nothing)
 
     # Number of particles, sides and cutoff
     sides = @SVector [250,250,250]

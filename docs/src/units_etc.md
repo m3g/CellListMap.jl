@@ -77,7 +77,7 @@ julia> @btime let x = $([ SVector{3,Float64}(ustrip.(v)) for v in x ])
 12.983283925249138
 ```
 
-Auxiliary functions, like `CellListMap.neighbourlist`, propagate units correctly:
+Auxiliary functions, like `CellListMap.neighborlist`, propagate units correctly:
 
 ```julia-repl
 julia> cutoff = 0.1u"nm"
@@ -87,7 +87,7 @@ julia> box = Box([1.0, 1.0, 1.0]u"nm",cutoff);
 
 julia> x = [ rand(typeof(cutoff),3) for _ in 1:1000 ];
 
-julia> CellListMap.neighbourlist(x,cutoff)
+julia> CellListMap.neighborlist(x,cutoff)
 1796-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
  (1, 583, 0.06456224519583421 nm)
  (10, 216, 0.04958058924623024 nm)

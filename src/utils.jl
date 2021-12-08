@@ -1,10 +1,10 @@
 """
 
 ```
-neighbourlist(box, cl; parallel=true)
+neighborlist(box, cl; parallel=true)
 ```
 
-Compute the neighbour list of a single set or set pairs of particles. Returns a vector of tuples
+Compute the neighbor list of a single set or set pairs of particles. Returns a vector of tuples
 with all indices of the particles that are within `box.cutoff`, and the distances.  
 
 ## Example
@@ -25,7 +25,7 @@ CellList{3, Float64}
   1126 particles in computing box, including images.
 
 
-julia> CellListMap.neighbourlist(box,cl,parallel=false)
+julia> CellListMap.neighborlist(box,cl,parallel=false)
 15-element Vector{Tuple{Int64, Int64, Float64}}:
  (187, 511, 0.010346860078531755)
  (203, 708, 0.010777737363239403)
@@ -38,7 +38,7 @@ julia> CellListMap.neighbourlist(box,cl,parallel=false)
 
 ```
 
-To obtain the neighbour list (within the cutoff) between two sets of 
+To obtain the neighbor list (within the cutoff) between two sets of 
 particles, initialize the cell lists with the two sets: 
 
 ```julia-repl
@@ -55,7 +55,7 @@ CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
    1000 particles in the reference vector.
    997 cells with real particles of target vector.
 
-julia> CellListMap.neighbourlist(box,cl)
+julia> CellListMap.neighborlist(box,cl)
 35-element Vector{Tuple{Int64, Int64, Float64}}:
  (409, 982, 0.01634641594779082)
  (521, 422, 0.00919026348035512)
@@ -68,7 +68,7 @@ julia> CellListMap.neighbourlist(box,cl)
 ```
 
 """
-function neighbourlist(box::Box, cl; parallel=true)
+function neighborlist(box::Box, cl; parallel=true)
 
     # Function adds pair to the list
     function push_pair!(i, j, d2, pairs) 
@@ -102,7 +102,7 @@ end
 """
 
 ```
-neighbourlist(x,r;parallel=true)
+neighborlist(x,r;parallel=true)
 ```
 
 Computes the list of pairs of particles in `x` which are closer to each other than `r`.
@@ -111,7 +111,7 @@ Computes the list of pairs of particles in `x` which are closer to each other th
 ```julia-repl
 julia> x = [ rand(3) for i in 1:10_000 ];
 
-julia> CellListMap.neighbourlist(x,0.05)
+julia> CellListMap.neighborlist(x,0.05)
 24848-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 1055, 0.022977369806392412)
  (1, 5086, 0.026650609138167428)
@@ -122,16 +122,16 @@ julia> CellListMap.neighbourlist(x,0.05)
 ```
 
 """
-function neighbourlist(x,r;parallel=true)
+function neighborlist(x,r;parallel=true)
     box = Box(limits(x),r)
     cl = CellList(x,box,parallel=parallel)
-    return neighbourlist(box,cl,parallel=parallel)
+    return neighborlist(box,cl,parallel=parallel)
 end
 
 """
 
 ```
-neighbourlist(x,y,r;parallel=true,autoswap=true)
+neighborlist(x,y,r;parallel=true,autoswap=true)
 ```
 
 Computes the list of pairs of particles of `x` which are closer than `r` to
@@ -144,7 +144,7 @@ julia> x = [ rand(3) for i in 1:10_000 ];
 
 julia> y = [ rand(3) for i in 1:1_000 ];
 
-julia> CellListMap.neighbourlist(x,y,0.05)
+julia> CellListMap.neighborlist(x,y,0.05)
 5006-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 269, 0.04770884036497686)
  (25, 892, 0.03850515231540869)
@@ -155,8 +155,8 @@ julia> CellListMap.neighbourlist(x,y,0.05)
 ```
 
 """
-function neighbourlist(x,y,r;parallel=true,autoswap=true)
+function neighborlist(x,y,r;parallel=true,autoswap=true)
     box = Box(limits(x,y),r)
     cl = CellList(x,y,box,parallel=parallel,autoswap=autoswap)
-    return neighbourlist(box,cl,parallel=parallel)
+    return neighborlist(box,cl,parallel=parallel)
 end

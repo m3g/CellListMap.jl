@@ -116,7 +116,7 @@ map_pairwise!(
 The example above can be run with `CellListMap.Examples.gravitational_force()` and is available in the
 [gravitational_force.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl) file.
 
-## Nearest neighbour
+## Nearest neighbor
 
 Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
 
@@ -159,27 +159,27 @@ mind = map_pairwise(
 )
 ```
 
-The example above can be run with `CellListMap.Examples.nearest_neighbour()` and is available in the
-[nearest_neighbour.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour.jl) file.
+The example above can be run with `CellListMap.Examples.nearest_neighbor()` and is available in the
+[nearest_neighbor.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor.jl) file.
 
-The example `CellListMap.Examples.nearest_neighbour_nopbc()` of [nearest\_neighbour\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbour_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
+The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
-## Neighbour lists
+## neighbor lists
 
-### The `CellListMap.neighbourlist` function
-The package provides a `neighbourlist` function that implements this calculation. Without periodic boundary conditions, just do:
+### The `CellListMap.neighborlist` function
+The package provides a `neighborlist` function that implements this calculation. Without periodic boundary conditions, just do:
 
 ```julia-repl
 julia> x = [ rand(3) for _ in 1:10_000 ];
 
-julia> CellListMap.neighbourlist(x,0.05)
+julia> CellListMap.neighborlist(x,0.05)
 24778-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 62, 0.028481068525796384)
  ⋮
  (9954, 1749, 0.04887502372299809)
  (9974, 124, 0.040110356034451795)
 ```
-or `CellListMap.neighbourlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
+or `CellListMap.neighborlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
 The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
 
@@ -191,9 +191,9 @@ julia> box = Box([1,1,1],0.1);
 
 julia> cl = CellList(x,box);
 
-julia> CellListMap.neighbourlist(box,cl)
+julia> CellListMap.neighborlist(box,cl)
 
-julia> CellListMap.neighbourlist(box,cl)
+julia> CellListMap.neighborlist(box,cl)
 209506-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 121, 0.05553035041478053)
  (1, 1589, 0.051415489701932444)
@@ -233,5 +233,5 @@ map_pairwise!(
 )
 ```
 
-The full example can be run with `CellListMap.Examples.neighbourlist()`, available in the file 
-[neighbourlist.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/neighbourlist.jl).
+The full example can be run with `CellListMap.Examples.neighborlist()`, available in the file 
+[neighborlist.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/neighborlist.jl).
