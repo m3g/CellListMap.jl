@@ -78,10 +78,14 @@ function neighborlist(box::Box, cl; parallel=true)
     end
 
     # We have to define our own reduce function here (for the parallel version)
+    # this reduction can be dum assynchronously on a preallocated array
     function reduce_pairs(pairs, pairs_threaded)
-        pairs = pairs_threaded[1]
-        for i in 2:length(pairs_threaded)
-            append!(pairs, pairs_threaded[i])
+        ranges = cumsum(length.(pairs_threaded))
+        npairs = ranges[end]
+        pairs = resize!(pairs,npairs)
+        @sync for it in 1:length(pairs_threaded)
+            range = ranges[it]-length(pairs_threaded[it])+1:ranges[it]
+            Threads.@spawn pairs[range] .= pairs_threaded[it]
         end
         return pairs
     end
