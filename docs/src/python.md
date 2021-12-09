@@ -103,7 +103,7 @@ in `bash`, do:
 For the current example, this provides a small additional speedup:
 ```python
 In [11]: %timeit neighborlist(coords,0.05)
-45.2 ms ± 2.67 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+31.3 ms ± 1.22 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
 ```
 
 ### Overhead
@@ -117,10 +117,10 @@ julia> using CellListMap
 julia> x = rand(3,50_000);
 
 julia> @btime CellListMap.neighborlist($x,0.05);
-  32.786 ms (187997 allocations: 91.03 MiB)
+  27.294 ms (35935 allocations: 58.39 MiB)
 
 julia> @btime CellListMap.neighborlist($x,0.05,parallel=false);
-  51.328 ms (17543 allocations: 32.83 MiB)
+  51.299 ms (17687 allocations: 37.43 MiB)
 ```
 
 ## General mappings
