@@ -31,19 +31,20 @@ function pairwise_velocities(::Type{T}=Float64;
     end
   
     n_halos = N
-  
+
     if cd
-        density = T(10^5 / 250^3)  # density of the original problem
+        # density galaxies in the universe megaparsec^-3
+        density = T(10^5 / 20.274^3) 
         boxsize = T((n_halos/density)^(1/3))
     else
-        boxsize = T(250.)
+        boxsize = T(20.274)
     end
 
     Random.seed!(321)
     Lbox = T[boxsize,boxsize,boxsize]
     positions = convert.(T,boxsize .* rand(Float64, 3, n_halos))
     velocities = convert.(T,rand(Float64, 3, n_halos))
-    rbins = T[0.,2.,4.,6.,8.,10.]
+    rbins = T[0.,1.,2.,3.,4.,5.]
     r_max = maximum(rbins)
   
     n = size(positions)[2]
@@ -74,13 +75,14 @@ function pairwise_velocities(::Type{T}=Float64;
     mean_v_r = hist[2]
     mean_v_r[n_pairs .> 0] = mean_v_r[n_pairs .> 0] ./ n_pairs[n_pairs .> 0]
   
-    correct_result = [ 
-         0.0007883474482652579
-        -0.0035662371878635722
-        -0.00040742008823982926
-         0.0003623877989466509
-        -0.0010441334538614498
-    ]
+    # using Julia 1.7.0, this is the expected result
+    correct_result = [
+        0.00028420429835911875, 
+       -3.240572326959191e-5, 
+        9.581744218539093e-5, 
+       -2.879083693540441e-6, 
+       -3.8499932402028564e-5
+       ]
     return mean_v_r ≈ correct_result, mean_v_r
 
 end
