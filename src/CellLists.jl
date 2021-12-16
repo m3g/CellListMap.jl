@@ -648,7 +648,9 @@ function UpdateCellList!(
     if parallel && cl.nbatches.build_cell_lists > 1
         init_aux_threaded!(aux,cl)
     end
-    return UpdateCellList!(x,box,cl,aux,parallel=parallel)
+    cl = GC.@preserve aux UpdateCellList!(x,box,cl,aux,parallel=parallel)
+    return cl
+#    return UpdateCellList!(x,box,cl,aux,parallel=parallel)
 end
 
 """
@@ -758,7 +760,7 @@ function UpdateCellList!(
         cl = add_particles!(x,box,0,cl)
     else 
         # Cell lists to be built by each thread
-         @sync for ibatch in 1:nbatches
+        @sync for ibatch in 1:nbatches
             Threads.@spawn begin
                 aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
                 if length(aux.idxs[ibatch]) > 0
@@ -793,8 +795,8 @@ function UpdateCellList!(
     for i in 1:cl.n_cells_with_particles
         maxnp = max(maxnp,cl.cells[i].n_particles)
     end
-    if maxnp > length(cl.projected_particles[1])
-        for i in 1:length(cl.projected_particles)
+    for i in 1:length(cl.projected_particles)
+        if maxnp > length(cl.projected_particles[i])
             resize!(cl.projected_particles[i],maxnp)
         end
     end
