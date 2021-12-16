@@ -329,8 +329,38 @@ CellList{3, Float64}
 ```
 """
 function AuxThreaded(cl::CellList{N,T}) where {N,T}
-    aux = AuxThreaded{N,T}()
-    init_aux_threaded!(aux,cl)
+    nbatches = cl.nbatches.build_cell_lists
+    aux = AuxThreaded{N,T}(
+        idxs=Vector{UnitRange{Int}}(undef,nbatches),
+        lists=Vector{CellList{N,T}}(undef,nbatches)
+    )
+    # If the calculation is not parallel, no need to initialize this
+    nbatches == 1 && return aux
+    # The fact that aux.lists[1] and cl are the same is deliberate,
+    # because for not-so-large systems this makes a huge difference
+    # since it removes one step from the threaded cell list merging
+    # maybe  this will be revised at some point. This affects the choice
+    # of the strategy for threaded merging of lists. The alternative is
+    # to initialize here with `deepcopy(cl)` for all `aux.lists`.
+    aux.lists[1] = cl
+    @sync for ibatch in 2:nbatches
+        Threads.@spawn aux.lists[ibatch] = deepcopy(cl)
+    end
+    # Indices of the atoms that will be added by each thread
+    nrem = cl.n_real_particles%nbatches
+    nperthread = (cl.n_real_particles-nrem)÷nbatches
+    first = 1
+    for ibatch in 1:nbatches
+        nx = nperthread
+        if ibatch <= nrem
+            nx += 1
+        end
+        aux.idxs[ibatch] = first:(first-1)+nx
+        first += nx
+        cl_tmp = aux.lists[ibatch]
+        @set! cl_tmp.n_real_particles = length(aux.idxs[ibatch]) 
+        aux.lists[ibatch] = cl_tmp
+    end
     return aux
 end
 
@@ -365,60 +395,7 @@ CellList{3, Float64}
 
 ```
 """
-function AuxThreaded(cl_pair::CellListPair{V,N,T}) where {V,N,T}
-    aux = AuxThreaded{N,T}()
-    init_aux_threaded!(aux,cl_pair.target)
-    return aux
-end
-
-"""
-
-```
-init_aux_threaded!(aux::AuxThreaded,cl::CellList)
-```
-
-Internal function or structure - interface may change.
-
-# Extended help
-
-Given an `AuxThreaded` object initialized with zero-length arrays,
-push `ntrheads` copies of `cl` into `aux.lists` and resize `aux.idxs`
-to the number of threads.  
-
-"""
-function init_aux_threaded!(aux::AuxThreaded,cl::CellList)
-    # the fact that aux.lists[1] and cl are the same is deliberate,
-    # because for not-so-large systems this makes a huge difference
-    # since it removes one step from the threaded cell list merging
-    # maybe  this will be revised at some point. This affects the choice
-    # of the strategy for threaded merging of lists. The alternative is
-    # to initialize here with `deepcopy(cl)` for all `aux.lists`.
-    push!(aux.lists, cl)
-    nbatches = cl.nbatches.build_cell_lists
-    for ibatch in 2:nbatches
-        if ibatch > length(aux.lists)
-            push!(aux.lists, deepcopy(cl))
-        else
-            aux.lists[ibatch] = deepcopy(cl)
-        end
-    end
-    # Indices of the atoms that will be added by each thread
-    nrem = cl.n_real_particles%nbatches
-    nperthread = (cl.n_real_particles-nrem)÷nbatches
-    first = 1
-    for ibatch in 1:nbatches
-        nx = nperthread
-        if ibatch <= nrem
-            nx += 1
-        end
-        push!(aux.idxs,first:(first-1)+nx)
-        first += nx
-        cl_tmp = aux.lists[ibatch]
-        @set! cl_tmp.n_real_particles = length(aux.idxs[ibatch]) 
-        aux.lists[ibatch] = cl_tmp
-    end
-    return aux
-end
+AuxThreaded(cl_pair::CellListPair) = AuxThreaded(cl_pair.target)
 
 """
 
@@ -610,9 +587,9 @@ end
 UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
-    cl:CellList{N,T},
+    cl:CellList,
     parallel=true
-) where {N,T}
+) 
 ```
 
 Function that will update a previously allocated `CellList` structure, given new 
@@ -641,16 +618,11 @@ julia> cl = UpdateCellList!(x,box,cl); # update lists
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
-    cl::CellList{N,T};
+    cl::CellList;
     parallel::Bool=true
-) where {N,T}
-    aux = AuxThreaded{N,T}()
-    if parallel && cl.nbatches.build_cell_lists > 1
-        init_aux_threaded!(aux,cl)
-    end
-    cl = GC.@preserve aux UpdateCellList!(x,box,cl,aux,parallel=parallel)
-    return cl
-#    return UpdateCellList!(x,box,cl,aux,parallel=parallel)
+)
+    aux = AuxThreaded(cl)
+    return UpdateCellList!(x,box,cl,aux,parallel=parallel)
 end
 
 """
@@ -755,7 +727,7 @@ function UpdateCellList!(
 
     # Add particles to cell list
     nbatches = cl.nbatches.build_cell_lists
-    if !parallel || nbatches == 1
+    if nbatches == 1
         cl = reset!(cl,box,length(x))
         cl = add_particles!(x,box,0,cl)
     else 
@@ -784,7 +756,7 @@ function UpdateCellList!(
         cl = aux.lists[1]
         # we choose for now the approach above, because resetting and copying
         # the list takes too much, and the overhead is not accceptable for smaller
-        # systems (see `init_aux_threaded` for associated initialization). The
+        # systems (see `AuxThreaded(cl::CellList)` for associated initialization). The
         # alternative merging would be:
         # cl = reset!(cl,box,0)
         # cl = merge_cell_lists!(cl,aux.lists[1])
@@ -1086,10 +1058,10 @@ end
 UpdateCellList!(
   x::AbstractVector{<:AbstractVector},
   y::AbstractVector{<:AbstractVector},
-  box::Box{UnitCellType,N,T},
+  box::Box,
   cl:CellListPair,
   parallel=true
-) where {UnitCellType,N,T}
+)
 ```
 
 Function that will update a previously allocated `CellListPair` structure, given 
@@ -1114,14 +1086,11 @@ julia> cl = UpdateCellList!(x,y,box,cl); # update lists
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
-    box::Box{UnitCellType,N,T},
+    box::Box,
     cl_pair::CellListPair;
     parallel::Bool=true
-) where {UnitCellType,N,T}
-    aux = AuxThreaded{N,T}()
-    if parallel && cl.target.nbatches.build_cell_lists > 1
-        init_aux_threaded!(aux,cl_pair.target)
-    end
+)
+    aux = AuxThreaded(cl)
     return UpdateCellList!(x,y,box,cl_pair,aux,parallel=parallel)
 end
 
@@ -1162,11 +1131,11 @@ end
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
-    box::Box{UnitCellType,N,T},
+    box::Box,
     cl_pair::CellListPair,
-    aux::AuxThreaded{N,T};
+    aux::AuxThreaded;
     parallel::Bool=true
-) where {UnitCellType,N,T}
+)
 ```
 
 This function will update the `cl_pair` structure that contains the cell lists
@@ -1227,11 +1196,11 @@ julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
-    box::Box{UnitCellType,N,T},
+    box::Box,
     cl_pair::CellListPair,
-    aux::AuxThreaded{N,T};
+    aux::AuxThreaded;
     parallel::Bool=true
-) where {UnitCellType,N,T}
+)
     if !cl_pair.swap 
         target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
     else
@@ -1247,9 +1216,9 @@ end
 function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
-    box::Box{UnitCellType,N,T},
+    box::Box,
     cl_pair::CellListPair,
-    aux::AuxThreaded{N,T};
+    aux::AuxThreaded;
     parallel::Bool=true
 ) where {UnitCellType,N,T}
 ```
@@ -1263,7 +1232,7 @@ function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
     box::Box{UnitCellType,N,T},
-    cl_pair::CellListPair,
+    cl_pair::CellListPair{N,T},
     aux::AuxThreaded{N,T};
     parallel::Bool=true
 ) where {UnitCellType,N,T}
