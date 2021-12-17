@@ -726,7 +726,7 @@ function UpdateCellList!(
 
     # Add particles to cell list
     nbatches = cl.nbatches.build_cell_lists
-    if nbatches == 1
+    if !parallel || nbatches == 1
         cl = reset!(cl,box,length(x))
         cl = add_particles!(x,box,0,cl)
     else 
