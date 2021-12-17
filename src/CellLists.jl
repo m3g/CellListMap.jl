@@ -735,8 +735,8 @@ function UpdateCellList!(
             Threads.@spawn begin
                 aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
                 if length(aux.idxs[ibatch]) > 0
-                xt = @view(x[aux.idxs[ibatch]])  
-                aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
+                    xt = @view(x[aux.idxs[ibatch]])  
+                    aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
                 end
             end
         end
