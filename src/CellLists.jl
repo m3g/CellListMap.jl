@@ -15,8 +15,7 @@ $(TYPEDFIELDS)
 
 Copies particle coordinates and associated index, to build contiguous particle lists
 in memory when building the cell lists. This strategy duplicates the particle coordinates
-data, but is probably worth the effort. The index is a 32bit integer such 
-that the complete struct has 32bytes.
+data, but is probably worth the effort. 
 
 """
 struct ParticleWithIndex{N,T}
