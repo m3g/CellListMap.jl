@@ -738,7 +738,7 @@ function UpdateCellList!(
             Threads.@spawn begin
                 ip = aux.idxs[ibatch][begin] 
                 while ip <= aux.idxs[ibatch][end]
-                    lp = min(ip+aux.np_per_cycle-1,aux.idxs[ibatch][end])
+                    lp = min(ip+aux.n_per_cycle-1,aux.idxs[ibatch][end])
                     prange = ip:lp
                     aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
                     xt = @view(x[prange])  
