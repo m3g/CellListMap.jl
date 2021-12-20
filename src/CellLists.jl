@@ -732,7 +732,7 @@ function UpdateCellList!(
         # Cell lists to be built by each thread
         lk = ReentrantLock()
         @sync for ibatch in 1:nbatches
-            np_per_cycle = length(aux.idxs[ibatch])
+            np_per_cycle = 10_000
             Threads.@spawn begin
                 ip = aux.idxs[ibatch][begin] 
                 while ip <= aux.idxs[ibatch][end]
