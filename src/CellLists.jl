@@ -737,9 +737,9 @@ function UpdateCellList!(
         for ibatch in 1:nbatches
             aux.ip[ibatch] = aux.idxs[ibatch][begin]
         end
-        while any(aux.ip[ibatch] < aux.idxs[ibatch][end] for ibatch in 1:nbatches)
+        while any(aux.ip[ibatch] <= aux.idxs[ibatch][end] for ibatch in 1:nbatches)
             @sync for ibatch in 1:nbatches
-                aux.ip[ibatch] == aux.idxs[ibatch][end] && continue
+                aux.ip[ibatch] > aux.idxs[ibatch][end] && continue
                 Threads.@spawn begin
                     lp = min(aux.ip[ibatch]+aux.n_per_cycle-1,aux.idxs[ibatch][end])
                     prange = aux.ip[ibatch]:lp
