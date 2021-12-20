@@ -215,8 +215,8 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::Tuple{Int,Int}=(0,0)
     return cl
 end
 # Heuristic choices for the number of batches, for an atomic system
-_nbatches_build_cell_lists(n::Int) = min(16,nthreads())
-_nbatches_map_computation(n::Int) = min(floor(Int,2^(log10(n)+1)),nthreads()) 
+_nbatches_build_cell_lists(n::Int) = min(n,min(16,nthreads()))
+_nbatches_map_computation(n::Int) = min(n,min(floor(Int,2^(log10(n)+1)),nthreads()))
 
 function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}
     nbatches = NumberOfBatches(nbatches)
