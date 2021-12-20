@@ -335,15 +335,12 @@ function AuxThreaded(cl::CellList{N,T}) where {N,T}
     )
     # If the calculation is not parallel, no need to initialize this
     nbatches == 1 && return aux
-    # The fact that aux.lists[1] and cl are the same is deliberate,
-    # because for not-so-large systems this makes a huge difference
-    # since it removes one step from the threaded cell list merging
-    # maybe  this will be revised at some point. This affects the choice
-    # of the strategy for threaded merging of lists. The alternative is
-    # to initialize here with `deepcopy(cl)` for all `aux.lists`.
-    aux.lists[1] = cl
-    @sync for ibatch in 2:nbatches
-        Threads.@spawn aux.lists[ibatch] = deepcopy(cl)
+    for ibatch in 1:nbatches
+        cl_batch = CellList{N,T}(
+            n_real_particles=0, # this is reset before filling, in UpdateCellList!
+            number_of_cells=cl.number_of_cells,
+        )
+        aux.lists[ibatch] = cl_batch
     end
     # Indices of the atoms that will be added by each thread
     nrem = cl.n_real_particles%nbatches
@@ -463,7 +460,7 @@ end
 """
 
 ```
-reset!(cl::CellList{N,T},box) where{N,T}
+reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
 ```
 
 Internal function or structure - interface may change.
@@ -730,35 +727,27 @@ function UpdateCellList!(
         cl = reset!(cl,box,length(x))
         cl = add_particles!(x,box,0,cl)
     else 
+        # Reset cell list
+        cl = reset!(cl,box,0)
         # Cell lists to be built by each thread
+        lk = ReentrantLock()
         @sync for ibatch in 1:nbatches
+            np_per_cycle = length(aux.idxs[ibatch])
             Threads.@spawn begin
-                aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(aux.idxs[ibatch]))
-                if length(aux.idxs[ibatch]) > 0
-                    xt = @view(x[aux.idxs[ibatch]])  
-                    aux.lists[ibatch] = add_particles!(xt,box,aux.idxs[ibatch][1]-1,aux.lists[ibatch])
+                ip = aux.idxs[ibatch][begin] 
+                while ip <= aux.idxs[ibatch][end]
+                    lp = min(ip+np_per_cycle-1,aux.idxs[ibatch][end])
+                    prange = ip:lp
+                    aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
+                    xt = @view(x[prange])  
+                    aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
+                    lock(lk) do
+                        cl = merge_cell_lists!(cl,aux.lists[ibatch])
+                    end
+                    ip = lp + 1
                 end
             end
         end
-        # Tree-Merge of threaded cell lists
-        n_merge = nbatches
-        while n_merge > 1
-            half = n_merge ÷ 2
-            @sync for i in 1:half
-                Threads.@spawn aux.lists[i] = merge_cell_lists!(aux.lists[i],aux.lists[i+half])
-            end
-            if isodd(n_merge)
-                aux.lists[1]  = merge_cell_lists!(aux.lists[1],aux.lists[n_merge])
-            end
-            n_merge = half
-        end
-        cl = aux.lists[1]
-        # we choose for now the approach above, because resetting and copying
-        # the list takes too much, and the overhead is not accceptable for smaller
-        # systems (see `AuxThreaded(cl::CellList)` for associated initialization). The
-        # alternative merging would be:
-        # cl = reset!(cl,box,0)
-        # cl = merge_cell_lists!(cl,aux.lists[1])
     end
   
     # allocate, or update the auxiliary projected_particles arrays
