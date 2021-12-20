@@ -730,21 +730,20 @@ function UpdateCellList!(
         # Reset cell list
         cl = reset!(cl,box,0)
         # Cell lists to be built by each thread
-        lk = ReentrantLock()
-        @sync for ibatch in 1:nbatches
-            Threads.@spawn begin
-                ip = aux.idxs[ibatch][begin] 
-                while ip <= aux.idxs[ibatch][end]
-                    lp = min(ip+aux.n_per_cycle-1,aux.idxs[ibatch][end])
-                    prange = ip:lp
+        ip = [ aux.idxs[ibatch][begin] for ibatch in 1:nbatches ]
+        while any(ip[ibatch] < aux.idxs[ibatch][end] for ibatch in 1:nbatches)
+            @sync for ibatch in 1:nbatches
+                ip[ibatch] == aux.idxs[ibatch][end] && continue
+                Threads.@spawn begin
+                    lp = min(ip[ibatch]+aux.n_per_cycle-1,aux.idxs[ibatch][end])
+                    prange = ip[ibatch]:lp
                     aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
-                    xt = @view(x[prange])  
-                    aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
-                    lock(lk) do
-                        cl = merge_cell_lists!(cl,aux.lists[ibatch])
-                    end
-                    ip = lp + 1
+                    aux.lists[ibatch] = add_particles!(@view(x[prange]),box,prange[begin]-1,aux.lists[ibatch])
+                    ip[ibatch] = lp + 1
                 end
+            end
+            for ibatch in 1:nbatches
+                cl = merge_cell_lists!(cl,aux.lists[ibatch])
             end
         end
     end
