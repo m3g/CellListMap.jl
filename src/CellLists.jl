@@ -355,9 +355,6 @@ function AuxThreaded(cl::CellList{N,T};n_per_cycle=10_000) where {N,T}
         end
         aux.idxs[ibatch] = first:(first-1)+nx
         first += nx
-        cl_tmp = aux.lists[ibatch]
-        @set! cl_tmp.n_real_particles = length(aux.idxs[ibatch]) 
-        aux.lists[ibatch] = cl_tmp
     end
     return aux
 end
@@ -752,7 +749,7 @@ function UpdateCellList!(
         end
     end
   
-    # allocate, or update the auxiliary projected_particles arrays
+    ## allocate, or update the auxiliary projected_particles arrays
     maxnp = 0
     for i in 1:cl.n_cells_with_particles
         maxnp = max(maxnp,cl.cells[i].n_particles)
@@ -899,10 +896,10 @@ merge cell lists computed in parallel threads.
 
 """
 function merge_cell_lists!(cl::CellList,aux::CellList)
-    # One should never get here if the lists do not share the same
-    # computing box
-    @assert cl.number_of_cells == aux.number_of_cells
-    # Accumulate number of particles
+    # One should never get here if the lists do not share the same # computing box
+    if cl.number_of_cells != aux.number_of_cells
+        error("cell lists must have the same number of cells to be merged.")
+    end
     @set! cl.n_particles += aux.n_particles
     @set! cl.n_real_particles += aux.n_real_particles
     for icell in 1:aux.n_cells_with_particles
