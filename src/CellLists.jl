@@ -198,12 +198,12 @@ tunning this.
 function set_number_of_batches!(cl::CellList{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}  
     nbatches = NumberOfBatches(nbatches)
     if nbatches.build_cell_lists < 1 
-        n1 = _nbatches_build_cell_lists(cl)
+        n1 = _nbatches_build_cell_lists(cl.n_real_particles)
     else
         n1 = nbatches.build_cell_lists
     end
     if nbatches.map_computation < 1
-        n2 = 4*nthreads()
+        n2 = _nbatches_map_computation(cl.n_real_particles)
     else
         n2 = nbatches.map_computation
     end
@@ -214,17 +214,19 @@ function set_number_of_batches!(cl::CellList{N,T},nbatches::Tuple{Int,Int}=(0,0)
     end
     return cl
 end
-_nbatches_build_cell_lists(cl) = max(1,min(ceil(Int,particles_per_cell(cl)/4),nthreads()))
+# Heuristic choices for the number of batches, for an atomic system
+_nbatches_build_cell_lists(n::Int) = min(16,nthreads())
+_nbatches_map_computation(n::Int) = min(floor(Int,2^(log10(n)+1)),nthreads()) 
 
 function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}
     nbatches = NumberOfBatches(nbatches)
     if nbatches.build_cell_lists < 1 
-        n1 = _nbatches_build_cell_lists(cl)
+        n1 = _nbatches_build_cell_lists(cl.target.n_real_particles)
     else
         n1 = nbatches.build_cell_lists
     end
     if nbatches.map_computation < 1
-        n2 = max(1,length(cl.ref)÷2500)
+        n2 = _nbatches_map_computation(length(cl.ref))
     else
         n2 = nbatches.map_computation
     end
