@@ -115,13 +115,6 @@ include("../src/examples/generic_types.jl")
         )[1] 
     end
 
-    # Test when we have pathologically few number of particles
-    x = [ Float64[1,1,1] ]
-    y = [ Float64[1.05,1,1], Float64[0,0,0]  ]
-    @test CellListMap.neighborlist(x,y,0.1)[1] == (1, 1, 0.050000000000000044)
-    z = [ Float64[1,1,1], Float64[1.05,1,1], Float64[0,0,0]  ]
-    @test CellListMap.neighborlist(z,0.1)[1] == (1, 2, 0.050000000000000044)
-
     # Function to be evalulated for each pair: build distance histogram
     function build_histogram!(d2,hist)
         d = sqrt(d2)
@@ -252,6 +245,13 @@ include("../src/examples/generic_types.jl")
     
     # Testing the propagation of types in automatic differentiation
     @test generic_types(false) == (true,u"nm^2",Measurement{Float64})
+
+    # Test when we have pathologically few number of particles
+    x = [ Float64[1,1,1] ]
+    y = [ Float64[1.05,1,1], Float64[0,0,0]  ]
+    @test CellListMap.neighborlist(x,y,0.1)[1] == (1, 1, 0.050000000000000044)
+    z = [ Float64[1,1,1], Float64[1.05,1,1], Float64[0,0,0]  ]
+    @test CellListMap.neighborlist(z,0.1)[1] == (1, 2, 0.050000000000000044)
 
 end
 
