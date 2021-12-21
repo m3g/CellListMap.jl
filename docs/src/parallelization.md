@@ -108,74 +108,23 @@ By default, the number of batches for the computation of the cell lists is small
 The values assumed for each number of batches can bee seen by printing the `nbatches` parameter of the cell lists:
 ```julia-repl
 julia> Threads.nthreads()
-8
+64
 
-julia> x = [ rand(3) for _ in 1:10_000 ]; box = Box([1,1,1],0.1);
+julia> x, box = CellListMap.xatomic(10^4) # random set with atomic density of water
 
 julia> cl = CellList(x,box);
 
 julia> cl.nbatches
 NumberOfBatches
-  Number of batches for cell list construction: 2
+  Number of batches for cell list construction: 16 
   Number of batches for function mapping: 32 
 ```
-which means that the construction of the cell lists will use 2 batches (thus using less tan `nthreads()` tasks), and the mapping of the function will be split into 32 batches. Using more batches than threads for the function mapping is effective most times in avoiding uneven workload, but it may be a problem if the output to be reduced is too large, as the threaded version of the output contains `nbatches` copies of the output. 
+The construction of the cell lists is performed by creating copies of the data, and currently does not scale very well. Thus, no more than 16 batches are used by default, to avoid delays associated to data copying and gargabe collection. The number of batches of the mapping function uses an heuristic which currently limits somewhat the number of batches for small systems, when the overhead of spawning tasks is greater than the computation. 
+Using more batches than threads for the function mapping is effective most times in avoiding uneven workload, but it may be a problem if the output to be reduced is too large, as the threaded version of the output contains `nbatches` copies of the output. 
 
-The effect of the number of batches in the construction of the cell lists can be seen here (in the above example, with `10_000` particles):
+Using less batches than the number of threads also allows the efficient use of nested multi-threading, as the computations will only use the number of threads required, leaving the other threads available for other tasks.
 
-```julia-repl
-julia> @btime CellList($x,$box,nbatches=(1,32));
-  2.195 ms (4156 allocations: 2.12 MiB)
-
-julia> @btime CellList($x,$box,nbatches=(2,32)); # default
-  1.674 ms (10317 allocations: 3.26 MiB)
-
-julia> @btime CellList($x,$box,nbatches=(3,32));
-  1.667 ms (13979 allocations: 4.08 MiB)
-
-julia> @btime CellList($x,$box,nbatches=(4,32));
-  2.083 ms (18460 allocations: 4.95 MiB)
-
-julia> @btime CellList($x,$box,nbatches=(8,32));
-  3.537 ms (39645 allocations: 8.40 MiB)
-```
-and, as shown, the default splitting is close to optimal, even if using less then the number of threads available. The optimal number of batches is, however, problem dependent, and the default heuristic may not always choose the best value.
-
-
-For denser systems the optimal number of batches change. For example, for `1_000_000` particles, we have:
-```julia-repl
-julia> @btime CellList($x,$box,nbatches=(2,32));
-  146.020 ms (8845 allocations: 193.58 MiB)
-
-julia> @btime CellList($x,$box,nbatches=(8,32)); # default
-  103.395 ms (40746 allocations: 352.56 MiB)
-```
-the default value is again close to optimal and can be trusted.
-
-The number of batches for the mapping of the pairwise computation generally is optimal if greater than the number of threads. 
-Most times it doesn't really makes sense to start a number of batches that is not a multiple of the number of threads available. For example, if the number of batches is `nthreads()+1`, most likely `nthreads()` batches will finish almost simultaneously and then the remaining batch will start running. Let us see the effect  of the number of batches in one specific example. The computer in which these tests are performed has 4 physical cores, which with multi-threading can span 8 independent threads.
-```julia-repl
-julia> Threads.nthreads()
-8
-```
-
-The test will be the computation of pairwise velocities of a set of `100_000` particles. We will keep the first parameter fixed (the number of batches of the cell list construction):
-```julia-repl
-julia> @btime CellListMap.Examples.pairwise_velocities(N=100_000,nbatches=(2,32)); # default
-  58.025 ms (88651 allocations: 36.10 MiB)
-
-julia> @btime CellListMap.Examples.pairwise_velocities(N=100_000,nbatches=(2,16)); 
-  55.913 ms (88423 allocations: 36.06 MiB)
-
-julia> @btime CellListMap.Examples.pairwise_velocities(N=100_000,nbatches=(2,8)); # = nthreads()
-  56.708 ms (88308 allocations: 36.04 MiB)
-
-julia> @btime CellListMap.Examples.pairwise_velocities(N=100_000,nbatches=(2,4)); # < nthreads()
-  82.678 ms (88249 allocations: 36.03 MiB)
-```
-As shown above, in this example the optimal number o batches is close to the number of threads available, and increasing it further does not improve performance. It may degrade performance for much larger number of batches, depending on the system size. However, if the computations where heterogeneous and the cost of each batch is much larger than the cost of spawning the threads, splitting into more batches than threads may be worthwhile. Gains in performance for very large systems are expected with this strategy, thus it is the default behavior. 
-
-Finally, the number of batches is set *on the construction of the cell list*, using the `nbatches` keyword parameter. For example:
+The number of batches is set *on the construction of the cell list*, using the `nbatches` keyword parameter. For example:
 ```julia-repl
 julia> cl = CellList(x,box,nbatches=(1,4))
 CellList{3, Float64}
@@ -197,7 +146,7 @@ julia> cl = CellList(x,box,nbatches=(0,4));
 
 julia> cl.nbatches
 NumberOfBatches
-  Number of batches for cell list construction: 8
+  Number of batches for cell list construction: 16 
   Number of batches for function mapping: 4
 
 julia> cl = CellList(x,box,nbatches=(4,0));
