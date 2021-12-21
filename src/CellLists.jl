@@ -293,7 +293,6 @@ be considered by each thread on parallel construction.
 """
 @with_kw struct AuxThreaded{N,T}
     n_per_cycle::Int
-    ip::Vector{Int}
     idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef,0)
     lists::Vector{CellList{N,T}} = Vector{CellList{N,T}}(undef,0)
 end
@@ -335,7 +334,6 @@ function AuxThreaded(cl::CellList{N,T};n_per_cycle=10_000) where {N,T}
     nbatches = cl.nbatches.build_cell_lists
     aux = AuxThreaded{N,T}(
         n_per_cycle=n_per_cycle,
-        ip=Vector{Int}(undef,nbatches),
         idxs=Vector{UnitRange{Int}}(undef,nbatches),
         lists=Vector{CellList{N,T}}(undef,nbatches)
     )
@@ -734,22 +732,21 @@ function UpdateCellList!(
         # Reset cell list
         cl = reset!(cl,box,0)
         # Cell lists to be built by each thread
-        for ibatch in 1:nbatches
-            aux.ip[ibatch] = aux.idxs[ibatch][begin]
-        end
-        while any(aux.ip[ibatch] <= aux.idxs[ibatch][end] for ibatch in 1:nbatches)
-            @sync for ibatch in 1:nbatches
-                aux.ip[ibatch] > aux.idxs[ibatch][end] && continue
-                Threads.@spawn begin
-                    lp = min(aux.ip[ibatch]+aux.n_per_cycle-1,aux.idxs[ibatch][end])
-                    prange = aux.ip[ibatch]:lp
+        lk = ReentrantLock()
+        @sync for ibatch in 1:nbatches
+            Threads.@spawn begin
+                ip = aux.idxs[ibatch][begin] 
+                while ip <= aux.idxs[ibatch][end]
+                    lp = min(ip+aux.n_per_cycle-1,aux.idxs[ibatch][end])
+                    prange = ip:lp
                     aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
-                    aux.lists[ibatch] = add_particles!(@view(x[prange]),box,prange[begin]-1,aux.lists[ibatch])
-                    aux.ip[ibatch] = lp + 1
+                    xt = @view(x[prange])  
+                    aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
+                    lock(lk) do
+                        cl = merge_cell_lists!(cl,aux.lists[ibatch])
+                    end
+                    ip = lp + 1
                 end
-            end
-            for ibatch in 1:nbatches
-                cl = merge_cell_lists!(cl,aux.lists[ibatch])
             end
         end
     end
