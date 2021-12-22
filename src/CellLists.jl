@@ -292,7 +292,7 @@ be considered by each thread on parallel construction.
 
 """
 @with_kw struct AuxThreaded{N,T}
-    n_per_cycle::Int
+    particles_per_batch::Int
     idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef,0)
     lists::Vector{CellList{N,T}} = Vector{CellList{N,T}}(undef,0)
 end
@@ -330,10 +330,10 @@ CellList{3, Float64}
 
 ```
 """
-function AuxThreaded(cl::CellList{N,T};n_per_cycle=10_000) where {N,T}
+function AuxThreaded(cl::CellList{N,T};particles_per_batch=10_000) where {N,T}
     nbatches = cl.nbatches.build_cell_lists
     aux = AuxThreaded{N,T}(
-        n_per_cycle=n_per_cycle,
+        particles_per_batch=particles_per_batch,
         idxs=Vector{UnitRange{Int}}(undef,nbatches),
         lists=Vector{CellList{N,T}}(undef,nbatches)
     )
@@ -341,7 +341,7 @@ function AuxThreaded(cl::CellList{N,T};n_per_cycle=10_000) where {N,T}
     nbatches == 1 && return aux
     for ibatch in 1:nbatches
         cl_batch = CellList{N,T}(
-            n_real_particles=n_per_cycle, # this is reset before filling, in UpdateCellList!
+            n_real_particles=particles_per_batch, # this is reset before filling, in UpdateCellList!
             number_of_cells=cl.number_of_cells,
         )
         aux.lists[ibatch] = cl_batch
@@ -392,8 +392,8 @@ CellList{3, Float64}
 
 ```
 """
-AuxThreaded(cl_pair::CellListPair;n_per_cycle=10_000) = 
-    AuxThreaded(cl_pair.target,n_per_cycle=n_per_cycle)
+AuxThreaded(cl_pair::CellListPair;particles_per_batch=10_000) = 
+    AuxThreaded(cl_pair.target,particles_per_batch=particles_per_batch)
 
 """
 
@@ -737,7 +737,7 @@ function UpdateCellList!(
             Threads.@spawn begin
                 ip = aux.idxs[ibatch][begin] 
                 while ip <= aux.idxs[ibatch][end]
-                    lp = min(ip+aux.n_per_cycle-1,aux.idxs[ibatch][end])
+                    lp = min(ip+aux.particles_per_batch-1,aux.idxs[ibatch][end])
                     prange = ip:lp
                     aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
                     xt = @view(x[prange])  
