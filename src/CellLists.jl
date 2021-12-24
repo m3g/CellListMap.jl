@@ -731,6 +731,9 @@ function UpdateCellList!(
     else 
         # Reset cell list
         cl = reset!(cl,box,0)
+        # Wrapping into a ref avoids a type-instability here
+        # (https://discourse.julialang.org/t/inference-problem-with-spawn/73379/5)
+        cl_ref = Ref(cl)
         # Cell lists to be built by each thread
         lk = ReentrantLock()
         @sync for ibatch in 1:nbatches
@@ -743,12 +746,13 @@ function UpdateCellList!(
                     xt = @view(x[prange])  
                     aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
                     lock(lk) do
-                        cl = merge_cell_lists!(cl,aux.lists[ibatch])
+                        cl_ref[] = merge_cell_lists!(cl_ref[],aux.lists[ibatch])
                     end
                     ip = lp + 1
                 end
             end
         end
+        cl = cl_ref[]
     end
   
     ## allocate, or update the auxiliary projected_particles arrays
