@@ -6,7 +6,7 @@ By default, we define:
 ```julia
 output_threaded = [ deepcopy(output) for i in 1:nbatches(cl) ]
 ```
-where `nbatches(cl)` is the number of batches into which the computation will be divided, as defined for the cell list `cl` (this parameter is by default `4*nthreads()`, but it can be tunned for performance, as explained in the **Number of batches** section below), 
+where `nbatches(cl)` is the number of batches into which the computation will be divided, as defined for the cell list `cl` (this parameter is by default set up by an heuristic, but it can be tunned for performance, as explained in the **Number of batches** section below), 
 and, for scalars and vectors, the reduction is just the sum of the output per thread:
 ```julia
 reduce(output::Number,output_threaded) = sum(output_threaded)
@@ -91,7 +91,7 @@ for i in 1:nsteps
     end
 end
 ```
-In this case, the `forces` vector will be updated by the default reduction method. `nbatches(cl)` is the number of batches of the parallel calculation, which is defined on the construction of the cell list (by default it is `4*nthreads()`, see the next section).
+In this case, the `forces` vector will be updated by the default reduction method. `nbatches(cl)` is the number of batches of the parallel calculation, which is defined on the construction of the cell list (see the next section).
 
 ## Number of batches
 
@@ -103,7 +103,7 @@ At the same time, the homogeneity of the computation of the mapped function may 
 
 Both the above considerations can be used to tunning the `nbatches` parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations. 
 
-By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small, and cannot be greater than `nthreads()`. The default value by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`. The default value for the number of batches of the function mapping is `4*nthreads()` for computations involving one set of particles, and `length(x÷2500)` for computations involving two sets of particles, where `x` is the set with the greater number of particles (over which the calculation will be split into threads). 
+By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small. The default value by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`. 
 
 The values assumed for each number of batches can bee seen by printing the `nbatches` parameter of the cell lists:
 ```julia-repl
