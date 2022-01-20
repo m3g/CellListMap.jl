@@ -243,11 +243,19 @@ draw_computing_cell(cl::CellList,box::Box{UnitCellType,2},x) where UnitCellType
 This function creates a plot of the computing cell, in two dimensions.
 
 """
-function draw_computing_cell(x, box::Box{UnitCellType,2};parallel=true) where UnitCellType
+function draw_computing_cell(x, box::Box{UnitCellType,2};
+    parallel=true,
+    xticks=nothing,
+    yticks=nothing,
+) where UnitCellType
     cl = CellList(x, box, parallel=parallel)
-    return draw_computing_cell(cl,box,x) 
+    return draw_computing_cell(cl,box,x,xticks=xticks,yticks=yticks) 
 end
-function draw_computing_cell(cl::CellList, box::Box{UnitCellType,2}, x) where UnitCellType
+function draw_computing_cell(
+    cl::CellList, box::Box{UnitCellType,2}, x;
+    xticks = nothing,
+    yticks = nothing,
+) where UnitCellType
     box_points = drawbox(box)
     p = view_celllist_particles(cl)
     plt = Main.plot()
@@ -258,12 +266,14 @@ function draw_computing_cell(cl::CellList, box::Box{UnitCellType,2}, x) where Un
     xmax = maximum(el[1] for el in p) + 3 * box.cell_size[1]
     ymin = minimum(el[2] for el in p) - 3 * box.cell_size[2]
     ymax = maximum(el[2] for el in p) + 3 * box.cell_size[2]
+    isnothing(xticks) && (xticks=(round.(digits=3, xmin:box.cell_size[1]:xmax)))
+    isnothing(yticks) && (yticks=(round.(digits=3, ymin:box.cell_size[2]:ymax)))
     Main.plot!(plt,
         aspect_ratio=1,framestyle=:box,xrotation=60,
         xlims=(xmin, xmax),
         ylims=(ymin, ymax),
-        xticks=(round.(digits=3, xmin:box.cell_size[1]:xmax)),
-        yticks=(round.(digits=3, ymin:box.cell_size[2]:ymax)),
+        xticks=xticks,
+        yticks=yticks,
     )
     return plt
 end
