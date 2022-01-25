@@ -116,10 +116,10 @@ julia> cl = CellList(x,box);
 
 julia> cl.nbatches
 NumberOfBatches
-  Number of batches for cell list construction: 16 
+  Number of batches for cell list construction: 8 
   Number of batches for function mapping: 32 
 ```
-The construction of the cell lists is performed by creating copies of the data, and currently does not scale very well. Thus, no more than 16 batches are used by default, to avoid delays associated to data copying and gargabe collection. The number of batches of the mapping function uses an heuristic which currently limits somewhat the number of batches for small systems, when the overhead of spawning tasks is greater than the computation. 
+The construction of the cell lists is performed by creating copies of the data, and currently does not scale very well. Thus, no more than 8 batches are used by default, to avoid delays associated to data copying and gargabe collection. The number of batches of the mapping function uses an heuristic which currently limits somewhat the number of batches for small systems, when the overhead of spawning tasks is greater than the computation. 
 Using more batches than threads for the function mapping is effective most times in avoiding uneven workload, but it may be a problem if the output to be reduced is too large, as the threaded version of the output contains `nbatches` copies of the output. 
 
 Using less batches than the number of threads also allows the efficient use of nested multi-threading, as the computations will only use the number of threads required, leaving the other threads available for other tasks.
@@ -146,7 +146,7 @@ julia> cl = CellList(x,box,nbatches=(0,4));
 
 julia> cl.nbatches
 NumberOfBatches
-  Number of batches for cell list construction: 16 
+  Number of batches for cell list construction: 8 
   Number of batches for function mapping: 4
 
 julia> cl = CellList(x,box,nbatches=(4,0));
