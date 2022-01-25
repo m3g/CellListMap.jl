@@ -731,31 +731,20 @@ function UpdateCellList!(
     else 
         # Reset cell list
         cl = reset!(cl,box,0)
-        # Wrapping into a ref avoids a type-instability here
-        # (https://discourse.julialang.org/t/inference-problem-with-spawn/73379/5)
-        cl_ref = Ref(cl)
-        # Cell lists to be built by each thread
-        lk = ReentrantLock()
         @sync for ibatch in 1:nbatches
             Threads.@spawn begin
-                ip = aux.idxs[ibatch][begin] 
-                while ip <= aux.idxs[ibatch][end]
-                    lp = min(ip+aux.particles_per_batch-1,aux.idxs[ibatch][end])
-                    prange = ip:lp
-                    aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
-                    xt = @view(x[prange])  
-                    aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
-                    lock(lk) do
-                        cl_ref[] = merge_cell_lists!(cl_ref[],aux.lists[ibatch])
-                    end
-                    ip = lp + 1
-                end
+                prange = aux.idxs[ibatch]
+                aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
+                xt = @view(x[prange])  
+                aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
             end
         end
-        cl = cl_ref[]
+        for ibatch in 1:nbatches
+            cl = merge_cell_lists!(cl,aux.lists[ibatch])
+        end
     end
   
-    ## allocate, or update the auxiliary projected_particles arrays
+    # allocate, or update the auxiliary projected_particles arrays
     maxnp = 0
     for i in 1:cl.n_cells_with_particles
         maxnp = max(maxnp,cl.cells[i].n_particles)
