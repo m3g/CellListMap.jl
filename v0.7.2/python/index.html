@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>From Python · CellListMap.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><script src="../../copy.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../examples/">Examples</a></li><li><a class="tocitem" href="../pbc/">Periodic conditions</a></li><li><a class="tocitem" href="../parallelization/">Parallelization</a></li><li><a class="tocitem" href="../units_etc/">Units, autodiff, etc.</a></li><li><a class="tocitem" href="../performance/">Performance</a></li><li><a class="tocitem" href="../options/">Options</a></li><li class="is-active"><a class="tocitem" href>From Python</a><ul class="internal"><li><a class="tocitem" href="#Installing"><span>Installing</span></a></li><li><a class="tocitem" href="#Calling-neighborlist"><span>Calling <code>neighborlist</code></span></a></li><li><a class="tocitem" href="#Multi-threading"><span>Multi-threading</span></a></li><li><a class="tocitem" href="#General-mappings"><span>General mappings</span></a></li></ul></li><li><a class="tocitem" href="../help/">Help entries</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>From Python</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>From Python</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/m3g/CellListMap.jl/blob/master/docs/src/python.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Calling-from-Python"><a class="docs-heading-anchor" href="#Calling-from-Python">Calling from Python</a><a id="Calling-from-Python-1"></a><a class="docs-heading-anchor-permalink" href="#Calling-from-Python" title="Permalink"></a></h1><p>Callling <code>CellListMap</code> from python can be useful if lists of neighbors or other properties have to be computed many times, making the overhead of initializing Julia negligible. As the example and benchmark below demonstrates, the current implementation of cell lists in this package is faster than common alternatives available in the python ecosystem. </p><h2 id="Installing"><a class="docs-heading-anchor" href="#Installing">Installing</a><a id="Installing-1"></a><a class="docs-heading-anchor-permalink" href="#Installing" title="Permalink"></a></h2><p>First, install <code>julia</code> through the <code>pip</code> package manager, with</p><pre><code class="language-bash hljs">% pip install julia</code></pre><p>Using <code>ipython3</code> (only Python <span>$\geq$</span> 3 is supported), do:</p><pre><code class="language-python hljs">In [1]: from juliacall import Main as jl</code></pre><p>which, <em>on the first call only</em>, will install the latest stable version of Julia. Then, install <code>CellListMap</code>, with:</p><pre><code class="language-python hljs">In [2]: jl.Pkg.add(&quot;CellListMap&quot;)</code></pre><h2 id="Calling-neighborlist"><a class="docs-heading-anchor" href="#Calling-neighborlist">Calling <code>neighborlist</code></a><a id="Calling-neighborlist-1"></a><a class="docs-heading-anchor-permalink" href="#Calling-neighborlist" title="Permalink"></a></h2><p>The typical input coordinates, in python, are a <code>numpy</code> array with shape <code>(N,dim)</code> where <code>N</code> is the number of particles and <code>dim</code> is the dimension of the space (2 or 3 for <code>CellListMap</code>). Here, we generate a set of <code>50,000</code> particles in three dimensions:</p><pre><code class="language-python hljs">In [1]: import numpy as np
+
+In [2]: coords = np.random.random((50_000,3))</code></pre><p>Julia is column-major, and python is row-major, thus if we want to use the functions from <code>CellListMap</code> we need to transpose the coordinates:</p><pre><code class="language-python hljs">In [3]: coords_t = coords.transpose()</code></pre><p>These transposed coordinates can be used in the <code>CellListMap.neighborlist</code> function. For example:</p><pre><code class="language-python hljs">In [4]: from juliacall import Main as jl
+
+In [5]: jl.seval(&quot;using CellListMap&quot;)
+
+In [6]: neighbor_list = jl.CellListMap.neighborlist(coords_t,0.05)</code></pre><p>which will return a list of tuples, containing all pairs of coordinates withing the cutoff (remember that the <em>first</em> call to a Julia function will always take longer than subsequent calls, because the function is JIT compiled):</p><pre><code class="language-python hljs">In [12]: neighbor_list.shape
+Out[12]: (618774,)
+
+In [13]: neighbor_list[1]
+Out[13]: (1, 37197, 0.047189685889846615)</code></pre><p>Note that the third element of the tuple is the distance between the points.</p><h3 id="Benchmark"><a class="docs-heading-anchor" href="#Benchmark">Benchmark</a><a id="Benchmark-1"></a><a class="docs-heading-anchor-permalink" href="#Benchmark" title="Permalink"></a></h3><p>To properly benchmark the <code>neighborlist</code> function from <code>CellListMap</code>, let us first define a simple wrapper that will include the transposition of the coordinates in the time:</p><pre><code class="language-python hljs">In [14]: def neighborlist(x,cutoff):
+    ...:     y = x.transpose()
+    ...:     nn = jl.CellListMap.neighborlist(y,cutoff)
+    ...:     return nn
+    ...:
+
+In [15]: %timeit neighborlist(coords,0.05)
+61.7 ms ± 707 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)</code></pre><p>Let us compare this with the performance of a <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.cKDTree.query_ball_tree.html">inrange neighborlist algorithm</a> from <code>scipy</code>:</p><pre><code class="language-python hljs">In [29]: from scipy.spatial import cKDTree
+
+In [30]: def neighborlist_scipy(x,cutoff) : 
+    ...:     kd_tree = cKDTree(x)  
+    ...:     pairs = kd_tree.query_pairs(r=0.05)  
+    ...:     return pairs 
+    ...:
+
+In [31]: %timeit neighborlist_scipy(coords,0.05)
+206 ms ± 2.07 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)</code></pre><p>Just to confirm, this is the number of pairs that is being output in this test</p><pre><code class="language-python hljs">In [32]: len(neighborlist_scipy(x,cutoff)) # using Scipy
+Out[32]: 618475
+
+In [20]: len(neighborlist(coords,0.05)) # using CellListMap
+Out[20]: 618475</code></pre><h2 id="Multi-threading"><a class="docs-heading-anchor" href="#Multi-threading">Multi-threading</a><a id="Multi-threading-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-threading" title="Permalink"></a></h2><p>These examples were run single-threaded. To run multi-threaded, an environment variable for <code>Julia</code> needs to be set. For example, in <code>bash</code>, do:</p><pre><code class="language-bash hljs">% export JULIA_NUM_THREADS=8</code></pre><p>For the current example, this provides a small additional speedup:</p><pre><code class="language-python hljs">In [11]: %timeit neighborlist(coords,0.05)
+31.3 ms ± 1.22 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)</code></pre><h3 id="Overhead"><a class="docs-heading-anchor" href="#Overhead">Overhead</a><a id="Overhead-1"></a><a class="docs-heading-anchor-permalink" href="#Overhead" title="Permalink"></a></h3><p>The overhead of calling the function through <code>juliacall</code>  is small. From within Julia, the timings of a similar execution would be:</p><pre><code class="language-julia-repl hljs">julia&gt; using BenchmarkTools
+
+julia&gt; using CellListMap
+
+julia&gt; x = rand(3,50_000);
+
+julia&gt; @btime CellListMap.neighborlist($x,0.05);
+  27.294 ms (35935 allocations: 58.39 MiB)
+
+julia&gt; @btime CellListMap.neighborlist($x,0.05,parallel=false);
+  51.299 ms (17687 allocations: 37.43 MiB)</code></pre><h2 id="General-mappings"><a class="docs-heading-anchor" href="#General-mappings">General mappings</a><a id="General-mappings-1"></a><a class="docs-heading-anchor-permalink" href="#General-mappings" title="Permalink"></a></h2><p>A greater flexibility on the use of <code>CellListMap</code> from python can be obtained by defining custom Julia functions. The construction of the systems and of the cell lists can be performed without modification. For example:</p><pre><code class="language-python hljs">In [28]: box = jl.Box(np.array([1,1,1]),0.05)
+
+In [29]: box
+
+Out[29]: 
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]
+  cutoff: 0.05
+  number of computing cells on each dimension: [22, 22, 22]
+  computing cell sizes: [0.05, 0.05, 0.05] (lcell: 1)
+  Total number of cells: 10648</code></pre><pre><code class="language-python hljs">In [30]: x = np.random.random((50_000,3))
+
+In [31]: x_t = x.transpose()
+
+In [32]: cl = jl.CellList(x_t,box)
+
+In [33]: cl
+Out[33]: 
+CellList{3, Float64}
+  50000 real particles.
+  7982 cells with real particles.
+  66532 particles in computing box, including images.</code></pre><p>The function to be mapped, however, has to be defined in Julia, using <code>seval</code>. For example, here we define a function that computes the histogram of the distances within the cutoff. </p><pre><code class="language-python hljs">In [34]: jl.seval(&quot;&quot;&quot;  
+    ...: function histogram(x,y,i,j,d2,hist) 
+    ...:     cutoff = 0.05 
+    ...:     dc = sqrt(d2)/cutoff # in [0,1] 
+    ...:     ibin = floor(Int,dc*10) + 1 # in [0,10] 
+    ...:     hist[ibin] += 1 
+    ...:     return hist 
+    ...: end 
+    ...: &quot;&quot;&quot;)
+Out[34]: histogram (generic function with 1 method)</code></pre><p>We can initialize the output variable (the histogram) using a regular <code>numpy</code> array: </p><pre><code class="language-python hljs">In [8]: hist = np.zeros(10)</code></pre><p>and call the <code>map_pairwise</code> function to obtain the histogram of the distances within the <code>cutoff</code>:</p><pre><code class="language-python hljs">In [37]: jl.map_pairwise(jl.histogram, hist, box, cl)
+Out[37]: 
+10-element PythonCall.PyArray{Float64, 1, true, true, Float64}:
+ 153344.0
+      1.151744e6
+      3.066624e6
+      5.787392e6
+      9.220608e6
+      1.3175552e7
+      1.7414912e7
+      2.1817088e7
+      2.6189312e7
+      3.0583808e7</code></pre><p>With this interface, however, it is not possible to pass additional parameters to the mapped function, and thus the additional parameters have to defined inside the called function (as the <code>cutoff</code> in the current example). This is not ideal, for example, for computing accelerations, which depend on the masses of the particles. In this case, currently, either just use Julia from start and closures, or use the <code>neighborlist</code>  function to obtain the list of neighbors to then compute whatever property is desired from the list of pairs, although this is suboptimal in terms of performance.  </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../options/">« Options</a><a class="docs-footer-nextpage" href="../help/">Help entries »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Wednesday 26 January 2022 12:01">Wednesday 26 January 2022</span>. Using Julia version 1.7.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
