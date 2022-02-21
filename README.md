@@ -15,8 +15,7 @@ The user guide provides direct examples of each of these applications.
 <br>
 <p align=center>
 USER GUIDE: <br> 
-<a href=https://m3g.github.io/CellListMap.jl>
-https://m3g.github.io/CellListMap.jl/stable/</a>
+<a href=https://m3g.github.io/CellListMap.jl>https://m3g.github.io/CellListMap.jl</a>
 </p>
 <br>
 </h3>
