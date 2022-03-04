@@ -78,9 +78,11 @@ The full test is available [at this](https://github.com/lmiq/PairVelocities) rep
 
 If you use this software and need to cite it, please use the following reference:
 
-Martínez, Leandro. (2021, June 11). CellListMap.jl: Flexible implementation of cell lists to map the calculations of short-ranged particle-pair dependent functions, such as forces, energies, neighbor lists, etc. Zenodo. http://doi.org/10.5281/zenodo.4927541
+L. Martínez (2022) *CellListMap.jl: Efficient and customizable cell list implementation for calculation of pairwise particle properties within a cutoff.* https://doi.org/10.48550/arXiv.2202.06427
 
-
+<center>
+[![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/CellListMap)](https://pkgs.genieframework.com?packages=CellListMap)]
+</center>
 
 
 
