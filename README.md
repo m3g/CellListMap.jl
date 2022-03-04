@@ -81,7 +81,7 @@ If you use this software and need to cite it, please use the following reference
 L. Martínez (2022) *CellListMap.jl: Efficient and customizable cell list implementation for calculation of pairwise particle properties within a cutoff.* https://doi.org/10.48550/arXiv.2202.06427
 
 <center>
-[![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/CellListMap)](https://pkgs.genieframework.com?packages=CellListMap)]
+![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/CellListMap)](https://pkgs.genieframework.com?packages=CellListMap)
 </center>
 
 
