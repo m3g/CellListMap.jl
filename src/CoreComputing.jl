@@ -9,14 +9,43 @@ splitter(first,nbatches,n) = first:nbatches:n
 reduce(output, output_threaded)
 ```
 
-Functions to reduce the output of common options (vectors of numbers 
-and vectors of vectors). This function can be replacted by custom
-reduction methods. It always must both receive the `output` variable
-as a parameter, and return it at the end.
+Most common reduction function, which sums the elements of the output. 
+Here, `output_threaded` is a vector containing `nbatches(cl)` copies of
+the `output` variable (a scalar or an array). Custom reduction functions 
+must replace this one if the reduction operation is not a simple sum. 
+The `output_threaded` array is, by default, created automatically by copying
+the given `output` variable `nbatches(cl)` times. 
+
+## Examples
+
+Scalar reduction: 
+
+```julia-repl
+julia> output = 0.; output_threaded = [ 1, 2 ];
+
+julia> CellListMap.reduce(output,output_threaded)
+3
+```
+ 
+Array reduction:
+
+```julia-repl
+julia> output = [0,0]; output_threaded = [ [1,1], [2,2] ];
+
+julia> CellListMap.reduce(output,output_threaded)
+2-element Vector{Int64}:
+ 3
+ 3
+
+julia> output
+2-element Vector{Int64}:
+ 3
+ 3
+```
 
 """
 reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
-function reduce(output::AbstractVector, output_threaded::AbstractVector{<:AbstractVector}) 
+function reduce(output::AbstractArray, output_threaded::AbstractVector{<:AbstractArray}) 
     @. output = output_threaded[1]
     for ibatch in 2:length(output_threaded)
         @. output += output_threaded[ibatch]
