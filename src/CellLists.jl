@@ -347,18 +347,39 @@ function AuxThreaded(cl::CellList{N,T};particles_per_batch=10_000) where {N,T}
         aux.lists[ibatch] = cl_batch
     end
     # Indices of the atoms that will be added by each thread
-    nrem = cl.n_real_particles%nbatches
-    nperthread = (cl.n_real_particles-nrem)÷nbatches
+    set_idxs!(aux.idxs, cl.n_real_particles, nbatches)
+    return aux
+end
+
+
+"""
+
+```
+set_idxs!(idxs, n_particles, nbatches)
+```
+
+Internal function or structure - interface may change.
+
+# Extended help
+
+Sets the indexes of the particles that will be considered for each batch in parallel runs.
+Modifies the `idxs` array of ranges, which is usually the `aux.idxs` array of the the 
+corresponding `AuxThreaded` structure.
+
+"""
+function set_idxs!(idxs, n_particles, nbatches)
+    nrem = n_particles%nbatches
+    nperthread = (n_particles-nrem)÷nbatches
     first = 1
     for ibatch in 1:nbatches
         nx = nperthread
         if ibatch <= nrem
             nx += 1
         end
-        aux.idxs[ibatch] = first:(first-1)+nx
+        idxs[ibatch] = first:(first-1)+nx
         first += nx
     end
-    return aux
+    return nothing
 end
 
 """
@@ -731,6 +752,8 @@ function UpdateCellList!(
     else 
         # Reset cell list
         cl = reset!(cl,box,0)
+        # Update the aux.idxs ranges, for if the number of particles changed
+        set_idxs!(aux.idxs, length(x), nbatches)
         @sync for ibatch in 1:nbatches
             Threads.@spawn begin
                 prange = aux.idxs[ibatch]
