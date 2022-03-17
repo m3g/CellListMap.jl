@@ -1,5 +1,59 @@
 # Performance tunning and additional options
 
+## Preallocating auxiliary arrays: threaded output and cell lists
+
+### Preallocating the cell lists and cell list auxiliary arrays
+
+The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrink) on this update. 
+
+```julia
+# Initialize cell lists with initial coordinates
+cl = CellList(x,box)
+# Allocate auxiliary arrays for threaded cell list construction
+aux = CellListMap.AuxThreaded(cl)
+for i in 1:nsteps
+    x = ... # new coordinates
+    box = Box(sides,cutoff) # perhaps the box has changed
+    cl = UpdateCellList!(x,box,cl,aux) 
+    map_pairwise!(...)
+end
+```
+
+The procedure is identical if using two sets of coordinates, in which case, one would do:
+```julia
+cl = CellList(x,y,box)
+aux = CellListMap.AuxThreaded(cl)
+for i in 1:nsteps
+    x = ... # new coordinates
+    box = Box(sides,cutoff) # perhaps the box has changed
+    cl = UpdateCellList!(x,y,box,cl,aux)
+    map_pairwise(...)
+end
+```
+
+By passing the `aux` auxiliary structure, the `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater. 
+
+!!! warning
+    If the number of batches of threading is changed, the structure of auxiliary arrays must be reinitialized. Otherwise, incorrect results can be obtained.
+
+### Preallocating threaded output auxiliary arrays
+
+On parallel runs, note that `output_threaded` is, by default, initialized on the call to `map_pairwise!`. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:
+```julia
+forces = zeros(SVector{3,Float64},N)
+forces_threaded = [ deepcopy(forces) for i in 1:nbatches(cl) ]
+for i in 1:nsteps
+    map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
+    # work with the final forces vector
+    ...
+    # Reset forces_threaded
+    for i in 1:nbatches(cl)
+        @. forces_threaded[i] = zero(SVector{3,Float64}) 
+    end
+end
+```
+In this case, the `forces` vector will be updated by the default reduction method. `nbatches(cl)` is the number of batches of the parallel calculation, which is defined on the construction of the cell list (see the **Parallelization** section).
+
 ## Optimizing the cell grid
 
 The partition of the space into cells is dependent on a parameter `lcell` which can be passed to `Box`. For example:
