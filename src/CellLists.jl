@@ -346,7 +346,9 @@ function AuxThreaded(cl::CellList{N,T};particles_per_batch=10_000) where {N,T}
         )
         aux.lists[ibatch] = cl_batch
     end
-    # Indices of the atoms that will be added by each thread
+    # Set indices of the atoms that will be considered by each thread
+    # these indices may be updated by an update of cell lists, if the number
+    # of particles change.
     set_idxs!(aux.idxs, cl.n_real_particles, nbatches)
     return aux
 end
@@ -368,6 +370,7 @@ corresponding `AuxThreaded` structure.
 
 """
 function set_idxs!(idxs, n_particles, nbatches)
+    @assert length(idxs) == nbatches "Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array."
     nrem = n_particles%nbatches
     nperthread = (n_particles-nrem)÷nbatches
     first = 1
