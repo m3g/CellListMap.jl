@@ -182,7 +182,7 @@ end
 """
 
 ```
-set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0))  
+set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0);parallel=true)  
 ```
 
 Internal function or structure - interface may change.
@@ -195,8 +195,15 @@ every problem. See the parameter `nbatches` of the construction of the cell list
 tunning this.
 
 """
-function set_number_of_batches!(cl::CellList{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}  
-    nbatches = NumberOfBatches(nbatches)
+function set_number_of_batches!(cl::CellList{N,T},nbatches::Tuple{Int,Int}=(0,0);parallel=true) where {N,T}  
+    if parallel
+        nbatches = NumberOfBatches(nbatches)
+    else
+        if nbatches != (0,0) && nbatches != (1,1)
+            error("nbatches set manually, but parallel is set to false, implying nbatches=(1,1)")
+        end
+        nbatches = NumberOfBatches((1,1))
+    end
     if nbatches.build_cell_lists < 1 
         n1 = _nbatches_build_cell_lists(cl.n_real_particles)
     else
@@ -218,8 +225,15 @@ end
 _nbatches_build_cell_lists(n::Int) = min(n,min(8,nthreads()))
 _nbatches_map_computation(n::Int) = min(n,min(floor(Int,2^(log10(n)+1)),nthreads()))
 
-function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(0,0)) where {N,T}
-    nbatches = NumberOfBatches(nbatches)
+function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(0,0);parallel=true) where {N,T}
+    if parallel
+        nbatches = NumberOfBatches(nbatches)
+    else
+        if nbatches != (0,0) && nbatches != (1,1)
+            error("nbatches set manually, but parallel is set to false, implying nbatches=(1,1)")
+        end
+        nbatches = NumberOfBatches((1,1))
+    end
     if nbatches.build_cell_lists < 1 
         n1 = _nbatches_build_cell_lists(cl.target.n_real_particles)
     else
@@ -462,7 +476,7 @@ function CellList(
         n_real_particles=length(x),
         number_of_cells=prod(box.nc),
     )
-    cl = set_number_of_batches!(cl,nbatches)
+    cl = set_number_of_batches!(cl,nbatches,parallel=parallel)
     return UpdateCellList!(x,box,cl,parallel=parallel)
 end
 
@@ -580,7 +594,7 @@ function CellList(
         swap = true
     end
     cl_pair = CellListPair(ref=ref,target=target,swap=swap)
-    cl_pair = set_number_of_batches!(cl_pair,nbatches)
+    cl_pair = set_number_of_batches!(cl_pair,nbatches,parallel=parallel)
     return cl_pair
 end
 
