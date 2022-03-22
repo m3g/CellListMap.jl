@@ -312,7 +312,7 @@ Box(
 
 This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
 the coordinates of the particles involved, and constructs a `Box` with size larger than
-the maximum coordinates ranges of all particles plus the cutoff. This is used to 
+the maximum coordinates ranges of all particles plus twice the cutoff. This is used to 
 emulate pairwise interactions in non-periodic boxes. The output box is always an `Orthorhombic`
 cell.
 
@@ -322,27 +322,27 @@ cell.
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),10)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [109.99633932875878 0.0 0.0; 0.0 109.99780283179763 0.0; 0.0 0.0 109.99587254766517]
-  cutoff: 10.0
-  number of computing cells on each dimension: [12, 12, 12]
-  computing cell sizes: [10.999633932875877, 10.999780283179764, 10.999587254766517] (lcell: 1)
-  Total number of cells: 1728
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+  unit cell matrix = [ 119.99907193208746, 0.0, 0.0; 0.0, 119.99968623301143, 0.0; 0.0, 0.0, 119.99539603156498 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [13, 13, 13]
+  computing cell sizes = [10.909006539280679, 10.90906238481922, 10.908672366505908] (lcell: 1)
+  Total number of cells = 2197
 
 julia> y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x,y),10)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [159.99787690924168 0.0 0.0; 0.0 159.98878289444897 0.0; 0.0 0.0 109.99587254766517]
-  cutoff: 10.0
-  number of computing cells on each dimension: [18, 17, 12]
-  computing cell sizes: [10.666525127282778, 10.665918859629931, 10.999587254766517] (lcell: 1)
-  Total number of cells: 3672
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+  unit cell matrix = [ 169.99914503548962, 0.0, 0.0; 0.0, 169.9990736881799, 0.0; 0.0, 0.0, 119.99726063023918 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [18, 18, 13]
+  computing cell sizes = [10.624946564718101, 10.624942105511243, 10.90884187547629] (lcell: 1)
+  Total number of cells = 4212
 
 ```
 
 """
 function Box(limits::Limits, cutoff::T; lcell::Int=1) where T
-    sides = limits.limits .+ cutoff
+    sides = max.(limits.limits .+ cutoff, 2 * cutoff)
     return Box(sides, cutoff, lcell, OrthorhombicCell) 
 end
