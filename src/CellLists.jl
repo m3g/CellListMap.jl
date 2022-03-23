@@ -1224,9 +1224,9 @@ function UpdateCellList!(
     parallel::Bool=true
 )
     if !cl_pair.swap 
-        target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
-    else
         target = UpdateCellList!(y,box,cl_pair.target,aux,parallel=parallel)
+    else
+        target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
     end
     cl_pair = CellListPair(ref=cl_pair.ref,target=target,swap=cl_pair.swap)
     return cl_pair
