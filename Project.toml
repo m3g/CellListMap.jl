@@ -1,7 +1,7 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.7.10-DEV"
+version = "0.7.10"
 
 [deps]
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
