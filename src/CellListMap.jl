@@ -84,7 +84,7 @@ julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx
 function map_pairwise!(f::F, output, box::Box, cl; 
     # Parallelization options
     parallel::Bool=true,
-    output_threaded=(parallel ? [ deepcopy(output) for i in 1:nbatches(cl) ] : nothing),
+    output_threaded=nothing,
     reduce::Function=reduce,
     show_progress::Bool=false,
 ) where {F} # Needed for specialization for this function (avoids some allocations)
@@ -113,7 +113,7 @@ The same but to evaluate some function between pairs of the particles of the vec
 function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
     # Parallelization options
     parallel::Bool=true,
-    output_threaded=(parallel ? [ deepcopy(output) for i in 1:cl.target.nbatches.map_computation ] : nothing),
+    output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
 ) where {F1,F2} # Needed for specialization for this function (avoids some allocations) 

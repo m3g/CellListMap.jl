@@ -76,10 +76,14 @@ end
 #
 function map_pairwise_parallel!(
     f::F1, output, box::Box, cl::CellList{N,T};
-    output_threaded=output_threaded,
+    output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
 ) where {F1,F2,N,T}
+    nbatches = cl.nbatches.map_computation
+    if isnothing(output_threaded) 
+        output_threaded = [ deepcopy(output) for i in 1:nbatches ] 
+    end
     @unpack n_cells_with_real_particles = cl
     show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
     nbatches = cl.nbatches.map_computation
@@ -147,12 +151,15 @@ end
 function map_pairwise_parallel!(
     f::F1, output, box::Box, 
     cl::CellListPair{N,T};
-    output_threaded=output_threaded,
+    output_threaded=nothing,
     reduce::F2=reduce,
     show_progress=show_progress
 ) where {F1,F2,N,T}
-    show_progress && (p = Progress(length(cl.ref), dt=1))
     nbatches = cl.target.nbatches.map_computation
+    if isnothing(output_threaded) 
+        output_threaded = [ deepcopy(output) for i in 1:nbatches ]
+    end
+    show_progress && (p = Progress(length(cl.ref), dt=1))
     @sync for ibatch in 1:nbatches
         Threads.@spawn begin
             for i in splitter(ibatch, nbatches, length(cl.ref))
