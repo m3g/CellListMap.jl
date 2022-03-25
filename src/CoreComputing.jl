@@ -53,54 +53,6 @@ function reduce(output::AbstractArray, output_threaded::AbstractVector{<:Abstrac
     return output
 end
 
-#
-# Serial version for self-pairwise computations
-#
-function map_pairwise_serial!(
-    f::F, output, box::Box, cl::CellList{N,T}; 
-    show_progress::Bool=false
-) where {F,N,T}
-    @unpack n_cells_with_real_particles = cl
-    show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
-    ibatch = 1
-    for i in 1:n_cells_with_real_particles
-        cellᵢ = cl.cells[cl.cell_indices_real[i]]
-        output = inner_loop!(f, box, cellᵢ, cl, output, ibatch) 
-        show_progress && next!(p)
-    end
-    return output
-end
-
-#
-# Parallel version for self-pairwise computations
-#
-function map_pairwise_parallel!(
-    f::F1, output, box::Box, cl::CellList{N,T};
-    output_threaded=nothing,
-    reduce::F2=reduce,
-    show_progress::Bool=false
-) where {F1,F2,N,T}
-    nbatches = cl.nbatches.map_computation
-    if isnothing(output_threaded) 
-        output_threaded = [ deepcopy(output) for i in 1:nbatches ] 
-    end
-    @unpack n_cells_with_real_particles = cl
-    show_progress && (p = Progress(n_cells_with_real_particles, dt=1))
-    nbatches = cl.nbatches.map_computation
-    @sync for ibatch in 1:nbatches
-        Threads.@spawn begin 
-            for i in splitter(ibatch, nbatches, n_cells_with_real_particles)
-                cellᵢ = cl.cells[cl.cell_indices_real[i]]
-                output_threaded[ibatch] = 
-                    inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch) 
-                show_progress && next!(p)
-            end
-        end
-    end 
-    output = reduce(output, output_threaded)
-    return output
-end
-
 """
 
 ```
@@ -130,6 +82,64 @@ function partition!(by, x::AbstractVector)
 end
 
 #
+# Auxiliary functions to control the exibition of the progress meter
+#
+_next!(::Nothing) = nothing
+_next!(p) = ProgressMeter.next!(p)
+
+#
+# Serial version for self-pairwise computations
+#
+function map_pairwise_serial!(
+    f::F, output, box::Box, cl::CellList{N,T}; 
+    show_progress::Bool=false
+) where {F,N,T}
+    @unpack n_cells_with_real_particles = cl
+    p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
+    ibatch = 1
+    for i in 1:n_cells_with_real_particles
+        cellᵢ = cl.cells[cl.cell_indices_real[i]]
+        output = inner_loop!(f, box, cellᵢ, cl, output, ibatch) 
+        _next!(p)
+    end
+    return output
+end
+
+#
+# Parallel version for self-pairwise computations
+#
+function batch(f::F, ibatch, nbatches, n_cells_with_real_particles, output_threaded, box, cl, p) where F
+    for i in splitter(ibatch, nbatches, n_cells_with_real_particles)
+        cellᵢ = cl.cells[cl.cell_indices_real[i]]
+        output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch) 
+        _next!(p)
+    end
+end
+
+# Note: the reason why in the next loop @spawn if followed by interpolated variables
+# is to avoid allocations caused by the capturing of variables by the closures created
+# by the macro. This may not be needed in the future, if the corresponding issue is solved.
+# See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
+function map_pairwise_parallel!(
+    f::F1, output, box::Box, cl::CellList{N,T};
+    output_threaded=nothing,
+    reduce::F2=reduce,
+    show_progress::Bool=false
+) where {F1,F2,N,T}
+    nbatches = cl.nbatches.map_computation
+    if isnothing(output_threaded) 
+        output_threaded = [ deepcopy(output) for i in 1:nbatches ] 
+    end
+    @unpack n_cells_with_real_particles = cl
+    nbatches = cl.nbatches.map_computation
+    p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
+    @sync for ibatch in 1:nbatches
+        Threads.@spawn batch($f, $ibatch, $nbatches, $n_cells_with_real_particles, $output_threaded, $box, $cl, $p)
+    end 
+    return reduce(output, output_threaded)
+end
+
+#
 # Serial version for cross-interaction computations
 #
 function map_pairwise_serial!(
@@ -137,10 +147,10 @@ function map_pairwise_serial!(
     cl::CellListPair{N,T}; 
     show_progress=show_progress
 ) where {F,N,T}
-    show_progress && (p = Progress(length(cl.ref), dt=0))
+    p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
     for i in eachindex(cl.ref)
         output = inner_loop!(f, output, i, box, cl)
-        show_progress && next!(p)
+        _next!(p)
     end
     return output
 end
@@ -148,11 +158,7 @@ end
 #
 # Parallel version for cross-interaction computations
 #
-
-_next!(p::Nothing) = nothing
-_next!(p) = ProgressMeter.next!(p)
-
-function batch(f, ibatch, nbatches, output_threaded, box, cl, p)
+function batch(f::F, ibatch, nbatches, output_threaded, box, cl, p) where F
     for i in splitter(ibatch, nbatches, length(cl.ref))
         output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl) 
         _next!(p)
