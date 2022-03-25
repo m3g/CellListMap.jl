@@ -148,6 +148,17 @@ end
 #
 # Parallel version for cross-interaction computations
 #
+
+_next!(p::Nothing) = nothing
+_next!(p) = ProgressMeter.next!(p)
+
+function batch(f, ibatch, nbatches, output_threaded, box, cl, p)
+    for i in splitter(ibatch, nbatches, length(cl.ref))
+        output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl) 
+        _next!(p)
+    end
+end
+
 function map_pairwise_parallel!(
     f::F1, output, box::Box, 
     cl::CellListPair{N,T};
@@ -159,17 +170,11 @@ function map_pairwise_parallel!(
     if isnothing(output_threaded) 
         output_threaded = [ deepcopy(output) for i in 1:nbatches ]
     end
-    show_progress && (p = Progress(length(cl.ref), dt=1))
+    p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
     @sync for ibatch in 1:nbatches
-        Threads.@spawn begin
-            for i in splitter(ibatch, nbatches, length(cl.ref))
-                output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl) 
-                show_progress && next!(p)
-            end
-        end
+        Threads.@spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
     end 
-    output = reduce(output, output_threaded)
-    return output
+    return reduce(output, output_threaded)
 end
 
 #
