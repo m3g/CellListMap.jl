@@ -657,8 +657,12 @@ function UpdateCellList!(
     cl::CellList;
     parallel::Bool=true
 )
-    aux = AuxThreaded(cl)
-    return UpdateCellList!(x,box,cl,aux,parallel=parallel)
+    if parallel
+        aux = AuxThreaded(cl)
+        return UpdateCellList!(x,box,cl,aux,parallel=parallel)
+    else
+        return UpdateCellList!(x,box,cl,nothing,parallel=parallel)
+    end
 end
 
 """
@@ -695,7 +699,7 @@ function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
     cl::CellList{N,T},
-    aux::AuxThreaded{N,T};
+    aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {N,T}
 ```
@@ -757,7 +761,7 @@ function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
     cl::CellList{N,T},
-    aux::AuxThreaded{N,T};
+    aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {N,T}
 
@@ -805,7 +809,7 @@ function UpdateCellList!(
     x::AbstractMatrix,
     box::Box,
     cl::CellList{N,T},
-    aux::AuxThreaded{N,T};
+    aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {N,T}
 ```
@@ -819,7 +823,7 @@ function UpdateCellList!(
     x::AbstractMatrix,
     box::Box,
     cl::CellList{N,T},
-    aux::AuxThreaded{N,T};
+    aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {N,T}
     @assert size(x,1) == N "First dimension of input matrix must be $N"
@@ -1112,8 +1116,12 @@ function UpdateCellList!(
     cl_pair::CellListPair;
     parallel::Bool=true
 )
-    aux = AuxThreaded(cl_pair)
-    return UpdateCellList!(x,y,box,cl_pair,aux,parallel=parallel)
+    if parallel
+        aux = AuxThreaded(cl_pair)
+        return UpdateCellList!(x,y,box,cl_pair,aux,parallel=parallel)
+    else
+        return UpdateCellList!(x,y,box,cl_pair,nothing,parallel=parallel)
+    end
 end
 
 """
@@ -1155,7 +1163,7 @@ function UpdateCellList!(
     y::AbstractVector{<:AbstractVector},
     box::Box,
     cl_pair::CellListPair,
-    aux::AuxThreaded;
+    aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
 )
 ```
@@ -1220,7 +1228,7 @@ function UpdateCellList!(
     y::AbstractVector{<:AbstractVector},
     box::Box,
     cl_pair::CellListPair,
-    aux::AuxThreaded;
+    aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
 )
     if !cl_pair.swap 
@@ -1240,7 +1248,7 @@ function UpdateCellList!(
     y::AbstractMatrix,
     box::Box,
     cl_pair::CellListPair,
-    aux::AuxThreaded;
+    aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
 ) where {UnitCellType,N,T}
 ```
@@ -1255,7 +1263,7 @@ function UpdateCellList!(
     y::AbstractMatrix,
     box::Box{UnitCellType,N,T},
     cl_pair::CellListPair{N,T},
-    aux::AuxThreaded{N,T};
+    aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {UnitCellType,N,T}
     @assert size(x,1) == N "First dimension of input matrix must be $N"
