@@ -1112,7 +1112,7 @@ function UpdateCellList!(
     cl_pair::CellListPair;
     parallel::Bool=true
 )
-    aux = AuxThreaded(cl)
+    aux = AuxThreaded(cl_pair)
     return UpdateCellList!(x,y,box,cl_pair,aux,parallel=parallel)
 end
 
