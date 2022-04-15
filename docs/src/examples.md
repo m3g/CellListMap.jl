@@ -116,6 +116,9 @@ map_pairwise!(
 The example above can be run with `CellListMap.Examples.gravitational_force()` and is available in the
 [gravitational_force.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl) file.
 
+!!! note
+    The parallelization works by splitting the `forces` vector in as many tasks as necessary, and each task will update an independent `forces` array, which will be reduced at the end. Therefore, there is no need to deal with atomic operations or blocks in the `calc_forces!` function above for the update of `forces`, which is implemented as if the code was running serially. The same applies to other examples in this section.
+
 ## Nearest neighbor
 
 Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.

@@ -1,13 +1,20 @@
 # Parallelization splitting and reduction
 
-The parallel execution requires the splitting of the computation among threads, obviously. Thus, the output variable must be split and then reduced to avoid concurrency. To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function. 
+The parallel execution requires the splitting of the computation among tasks. 
+
+### How output is updated thread-safely
+
+To allow general output types, the approach of `CellListMap` is to copy the output variable the number of times necessary for each parallel task to update an independent output variables, which are reduced at the end. This, of course, requires some additional memory, particularly if the output being updated is formed by arrays. These copies can be preallocated, and custom reduction functions can be defined. 
+
+To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function. 
 
 By default, we define:
 ```julia
 output_threaded = [ deepcopy(output) for i in 1:nbatches(cl) ]
 ```
-where `nbatches(cl)` is the number of batches into which the computation will be divided, as defined for the cell list `cl` (this parameter is by default set up by an heuristic, but it can be tunned for performance, as explained in the **Number of batches** section below), 
-and, for scalars and vectors, the reduction is just the sum of the output per thread:
+where `nbatches(cl)` is the number of batches into which the computation will be divided. The number of batches is *not* necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the **Number of batches** section below. 
+
+The default reduction function just assumes the additivity of the results obtained by each batch:
 ```julia
 reduce(output::Number,output_threaded) = sum(output_threaded)
 function reduce(output::Vector,output_threaded) 
