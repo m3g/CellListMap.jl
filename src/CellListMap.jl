@@ -81,7 +81,7 @@ julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx
 ```
 
 """
-function map_pairwise!(f::F, output, box::Box, cl; 
+function map_pairwise!(f::F, output, box::Box, cl::CellList; 
     # Parallelization options
     parallel::Bool=true,
     output_threaded=nothing,
