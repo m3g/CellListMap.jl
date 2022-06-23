@@ -78,8 +78,7 @@ The full test is available [at this](https://github.com/lmiq/PairVelocities) rep
 
 If you use this software and need to cite it, please use the following reference:
 
-L. Martínez (2022) *CellListMap.jl: Efficient and customizable cell list implementation for calculation of pairwise particle properties within a cutoff.* Computer Physics Communications, 2022. https://doi.org/10.1016/j.cpc.2022.108452
-
+L. Martínez, *CellListMap.jl: Efficient and customizable cell list implementation for calculation of pairwise particle properties within a cutoff.* Computer Physics Communications, 279, 108452, 2022. https://doi.org/10.1016/j.cpc.2022.108452
 
 [![Tests](https://img.shields.io/badge/build-passing-green)](https://github.com/m3g/CellListMap.jl/actions)
 [![CellListMap Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/CellListMap)](https://pkgs.genieframework.com?packages=CellListMap)
