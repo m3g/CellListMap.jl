@@ -145,7 +145,7 @@ end
 function map_pairwise_serial!(
     f::F, output, box::Box, 
     cl::CellListPair{N,T}; 
-    show_progress=show_progress
+    show_progress::Bool=false
 ) where {F,N,T}
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
     for i in eachindex(cl.ref)
@@ -170,7 +170,7 @@ function map_pairwise_parallel!(
     cl::CellListPair{N,T};
     output_threaded=nothing,
     reduce::F2=reduce,
-    show_progress=show_progress
+    show_progress::Bool=false
 ) where {F1,F2,N,T}
     nbatches = cl.target.nbatches.map_computation
     if isnothing(output_threaded) 
