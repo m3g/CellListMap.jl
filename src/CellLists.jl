@@ -1238,11 +1238,13 @@ function UpdateCellList!(
         ref = y
         target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
     end
+    # This resizing will fail if the data was input as a (N,M) matrix, because resizing
+    # is not implemented for reinterpreted arrays. 
     if length(ref) != length(cl_pair.ref)
         resize!(cl_pair.ref, length(ref))
     end
     for i in eachindex(ref, cl_pair.ref)
-        cl_pair.ref[i] = SVector{N,T}(ntuple(i -> ref[i],N)...) 
+        cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j],N)...) 
     end
     cl_pair = CellListPair(ref=ref,target=target,swap=cl_pair.swap)
     return cl_pair
