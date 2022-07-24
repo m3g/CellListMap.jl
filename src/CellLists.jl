@@ -384,7 +384,7 @@ corresponding `AuxThreaded` structure.
 
 """
 function set_idxs!(idxs, n_particles, nbatches)
-    length(idxs) == nbatches && throw(ArgumentError("Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array."))
+    length(idxs) == nbatches || throw(ArgumentError("Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array."))
     nrem = n_particles%nbatches
     nperthread = (n_particles-nrem)÷nbatches
     first = 1
@@ -492,7 +492,7 @@ matrix must be the dimension of the points (`2` or `3`).
 
 """
 function CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
-    size(x,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return CellList(x_re, box; kargs...)
 end
@@ -610,8 +610,8 @@ matrices must be the dimension of the points (`2` or `3`).
 
 """
 function CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
-    size(x,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    size(y,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(y,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     CellList(x_re,y_re, box; kargs...)
@@ -687,7 +687,7 @@ function UpdateCellList!(
     cl::CellList{N,T};
     parallel::Bool=true
 ) where {N,T}
-    size(x,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return UpdateCellList!(x_re,box,cl,parallel=parallel)
 end
@@ -826,7 +826,7 @@ function UpdateCellList!(
     aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {N,T}
-    size(x,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return UpdateCellList!(x_re,box,cl,aux,parallel=parallel)
 end
@@ -1148,8 +1148,8 @@ function UpdateCellList!(
     cl_pair::CellListPair;
     parallel::Bool=true
 ) where {UnitCellType,N,T}
-    size(x,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    size(y,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(y,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     return UpdateCellList!(x_re,y_re,box,cl_pair,parallel=parallel)
@@ -1274,8 +1274,8 @@ function UpdateCellList!(
     aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true
 ) where {UnitCellType,N,T}
-    size(x,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    size(y,1) == N && throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    size(y,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     return UpdateCellList!(x_re,y_re,box,cl_pair,aux,parallel=parallel)

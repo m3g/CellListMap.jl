@@ -296,7 +296,7 @@ function replicate_system!(
     unit_cell_matrix::AbstractMatrix,
     ranges::Tuple
 ) where {N,T}
-    length(ranges) == N && throw(DimensionMismatch("Tuple of ranges must have the same dimension as the vectors: $N"))
+    length(ranges) == N || throw(DimensionMismatch("Tuple of ranges must have the same dimension as the vectors: $N"))
     i0 = ntuple(i -> 0, N)
     imgs = Iterators.filter(!isequal(i0),
         Iterators.product(ranges...)
@@ -612,7 +612,7 @@ end
 
 function limits(x::AbstractMatrix) 
     N = size(x,1)
-    (N == 2 || N == 3) && throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
+    (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return limits(x_re)
 end
@@ -638,8 +638,8 @@ end
 function limits(x::T,y::T) where T <: AbstractMatrix 
     N = size(x,1)
     M = size(y,1)
-    N == M && throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
-    (N == 2 || N == 3) && throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
+    N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
+    (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     return limits(x_re,y_re)

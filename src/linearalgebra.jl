@@ -51,7 +51,7 @@ that is not relevant here).
 
 """
 @inline function dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 
-    length(x) == length(y) && throw(DimensionMismatch("$(length(x)) != $(length(y))"))
+    length(x) == length(y) || throw(DimensionMismatch("$(length(x)) != $(length(y))"))
     d = zero(T1)*zero(T2)
     @inbounds @simd for i in eachindex(x)
         d += x[i]*y[i]

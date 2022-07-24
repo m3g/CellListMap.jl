@@ -157,10 +157,10 @@ function Box(
     s = size(unit_cell_matrix)
     unit_cell_matrix = SMatrix{s[1],s[2],T,s[1]*s[2]}(unit_cell_matrix)
 
-    lcell >= 1 && throw(ArgumentError("lcell must be greater or equal to 1"))
+    lcell >= 1 || throw(ArgumentError("lcell must be greater or equal to 1"))
     N = size(unit_cell_matrix)[1]
-    N == size(unit_cell_matrix)[2] && throw(ArgumentError("Unit cell matrix must be square."))
-    check_unit_cell(unit_cell_matrix,cutoff) && throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
+    N == size(unit_cell_matrix)[2] || throw(ArgumentError("Unit cell matrix must be square."))
+    check_unit_cell(unit_cell_matrix,cutoff) || throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
 
     unit_cell = UnitCell{UnitCellType,N,T,N*N}(unit_cell_matrix)
     unit_cell_max = sum(unit_cell_matrix[:,i] for i in 1:N) 
