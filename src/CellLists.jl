@@ -1227,16 +1227,24 @@ function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
     box::Box,
-    cl_pair::CellListPair,
+    cl_pair::CellListPair{V,N,T},
     aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
-)
+) where {V,N,T}
     if !cl_pair.swap 
+        ref = x
         target = UpdateCellList!(y,box,cl_pair.target,aux,parallel=parallel)
     else
+        ref = y
         target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
     end
-    cl_pair = CellListPair(ref=cl_pair.ref,target=target,swap=cl_pair.swap)
+    if length(ref) != length(cl_pair.ref)
+        resize!(cl_pair.ref, length(ref))
+    end
+    for i in eachindex(ref, cl_pair.ref)
+        cl_pair.ref[i] = SVector{N,T}(ntuple(i -> ref[i],N)...) 
+    end
+    cl_pair = CellListPair(ref=ref,target=target,swap=cl_pair.swap)
     return cl_pair
 end
 
