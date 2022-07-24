@@ -287,25 +287,6 @@ include("../src/examples/generic_types.jl")
     @test CellListMap.Examples.gravitational_force(parallel=true,x=x) ≈ CellListMap.Examples.gravitational_force(parallel=false,x=x)
     @test count(CellListMap.Examples.nearest_neighbor(parallel=true,x=x,y=y) .≈ CellListMap.Examples.nearest_neighbor(parallel=false,x=x,y=y)) == 3
     
-    # Test updating of the data on disjoint sets works fine
-    x = rand(SVector{2,Float64},1000)
-    y = rand(SVector{2,Float64},100)
-    box = Box([1,1],0.1)
-    cl = CellList(x,y,box)
-    r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
-    r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
-    @test r_naive ≈ r
-    x = rand(SVector{2,Float64},1100)
-    cl = UpdateCellList!(x, y, box, cl)
-    r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
-    r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
-    @test r_naive ≈ r
-    y = rand(SVector{2,Float64},200)
-    cl = UpdateCellList!(x, y, box, cl)
-    r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
-    r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
-    @test r_naive ≈ r
-
     function pair_match(p1,p2) 
         p1[3] ≈ p2[3] || return false 
         p1[1] == p2[1] && p1[2] == p2[2] && return true
@@ -343,6 +324,25 @@ include("../src/examples/generic_types.jl")
     @test CellListMap.neighborlist(x,y,0.1)[1] == (1, 1, 0.050000000000000044)
     z = [ Float64[1,1,1], Float64[1.05,1,1], Float64[0,0,0]  ]
     @test CellListMap.neighborlist(z,0.1)[1] == (1, 2, 0.050000000000000044)
+
+    # Test updating of the data on disjoint sets works fine
+    x = rand(SVector{2,Float64},1000)
+    y = rand(SVector{2,Float64},100)
+    box = Box([1,1],0.1)
+    cl = CellList(x,y,box)
+    r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
+    r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
+    @test r_naive ≈ r
+    x = rand(SVector{2,Float64},1100)
+    cl = UpdateCellList!(x, y, box, cl)
+    r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
+    r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
+    @test r_naive ≈ r
+    y = rand(SVector{2,Float64},200)
+    cl = UpdateCellList!(x, y, box, cl)
+    r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
+    r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
+    @test r_naive ≈ r
 
 end
 
