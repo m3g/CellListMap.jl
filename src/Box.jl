@@ -14,7 +14,7 @@ end
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -33,7 +33,7 @@ end
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -92,7 +92,7 @@ end
 _promote_types(cell,cutoff)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -221,7 +221,7 @@ end
 cell_matrix_from_sides(sides::AbstractVector)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 

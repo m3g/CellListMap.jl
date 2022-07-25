@@ -7,7 +7,7 @@
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -30,7 +30,7 @@ Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -62,7 +62,7 @@ end
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -94,7 +94,7 @@ end
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -115,7 +115,7 @@ end
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -158,7 +158,7 @@ end
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -185,7 +185,7 @@ end
 set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0);parallel=true)  
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -295,7 +295,7 @@ nbatches(cl::CellListPair,s::Symbol) = nbatches(cl.target,s)
 
 $(TYPEDEF)
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -374,7 +374,7 @@ end
 set_idxs!(idxs, n_particles, nbatches)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -503,7 +503,7 @@ end
 reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -837,7 +837,7 @@ end
 add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -866,7 +866,7 @@ end
 copydata!(cell1::Cell,cell2::Cell)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -897,7 +897,7 @@ end
 append_particles!(cell1::Cell,cell2::Cell)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -926,7 +926,7 @@ end
 merge_cell_lists!(cl::CellList,aux::CellList)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -993,7 +993,7 @@ add_particle_to_celllist!(
 ) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 

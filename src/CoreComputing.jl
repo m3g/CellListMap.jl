@@ -59,7 +59,7 @@ end
 partition!(x::AbstractVector,by)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -345,7 +345,7 @@ end
 project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,box)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 

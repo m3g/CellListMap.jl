@@ -3,7 +3,7 @@
 fix_upper_boundary(x::T,side) where T
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -19,7 +19,7 @@ that the boundary belongs to the next cell.
 wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -54,7 +54,7 @@ end
 wrap_to_first(x,unit_cell_matrix)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -87,7 +87,7 @@ end
 wrap_to_first(x,box::Box)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -103,7 +103,7 @@ first unit cell with all-positive coordinates, given the `Box` structure.
 wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -125,7 +125,7 @@ end
 wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -145,7 +145,7 @@ end
 wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -162,7 +162,7 @@ given a general `Box` structure.
 wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -181,7 +181,7 @@ end
 wrap_relative_to(x,xref,sides::AbstractVector)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -213,7 +213,7 @@ end
 translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -264,7 +264,7 @@ end
 replicate_system!(x::AbstractVector,box::Box,ranges::Tuple)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -326,7 +326,7 @@ end
 neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -361,7 +361,7 @@ end
 neighbor_cells(box::Box{UnitCellType,N}) where N
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -386,7 +386,7 @@ end
 particle_cell(x::SVector{N,T}, box::Box) where {N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -404,7 +404,7 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
 cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -421,7 +421,7 @@ of points. Returns a `SVector{N,T}`
 cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -438,7 +438,7 @@ of the cell (for arbitrary dimension N).
 cell_linear_index(nc::SVector{N,Int}, indices) where N
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -454,7 +454,7 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 out_of_bounding_box(x::SVector{N},box::Box) where N
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -479,7 +479,7 @@ out_of_bounding_box(p::ParticleWithIndex,box::Box) =
 replicate_particle!(ip,p::SVector{N},box,cl) where N
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -504,7 +504,7 @@ end
 check_unit_cell(box::Box)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -656,7 +656,7 @@ end
 ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -698,7 +698,7 @@ end
 ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{2,2,T}) where T
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 

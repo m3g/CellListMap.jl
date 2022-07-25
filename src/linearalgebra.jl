@@ -4,7 +4,7 @@
 norm_sqr(v::AbstractVector{T}) where T
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -26,7 +26,7 @@ end
 norm(v::AbstractVector{T}) where T
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -42,7 +42,7 @@ standard arrays. Thus we define our own `norm(x) = norm_sqr(x)`.
 dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
