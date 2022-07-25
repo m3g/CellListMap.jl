@@ -1,7 +1,7 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.7.19-DEV"
+version = "0.7.19"
 
 [deps]
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -13,10 +13,10 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-DocStringExtensions = "0.8"
+DocStringExtensions = "0.8, 0.9"
 Parameters = "0.12"
 ProgressMeter = "1.6"
-Setfield = "0.7, 0.8"
+Setfield = "0.7, 0.8, 0.9, 1"
 StaticArrays = "1"
 julia = "1"
 
