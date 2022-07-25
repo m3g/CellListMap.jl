@@ -1246,7 +1246,7 @@ function UpdateCellList!(
     for i in eachindex(ref, cl_pair.ref)
         cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j],N)...) 
     end
-    cl_pair = CellListPair(ref=ref,target=target,swap=cl_pair.swap)
+    cl_pair = CellListPair(ref=cl_pair.ref,target=target,swap=cl_pair.swap)
     return cl_pair
 end
 
