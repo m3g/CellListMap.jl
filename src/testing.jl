@@ -1,10 +1,50 @@
 """
 
+```
+pathological_coordinates(N)
+```
+
+$(INTERNAL)
+
+# Extended help
+
+Function to generate some coordinates with pathological properties, for testing.
+Returns `x`, `y`, `sides` and `cutoff`.
+
+"""
+function pathological_coordinates(N)
+
+    # Number of particles, sides and cutoff
+    sides = @SVector [250.,250.,250.]
+    cutoff = 10.
+
+    # Particle positions
+    x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
+    # Add some pathological coordinates
+    x[1] = -sides/2
+    x[2] = -sides/2 + @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[3] = -sides/2 + @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
+    x[4] = sides/2 + @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[5] = sides/2 + @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
+    x[10] = sides
+    x[11] = sides + @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[12] = sides + @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
+    x[13] = @SVector [ nextfloat(0.), nextfloat(0.), sides[3]*rand() ]
+    x[14] = @SVector [ prevfloat(0.), prevfloat(0.), sides[3]*rand() ]
+    x[100] = @SVector [sides[1]/2, -sides[2]/2, 2*sides[3]]
+    y = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
+
+    return x, y, sides, cutoff
+end
+
+
+"""
+
 ```julia
 map_naive!(f,output,x,box)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -47,7 +87,7 @@ end
 view_celllist_particles(cl::CellList)
 ```
 
-Internal function or structure - interface may change.
+$(INTERNAL)
 
 # Extended help
 
@@ -240,6 +280,8 @@ draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
 draw_computing_cell(cl::CellList,box::Box{UnitCellType,2},x) where UnitCellType
 ```
 
+$(INTERNAL)
+
 This function creates a plot of the computing cell, in two dimensions.
 
 """
@@ -283,6 +325,8 @@ end
 ```
 draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
 ```
+
+$(INTERNAL)
 
 This function creates a plot of the computing cell, in three dimensions.
 
