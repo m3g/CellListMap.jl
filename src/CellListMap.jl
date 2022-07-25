@@ -16,6 +16,9 @@ export TriclinicCell
 export OrthorhombicCell
 export nbatches
 
+# Flag for internal function doc entries
+const INTERNAL = "Internal function or structure - interface may change."
+
 include("./linearalgebra.jl")
 include("./Box.jl")
 include("./CellLists.jl")
