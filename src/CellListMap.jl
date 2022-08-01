@@ -113,14 +113,14 @@ map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
 The same but to evaluate some function between pairs of the particles of the vectors.
 
 """
-function map_pairwise!(f::F1, output, box::Box, cl::CellListPair;
+function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{V,N,T,Swap};
     # Parallelization options
     parallel::Bool=true,
     output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
-) where {F1,F2} # Needed for specialization for this function (avoids some allocations) 
-    if cl.swap 
+) where {F1,F2,V,N,T,Swap} # F1, F2 Needed for specialization for this function
+    if Swap == Swapped
         fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
     else
         fswap = f

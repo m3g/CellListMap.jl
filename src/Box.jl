@@ -177,7 +177,7 @@ function Box(
     # to major the number of cells, when the box size is not a multiple of
     # the cell size
     else
-        cell_size = SVector{N,T}(ntuple(i->cutoff/lcell,N)...)
+        cell_size = SVector{N,T}(ntuple(i->cutoff/lcell,N))
         nc = ceil.(Int,(unit_cell_max .+ 2*cutoff) ./ cell_size)
     end
 

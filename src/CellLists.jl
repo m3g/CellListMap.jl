@@ -156,6 +156,16 @@ end
 
 """
 
+$(INTERNAL)
+
+Structures to control dispatch on swapped vs. not swapped cell list pairs.
+
+"""
+struct Swapped end
+struct NotSwapped end
+
+"""
+
 $(TYPEDEF)
 
 $(INTERNAL)
@@ -168,11 +178,13 @@ Structure that will cointain the cell lists of two independent sets of
 particles for cross-computation of interactions
 
 """
-@with_kw struct CellListPair{V,N,T}
+struct CellListPair{V,N,T,Swap}
     ref::V
     target::CellList{N,T}
-    swap::Bool
 end      
+CellListPair(ref::V,target::CellList{N,T},::Swap) where {V,N,T,Swap} =  
+    CellListPair{V,N,T,Swap}(ref,target)
+
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
     print(io,typeof(cl),"\n")
     print(io,"   $(length(cl.ref)) particles in the reference vector.\n")
@@ -225,7 +237,11 @@ end
 _nbatches_build_cell_lists(n::Int) = min(n,min(8,nthreads()))
 _nbatches_map_computation(n::Int) = min(n,min(floor(Int,2^(log10(n)+1)),nthreads()))
 
-function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(0,0);parallel=true) where {N,T}
+function set_number_of_batches!(
+    cl::CellListPair{V,N,T,Swap},
+    nbatches::Tuple{Int,Int}=(0,0);
+    parallel=true
+) where {V,N,T,Swap}
     if parallel
         nbatches = NumberOfBatches(nbatches)
     else
@@ -247,8 +263,7 @@ function set_number_of_batches!(cl::CellListPair{N,T},nbatches::Tuple{Int,Int}=(
     nbatches = NumberOfBatches(n1,n2)
     target = cl.target
     @set! target.nbatches = nbatches
-    @set! cl.target = target
-    return cl
+    return CellListPair{V,N,T,Swap}(cl.ref, cl.target)
 end
 
 """
@@ -585,15 +600,15 @@ function CellList(
     autoswap=true
 ) where {UnitCellType,N,T} 
     if !autoswap || length(x) >= length(y)
-        ref = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in x ]
+        ref = [ SVector{N,T}(ntuple(i->el[i],N)) for el in x ]
         target = CellList(y,box,parallel=parallel)
-        swap = false
+        swap = NotSwapped()
     else
-        ref = [ SVector{N,T}(ntuple(i->el[i],N)...) for el in y ]
+        ref = [ SVector{N,T}(ntuple(i->el[i],N)) for el in y ]
         target = CellList(x,box,parallel=parallel)
-        swap = true
+        swap = Swapped()
     end
-    cl_pair = CellListPair(ref=ref,target=target,swap=swap)
+    cl_pair = CellListPair(ref,target,swap)
     cl_pair = set_number_of_batches!(cl_pair,nbatches,parallel=parallel)
     return cl_pair
 end
@@ -1227,16 +1242,18 @@ function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
     box::Box,
-    cl_pair::CellListPair{V,N,T},
+    cl_pair::CellListPair{V,N,T,Swap},
     aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
-) where {V,N,T}
-    if !cl_pair.swap 
+) where {V,N,T,Swap}
+    if Swap == NotSwapped
         ref = x
         target = UpdateCellList!(y,box,cl_pair.target,aux,parallel=parallel)
-    else
+        swap = NotSwapped()
+    elseif Swap == Swapped
         ref = y
         target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
+        swap = Swapped()
     end
     # This resizing will fail if the data was input as a (N,M) matrix, because resizing
     # is not implemented for reinterpreted arrays. 
@@ -1244,9 +1261,9 @@ function UpdateCellList!(
         resize!(cl_pair.ref, length(ref))
     end
     for i in eachindex(ref, cl_pair.ref)
-        cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j],N)...) 
+        cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j],N)) 
     end
-    cl_pair = CellListPair(ref=cl_pair.ref,target=target,swap=cl_pair.swap)
+    cl_pair = CellListPair{V,N,T,Swap}(cl_pair.ref,target)
     return cl_pair
 end
 
