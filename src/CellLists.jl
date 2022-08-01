@@ -1245,23 +1245,37 @@ function UpdateCellList!(
     cl_pair::CellListPair{V,N,T,Swap},
     aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
-) where {V,N,T,Swap}
-    if Swap == NotSwapped
-        ref = x
-        target = UpdateCellList!(y,box,cl_pair.target,aux,parallel=parallel)
-        swap = NotSwapped()
-    elseif Swap == Swapped
-        ref = y
-        target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
-        swap = Swapped()
-    end
+) where {V,N,T,Swap<:NotSwapped}
+    ref = x
+    target = UpdateCellList!(y,box,cl_pair.target,aux,parallel=parallel)
+    cl_pair = _update_CellListPair!(ref,target,cl_pair)
+    return cl_pair
+end
+# Swapped vectors version
+function UpdateCellList!(
+    x::AbstractVector{<:AbstractVector},
+    y::AbstractVector{<:AbstractVector},
+    box::Box,
+    cl_pair::CellListPair{V,N,T,Swap},
+    aux::Union{Nothing,AuxThreaded};
+    parallel::Bool=true
+) where {V,N,T,Swap<:Swapped}
+    ref = y
+    target = UpdateCellList!(x,box,cl_pair.target,aux,parallel=parallel)
+    cl_pair = _update_CellListPair!(ref,target,cl_pair)
+    return cl_pair
+end
+
+# Function barrier that was required to avoid the `Swap` type to cause
+# some instability
+function _update_CellListPair!(ref,target,cl_pair::CellListPair{V,N,T,Swap}) where {V,N,T,Swap}
     # This resizing will fail if the data was input as a (N,M) matrix, because resizing
     # is not implemented for reinterpreted arrays. 
     if length(ref) != length(cl_pair.ref)
         resize!(cl_pair.ref, length(ref))
     end
     for i in eachindex(ref, cl_pair.ref)
-        cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j],N)) 
+        @inbounds cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j],N)) 
     end
     cl_pair = CellListPair{V,N,T,Swap}(cl_pair.ref,target)
     return cl_pair
