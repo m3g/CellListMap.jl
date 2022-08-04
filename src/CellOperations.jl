@@ -8,7 +8,7 @@ $(INTERNAL)
 # Extended help
 
 Move `x` to `x -side` if `x == side`, because we use the convention
-that the boundary belongs to the next cell.
+that the upper boundary belongs to current cell.
 
 """
 @inline fix_upper_boundary(x::T,side) where T = ifelse(x == side, zero(T), x)
