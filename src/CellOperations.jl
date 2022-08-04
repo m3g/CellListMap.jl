@@ -54,7 +54,8 @@ end
 # The following is a fallback method that is split here particularly
 # to support Unitful quantities. See: https://github.com/PainterQubits/Unitful.jl/issues/46
 # This function returns a standard SVector{N,Float64}, which will be converted
-# back to the correct units in the `wrap_to_first(x, box)` call.
+# back to the correct units in the `wrap_to_first(x, box)` call. Here we
+# strip units using `reinterpret`, to avoid having `Unitful` as a dependency.
 @inline function wrap_cell_fraction(x,unit_cell_matrix)
     x_stripped = reinterpret(Float64, Float64.(x))
     m_stripped = reinterpret(Float64, Float64.(unit_cell_matrix))
