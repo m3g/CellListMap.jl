@@ -42,9 +42,25 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
 """
-@inline function wrap_cell_fraction(x,unit_cell_matrix)
+@inline function wrap_cell_fraction(
+    x::AbstractVector{<:Real},
+    unit_cell_matrix::AbstractMatrix{<:Real}
+)
     p = mod.(unit_cell_matrix\x,1)
     p = fix_upper_boundary.(p,1)
+    return p
+end
+
+# The following is a fallback method that is split here particularly
+# to support Unitful quantities. See: https://github.com/PainterQubits/Unitful.jl/issues/46
+# This function returns a standard SVector{N,Float64}, which will be converted
+# back to the correct units in the `wrap_to_first(x, box)` call.
+@inline function wrap_cell_fraction(x,unit_cell_matrix)
+    x_stripped = reinterpret(Float64, Float64.(x))
+    m_stripped = reinterpret(Float64, Float64.(unit_cell_matrix))
+    p = mod.(m_stripped\x_stripped,1)
+    p = fix_upper_boundary.(p,1)
+    p = SVector(ntuple(i -> p[i], length(x)))
     return p
 end
 
