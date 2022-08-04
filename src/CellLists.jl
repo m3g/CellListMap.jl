@@ -53,7 +53,6 @@ NumberOfBatches(t::Tuple{Int,Int}) = NumberOfBatches(t[1],t[2])
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches(0,0)
 Base.iszero(x::NumberOfBatches) = (iszero(x.build_cell_lists) && iszero(x.map_computation))
 function Base.show(io::IO,::MIME"text/plain",nbatches::NumberOfBatches)
-    println(io,typeof(nbatches))
     println(io,"  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
     print(io,"  Number of batches for function mapping: $(nbatches.map_computation)")
 end
@@ -865,8 +864,7 @@ set of particles in parallel list construction.
 function add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
     for ip in eachindex(x)
         xp = x[ip] 
-        # This converts the coordinates to static arrays, if necessary, and possibly
-        # removes decorations (like units) from the quantities
+        # This converts the coordinates to static arrays, if necessary
         p = SVector{N,T}(ntuple(i->xp[i],N))
         p = wrap_to_first(p,box)
         cl = add_particle_to_celllist!(ishift+ip,p,box,cl) # add real particle

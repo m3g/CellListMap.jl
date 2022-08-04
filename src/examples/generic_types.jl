@@ -2,6 +2,7 @@ using CellListMap
 using ForwardDiff
 using Unitful
 using Measurements
+using StaticArrays
 using LinearAlgebra: norm_sqr
 
 #
@@ -114,6 +115,55 @@ function generic_types(iprint=true;parallel=false)
     x = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for j in 1:1000 ]
     cutoff = 0.1
     sides = [1.0, 1.0, 1.0]
+    rmeasurement = sumsq_measurements(x,sides,cutoff,parallel=parallel)
+    iprint && println("Result with uncertainty: ", rmeasurement)
+
+    return check_grad, unit(runit), typeof(rmeasurement)
+end
+
+#
+# Using generic types
+#
+function generic_types_triclinic(iprint=true;parallel=false)
+
+    #
+    # Compare analtical and finite-difference gradient. Note that we convert the `sides`
+    # and `cutoff` variables to the type of variable in `x`, to allow the propagation of the 
+    # dual numbers required to ForwardDiff and Unitful
+    #
+    x = rand(3,1000)
+    cutoff = 0.1 
+    sides = [ 1.0 0.0 0.0
+              0.0 1.0 0.0 
+              0.0 0.0 1.0 ]
+
+    function sumsq_generic(x)
+        cutoff_generic = eltype(x).(cutoff) # cutoff is closed over
+        sides_generic = eltype(x).(sides) # sides is closed over
+        return sumsq(x, sides_generic, cutoff_generic)
+    end
+    check_grad = sumsq_grad(x,sides,cutoff) ≈ ForwardDiff.gradient(sumsq_generic, x)
+    iprint && println("Gradients are correct: ", check_grad)
+
+    #
+    # Now let us propagate units
+    #
+    x = rand(3,1000)u"nm"
+    cutoff = 0.1u"nm"
+    sides = [ 1.0 0.0 0.0
+              0.0 1.0 0.0 
+              0.0 0.0 1.0 ]u"nm"
+    runit = sumsq(x,sides,cutoff)
+    iprint && println("Result with units: ", runit)
+
+    #
+    # Propagating uncertainties with Measurements
+    #
+    x = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for j in 1:1000 ]
+    cutoff = 0.1
+    sides = [ 1.0 0.0 0.0
+              0.0 1.0 0.0 
+              0.0 0.0 1.0 ]
     rmeasurement = sumsq_measurements(x,sides,cutoff,parallel=parallel)
     iprint && println("Result with uncertainty: ", rmeasurement)
 

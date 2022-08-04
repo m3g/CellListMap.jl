@@ -8,7 +8,7 @@ $(INTERNAL)
 # Extended help
 
 Move `x` to `x -side` if `x == side`, because we use the convention
-that the boundary belongs to the next cell.
+that the upper boundary belongs to current cell.
 
 """
 @inline fix_upper_boundary(x::T,side) where T = ifelse(x == side, zero(T), x)
@@ -43,7 +43,12 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 
 """
 @inline function wrap_cell_fraction(x,unit_cell_matrix)
-    p = mod.(unit_cell_matrix\x,1)
+    # Division by `oneunit` is to support Unitful quantities. 
+    # this workaround works here because the units cancel.
+    # see: https://github.com/PainterQubits/Unitful.jl/issues/46
+    x_stripped = x ./ oneunit(eltype(x))
+    m_stripped = unit_cell_matrix ./ oneunit(eltype(x))
+    p = mod.(m_stripped\x_stripped,1)
     p = fix_upper_boundary.(p,1)
     return p
 end
