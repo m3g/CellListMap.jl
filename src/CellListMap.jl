@@ -22,6 +22,7 @@ const INTERNAL = "Internal function or structure - interface may change."
 include("./linearalgebra.jl")
 include("./Box.jl")
 include("./CellLists.jl")
+include("./PeriodicSystem.jl")
 include("./CellOperations.jl")
 include("./CoreComputing.jl")
 
