@@ -372,6 +372,7 @@ end
     
     # Testing the propagation of types in automatic differentiation
     @test generic_types(false) == (true,u"nm^2",Measurement{Float64})
+    @test generic_types_triclinic(false) == (true,u"nm^2",Measurement{Float64})
 
     # Test when we have pathologically few number of particles
     x = [ Float64[1,1,1] ]
