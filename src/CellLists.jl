@@ -53,7 +53,6 @@ NumberOfBatches(t::Tuple{Int,Int}) = NumberOfBatches(t[1],t[2])
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches(0,0)
 Base.iszero(x::NumberOfBatches) = (iszero(x.build_cell_lists) && iszero(x.map_computation))
 function Base.show(io::IO,::MIME"text/plain",nbatches::NumberOfBatches)
-    println(io,typeof(nbatches))
     println(io,"  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
     print(io,"  Number of batches for function mapping: $(nbatches.map_computation)")
 end
