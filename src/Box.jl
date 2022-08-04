@@ -202,7 +202,7 @@ Box(
 ) = Box(unit_cell_matrix,cutoff,lcell,UnitCellType)
 
 # Adapt round to adhere with units
-_uround(x) = round(typeof(x), x)
+_uround(x) = round(x / oneunit(x); digits=2) * oneunit(x)
 
 function Base.show(io::IO,::MIME"text/plain",box::Box{UnitCellType,N}) where {UnitCellType,N}
     println(io,"Box{$UnitCellType, $N}")
