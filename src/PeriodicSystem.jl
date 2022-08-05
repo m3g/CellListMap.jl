@@ -1,6 +1,6 @@
 
 mutable struct PeriodicSystem{V,B,C,O,A}
-    coordinates::Vector{V}
+    positions::Vector{V}
     box::B
     cell_list::C
     output::O
@@ -60,7 +60,7 @@ function _reset_all_output!(output, output_threaded)
 end
 
 function PeriodicSystem(;
-    coordinates=nothing,
+    positions=nothing,
     sides=nothing,
     cutoff=nothing,
     output=nothing,
@@ -68,14 +68,14 @@ function PeriodicSystem(;
     nbatches::Tuple{Int,Int}=(0, 0)
 )
     sys = PeriodicSystem(
-        coordinates, sides, cutoff, output;
+        positions, sides, cutoff, output;
         parallel=parallel, nbatches=nbatches
     )
     return sys
 end
 
 function PeriodicSystem(
-    coordinates::AbstractVecOrMat,
+    positions::AbstractVecOrMat,
     sides::AbstractVector,
     cutoff::Real,
     output;
@@ -83,11 +83,11 @@ function PeriodicSystem(
     nbatches::Tuple{Int,Int}=(0, 0)
 )
     box = Box(sides, cutoff)
-    cell_list = CellList(coordinates, box; parallel=parallel, nbatches=nbatches)
+    cell_list = CellList(positions, box; parallel=parallel, nbatches=nbatches)
     aux = AuxThreaded(cell_list)
     output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(cell_list)]
     output = _reset_all_output!(output, output_threaded)
-    sys = PeriodicSystem(coordinates, box, cell_list, output, output_threaded, aux, parallel)
+    sys = PeriodicSystem(positions, box, cell_list, output, output_threaded, aux, parallel)
     return sys
 end
 
@@ -105,25 +105,25 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem)
     print("\n    Type of output variable: $(eltype(sys.output_threaded))")
 end
 
-function set_coordinates!(sys::PeriodicSystem{V}, coor::V, i::Int) where {V}
-    sys.coordinates[i] = coor
+function set_positions(sys::PeriodicSystem{V}, coor::V, i::Int) where {V}
+    sys.positions[i] = coor
     return sys
 end
 
-function set_coordinates!(sys::PeriodicSystem{V}, coordinates::Vector{V}) where {V}
-    for i in eachindex(sys.coordinates, coordinates)
-        @inbounds sys.coordinates[i] = coor[i]
+function set_positions(sys::PeriodicSystem{V}, positions::Vector{V}) where {V}
+    for i in eachindex(sys.positions, positions)
+        @inbounds sys.positions[i] = coor[i]
     end
     return sys
 end
 
-get_coordinates(sys::PeriodicSystem, i::Int) = sys.coordinates[i]
+get_positions(sys::PeriodicSystem, i::Int) = sys.positions[i]
 get_output(sys::PeriodicSystem, i::Int) = sys.output[i]
 
-# If the coordinates, or box, where updated independently, just update the
+# If the positions, or box, where updated independently, just update the
 # cell lists with the new data.
 function UpdatePeriodicSystem!(sys::PeriodicSystem)
-    sys.cell_list = UpdateCellList!(sys.coordinates, sys.box, sys.cell_list, sys.aux)
+    sys.cell_list = UpdateCellList!(sys.positions, sys.box, sys.cell_list, sys.aux)
     return sys
 end
 
