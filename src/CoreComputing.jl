@@ -1,7 +1,7 @@
 #
 # Parallel thread spliiter
 #
-splitter(first,nbatches,n) = first:nbatches:n
+splitter(first, nbatches, n) = first:nbatches:n
 
 """
 
@@ -45,12 +45,30 @@ julia> output
 
 """
 reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
-function reduce(output::AbstractArray, output_threaded::AbstractVector{<:AbstractArray}) 
-    @. output = output_threaded[1]
-    for ibatch in 2:length(output_threaded)
+function reduce(output::AbstractArray{T}, output_threaded::AbstractVector{<:AbstractArray{T}}) where {T<:Union{Number,SVector}}
+    for ibatch in eachindex(output_threaded)
         @. output += output_threaded[ibatch]
     end
     return output
+end
+function reduce(output, output_threaded)
+    T = typeof(output)
+    error("""
+    MethodError: no method matching reduce(::$(typeof(output)),::$(typeof(output_threaded)))
+
+    Please provide a method that appropriately reduces a `Vector{$T}`, with
+    the signature:
+
+    ```
+    CellListMap.reduce(output::$T, output_threaded::Vector{$T})
+    ```
+
+    The reduction function **must** return the `output` variable, even 
+    if it is mutable.  
+
+    See: https://m3g.github.io/CellListMap.jl/stable/parallelization/#Custom-reduction-functions
+
+    """)
 end
 
 """
@@ -91,7 +109,7 @@ _next!(p) = ProgressMeter.next!(p)
 # Serial version for self-pairwise computations
 #
 function map_pairwise_serial!(
-    f::F, output, box::Box, cl::CellList{N,T}; 
+    f::F, output, box::Box, cl::CellList{N,T};
     show_progress::Bool=false
 ) where {F,N,T}
     @unpack n_cells_with_real_particles = cl
@@ -99,7 +117,7 @@ function map_pairwise_serial!(
     ibatch = 1
     for i in 1:n_cells_with_real_particles
         cellᵢ = cl.cells[cl.cell_indices_real[i]]
-        output = inner_loop!(f, box, cellᵢ, cl, output, ibatch) 
+        output = inner_loop!(f, box, cellᵢ, cl, output, ibatch)
         _next!(p)
     end
     return output
@@ -108,10 +126,10 @@ end
 #
 # Parallel version for self-pairwise computations
 #
-function batch(f::F, ibatch, nbatches, n_cells_with_real_particles, output_threaded, box, cl, p) where F
+function batch(f::F, ibatch, nbatches, n_cells_with_real_particles, output_threaded, box, cl, p) where {F}
     for i in splitter(ibatch, nbatches, n_cells_with_real_particles)
         cellᵢ = cl.cells[cl.cell_indices_real[i]]
-        output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch) 
+        output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
         _next!(p)
     end
 end
@@ -127,15 +145,15 @@ function map_pairwise_parallel!(
     show_progress::Bool=false
 ) where {F1,F2,N,T}
     nbatches = cl.nbatches.map_computation
-    if isnothing(output_threaded) 
-        output_threaded = [ deepcopy(output) for i in 1:nbatches ] 
+    if isnothing(output_threaded)
+        output_threaded = [deepcopy(output) for i in 1:nbatches]
     end
     @unpack n_cells_with_real_particles = cl
     nbatches = cl.nbatches.map_computation
     p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
     @sync for ibatch in 1:nbatches
         Threads.@spawn batch($f, $ibatch, $nbatches, $n_cells_with_real_particles, $output_threaded, $box, $cl, $p)
-    end 
+    end
     return reduce(output, output_threaded)
 end
 
@@ -143,8 +161,8 @@ end
 # Serial version for cross-interaction computations
 #
 function map_pairwise_serial!(
-    f::F, output, box::Box, 
-    cl::CellListPair{N,T}; 
+    f::F, output, box::Box,
+    cl::CellListPair{N,T};
     show_progress::Bool=false
 ) where {F,N,T}
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
@@ -158,28 +176,28 @@ end
 #
 # Parallel version for cross-interaction computations
 #
-function batch(f::F, ibatch, nbatches, output_threaded, box, cl, p) where F
+function batch(f::F, ibatch, nbatches, output_threaded, box, cl, p) where {F}
     for i in splitter(ibatch, nbatches, length(cl.ref))
-        output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl) 
+        output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl)
         _next!(p)
     end
 end
 
 function map_pairwise_parallel!(
-    f::F1, output, box::Box, 
+    f::F1, output, box::Box,
     cl::CellListPair{N,T};
     output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
 ) where {F1,F2,N,T}
     nbatches = cl.target.nbatches.map_computation
-    if isnothing(output_threaded) 
-        output_threaded = [ deepcopy(output) for i in 1:nbatches ]
+    if isnothing(output_threaded)
+        output_threaded = [deepcopy(output) for i in 1:nbatches]
     end
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
     @sync for ibatch in 1:nbatches
         Threads.@spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
-    end 
+    end
     return reduce(output, output_threaded)
 end
 
@@ -188,7 +206,7 @@ end
 # there are not repeated computations even if running over half of the cells.
 #
 function inner_loop!(
-    f,box::Box{TriclinicCell},cellᵢ,
+    f, box::Box{TriclinicCell}, cellᵢ,
     cl::CellList{N,T},
     output,
     ibatch
@@ -197,7 +215,7 @@ function inner_loop!(
 
     for neighbor_cell in neighbor_cells(box)
         jc_cartesian = cellᵢ.cartesian_index + neighbor_cell
-        jc_linear = cell_linear_index(nc,jc_cartesian)
+        jc_linear = cell_linear_index(nc, jc_cartesian)
         # if cellⱼ is empty, cycle
         if cl.cell_indices[jc_linear] == 0
             continue
@@ -221,13 +239,13 @@ function inner_loop!(
                     end
                 end
             end
-        # neighbor cells
+            # neighbor cells
         else
             # Vector connecting cell centers
-            Δc = cellⱼ.center - cellᵢ.center 
+            Δc = cellⱼ.center - cellᵢ.center
             Δc_norm = norm(Δc)
             Δc = Δc / Δc_norm
-            pp = project_particles!(cl.projected_particles[ibatch],cellⱼ,cellᵢ,Δc,Δc_norm,box)
+            pp = project_particles!(cl.projected_particles[ibatch], cellⱼ, cellᵢ, Δc, Δc_norm, box)
             for i in 1:cellᵢ.n_particles
                 @inbounds pᵢ = cellᵢ.particles[i]
                 (!pᵢ.real) && continue
@@ -264,18 +282,18 @@ end
 # there are not repeated computations even if running over half of the cells.
 #
 function inner_loop!(
-    f,box::Box{OrthorhombicCell},cellᵢ,
+    f, box::Box{OrthorhombicCell}, cellᵢ,
     cl::CellList{N,T},
     output,
-    ibatch 
+    ibatch
 ) where {N,T}
     @unpack cutoff_sq = box
 
     # loop over list of non-repeated particles of cell ic
-    for i in 1:cellᵢ.n_particles - 1
+    for i in 1:cellᵢ.n_particles-1
         @inbounds pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
-        for j in i + 1:cellᵢ.n_particles
+        for j in i+1:cellᵢ.n_particles
             @inbounds pⱼ = cellᵢ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
@@ -286,7 +304,7 @@ function inner_loop!(
     end
 
     for jcell in neighbor_cells_forward(box)
-        jc_linear = cell_linear_index(box.nc,cellᵢ.cartesian_index + jcell)
+        jc_linear = cell_linear_index(box.nc, cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
             output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
@@ -308,10 +326,10 @@ function cell_output!(
     @unpack cutoff, cutoff_sq, nc = box
 
     # Vector connecting cell centers
-    Δc = cellⱼ.center - cellᵢ.center 
+    Δc = cellⱼ.center - cellᵢ.center
     Δc_norm = norm(Δc)
     Δc = Δc / Δc_norm
-    pp = project_particles!(cl.projected_particles[ibatch],cellⱼ,cellᵢ,Δc,Δc_norm,box)
+    pp = project_particles!(cl.projected_particles[ibatch], cellⱼ, cellᵢ, Δc, Δc_norm, box)
     if length(pp) == 0
         return output
     end
@@ -321,12 +339,12 @@ function cell_output!(
         @inbounds pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
-    
+
         # Partition pp array according to the current projections
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
 
         # Compute the interactions 
-        for j in 1:n 
+        for j in 1:n
             @inbounds pⱼ = pp[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
@@ -357,13 +375,13 @@ to be within the cutoff distance of any point of the other cell.
 
 """
 function project_particles!(
-    projected_particles,cellⱼ,cellᵢ,
-    Δc,Δc_norm,box::Box{UnitCellType,N}
+    projected_particles, cellⱼ, cellᵢ,
+    Δc, Δc_norm, box::Box{UnitCellType,N}
 ) where {UnitCellType,N}
     if box.lcell == 1
-        margin = box.cutoff + Δc_norm/2 # half of the distance between centers
+        margin = box.cutoff + Δc_norm / 2 # half of the distance between centers
     else
-        margin = box.cutoff*(1 + sqrt(N)/2) # half of the diagonal of the cutoff-box
+        margin = box.cutoff * (1 + sqrt(N) / 2) # half of the diagonal of the cutoff-box
     end
     iproj = 0
     @inbounds for j in 1:cellⱼ.n_particles
@@ -371,7 +389,7 @@ function project_particles!(
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
         if abs(xproj) <= margin
             iproj += 1
-            projected_particles[iproj] = ProjectedParticle(pⱼ.index, xproj, pⱼ.coordinates) 
+            projected_particles[iproj] = ProjectedParticle(pⱼ.index, xproj, pⱼ.coordinates)
         end
     end
     pp = @view(projected_particles[1:iproj])
@@ -384,7 +402,7 @@ end
 # cell lists and using projection and partitioning.
 #
 function inner_loop!(
-    f,output,i,box,
+    f, output, i, box,
     cl::CellListPair{N,T}
 ) where {N,T}
     @unpack nc, cutoff_sq = box
@@ -392,7 +410,7 @@ function inner_loop!(
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in neighbor_cells(box)
         jc_cartesian = neighbor_cell + ic
-        jc_linear = cell_linear_index(nc,jc_cartesian) 
+        jc_linear = cell_linear_index(nc, jc_cartesian)
         # If cellⱼ is empty, cycle
         if cl.target.cell_indices[jc_linear] == 0
             continue
@@ -406,7 +424,7 @@ function inner_loop!(
             if d2 <= cutoff_sq
                 output = f(xpᵢ, xpⱼ, i, pⱼ.index, d2, output)
             end
-        end                                   
+        end
     end
     return output
 end
