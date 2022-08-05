@@ -53,8 +53,8 @@ NumberOfBatches(t::Tuple{Int,Int}) = NumberOfBatches(t[1],t[2])
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches(0,0)
 Base.iszero(x::NumberOfBatches) = (iszero(x.build_cell_lists) && iszero(x.map_computation))
 function Base.show(io::IO,::MIME"text/plain",nbatches::NumberOfBatches)
-    println(io,"  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
-    print(io,"  Number of batches for function mapping: $(nbatches.map_computation)")
+    _println(io,"  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
+    _print(io,"  Number of batches for function mapping: $(nbatches.map_computation)")
 end
 
 """
@@ -147,10 +147,10 @@ Base.@kwdef struct CellList{N,T}
         Vector{Vector{ProjectedParticle{N,T}}}(undef,0)
 end
 function Base.show(io::IO,::MIME"text/plain",cl::CellList)
-    println(io,typeof(cl))
-    println(io,"  $(cl.n_real_particles) real particles.")
-    println(io,"  $(cl.n_cells_with_real_particles) cells with real particles.")
-    print(io,"  $(cl.n_particles) particles in computing box, including images.")
+    _println(io,typeof(cl))
+    _println(io,"  $(cl.n_real_particles) real particles.")
+    _println(io,"  $(cl.n_cells_with_real_particles) cells with real particles.")
+    _print(io,"  $(cl.n_particles) particles in computing box, including images.")
 end
 
 """
@@ -185,9 +185,9 @@ CellListPair(ref::V,target::CellList{N,T},::Swap) where {V,N,T,Swap} =
     CellListPair{V,N,T,Swap}(ref,target)
 
 function Base.show(io::IO,::MIME"text/plain",cl::CellListPair)
-    print(io,typeof(cl),"\n")
-    print(io,"   $(length(cl.ref)) particles in the reference vector.\n")
-    print(io,"   $(cl.target.n_cells_with_real_particles) cells with real particles of target vector.")
+    _print(io,typeof(cl),"\n")
+    _print(io,"   $(length(cl.ref)) particles in the reference vector.\n")
+    _print(io,"   $(cl.target.n_cells_with_real_particles) cells with real particles of target vector.")
 end
 
 """
@@ -325,8 +325,8 @@ be considered by each thread on parallel construction.
     lists::Vector{CellList{N,T}} = Vector{CellList{N,T}}(undef,0)
 end
 function Base.show(io::IO,::MIME"text/plain",aux::AuxThreaded)
-    println(io,typeof(aux))
-    print(io," Auxiliary arrays for nbatches = ", length(aux.lists)) 
+    _println(io,typeof(aux))
+    _print(io," Auxiliary arrays for nbatches = ", length(aux.lists)) 
 end
 
 """
