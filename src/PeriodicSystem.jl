@@ -145,6 +145,7 @@ function map_pairwise!(
     show_progress::Bool=false
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys.output_threaded)
+    UpdatePeriodicSystem!(sys)
     sys.output = map_pairwise!(
         f, sys.output, sys.box, sys.cell_list;
         output_threaded=sys.output_threaded,
