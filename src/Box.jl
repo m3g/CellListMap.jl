@@ -201,23 +201,20 @@ Box(
     UnitCellType=TriclinicCell
 ) = Box(unit_cell_matrix,cutoff,lcell,UnitCellType)
 
-# Adapt round to adhere with units
-_uround(x) = round(x / oneunit(x); digits=2) * oneunit(x)
-
 function Base.show(io::IO,::MIME"text/plain",box::Box{UnitCellType,N}) where {UnitCellType,N}
-    println(io,"Box{$UnitCellType, $N}")
-    print(io,"  unit cell matrix = [ ") 
+    _println(io,"Box{$UnitCellType, $N}")
+    _print(io,"  unit cell matrix = [ ") 
     print(io,join(_uround.(box.unit_cell.matrix[1:N,1]),", "))
     for i in 2:N
         print(io,"; ",join(_uround.(box.unit_cell.matrix[1:N,i]),", "))
     end
     println(io," ]")
-    println(io,"  cutoff = ", box.cutoff)
-    println(io,"  number of computing cells on each dimension = ",box.nc)
-    println(io,"  computing cell sizes = [", 
+    _println(io,"  cutoff = ", box.cutoff)
+    _println(io,"  number of computing cells on each dimension = ",box.nc)
+    _println(io,"  computing cell sizes = [", 
         join(_uround.(box.cell_size),", "), "] (lcell: ",box.lcell,")"
     )
-    print(io,"  Total number of cells = ", prod(box.nc))
+    _print(io,"  Total number of cells = ", prod(box.nc))
 end
 
 """
