@@ -15,11 +15,13 @@ export limits
 export TriclinicCell
 export OrthorhombicCell
 export nbatches
+export PeriodicSystem
 
 # Flag for internal function doc entries
 const INTERNAL = "Internal function or structure - interface may change."
 
 include("./linearalgebra.jl")
+include("./show.jl")
 include("./Box.jl")
 include("./CellLists.jl")
 include("./PeriodicSystem.jl")
