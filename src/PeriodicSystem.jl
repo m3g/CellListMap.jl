@@ -96,14 +96,14 @@ copy_output(x::AbstractVecOrMat{T}) where {T <:Union{Number,SVector}} = copy(x)
 """
 
 ```
-CellListMap.reset_output(x)
+CellListMap.reset_output!(x)
 ```
 
-Function that how to reset (or zero) the `output` variable. Identical to `Base.copy(x)`
-and implemented 
-for `Number` types, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s.
+Function that how to reset (or zero) the `output` variable. For `Number`s it is 
+implemented as `zero(x)`, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s
+it is implemented as `fill!(x, zero(eltype(x))`.
 
-Other custom output types must have their `copy_output` method implemented.
+Other custom output types must have their `reset_output!` method implemented.
 
 # Example
 
@@ -112,18 +112,13 @@ Other custom output types must have their `copy_output` method implemented.
 struct A x::Int end
 # Custom output type (array of A)
 output = [ A(0) for _ in 1:100 ]
-# How to copy an array of `A`
-CellListMap.copy_output(v::Vector{A}) = [ x for x in v ]
-
-# Alternativelly, in this case, one could have defined:
-Base.copy(a::A) = a
-CellListMap.copy_output(v::Vector{A}) = copy(v)
+# How to reset an array with elements of type `A`
+CellListMap.reset_output!(v::Vector{A}) = fill!(v, A(0))
 ```
 
-The user must guarantee that the copy is independent of the original array.
-For many custom types it is possible to define 
-`CellListMap.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)`.
-
+The `reset_output!` function **must** return the output variable, being
+it mutable or immutable. The user must guarantee that the operation takes place in-place,
+for mutable output variables.  
 
 """
 function reset_output!(x)
@@ -138,21 +133,25 @@ function reset_output!(x)
 
         ```
         struct A x::Float64 end
-        function reset_output!(v::Vector{A})
-            for i in eachindex(v)
-                v[i] = A(0.0)
-            end
-            return v
-        end
+        CellListMap.reset_output!(v::Vector{A}) = fill!(v, A(0.0))
         ```
     """
     )
 end
 reset_output!(x::Number) = zero(x)
-reset_output!(x::AbstractVector{<:Number}) = fill!(x, zero(eltype(x)))
-reset_output!(x::AbstractVector{<:SVector}) = fill!(x, zeros(eltype(x)))
-reset_output!(x::AbstractMatrix{<:Number}) = fill!(x, zero(eltype(x)))
+reset_output!(x::AbstractVecOrMat{T}) where {T <:Union{Number,SVector}} = fill!(x, zero(T))
 
+"""
+
+```
+_reset_all_output!(output, output_threaded)
+```
+
+$(INTERNAL)
+
+Function that resets the output variable and the threaded copies of it.
+
+"""
 function _reset_all_output!(output, output_threaded)
     output = reset_output!(output)
     for i in eachindex(output_threaded)
