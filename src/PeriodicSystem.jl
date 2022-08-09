@@ -27,6 +27,7 @@ PeriodicSystem(
     unitcell::AbstractVecOrMat,
     cutoff::Number,
     output::Any;
+    output_name::Symbol,
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0)
 )
@@ -49,6 +50,10 @@ the particles.
 The unit cell (either a vector for `Orthorhombic` cells or a 
 full unit cell matrix for `Triclinic` cells), the cutoff used for the
 construction of the cell lists and the output variable of the calculations.
+
+`output_name` can be set to a symbol that best identifies the output variable.
+For instance, if `output_name=:forces`, the forces can be retrieved from the
+structure using the `system.forces` notation.
 
 The `parallel` and `nbatches` flags control the parallelization scheme of
 computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
@@ -136,6 +141,7 @@ function PeriodicSystem(;
     unitcell::AbstractVecOrMat,
     cutoff::Number,
     output::Any,
+    output_name::Symbol=:output,
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0))
     if !isnothing(positions) && (isnothing(xpositions) && isnothing(ypositions))
@@ -144,14 +150,14 @@ function PeriodicSystem(;
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem1(positions, output, parallel, _box, _cell_list, _output_threaded, _aux)
+        sys = PeriodicSystem1(positions, output, output_name, parallel, _box, _cell_list, _output_threaded, _aux)
     elseif isnothing(positions) && (!isnothing(xpositions) && !isnothing(ypositions))
         _box = CellListMap.Box(unitcell, cutoff)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem2(xpositions, ypositions, output, parallel, _box, _cell_list, _output_threaded, _aux)
+        sys = PeriodicSystem2(xpositions, ypositions, output, output_name, parallel, _box, _cell_list, _output_threaded, _aux)
     else
         throw(ArgumentError(
             """Either define `positions` OR (`xpositions` AND `ypositions`), to build
@@ -160,6 +166,8 @@ function PeriodicSystem(;
     end
     return sys
 end
+
+abstract type AbstractPeriodicSystem end
 
 """
 
@@ -182,9 +190,10 @@ is done through the `PeriodicSystem(;positions, unitcell, cutoff, output)`
 auxiliary function.
 
 """
-mutable struct PeriodicSystem1{V,B,C,O,A}
+mutable struct PeriodicSystem1{V,B,C,O,A} <: AbstractPeriodicSystem
     positions::Vector{V}
     output::O
+    output_name::Symbol
     parallel::Bool
     _box::B
     _cell_list::C
@@ -213,15 +222,25 @@ is done through the `PeriodicSystem(;xpositions, ypositions, unitcell, cutoff, o
 auxiliary function.
 
 """
-mutable struct PeriodicSystem2{V,B,C,O,A}
+mutable struct PeriodicSystem2{V,B,C,O,A} <: AbstractPeriodicSystem
     xpositions::Vector{V}
     ypositions::Vector{V}
     output::O
+    output_name::Symbol
     parallel::Bool
     _box::B
     _cell_list::C
     _output_threaded::Vector{O}
     _aux::A
+end
+
+import Base: getproperty
+function getproperty(sys::AbstractPeriodicSystem, s::Symbol)
+    if s == getfield(sys, :output_name)
+        return getfield(sys, :output)
+    else
+        return getfield(sys, s)
+    end
 end
 
 import Base.show
@@ -235,7 +254,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1)
     show(io_sub, mime, sys._cell_list)
     println("\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.nbatches)
-    print("\n    Type of output variable: $(eltype(sys._output_threaded))")
+    print("\n    Type of output variable ($(sys.output_name)): $(eltype(sys._output_threaded))")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2)
@@ -248,7 +267,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2)
     show(io_sub, mime, sys._cell_list)
     println("\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.target.nbatches)
-    print("\n    Type of output variable: $(eltype(sys._output_threaded))")
+    print("\n    Type of output variable ($(sys.output_name)): $(eltype(sys._output_threaded))")
 end
 
 #
@@ -495,7 +514,7 @@ PeriodicSystem1 of dimension 3, composed of:
 ```
 
 """
-function update_unitcell!(sys, unitcell) 
+function update_unitcell!(sys, unitcell)
     sys._box = CellListMap.Box(unitcell, sys._box.cutoff)
     return sys
 end
@@ -618,7 +637,7 @@ julia> map_pairwise((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), sys)
 """
 function map_pairwise!(
     f::F,
-    sys::Union{PeriodicSystem1,PeriodicSystem2};
+    sys::AbstractPeriodicSystem;
     show_progress::Bool=false
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
