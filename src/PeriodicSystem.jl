@@ -1,14 +1,20 @@
 module PeriodicSystems
 
-import ..CellListMap
-import ..CellListMap: INTERNAL
 using DocStringExtensions
 using StaticArrays
 
+import ..CellListMap
+import ..CellListMap: INTERNAL
+import ..CellListMap: map_pairwise!
+
 export PeriodicSystem
-export map_parwise!, map_pairwise
+export map_pairwise!, map_pairwise
 export update_cutoff!
 export update_unitcell!
+
+export copy_output
+export reset_output!, reset_output
+export reduce_output!, reduce_output
 
 """
 
@@ -27,30 +33,99 @@ PeriodicSystem(
 )
 ```
 
-Function that sets up the `PeriodicSystem` type given a set of positions.
+Function that sets up the `PeriodicSystem` type given the positions of
+the particles.
 
-Particle positions can be provided as vectors of 2D or 3D vectors 
-(preferentially static vectors from `StaticArrays`).
+- Positions can be provided as vectors of 2D or 3D vectors 
+  (preferentially static vectors from `StaticArrays`).
 
-If the `positions` array is provided, a single set of coordinates is considered,
-and the computation will be mapped for the `N(N-1)` pairs of this set. 
+- If the `positions` array is provided, a single set of coordinates 
+  is considered, and the computation will be mapped for the `N(N-1)` 
+  pairs of this set. 
 
-If the `xpositions` and `ypositions` arrays of coordinates are provided, the computation
-will be mapped to the `N×M` pairs of particles, being `N` and `M` the number
-of particles of each set of coordinates.
+- If the `xpositions` and `ypositions` arrays of coordinates are provided, 
+  the computation will be mapped to the `N×M` pairs of particles, 
+  being `N` and `M` the number of particles of each set of coordinates.
 
 The unit cell (either a vector for `Orthorhombic` cells or a 
 full unit cell matrix for `Triclinic` cells), the cutoff used for the
 construction of the cell lists and the output variable of the calculations.
 
 The `parallel` and `nbatches` flags control the parallelization scheme of
-computations (see the user manual).
+computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
+By default the parallelization is turned on and `nbatches` is set with heuristics
+that may provide good efficiency in most cases.
 
-## Example
+# Example
+
+In these examples, we compute the sum of the squared distances between
+the particles that are within the cutoff:
+
+## Single set of particles
 
 ```julia-repl
+julia> using CellListMap.PeriodicSystems, StaticArrays
 
+julia> positions = rand(SVector{3,Float64}, 100)
+       unitcell = [1,1,1]
+       cutoff = 0.1
+       output = 0.0;
 
+julia> sys = PeriodicSystem(positions = positions, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0)
+PeriodicSystem1 of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [12, 12, 12]
+      computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
+      Total number of cells = 1728
+    CellListMap.CellList{3, Float64}
+      100 real particles.
+      96 cells with real particles.
+      164 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 8
+    Type of output variable: Float64
+
+julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
+0.14556244865996287
+```
+## Two sets of particles
+
+```julia-repl
+julia> using CellListMap.PeriodicSystems, StaticArrays
+
+julia> xpositions = rand(SVector{3,Float64}, 100)
+       ypositions = rand(SVector{3,Float64}, 1000)
+       unitcell = [1,1,1]
+       cutoff = 0.1
+       output = 0.0;
+
+julia> sys = PeriodicSystem(
+           xpositions = xpositions, 
+           ypositions = ypositions,
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0
+           )
+PeriodicSystem2 of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [12, 12, 12]
+      computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
+      Total number of cells = 1728
+    CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64, CellListMap.Swapped}
+       1000 particles in the reference vector.
+       97 cells with real particles of target vector.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 8
+    Type of output variable: Float64
+
+julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
+2.3568143238242314
 
 ```
 
@@ -63,28 +138,26 @@ function PeriodicSystem(;
     cutoff::Number,
     output::Any,
     parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0)
-    
-)
+    nbatches::Tuple{Int,Int}=(0, 0))
     if !isnothing(positions) && (isnothing(xpositions) && isnothing(ypositions))
-        _box = Box(unitcell, cutoff)
-        _cell_list = CellList(positions, _box; parallel=parallel, nbatches=nbatches)
-        _aux = AuxThreaded(_cell_list)
+        _box = CellListMap.Box(unitcell, cutoff)
+        _cell_list = CellListMap.CellList(positions, _box; parallel=parallel, nbatches=nbatches)
+        _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem1(positions, output, parallel, _box, _cell_list, _output_threaded, _aux)
     elseif isnothing(positions) && (!isnothing(xpositions) && !isnothing(ypositions))
-        _box = Box(unitcell, cutoff)
-        _cell_list = CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
-        _aux = AuxThreaded(cell_list)
+        _box = CellListMap.Box(unitcell, cutoff)
+        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
+        _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem2(xpositions, ypositions, output, parallel, _box, _cell_list, _output_threaded, _aux)
     else
-       throw(ArgumentError("""
-           Either define `positions` **or** `xpositions` AND `ypositions`, to build
-           systems for self- or cross-pair computations, respectively.  
-       """)) 
+        throw(ArgumentError(
+            """Either define `positions` OR (`xpositions` AND `ypositions`), to build
+               systems for self- or cross-pair computations, respectively.
+            """))
     end
     return sys
 end
@@ -107,40 +180,7 @@ elements.
 The other fileds of the structure (starting with `_`) are internal and must not 
 be modified or accessed directly. The construction of the `PeriodicSystem1` structure
 is done through the `PeriodicSystem(;positions, unitcell, cutoff, output)` 
-auxliary function.
-
-# Example
-
-In this example we build the system and compute the sum of the squared distances
-between particles within the cutoff. 
-
-```julia-repl
-julia> x = rand(SVector{3,Float64}, 100)
-       unitcell = [1,1,1]
-       cutoff = 0.1
-       output = 0.0;
-
-julia> sys = PeriodicSystem(positions = x, unitcell=[1,1,1], cutoff = 0.1, output = 0.0)
-PeriodicSystem1 of dimension 3, composed of:
-    Box{OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.1
-      number of computing cells on each dimension = [12, 12, 12]
-      computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-      Total number of cells = 1728
-    CellList{3, Float64}
-      100 real particles.
-      95 cells with real particles.
-      161 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
-    Type of output variable: Float64
-
-julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
-0.16331317695853984
-
-```
+auxiliary function.
 
 """
 mutable struct PeriodicSystem1{V,B,C,O,A}
@@ -157,21 +197,28 @@ end
 
 $(TYPEDEF)
 
-$(INTERNAL)
-
-# Extended help
-
 $(TYPEDFIELDS)
 
-Structure that stores the data required for cell list computations, for systems
-with two sets of coordinates (cross-set computations).
+Structure that carries the information necessary for `map_pairwise!` computations,
+for systems with two set of positions (thus, replacing the loops over `N×M` 
+pairs of particles, being `N` and `M` the number of particles of each set).
+
+The `xpositions`, `ypositions`, `output`, and `parallel` fields are considered part of the API,
+and you can retrive or mutate positions, retrieve the `output` or its elements,
+and set the computation to use or not parallelization by directly accessing these
+elements.
+
+The other fileds of the structure (starting with `_`) are internal and must not 
+be modified or accessed directly. The construction of the `PeriodicSystem1` structure
+is done through the `PeriodicSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
+auxiliary function.
 
 """
 mutable struct PeriodicSystem2{V,B,C,O,A}
     xpositions::Vector{V}
     ypositions::Vector{V}
     output::O
-    _parallel::Bool
+    parallel::Bool
     _box::B
     _cell_list::C
     _output_threaded::Vector{O}
@@ -205,6 +252,10 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2)
     print("\n    Type of output variable: $(eltype(sys._output_threaded))")
 end
 
+#
+# Functions to copy, reset and reduce output variables, that must be implemented
+# by the user for custom output types.
+#
 """
 
 ```
@@ -212,43 +263,43 @@ copy_output(x)
 ```
 
 Function that defines how the `output` variable is copied. Identical to `Base.copy(x)`
-and implemented 
-for `Number` types, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s.
+and implemented for `Number` types, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s.
 
 Other custom output types must have their `copy_output` method implemented.
 
 # Example
 
 ```julia
+using CellListMap.PeriodicSystems
 # Custom data type
 struct A x::Int end
 # Custom output type (array of A)
 output = [ A(0) for _ in 1:100 ]
 # How to copy an array of `A`
-CellListMap.copy_output(v::Vector{A}) = [ x for x in v ]
+PeriodicSystems.copy_output(v::Vector{A}) = [ x for x in v ]
 
 # Alternativelly, in this case, one could have defined:
 Base.copy(a::A) = a
-CellListMap.copy_output(v::Vector{A}) = copy(v)
+PeriodicSystems.copy_output(v::Vector{A}) = copy(v)
 ```
 
 The user must guarantee that the copy is independent of the original array.
 For many custom types it is possible to define 
-`CellListMap.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)`.
+`PeriodicSystems.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)`.
 
 """
 function copy_output(x)
     error("""
         MethodError: no method matching `copy_output($(typeof(x)))`
 
-        Please implement a method `CellListMap.copy_output(x::$(typeof(x))` defining
+        Please implement a method `PeriodicSystems.copy_output(x::$(typeof(x))` defining
         an appropriate way to copy the required output variable. Many times just
         defining `output_copy(x::$(typeof(x))) = deepcopy(x)` is ok. 
     """
     )
 end
 copy_output(x::Number) = copy(x)
-copy_output(x::AbstractVecOrMat{T}) where {T <:Union{Number,SVector}} = copy(x)
+copy_output(x::AbstractVecOrMat{T}) where {T<:Union{Number,SVector}} = copy(x)
 
 """
 
@@ -256,21 +307,26 @@ copy_output(x::AbstractVecOrMat{T}) where {T <:Union{Number,SVector}} = copy(x)
 reset_output!(x)
 ```
 
-Function that how to reset (or zero) the `output` variable. For `Number`s it is 
+Function that defines how to reset (or zero) the `output` variable. For `Number`s it is 
 implemented as `zero(x)`, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s
 it is implemented as `fill!(x, zero(eltype(x))`.
 
 Other custom output types must have their `reset_output!` method implemented.
 
+The `reset_output!` function *must* return the `output` variable, being it mutable
+or immutable. `reset_output` is an alias for `reset_output!` that can be used for consistency if the
+`output` variable is immutable.
+
 # Example
+
+In this example, we define a `reset_output` function that will set to `+Inf` the
+minimum distance between particles (not always resetting means zeroing).
 
 ```julia
 # Custom data type
-struct A x::Int end
-# Custom output type (array of A)
-output = [ A(0) for _ in 1:100 ]
-# How to reset an array with elements of type `A`
-CellListMap.reset_output!(v::Vector{A}) = fill!(v, A(0))
+struct MinimumDistance d::Float64 end
+# How to reset the minimum distance
+PeriodicSystems.reset_output!(x::MinimumDistance) = MinimumDistance(+Inf)
 ```
 
 The `reset_output!` function **must** return the output variable, being
@@ -282,7 +338,7 @@ function reset_output!(x)
     error("""
         MethodError: no method matching `reset_output!($(typeof(x)))`
 
-        Please add a method `CellListMap.reset_output!(x::$(typeof(x))`, defining
+        Please add a method `PeriodicSystems.reset_output!(x::$(typeof(x))`, defining
         the appropriate way to reset (zero) the data of the output variables.
 
         The `reset_output!` methods **must** return the output variable to
@@ -290,13 +346,14 @@ function reset_output!(x)
 
         ```
         struct A x::Float64 end
-        CellListMap.reset_output!(v::Vector{A}) = fill!(v, A(0.0))
+        PeriodicSystems.reset_output!(v::Vector{A}) = fill!(v, A(0.0))
         ```
     """
     )
 end
 reset_output!(x::Number) = zero(x)
-reset_output!(x::AbstractVecOrMat{T}) where {T <:Union{Number,SVector}} = fill!(x, zero(T))
+reset_output!(x::AbstractVecOrMat{T}) where {T<:Union{Number,SVector}} = fill!(x, zero(T))
+const reset_output = reset_output!
 
 """
 
@@ -317,25 +374,179 @@ function _reset_all_output!(output, output_threaded)
     return output
 end
 
+"""
 
+```
+reduce_output!(output, output_threaded)
+```
+
+Function that defines how to reduce the vector of `output` variables, after a threaded
+computation. This function is implemented for `output` variables that are numbers, 
+and vectors or arrays of number of static arrays, as the sum of the values of the 
+threaded computations, which is the most common application, found in computing
+forces, energies, etc. 
+
+Users must implement custom `PeriodicSystems.reduce_output!` function for other types 
+of output variables, considering:
+
+- The arguments of the function must be the return `output` value and a vector 
+  `output_threaded` of `output` variables, which is created (automatically) by copying
+  the output the number of times necessary for the multi-threaded computation. 
+
+- The function *must* return the `output` variable, independently of it being mutable
+  or immutable.
+
+`reduce_output` is an alias to `reduce_output!` that can be used for consistency if the `output`
+variable is immutable.
+
+# Example
+
+In this example we show how to obtain the minimum distance between two sets
+of particles. This requires a custom reduction function.
+
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+# Custom output type
+struct MinimumDistance
+    d::Float64
+end
+# Custom copy function for `Out`
+PeriodicSystems.copy_output(d::MinimumDistance) = MinimumDistance(d.d)
+# How to reset an array with elements of type `MinimumDistance`
+PeriodicSystems.reset_output!(d::MinimumDistance) = MinimumDistance(+Inf)
+# Custom reduction function (keep the minimum distance)
+function PeriodicSystems.reduce_output!(
+    output::MinimumDistance, 
+    output_threaded::Vector{MinimumDistance}
+)
+    output = reset_output!(output)
+    for i in eachindex(output_threaded)
+        if output_threaded[i].d < output.d
+            output = output_threaded[i]
+        end
+    end
+    return output
+end
+# Construct the system
+sys = PeriodicSystem(;
+    xpositions = rand(SVector{3,Float64}, 1000),
+    ypositions = rand(SVector{3,Float64}, 1000),
+    unitcell = [1,1,1],
+    cutoff = 0.1,
+    output = MinimumDistance(+Inf),
+)
+
+# Obtain the minimum distance between the sets
+map_pairwise!((x,y,i,j,d2,output) -> sqrt(d2) < output.d ? MinimumDistance(sqrt(d2)) : output, sys)
+# will output something like: MinimumDistance(0.00956913034767034)
+```
+
+"""
 function reduce_output!(output, output_threaded)
     return CellListMap.reduce(output, output_threaded)
 end
-
+const reduce_output = reduce_output!
 
 #
 # Function used to update the properties of the systems
 #
 """
+```
+update_unitcell!(system, unitcell)
+```
+
+Function to update the unit cell of the system. The `unicell` must be of the 
+same type (`OrthorhombicCell` or `TriclinicCell`) of the original `system` 
+(changing the type of unit cell requires reconstructing the system).
+
+The `unitcell` can be a `N×N` matrix or a vector of dimension `N`, where
+`N` is the dimension of the sytem (2D or 3D).
+
+This function can be used to update the system geometry in iterative schemes,
+where the size of the simulation box changes during the simulation.
+
+# Example
+
+```julia-repl
+julia> using CellListMap.PeriodicSystems, StaticArrays
+
+julia> sys = PeriodicSystem(
+           positions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0
+           );
+
+julia> update_unitcell!(sys, [1.2, 1.1, 1.0])
+PeriodicSystem1 of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.1, 0.0; 0.0, 0.0, 1.0 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [13, 13, 12]
+      computing cell sizes = [0.11, 0.1, 0.1] (lcell: 1)
+      Total number of cells = 2028
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      633 cells with real particles.
+      1703 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 12
+    Type of output variable: Float64
+```
 
 """
-update_unitcell!(sys, unitcell) = sys._box = Box(unitcell, sys._box.cutoff)
-
-function update_cutoff!(sys::PeriodicSystem1{V,<:Box{UnitCellType}}, cutoff) where {V,UnitCellType} 
-    sys._box = Box(sys._box.unit_cell.matrix, cutoff; UnitCellType = UnitCellType)
+function update_unitcell!(sys, unitcell) 
+    sys._box = CellListMap.Box(unitcell, sys._box.cutoff)
+    return sys
 end
-function update_cutoff!(sys::PeriodicSystem2{V,<:Box{UnitCellType}}, cutoff) where {V,UnitCellType} 
-    sys._box = Box(sys._box.unit_cell.matrix, cutoff; UnitCellType = UnitCellType)
+
+"""
+```
+update_cutoff!(system, cutoff)
+```
+
+Function to update the `cutoff`` of the system. 
+
+This function can be used to update the system geometry in iterative schemes.
+
+# Example
+
+```julia-repl
+julia> using CellListMap.PeriodicSystems, StaticArrays
+
+julia> sys = PeriodicSystem(
+           positions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0
+           );
+
+julia> update_cutoff!(sys, 0.2)
+PeriodicSystem1 of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+      cutoff = 0.2
+      number of computing cells on each dimension = [7, 7, 7]
+      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
+      Total number of cells = 343
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      620 cells with real particles.
+      1746 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 12
+    Type of output variable: Float64
+```
+"""
+function update_cutoff!(sys::PeriodicSystem1{V,<:CellListMap.Box{UnitCellType}}, cutoff) where {V,UnitCellType}
+    sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
+    return sys
+end
+function update_cutoff!(sys::PeriodicSystem2{V,<:CellListMap.Box{UnitCellType}}, cutoff) where {V,UnitCellType}
+    sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
+    return sys
 end
 
 """
@@ -350,16 +561,60 @@ Updates the cell lists for periodic systems.
 
 """
 function UpdatePeriodicSystem!(sys::PeriodicSystem1)
-    sys._cell_list = UpdateCellList!(sys.positions, sys._box, sys._cell_list, sys._aux)
+    sys._cell_list = CellListMap.UpdateCellList!(sys.positions, sys._box, sys._cell_list, sys._aux)
     return sys
 end
 
 function UpdatePeriodicSystem!(sys::PeriodicSystem2)
-    sys._cell_list = UpdateCellList!(sys.xpositions, sys.ypositions, sys._box, sys._cell_list, sys._aux)
+    sys._cell_list = CellListMap.UpdateCellList!(sys.xpositions, sys.ypositions, sys._box, sys._cell_list, sys._aux)
     return sys
 end
 
 """
+
+```
+map_pairwise!(f::Function, system; show_progress = true)
+```
+
+Function that maps the `f` function into all pairs of particles of
+`system` that are found to be within the `cutoff`. 
+
+The function `f` must be of the general form:
+```
+function f(x,y,i,j,d2,output)
+    # operate on particle coordinates, distance and indexes
+    # update output
+    return output
+end
+```
+where `x` and `y` are the coordinates (adjusted for the minimum
+image) of the two particles involved, `i` and `j` their indices in the
+original arrays of positions, `d2` their squared Euclidean distance,
+and `output` the current value of the `output` variable. The `output`
+variable must be updated within this function with the contribution
+of the two particles involved. 
+
+Thread-safety is taken care automatically in parallel executions.
+
+`map_pairwise` is an alias to `map_pairwise!` for syntax consistency
+when the `output` variable is immutable.
+
+# Example
+
+In this example we compute the sum of `1/(1+d)` where `d` is the
+distance between particles of a set, for `d < cutoff`. 
+
+```julia-repl
+julia> sys = PeriodicSystem(
+           positions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0
+           );
+
+julia> map_pairwise((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), sys)
+1870.0274887950268
+```
 
 """
 function map_pairwise!(
@@ -369,10 +624,11 @@ function map_pairwise!(
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
     UpdatePeriodicSystem!(sys)
-    sys.output = map_pairwise!(
+    sys.output = CellListMap.map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
         parallel=sys.parallel,
+        reduce=reduce_output!,
         show_progress=show_progress
     )
     return sys.output
