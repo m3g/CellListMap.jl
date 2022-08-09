@@ -5,7 +5,6 @@ using StaticArrays
 
 import ..CellListMap
 import ..CellListMap: INTERNAL
-import ..CellListMap: map_pairwise!
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
@@ -633,5 +632,6 @@ function map_pairwise!(
     )
     return sys.output
 end
+const map_pairwise = map_pairwise!
 
 end # module PeriodicSystems
