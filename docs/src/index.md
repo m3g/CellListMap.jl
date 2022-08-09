@@ -14,6 +14,12 @@ julia> Pkg.add("CellListMap")
 
 ## Overview
 
+### High level interface for periodic system
+
+Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface] menu for details. 
+
+### Standard lower level interface
+
 The main function is `map_parwise!` (or `map_pairwise`): 
 
 If the analysis is performed on the pairs of a single vector `x` (`n*(n-1)/2` pairs), the function can be called with:
