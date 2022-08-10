@@ -6,9 +6,19 @@ The `PeriodicSystems` interface facilitates the use of `CellListMap` for the maj
 using CellListMap.PeriodicSystems
 ```
 
-## Basic usage
+## Common output data types
 
-The `PeriodicSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. For example, let us build a system of random particles in a cubic box:
+The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as arrays of forces.  
+
+Additionally, the combination rules for output data are assumed to be just the sum (the energy is the sum of the energy of the particles, or the forces are added by summation). 
+
+For these types of `output` data the usage of `CellListMap.PeriodicSystems` is the simplest, and does not require the implementation of any data-type dependent function. 
+
+### Computing the energy of a set of particles
+
+For example, let us build a system of random particles in a cubic box, and compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
+
+The `PeriodicSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. 
 
 ```julia-repl
 julia> using CellListMap.PeriodicSystems, StaticArrays
@@ -40,8 +50,8 @@ PeriodicSystem1 of dimension 3, composed of:
 Now, directly, let us compute a putative energy of the particles, assuming a simple formula which depends on the inverse of the distance between pairs:
 
 ```julia-repl
-julia> map_pairwise!((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), system)
-1914.7714461887822
+julia> map_pairwise!((x,y,i,j,d2,output) -> output += 1 / sqrt(d2), system)
+30679.386366872823
 ```
 
 The `system.energy` field accesses the resulting value of the computation:
@@ -49,6 +59,113 @@ The `system.energy` field accesses the resulting value of the computation:
 julia> system.energy
 1914.7714461887822
 ```
+
+### Computing forces between particles
+
+Following the example above, let us compute the forces between the particles. We have to define the function that computes the force between a pair of particles and updates the an array of forces:
+
+```julia
+function update_forces!(x,y,i,j,d2,forces)
+    d = sqrt(d2)
+    df = (1/d2)*(1/d)*(y - x)
+    forces[i] += df
+    forces[j] -= df
+    return forces
+end
+```
+
+Importantly, the function *must* return the `forces` array to follow the API. 
+
+Now, let us setup the system with the new type of output variable, which will be now an array of forces with the same type as the positions:
+
+
+
+```julia-repl
+julia> positions = rand(SVector{3,Float64},1000);
+
+julia> system = PeriodicSystem(
+           positions = positions,
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = similar(positions),
+           output_name = :forces
+       )
+PeriodicSystem1 of dimension 3, composed of:
+  Box{CellListMap.OrthorhombicCell, 3}
+    unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+    cutoff = 0.1
+    number of computing cells on each dimension = [12, 12, 12]
+    computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
+    Total number of cells = 1728
+  CellListMap.CellList{3, Float64}
+    1000 real particles.
+    635 cells with real particles.
+    1735 particles in computing box, including images.
+  Parallelization auxiliary data set for: 
+    Number of batches for cell list construction: 8
+    Number of batches for function mapping: 8
+  Type of output variable (forces): Vector{SVector{3, Float64}}     
+```
+
+Let us note that the `forces` where reset upon the construction of the system:
+```julia-repl
+julia> system.forces
+1000-element Vector{SVector{3, Float64}}:
+ [0.0, 0.0, 0.0]
+ [0.0, 0.0, 0.0]
+ ⋮
+ [0.0, 0.0, 0.0]
+```
+
+A call to `map_pairwise!` with the appropriate function definition will update the forces:
+```julia-repl
+julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
+1000-element Vector{SVector{3, Float64}}:
+ [-151.19529230407284, 159.33819000196905, -261.3055111242796]
+ [-173.02442398784672, -178.782819965489, 4.570607952876692]
+ [513.8348385385896, 205.54654702161704, 262.14273280933736]
+ ⋮
+ [-82.96794866090711, -635.9779270880592, -279.84420678948067]
+ [-722.5400961501635, 182.65287417718935, 380.0394926753039]
+```
+
+## Updating coordinates and unit cell 
+
+If the `map_pairwise!` function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell size. 
+
+### Updating coordinates
+
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `positions` field of the system:
+
+```julia-repl
+julia> system.positions[1]
+3-element SVector{3, Float64} with indices SOneTo(3):
+ 0.6391290709055079
+ 0.43679325975360894
+ 0.8231829019768698
+
+julia> system.positions[1] = zeros(SVector{3,Float64})
+3-element SVector{3, Float64} with indices SOneTo(3):
+ 0.0
+ 0.0
+ 0.0
+
+julia> push!(system.positions, rand(SVector{3,Float64}))
+1001-element Vector{SVector{3, Float64}}:
+ [0.0, 0.0, 0.0]
+ [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
+ [0.4790813256330335, 0.9922655645411307, 0.8489638318699169]
+ ⋮
+ [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
+ [0.2973028974000733, 0.9566251992966597, 0.7427323891563248]
+
+
+```
+
+
+
+
+
 
 ## Nearest neighbor
 
