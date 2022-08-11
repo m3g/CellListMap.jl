@@ -14,7 +14,7 @@ export update_unitcell!
 export copy_output
 export resize_output!
 export reset_output!, reset_output
-export reduce_output!, reduce_output
+export reductor!, reductor
 
 """
 
@@ -168,6 +168,7 @@ function PeriodicSystem(;
     return sys
 end
 
+# Abstrct type only for cleaner dispatch
 abstract type AbstractPeriodicSystem end
 
 """
@@ -235,6 +236,10 @@ mutable struct PeriodicSystem2{V,B,C,O,A} <: AbstractPeriodicSystem
     _aux::A
 end
 
+#
+# This method of getproperty allows the user to access the output
+# variable by a custom name given in `output_name`.
+#
 import Base: getproperty
 function getproperty(sys::AbstractPeriodicSystem, s::Symbol)
     if s == getfield(sys, :output_name)
@@ -318,7 +323,7 @@ function copy_output(x)
     )
 end
 copy_output(x::Number) = copy(x)
-copy_output(x::AbstractVecOrMat{T}) where {T<:Union{Number,SVector}} = copy(x)
+copy_output(x::AbstractVecOrMat{T}) where {T} = copy(x)
 
 """
 
@@ -371,7 +376,7 @@ function reset_output!(x)
     )
 end
 reset_output!(x::Number) = zero(x)
-reset_output!(x::AbstractVecOrMat{T}) where {T<:Union{Number,SVector}} = fill!(x, zero(T))
+reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin]))
 const reset_output = reset_output!
 
 """
@@ -396,8 +401,49 @@ end
 """
 
 ```
-reduce_output!(output, output_threaded)
+reductor!(x,y)
 ```
+
+Function that defines how to reduce (combine, or merge) to variables computed in parallel
+to obtain a single instance of the variable with the reduced result.
+
+The most commont `reductor` is the sum. For example, when computin energies, or forces,
+the total energy is the sum of the energies. The force on one particle is the sum of the
+forces between the particle and every other particle. Thus, the implemented reductor is
+the sum: 
+
+```
+reductor(x,y) = +(x,y)
+```
+
+However, in  many cases, reduction must be done differently. For instance, if the minimum
+distance between particles is to be computed, it is interesting to define a custom type
+and associated reductor. For example:
+
+```
+struct MinimumDistance d::Float64 end
+reductor(x::MinimumDistance, y::MinimumDistance) = MinimumDistance(min(x.d, y.d))
+```
+
+The overloading of `reductor` allows the use of parallel computations for custom, 
+complex data types, containing different types of variables, fields, or sizes.
+
+The appropriate behavior of the reductor should be carefuly inspected by the user
+to avoid spurious results. 
+
+"""
+reductor!(x,y) = +(x,y)
+const reductor = reductor!
+
+"""
+
+```
+reduce_output!(reductor::Function, output, output_threaded)
+```
+
+$(INTERNAL)
+
+# Extended help
 
 Function that defines how to reduce the vector of `output` variables, after a threaded
 computation. This function is implemented for `output` variables that are numbers, 
@@ -405,7 +451,7 @@ and vectors or arrays of number of static arrays, as the sum of the values of th
 threaded computations, which is the most common application, found in computing
 forces, energies, etc. 
 
-Users must implement custom `PeriodicSystems.reduce_output!` function for other types 
+It may be interesting to implement custom `PeriodicSystems.reduce_output!` function for other types 
 of output variables, considering:
 
 - The arguments of the function must be the return `output` value and a vector 
@@ -461,10 +507,26 @@ map_pairwise!((x,y,i,j,d2,output) -> sqrt(d2) < output.d ? MinimumDistance(sqrt(
 ```
 
 """
-function reduce_output!(output, output_threaded)
-    return CellListMap.reduce(output, output_threaded)
+function reduce_output!(reductor::Function, output::T, output_threaded::Vector{T}) where {T}
+    output = reset_output!(output)
+    for ibatch in eachindex(output_threaded)
+        output = reductor(output, output_threaded[ibatch])
+    end
+    return output
 end
-const reduce_output = reduce_output!
+function reduce_output!(
+    reductor::Function, 
+    output::AbstractVecOrMat{T}, 
+    output_threaded::Vector{<:AbstractVecOrMat{T}}
+) where {T}
+    output = reset_output!(output)
+    for ibatch in eachindex(output_threaded)
+        for i in eachindex(output, output_threaded[ibatch])
+            output[i] = reductor(output[i], output_threaded[ibatch][i])
+        end
+    end
+    return output
+end
 
 """
 
@@ -665,7 +727,7 @@ function map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
         parallel=sys.parallel,
-        reduce=reduce_output!,
+        reduce=(output, output_threaded) -> reduce_output!(reductor, output, output_threaded),
         show_progress=show_progress
     )
     return sys.output
