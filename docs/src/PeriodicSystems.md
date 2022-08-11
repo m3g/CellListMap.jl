@@ -6,15 +6,48 @@ The `PeriodicSystems` interface facilitates the use of `CellListMap` for the maj
 using CellListMap.PeriodicSystems
 ```
 
-## Common output data types
+## The mapped function
 
-The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as arrays of forces.  
+The function to be mapped for every pair of particles within the cutoff follows the same interface as the standard interface. It must be of the form
+```julia
+function f(x, y, i, j, d2, output)
+    # update output variable
+    return output
+end
+```
+where `x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, and `output` is the variable to be computed. 
 
-Additionally, the combination rules for output data are assumed to be just the sum (the energy is the sum of the energy of the particles, or the forces are added by summation). 
+For example, computing the energy, as the sum of the inverse of the distance between particles, can be done with a function like:
+```julia
+function energy(d2,u)
+    u += 1 / sqrt(d2)
+    return u
+end
+```
+and the additional parameters required by the interface can be eliminated by the use of an anonymous function, directly on the call to the `map_pairwise!  function:
+```julia
+u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u), system)
+```
+(what `system` is will be explained in the examples below).
 
-For these types of `output` data the usage of `CellListMap.PeriodicSystems` is the simplest, and does not require the implementation of any data-type dependent function. 
+Alternatively, the function might require additional parameters, such as the masses of the particles. In this case, we can use a closure to provide such data:
+```julia
+function energy(i,j,d2,u,masses)
+    u += masses[i]*masses[j] / sqrt(d2)
+    return u
+end
+const masses = # ... some masses
+u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
+```
 
-### Computing the energy of a set of particles
+## Potential energy example
+
+!!! note
+    The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as arrays of forces.  
+
+    Additionally, the properties are frequently additive (the energy is the sum of the energy of the particles, or the forces are added by summation). 
+
+    For these types of `output` data the usage of `CellListMap.PeriodicSystems` is the simplest, and does not require the implementation of any data-type dependent function. 
 
 For example, let us build a system of random particles in a cubic box, and compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
 
@@ -25,7 +58,7 @@ julia> using CellListMap.PeriodicSystems, StaticArrays
 
 julia> system = PeriodicSystem(
            positions = rand(SVector{3,Float64},1000), 
-           unitcell=[1,1,1], 
+           unitcell=[1.0,1.0,1.0], 
            cutoff = 0.1, 
            output = 0.0,
            output_name = :energy
@@ -44,8 +77,14 @@ The `system.energy` field accesses the resulting value of the computation:
 julia> system.energy
 1914.7714461887822
 ```
+because the `output_name` field was provided. If it is not provided, you can access the output value from the `system.output` field.
 
-### Computing forces between particles
+!!! note
+    - Systems can be 2 or 3-dimensional. 
+    - The `unitcell` parameter may be either a vector, as in the example, or a unit cell matrix, for general boundary conditions.
+    - `Unitful` quantities can be provided, given appropriate types for all input parameters. 
+
+## Computing forces
 
 Following the example above, let us compute the forces between the particles. We have to define the function that computes the force between a pair of particles and updates the array of forces:
 
@@ -62,8 +101,6 @@ end
 Importantly, the function *must* return the `forces` array to follow the API. 
 
 Now, let us setup the system with the new type of output variable, which will be now an array of forces with the same type as the positions:
-
-
 
 ```julia-repl
 julia> positions = rand(SVector{3,Float64},1000);
@@ -94,8 +131,101 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
  [-151.19529230407284, 159.33819000196905, -261.3055111242796]
  [-173.02442398784672, -178.782819965489, 4.570607952876692]
  ⋮
- [-82.96794866090711, -635.9779270880592, -279.84420678948067]
  [-722.5400961501635, 182.65287417718935, 380.0394926753039]
+```
+
+## Computing both energy and forces
+
+!!! note
+    In this example we define a general type of `output` variable, for which custom copy, reset, and reduction functions
+    must be defined. It can be followed for the computation of other general properties from the particle positions.
+
+The computation of energies and forces in a single call is an interesting example for the definition of a custom `output` type and the required interface functions. 
+Let us first define an output variable containing both quantities:
+```julia-repl
+julia> mutable struct EnergyAndForces
+           energy::Float64
+           forces::Vector{SVector{3,Float64}}
+       end
+```
+
+Now we need to define what it means to copy, reset, and reduce this new type of output. We overload
+the default corresponding functions, for our new output type:
+```julia-repl
+julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reduce_output!
+```
+
+The copy method creates a new instance of the `EnergyAndForces` type, with copied data:
+```julia-repl
+julia> copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
+copy_output (generic function with 4 methods)
+```
+
+The reset method will zero both the energy and all forces:
+```julia-repl
+julia> function reset_output!(output::EnergyAndForces)
+           output.energy = 0.0
+           for i in eachindex(output.forces)
+               output.forces[i] = SVector(0.0, 0.0, 0.0)
+           end
+           return output
+       end
+reset_output! (generic function with 4 methods)
+```
+
+The reduction function defines what it means to combine two output variables obtained on
+independent threads. In this case, we sum the energies and forces. Different reduction functions
+might be necessary for other custom types (for example if computing minimum distances).
+```julia-repl
+julia> function reduce_output!(output::T, output_threaded::Vector{T}) where {T <: EnergyAndForces}
+           output = reset_output!(output)
+           for i in eachindex(output_threaded)
+               output.energy += output_threaded[i].energy
+               output.forces .+= output_threaded[i].forces
+           end
+           return output
+       end
+reduce_output! (generic function with 2 methods)
+```
+
+!!! warning 
+    All these functions **must** return the modified `output` variable, to adhere to the interface.
+
+Now we can proceed as before, defining a function that updates the output variable appropriately:
+```julia-repl
+julia> function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
+           d = sqrt(d2)
+           output.energy += 1/d
+           df = (1/d2)*(1/d)*(y - x)
+           output.forces[i] += df
+           output.forces[j] -= df
+           return output
+       end
+energy_and_forces! (generic function with 1 method)
+```
+
+To finally define the system and compute the properties:
+
+```julia-repl
+julia> positions = rand(SVector{3,Float64},1000);
+
+julia> system = PeriodicSystem(
+           positions = positions,
+           unitcell=[1.0,1.0,1.0], 
+           cutoff = 0.1, 
+           output = EnergyAndForces(0.0, similar(positions)),
+           output_name = :energy_and_forces
+       );
+
+julia> system.energy_and_forces.energy
+31696.94766439311
+
+julia> system.energy_and_forces.forces
+1000-element Vector{SVector{3, Float64}}:
+ [-338.1909601911842, 7.7663690656924445, 202.25889647151405]
+ [33.67299655756128, 282.7581453168999, -79.09639223837306]
+ ⋮
+ [38.83014327604529, -204.45236278342745, 249.307871211616]
 ```
 
 ## Updating coordinates, unit cell, and cutoff
@@ -119,20 +249,24 @@ julia> system.positions[1] = zeros(SVector{3,Float64})
  0.0
  0.0
 
-julia> push!(system.positions, rand(SVector{3,Float64}))
+julia> push!(system.positions, SVector(1.0, 1.0, 1.0))
 1001-element Vector{SVector{3, Float64}}:
  [0.0, 0.0, 0.0]
  [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
- [0.4790813256330335, 0.9922655645411307, 0.8489638318699169]
  ⋮
  [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
- [0.2973028974000733, 0.9566251992966597, 0.7427323891563248]
+ [1.0, 1.0, 1.0]
 ```
 
-The `output` arrays may have to be resized accordingly, depending on
-the calculation being performed. For example, that is the case in
-the caculation of `forces`, above. In this case, we need to resize
-the output arrays with the function `resize_output!`:
+!!! warning
+    The `output` variable may have to be resized accordingly, depending on
+    the calculation being performed. 
+
+If the `output` array has to be resized, that has to be done
+with the  `resize_output!` function, which will keep the consistency
+of the auxiliary multi-threading buffers. This is, for instance, the case 
+in the example of computation of forces, as the `forces` array must be of the
+same length as the array of positions:
 
 ```julia-repl
 julia> resize_output!(system, length(system.positons));
@@ -155,7 +289,22 @@ be attempted.
 The unit cell can be updated to new dimensions at any moment, with the `update_unitcell!` function:
 
 ```julia-repl
-
+julia> update_unitcell!(system, [1.2, 1.2, 1.2])
+PeriodicSystem1 of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.2, 0.0; 0.0, 0.0, 1.2 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [13, 13, 13]
+      computing cell sizes = [0.11, 0.11, 0.11] (lcell: 1)
+      Total number of cells = 2197
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      623 cells with real particles.
+      1719 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 12
+    Type of output variable (forces): Vector{SVector{3, Float64}}
 ```
 
 ### Updating the cutoff
@@ -189,129 +338,83 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
  [-25.306486853608945, 119.69319481834582, 104.1501577339471]
 ```
 
+## Computations for two-particle sets
 
+If the computation involves two particle sets, a similar interface is available. 
+The only difference is that the coordinates of the two sets must be provided to
+the `PeriodicSystem` constructor as the `xpositions` and `ypositions` arrays.
 
-## Nearest neighbor
-
-Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.
-
-```julia
-# Number of particles, sides and cutoff
-N1=1_500
-N2=1_500_000
-sides = [250,250,250]
-
-# Particle positions
-x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N1 ]
-y = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N2 ]
-
-const MinimumDistance = Tuple{Int,Int,Float64}
-PeriodicSystems.copy_output(x::MinimumDistance) = x
-PeriodicSystems.reset_output(x::MinimumDistance) = (0, 0, +Inf)
-
-system = PeriodicSystem(
-    xpositions = x,
-    ypositions = y,
-    unitcell = sides,
-    cutoff = 10.0,
-    output = (0, 0, +Inf),
-    output_name = :minimum_distance,
-)
-
-# Function that keeps the minimum distance
-f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
-
-# We have to define our own reduce function here
-function PeriodicSystems.reduce_output(
-    output::T,
-    output_threaded::Vector{T}
-) where T <: MinimumDistance
-    mind = (0, 0, +Inf)
-    for i in eachindex(output_threaded)
-        if output_threaded[i][3] < mind[3]
-            mind = output_threaded[i]
-        end
-    end
-    return mind
-end
-
-# Run pairwise computation
-mind = map_pairwise((x,y,i,j,d2,mind) -> f(i,j,d2,mind), system)
-```
-
-The example above can be run with `CellListMap.Examples.nearest_neighbor()` and is available in the
-[nearest_neighbor.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor.jl) file.
-
-The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
-
-## Neighbor lists
-
-### The `CellListMap.neighborlist` function
-The package provides a `neighborlist` function that implements this calculation. Without periodic boundary conditions, just do:
+We will illustrate this interface by computing the minimum distance between two
+sets of particles, which allows us to showcase further the definition of custom
+type interfaces:
 
 ```julia-repl
-julia> x = [ rand(3) for _ in 1:10_000 ];
+julia> xpositions = rand(SVector{3,Float64},1000);
 
-julia> CellListMap.neighborlist(x,0.05)
-24778-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 62, 0.028481068525796384)
- ⋮
- (9954, 1749, 0.04887502372299809)
- (9974, 124, 0.040110356034451795)
+julia> ypositions = rand(SVector{3,Float64},1000);
+
+julia> system = PeriodicSystem(
+           xpositions = xpositions,
+           ypositions = ypositions, 
+           unitcell=[1.0,1.0,1.0], 
+           cutoff = 0.1, 
+           output = +Inf,
+           output_name = :minimum_distance,
+        )
 ```
-or `CellListMap.neighborlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
-The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
-
-If periodic boundary conditions are used, the `Box` and `CellList` must be constructed in advance:
+First, we define a variable type that will carry the indexes and 
+the distance of the closest pair of particles:
 ```julia-repl
-julia> x = [ rand(3) for _ in 1:10_000 ]; 
-
-julia> box = Box([1,1,1],0.1);
-
-julia> cl = CellList(x,box);
-
-julia> CellListMap.neighborlist(box,cl)
-
-julia> CellListMap.neighborlist(box,cl)
-209506-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 121, 0.05553035041478053)
- (1, 1589, 0.051415489701932444)
- ⋮
- (7469, 7946, 0.09760096646331885)
+julia> struct MinimumDistance
+           i::Int
+           j::Int
+           d::Float64
+       end
 ```
 
-### Implementation
-
-The implementation of the above function follows the principles below. 
- The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
-
-```julia
-# Function to be evaluated for each pair: push pair
-function push_pair!(i,j,d2,pairs)
-    d = sqrt(d2)
-    push!(pairs,(i,j,d))
-    return pairs
-end
-
-# Reduction function
-function reduce_pairs(pairs,pairs_threaded)
-    for i in 1:length(pairs_threaded)
-        append!(pairs,pairs_threaded[i])
-    end
-    return pairs
-end
-
-# Initialize output
-pairs = Tuple{Int,Int,Float64}[]
-
-# Run pairwise computation
-map_pairwise!(
-    (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs),
-    pairs,box,cl,
-    reduce=reduce_pairs
-)
+The function that, given two particles, retains the minimum distance, is:
+```julia-repl
+julia> function minimum_distance(i, j, d2, md)
+           d = sqrt(d2)
+           if d < md.d
+               md = MinimumDistance(i, j, d)
+           end
+           return md
+       end
+minimum_distance (generic function with 1 method)
 ```
 
-The full example can be run with `CellListMap.Examples.neighborlist()`, available in the file 
-[neighborlist.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/neighborlist.jl).
+We overload copy, reset, and reduce functions, accordingly:
+```julia-repl
+julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reduce_output!
+
+julia> copy_output(md::MinimumDistance) = md
+copy_output (generic function with 5 methods)
+
+julia> reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
+reset_output! (generic function with 5 methods)
+
+julia> function reduce_output!(md::T, md_threaded::Vector{T}) where {T <: MinimumDistance}
+           md = reset_output!(md)
+           for i in eachindex(md_threaded)
+               if md_threaded[i].d < md.d
+                   md = md_threaded[i]
+               end
+           end
+           return md
+       end
+reduce_output! (generic function with 4 methods)
+```
+
+Note that since `MinimumDistance` is immutable, copying it is the same as returning the value. 
+Also, resetting the minimum distance consists of setting its `d` field to `+Inf`. And, finally,
+reducing the threaded distances consists of keeping the pair with the shortest distance. 
+
+Now, we are ready to obtain the minimum distance between the sets: 
+```julia-repl
+julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+MinimumDistance(276, 617, 0.006009804808785543)
+```
+
+

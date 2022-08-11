@@ -1,8 +1,8 @@
 # CellListMap.jl
 
-This package is for computing interactions or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. It maps a function to be computed pairwise using cell lists, using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
+This package implements an efficient cell list scheme for the computation of interactions, or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. It maps a generic function to be computed pairwise, using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
 
-It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples below illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
+It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
 
 ## Installation
 
@@ -14,11 +14,13 @@ julia> Pkg.add("CellListMap")
 
 ## Overview
 
+
+
 ### High level interface for periodic system
 
-Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface] menu for details. 
+Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface](PeriodicSystems) menu for details. 
 
-### Standard lower level interface
+### Lower level interface
 
 The main function is `map_parwise!` (or `map_pairwise`): 
 
