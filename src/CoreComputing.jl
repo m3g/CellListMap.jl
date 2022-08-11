@@ -44,8 +44,8 @@ julia> output
 ```
 
 """
-reduce(output::Number, output_threaded::Vector{<:Number}) = sum(output_threaded)
-function reduce(output::AbstractArray{T}, output_threaded::AbstractVector{<:AbstractArray{T}}) where {T<:Union{Number,SVector}}
+reduce(output::T, output_threaded::Vector{T}) where {T} = sum(output_threaded)
+function reduce(output::T, output_threaded::Vector{T}) where {T <: AbstractArray}
     for ibatch in eachindex(output_threaded)
         @. output += output_threaded[ibatch]
     end
