@@ -140,83 +140,93 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
     In this example we define a general type of `output` variable, for which custom copy, reset, and reduction functions
     must be defined. It can be followed for the computation of other general properties from the particle positions.
 
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+```
+
 The computation of energies and forces in a single call is an interesting example for the definition of a custom `output` type and the required interface functions. 
 Let us first define an output variable containing both quantities:
-```julia-repl
-julia> mutable struct EnergyAndForces
-           energy::Float64
-           forces::Vector{SVector{3,Float64}}
-       end
+```julia
+mutable struct EnergyAndForces
+    energy::Float64
+    forces::Vector{SVector{3,Float64}}
+end
 ```
 
 Now we need to define what it means to copy, reset, and reduce this new type of output. We overload
 the default corresponding functions, for our new output type:
-```julia-repl
-julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reduce_output!
-```
 
 The copy method creates a new instance of the `EnergyAndForces` type, with copied data:
-```julia-repl
-julia> copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
-copy_output (generic function with 4 methods)
+```julia
+import CellListMap.PeriodicSystems: copy_output
+copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
 ```
 
 The reset method will zero both the energy and all forces:
-```julia-repl
-julia> function reset_output!(output::EnergyAndForces)
-           output.energy = 0.0
-           for i in eachindex(output.forces)
-               output.forces[i] = SVector(0.0, 0.0, 0.0)
-           end
-           return output
-       end
-reset_output! (generic function with 4 methods)
+import CellListMap.PeriodicSystems: copy_output, reset_output!, reductor
+```julia
+import CellListMap.PeriodicSystems: reset_output!
+function reset_output!(output::EnergyAndForces)
+    output.energy = 0.0
+    for i in eachindex(output.forces)
+        output.forces[i] = SVector(0.0, 0.0, 0.0)
+    end
+    return output
+end
 ```
 
 The reduction function defines what it means to combine two output variables obtained on
 independent threads. In this case, we sum the energies and forces. Different reduction functions
 might be necessary for other custom types (for example if computing minimum distances).
-```julia-repl
-julia> function reduce_output!(output::T, output_threaded::Vector{T}) where {T <: EnergyAndForces}
-           output = reset_output!(output)
-           for i in eachindex(output_threaded)
-               output.energy += output_threaded[i].energy
-               output.forces .+= output_threaded[i].forces
-           end
-           return output
-       end
-reduce_output! (generic function with 2 methods)
+```julia
+import CellListMap.PeriodicSystems: reductor
+function reductor(x::EnergyAndForces, y::EnergyAndForces)
+    e_tot = x.energy + y.energy
+    x.forces .+= y.forces
+    return EnergyAndForces(e_tot, x.forces)
+end
 ```
+Note that in the above example, we reuse the `x.forces` array in the return instance
+of `EnergyAndForces`. You must always reduce from right to left, and reuse the
+possible buffers of the first argument of the reductor (in this case, `x`).
 
 !!! warning 
-    All these functions **must** return the modified `output` variable, to adhere to the interface.
+    - All these functions **must** return the modified `output` variable, to adhere to the interface.
+    - The proper definition of a reduction function is crucial for correctness. Please verify
+      your results if using the default reduction function. Check 
+      [Alternative reduction schemes](#Alternative-reduction-schemes) for further information
+      and control.
 
 Now we can proceed as before, defining a function that updates the output variable appropriately:
-```julia-repl
-julia> function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
-           d = sqrt(d2)
-           output.energy += 1/d
-           df = (1/d2)*(1/d)*(y - x)
-           output.forces[i] += df
-           output.forces[j] -= df
-           return output
-       end
-energy_and_forces! (generic function with 1 method)
+```julia
+function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
+    d = sqrt(d2)
+    output.energy += 1/d
+    df = (1/d2)*(1/d)*(y - x)
+    output.forces[i] += df
+    output.forces[j] -= df
+    return output
+end
 ```
 
 To finally define the system and compute the properties:
 
 ```julia-repl
-julia> positions = rand(SVector{3,Float64},1000);
+positions = rand(SVector{3,Float64},1000);
 
-julia> system = PeriodicSystem(
-           positions = positions,
-           unitcell=[1.0,1.0,1.0], 
-           cutoff = 0.1, 
-           output = EnergyAndForces(0.0, similar(positions)),
-           output_name = :energy_and_forces
-       );
+system = PeriodicSystem(
+    positions = positions,
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = EnergyAndForces(0.0, similar(positions)),
+    output_name = :energy_and_forces
+);
 
+map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), system);
+```
+
+The output can be seen with the aliases of the `system.output` variable:
+```julia-repl
 julia> system.energy_and_forces.energy
 31696.94766439311
 
@@ -348,21 +358,6 @@ We will illustrate this interface by computing the minimum distance between two
 sets of particles, which allows us to showcase further the definition of custom
 type interfaces:
 
-```julia-repl
-julia> xpositions = rand(SVector{3,Float64},1000);
-
-julia> ypositions = rand(SVector{3,Float64},1000);
-
-julia> system = PeriodicSystem(
-           xpositions = xpositions,
-           ypositions = ypositions, 
-           unitcell=[1.0,1.0,1.0], 
-           cutoff = 0.1, 
-           output = +Inf,
-           output_name = :minimum_distance,
-        )
-```
-
 First, we define a variable type that will carry the indexes and 
 the distance of the closest pair of particles:
 ```julia-repl
@@ -387,7 +382,7 @@ minimum_distance (generic function with 1 method)
 
 We overload copy, reset, and reduce functions, accordingly:
 ```julia-repl
-julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reduce_output!
+julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reductor!
 
 julia> copy_output(md::MinimumDistance) = md
 copy_output (generic function with 5 methods)
@@ -395,26 +390,172 @@ copy_output (generic function with 5 methods)
 julia> reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reset_output! (generic function with 5 methods)
 
-julia> function reduce_output!(md::T, md_threaded::Vector{T}) where {T <: MinimumDistance}
-           md = reset_output!(md)
-           for i in eachindex(md_threaded)
-               if md_threaded[i].d < md.d
-                   md = md_threaded[i]
-               end
-           end
-           return md
-       end
-reduce_output! (generic function with 4 methods)
+julia> reductor!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
+reductor! (generic function with 2 methods)
 ```
-
 Note that since `MinimumDistance` is immutable, copying it is the same as returning the value. 
 Also, resetting the minimum distance consists of setting its `d` field to `+Inf`. And, finally,
 reducing the threaded distances consists of keeping the pair with the shortest distance. 
 
-Now, we are ready to obtain the minimum distance between the sets: 
+Next, we build the system
+
+```julia-repl
+julia> xpositions = rand(SVector{3,Float64},1000);
+
+julia> ypositions = rand(SVector{3,Float64},1000);
+
+julia> system = PeriodicSystem(
+           xpositions = xpositions,
+           ypositions = ypositions, 
+           unitcell=[1.0,1.0,1.0], 
+           cutoff = 0.1, 
+           output = MinimumDistance(0,0,+Inf),
+           output_name = :minimum_distance,
+        )
+```
+
+And finally we can obtain the minimum distance between the sets: 
+
 ```julia-repl
 julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
 MinimumDistance(276, 617, 0.006009804808785543)
 ```
 
+## Additional execution options
 
+The use of parallel computations can be tunned on and of by the `system.parallel` boolean flag.
+For example, using 6 cores (12 threads) for the calculation of the minimum-distance example: 
+
+```julia-repl
+julia> f(system) = map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+f (generic function with 1 method)
+
+julia> Threads.nthreads()
+12
+
+julia> system.parallel = true
+true
+
+julia> @btime f($system)
+  173.656 μs (185 allocations: 22.42 KiB)
+MinimumDistance(402, 571, 0.0035741414027147954)
+
+julia> system.parallel = false
+false
+
+julia> @btime f($system)
+  453.995 μs (76 allocations: 7.72 KiB)
+MinimumDistance(402, 571, 0.0035741414027147954)
+```
+
+Displaying a progress bar: for very long runs, the user might want to see the progress
+of the computation. For example, we execute the computation above, but with much more
+particles:
+
+```julia-repl
+julia> xpositions = rand(SVector{3,Float64},10^6);
+
+julia> ypositions = rand(SVector{3,Float64},10^6);
+
+julia> system = PeriodicSystem(
+                  xpositions = xpositions,
+                  ypositions = ypositions, 
+                  unitcell=[1.0,1.0,1.0], 
+                  cutoff = 0.1, 
+                  output = MinimumDistance(0,0,+Inf),
+                  output_name = :minimum_distance,
+               );
+
+julia> map_pairwise(
+           (x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system; 
+           show_progress = true
+       )
+Progress:  24%|██████████▏                               |  ETA: 0:00:29
+```
+
+By activating the `show_progress` flag, a nice progress bar is shown. 
+
+## Complete example codes
+
+### Simple energy computation
+
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+system = PeriodicSystem(
+    positions = rand(SVector{3,Float64},1000), 
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = 0.0,
+    output_name = :energy
+)
+map_pairwise!((x,y,i,j,d2,energy) -> energy += 1 / sqrt(d2), system)
+```
+
+### Force computation
+
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+positions = rand(SVector{3,Float64},1000) 
+system = PeriodicSystem(
+    positions = positions, 
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = similar(positions),
+    output_name = :forces
+)
+function update_forces!(x,y,i,j,d2,forces)
+    d = sqrt(d2)
+    df = (1/d2)*(1/d)*(y - x)
+    forces[i] += df
+    forces[j] -= df
+    return forces
+end
+map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
+```
+
+### Energy and forces
+
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+# Define custom type
+mutable struct EnergyAndForces
+    energy::Float64
+    forces::Vector{SVector{3,Float64}}
+end
+# Custom copy, reset and reductor functions
+function PeriodicSystems.copy_output(x::EnergyAndForces)  
+    return EnergyAndForces(copy(x.energy), copy(x.forces))
+end
+function PeriodicSystems.reset_output!(output::EnergyAndForces)
+    output.energy = 0.0
+    for i in eachindex(output.forces)
+        output.forces[i] = SVector(0.0, 0.0, 0.0)
+    end
+    return output
+end
+function PeriodicSystems.reductor(x::EnergyAndForces, y::EnergyAndForces)
+    e_tot = x.energy + y.energy
+    x.forces .+= y.forces
+    return EnergyAndForces(e_tot, x.forces)
+end
+# Function that updates energy and forces for each pair
+function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
+    d = sqrt(d2)
+    output.energy += 1/d
+    df = (1/d2)*(1/d)*(y - x)
+    output.forces[i] += df
+    output.forces[j] -= df
+    return output
+end
+# Initialize system
+positions = rand(SVector{3,Float64},1000);
+system = PeriodicSystem(
+    positions = positions,
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = EnergyAndForces(0.0, similar(positions)),
+    output_name = :energy_and_forces
+)
+# Compute energy and forces
+map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), system);
+```
