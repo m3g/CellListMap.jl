@@ -12,6 +12,7 @@ export update_cutoff!
 export update_unitcell!
 
 export copy_output
+export resize_output!
 export reset_output!, reset_output
 export reduce_output!, reduce_output
 
@@ -464,6 +465,24 @@ function reduce_output!(output, output_threaded)
     return CellListMap.reduce(output, output_threaded)
 end
 const reduce_output = reduce_output!
+
+"""
+
+```
+resize_output!(sys::AbstractPeriodicSystem, n::Int)
+```
+
+Resizes the output array and the auxiliary output arrays used
+for multithreading, if needed because of the system change.
+
+"""
+function resize_output!(sys::AbstractPeriodicSystem, n::Int)
+    resize!(sys.output, n)
+    for i in eachindex(sys._output_threaded)
+        resize!(sys._output_threaded[i], n)
+    end
+    return sys
+end
 
 #
 # Function used to update the properties of the systems
