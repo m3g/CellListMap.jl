@@ -376,6 +376,7 @@ function reset_output!(x)
     )
 end
 reset_output!(x::Number) = zero(x)
+reset_output!(x::SVector) = zero(x)
 reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin]))
 const reset_output = reset_output!
 
