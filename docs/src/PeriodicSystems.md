@@ -29,28 +29,13 @@ julia> system = PeriodicSystem(
            cutoff = 0.1, 
            output = 0.0,
            output_name = :energy
-       )
-PeriodicSystem1 of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.1
-      number of computing cells on each dimension = [12, 12, 12]
-      computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-      Total number of cells = 1728
-    CellListMap.CellList{3, Float64}
-      1000 real particles.
-      646 cells with real particles.
-      1648 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 12
-    Type of output variable (energy): Float64
+       );
 ```
 
 Now, directly, let us compute a putative energy of the particles, assuming a simple formula which depends on the inverse of the distance between pairs:
 
 ```julia-repl
-julia> map_pairwise!((x,y,i,j,d2,output) -> output += 1 / sqrt(d2), system)
+julia> map_pairwise!((x,y,i,j,d2,energy) -> energy += 1 / sqrt(d2), system)
 30679.386366872823
 ```
 
@@ -62,7 +47,7 @@ julia> system.energy
 
 ### Computing forces between particles
 
-Following the example above, let us compute the forces between the particles. We have to define the function that computes the force between a pair of particles and updates the an array of forces:
+Following the example above, let us compute the forces between the particles. We have to define the function that computes the force between a pair of particles and updates the array of forces:
 
 ```julia
 function update_forces!(x,y,i,j,d2,forces)
@@ -89,22 +74,7 @@ julia> system = PeriodicSystem(
            cutoff = 0.1, 
            output = similar(positions),
            output_name = :forces
-       )
-PeriodicSystem1 of dimension 3, composed of:
-  Box{CellListMap.OrthorhombicCell, 3}
-    unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-    cutoff = 0.1
-    number of computing cells on each dimension = [12, 12, 12]
-    computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-    Total number of cells = 1728
-  CellListMap.CellList{3, Float64}
-    1000 real particles.
-    635 cells with real particles.
-    1735 particles in computing box, including images.
-  Parallelization auxiliary data set for: 
-    Number of batches for cell list construction: 8
-    Number of batches for function mapping: 8
-  Type of output variable (forces): Vector{SVector{3, Float64}}     
+       );
 ```
 
 Let us note that the `forces` where reset upon the construction of the system:
@@ -123,15 +93,14 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
 1000-element Vector{SVector{3, Float64}}:
  [-151.19529230407284, 159.33819000196905, -261.3055111242796]
  [-173.02442398784672, -178.782819965489, 4.570607952876692]
- [513.8348385385896, 205.54654702161704, 262.14273280933736]
  ⋮
  [-82.96794866090711, -635.9779270880592, -279.84420678948067]
  [-722.5400961501635, 182.65287417718935, 380.0394926753039]
 ```
 
-## Updating coordinates and unit cell 
+## Updating coordinates, unit cell, and cutoff
 
-If the `map_pairwise!` function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell size. 
+If the `map_pairwise!` function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.
 
 ### Updating coordinates
 
@@ -158,12 +127,67 @@ julia> push!(system.positions, rand(SVector{3,Float64}))
  ⋮
  [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
  [0.2973028974000733, 0.9566251992966597, 0.7427323891563248]
+```
 
+The `output` arrays may have to be resized accordingly, depending on
+the calculation being performed. For example, that is the case in
+the caculation of `forces`, above. In this case, we need to resize
+the output arrays with the function `resize_output!`:
+
+```julia-repl
+julia> resize_output!(system, length(system.positons));
+
+julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
+1001-element Vector{SVector{3, Float64}}:
+ [756.2076075886971, -335.1637545330828, 541.8627090466914]
+ [-173.02442398784672, -178.782819965489, 4.570607952876692]
+ ⋮
+ [-722.5400961501635, 182.65287417718935, 380.0394926753039]
+ [20.27985502389337, -193.77607810950286, -155.28968519541544]
+```
+
+In this case, if the `output` is not resized, a `BoundsError:` is
+be obtained, because updates of forces at unavailable positions will
+be attempted. 
+
+### Updating the unit cell
+
+The unit cell can be updated to new dimensions at any moment, with the `update_unitcell!` function:
+
+```julia-repl
 
 ```
 
+### Updating the cutoff
 
+The cutoff can also be updated, using the `update_cutoff!` function:
 
+```julia-repl
+julia> update_cutoff!(system, 0.2)
+PeriodicSystem1 of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+      cutoff = 0.2
+      number of computing cells on each dimension = [7, 7, 7]
+      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
+      Total number of cells = 343
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      125 cells with real particles.
+      2792 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 8
+    Type of output variable (forces): Vector{SVector{3, Float64}}
+
+julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
+1000-element Vector{SVector{3, Float64}}:
+ [306.9612911344924, -618.7375562535321, -607.1449767066479]
+ [224.0803003775478, -241.05319348787023, 67.53780411933884]
+ ⋮
+ [2114.4873184508524, -3186.265279868732, -6777.748445712408]
+ [-25.306486853608945, 119.69319481834582, 104.1501577339471]
+```
 
 
 

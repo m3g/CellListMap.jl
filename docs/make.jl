@@ -9,6 +9,7 @@ makedocs(
     sitename="CellListMap.jl",
     pages = [
         "Overview" => "index.md",
+        "PeriodicSystems interface" => "PeriodicSystems.md",
         "Examples" => "examples.md",
         "Periodic conditions" => "pbc.md",
         "Parallelization" => "parallelization.md",
