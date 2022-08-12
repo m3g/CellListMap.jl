@@ -6,6 +6,10 @@ The `PeriodicSystems` interface facilitates the use of `CellListMap` for the maj
 using CellListMap.PeriodicSystems
 ```
 
+!!! note
+    - This interface requires `CellListMap.jl` version `0.7.22` or greater.
+    - The complete codes of the examples are at the [end of this page.](#Complete-example-codes)
+
 ## The mapped function
 
 The function to be mapped for every pair of particles within the cutoff follows the same interface as the standard interface. It must be of the form
@@ -163,7 +167,7 @@ copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces)
 ```
 
 The reset method will zero both the energy and all forces:
-import CellListMap.PeriodicSystems: copy_output, reset_output!, reductor
+import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer
 ```julia
 import CellListMap.PeriodicSystems: reset_output!
 function reset_output!(output::EnergyAndForces)
@@ -179,8 +183,8 @@ The reduction function defines what it means to combine two output variables obt
 independent threads. In this case, we sum the energies and forces. Different reduction functions
 might be necessary for other custom types (for example if computing minimum distances).
 ```julia
-import CellListMap.PeriodicSystems: reductor
-function reductor(x::EnergyAndForces, y::EnergyAndForces)
+import CellListMap.PeriodicSystems: reducer
+function reducer(x::EnergyAndForces, y::EnergyAndForces)
     e_tot = x.energy + y.energy
     x.forces .+= y.forces
     return EnergyAndForces(e_tot, x.forces)
@@ -188,14 +192,12 @@ end
 ```
 Note that in the above example, we reuse the `x.forces` array in the return instance
 of `EnergyAndForces`. You must always reduce from right to left, and reuse the
-possible buffers of the first argument of the reductor (in this case, `x`).
+possible buffers of the first argument of the reducer (in this case, `x`).
 
 !!! warning 
     - All these functions **must** return the modified `output` variable, to adhere to the interface.
     - The proper definition of a reduction function is crucial for correctness. Please verify
-      your results if using the default reduction function. Check 
-      [Alternative reduction schemes](#Alternative-reduction-schemes) for further information
-      and control.
+      your results if using the default reducer function, which sums the elements.
 
 Now we can proceed as before, defining a function that updates the output variable appropriately:
 ```julia
@@ -348,9 +350,9 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
  [-25.306486853608945, 119.69319481834582, 104.1501577339471]
 ```
 
-## Computations for two-particle sets
+## Computations for two sets of particles
 
-If the computation involves two particle sets, a similar interface is available. 
+If the computation involves two sets of particle, a similar interface is available. 
 The only difference is that the coordinates of the two sets must be provided to
 the `PeriodicSystem` constructor as the `xpositions` and `ypositions` arrays.
 
@@ -382,7 +384,7 @@ minimum_distance (generic function with 1 method)
 
 We overload copy, reset, and reduce functions, accordingly:
 ```julia-repl
-julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reductor!
+julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer!
 
 julia> copy_output(md::MinimumDistance) = md
 copy_output (generic function with 5 methods)
@@ -390,8 +392,8 @@ copy_output (generic function with 5 methods)
 julia> reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reset_output! (generic function with 5 methods)
 
-julia> reductor!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
-reductor! (generic function with 2 methods)
+julia> reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
+reducer! (generic function with 2 methods)
 ```
 Note that since `MinimumDistance` is immutable, copying it is the same as returning the value. 
 Also, resetting the minimum distance consists of setting its `d` field to `+Inf`. And, finally,
@@ -421,7 +423,69 @@ julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
 MinimumDistance(276, 617, 0.006009804808785543)
 ```
 
+## Running a simulation
+
+Here we exemplify how to run a simulation updating forces using the `PeriodicSystems` interface.
+We use the softer potential of the form `1 / (1 + d)`, to avoid explosive interactions. The
+`CairoMakie` package is used for visualization of the trajectory.
+
+```julia
+using CellListMap.PeriodicSystems
+using StaticArrays
+using Plots
+# Function that updates the forces (potential of the form 1 / (1 + d))
+function update_forces!(x,y,i,j,d2,forces)
+    d = sqrt(d2)
+    dx = x - y
+    dfdx = -1/(d + 1)^2 * (dx / d)
+    forces[i] += dfdx
+    forces[j] -= dfdx
+    return forces
+end
+function simulate(;N::Int = 1000, nsteps::Int = 100, isave=10)
+    Vec2D = SVector{2,Float64}
+    positions = rand(Vec2D, N)
+    system = PeriodicSystem(
+        positions = positions, 
+        cutoff = 0.1,
+        unitcell = [ 1.0, 1.0 ],
+        output = similar(positions),
+        output_name = :forces,
+    )
+    velocities = [ -1.0 .+ 2.0*randn(Vec2D) for _ in 1:N ] 
+    dt = 0.01
+    trajectory = typeof(positions)[]
+    for step in 1:nsteps
+        # compute forces at this step
+        map_pairwise!(update_forces!, system)
+        # Update positions and velocities
+        for i in eachindex(system.forces)
+            f = system.forces[i]
+            x = system.positions[i]
+            v = velocities[i]
+            x = x + v*dt + (f/2)*dt^2
+            v = v + (f/2)*dt
+            # !!! IMPORTANT: Update arrays of positions and velocities
+            system.positions[i] = x
+            velocities[i] = v
+        end
+        # Save step for printing
+        if step%isave == 0
+            push!(trajectory, system.positions)
+        end
+    end
+    return trajectory
+end
+```
+
 ## Additional execution options
+
+- [Turn parallelization on and off](#Turn-parallelization-on-and-off)
+- [Displaying a progress bar](#Displaying-a-progress-bar)
+- [Fine control of the paralellization](#Fine-control-of-the-paralellization)
+- [Control CellList cell size](#Control-CellList-cell-size)
+
+### Turn parallelization on and off
 
 The use of parallel computations can be tunned on and of by the `system.parallel` boolean flag.
 For example, using 6 cores (12 threads) for the calculation of the minimum-distance example: 
@@ -448,8 +512,13 @@ julia> @btime f($system)
 MinimumDistance(402, 571, 0.0035741414027147954)
 ```
 
+### Displaying a progress bar
+
 Displaying a progress bar: for very long runs, the user might want to see the progress
-of the computation. For example, we execute the computation above, but with much more
+of the computation. Use the `show_progress` keyword parameter of the `map_pairwise!` 
+function for that.
+
+For example, we execute the computation above, but with much more
 particles:
 
 ```julia-repl
@@ -475,12 +544,67 @@ Progress:  24%|██████████▏                               |
 
 By activating the `show_progress` flag, a nice progress bar is shown. 
 
+### Fine control of the paralellization
+
+The number of batches launched in parallel runs can be tunned by the 
+`nbatches` keyword parameter of the `PeriodicSystem` constructor. 
+By default, the number of batches is defined as heuristic function 
+dependent on the number of particles, and possibly returns optimal
+values in most cases. For a detailed dicussion about this parameter, 
+see [Number of batches](@ref Number-of-batches).
+
+For example, to set the number of batches for cell list calculation
+to 4 and the number of batches for mapping to 8, we can do:
+
+```julia-repl
+julia> system = PeriodicSystem(
+           positions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0,
+           output_name = :energy,
+           nbatches=(4,8), # use this keyword 
+       );
+```
+
+Most times it is expected that the default parameters are optimal. But particularly for 
+inhomogeneous systems increasing the number of batches of the mapping phase (second
+parameter of the tuple) may improve the performance by reducing the idle time of 
+threads.
+
+### Control CellList cell size
+
+The cell sizes of the construction of the cell lists can be controled with the keyword `lcell`
+of the `PeriodicSystem` constructor. For example:
+```julia-repl
+julia> system = PeriodicSystem(
+           positions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0,
+           output_name = :energy,
+           lcell=2,
+       );
+```
+Most times using `lcell=1` (default) or `lcell=2` will provide the optimal performance. For very
+dense systems, or systems for which the number of particles within the cutoff is very large,
+larger values of `lcell` may improve the performance. To be tested by the user.
+
 ## Complete example codes
+
+- [Simple energy computation](#Simple-energy-computation)
+- [Force computation](#Force-computation)
+- [Energy and forces](#Energy-and-forces)
+- [Two sets of particles](#Two-sets-of-particles)
 
 ### Simple energy computation
 
+In this example, a simple potential energy defined as the sum of the 
+inverse of the distance between the particles is computed.
+
 ```julia
-using CellListMap.PeriodicSystems, StaticArrays
+using CellListMap.PeriodicSystems
+using StaticArrays
 system = PeriodicSystem(
     positions = rand(SVector{3,Float64},1000), 
     unitcell=[1.0,1.0,1.0], 
@@ -493,8 +617,12 @@ map_pairwise!((x,y,i,j,d2,energy) -> energy += 1 / sqrt(d2), system)
 
 ### Force computation
 
+Here we compute the force vector associated to the potential energy
+function of the previous example.
+
 ```julia
-using CellListMap.PeriodicSystems, StaticArrays
+using CellListMap.PeriodicSystems
+using StaticArrays
 positions = rand(SVector{3,Float64},1000) 
 system = PeriodicSystem(
     positions = positions, 
@@ -515,25 +643,28 @@ map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
 
 ### Energy and forces
 
+In this example, the potential energy and the forces are computed in a single
+run, and a custom data structure is defined to store both values.
+
 ```julia
-using CellListMap.PeriodicSystems, StaticArrays
+using CellListMap.PeriodicSystems
+using StaticArrays
 # Define custom type
 mutable struct EnergyAndForces
     energy::Float64
     forces::Vector{SVector{3,Float64}}
 end
-# Custom copy, reset and reductor functions
-function PeriodicSystems.copy_output(x::EnergyAndForces)  
-    return EnergyAndForces(copy(x.energy), copy(x.forces))
-end
-function PeriodicSystems.reset_output!(output::EnergyAndForces)
+# Custom copy, reset and reducer functions
+import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer
+copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
+function reset_output!(output::EnergyAndForces)
     output.energy = 0.0
     for i in eachindex(output.forces)
         output.forces[i] = SVector(0.0, 0.0, 0.0)
     end
     return output
 end
-function PeriodicSystems.reductor(x::EnergyAndForces, y::EnergyAndForces)
+function reducer(x::EnergyAndForces, y::EnergyAndForces)
     e_tot = x.energy + y.energy
     x.forces .+= y.forces
     return EnergyAndForces(e_tot, x.forces)
@@ -557,5 +688,49 @@ system = PeriodicSystem(
     output_name = :energy_and_forces
 )
 # Compute energy and forces
-map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), system);
+map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), system)
 ```
+
+### Two sets of particles
+
+In this example we illustrate the interface for the computation of properties
+of two sets of particles, by computing the minimum distance between the two sets.
+
+```julia
+using CellListMap.PeriodicSystems
+using StaticArrays
+# Custom structure to store the minimum distance pair
+struct MinimumDistance
+    i::Int
+    j::Int
+    d::Float64
+end
+# Function that updates the minimum distance found
+function minimum_distance(i, j, d2, md)
+    d = sqrt(d2)
+    if d < md.d
+        md = MinimumDistance(i, j, d)
+    end
+    return md
+end
+# Define appropriate methods for copy, reset and reduce 
+import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer!
+copy_output(md::MinimumDistance) = md
+reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
+reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
+# Build system 
+xpositions = rand(SVector{3,Float64},1000);
+ypositions = rand(SVector{3,Float64},1000);
+system = PeriodicSystem(
+       xpositions = xpositions,
+       ypositions = ypositions, 
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+# Compute the minimum distance
+map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+```
+
+
