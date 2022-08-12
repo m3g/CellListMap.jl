@@ -14,16 +14,16 @@ export update_unitcell!
 export copy_output
 export resize_output!
 export reset_output!, reset_output
-export reductor!, reductor
+export reducer!, reducer
 
 """
 
 ```
 PeriodicSystem( 
-    positions::AbstractVecOrMat,
+    positions::Vector{<:AbstractVector},
     #or
-    xpositions::AbstractVecOrMat,
-    ypositions::AbstractVecOrMat,
+    xpositions::Vector{<:AbstractVector},
+    ypositions::Vector{<:AbstractVector},
     # and
     unitcell::AbstractVecOrMat,
     cutoff::Number,
@@ -136,24 +136,26 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 
 """
 function PeriodicSystem(;
-    positions::Union{Nothing,AbstractVecOrMat}=nothing,
-    xpositions::Union{Nothing,AbstractVecOrMat}=nothing,
-    ypositions::Union{Nothing,AbstractVecOrMat}=nothing,
+    positions::Union{Nothing,Vector{<:AbstractVector}}=nothing,
+    xpositions::Union{Nothing,Vector{<:AbstractVector}}=nothing,
+    ypositions::Union{Nothing,Vector{<:AbstractVector}}=nothing,
     unitcell::AbstractVecOrMat,
     cutoff::Number,
     output::Any,
     output_name::Symbol=:output,
     parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0))
+    nbatches::Tuple{Int,Int}=(0, 0),
+    lcell=1,
+)
     if !isnothing(positions) && (isnothing(xpositions) && isnothing(ypositions))
-        _box = CellListMap.Box(unitcell, cutoff)
+        _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(positions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem1(positions, output, output_name, parallel, _box, _cell_list, _output_threaded, _aux)
     elseif isnothing(positions) && (!isnothing(xpositions) && !isnothing(ypositions))
-        _box = CellListMap.Box(unitcell, cutoff)
+        _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
@@ -166,6 +168,15 @@ function PeriodicSystem(;
             """))
     end
     return sys
+end
+
+function copy_to_vector(positions)
+    if positions isa AbstractVector{<:AbstractVector}
+        posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in positions ]
+    elseif positions isa AbstractMatrix
+        posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in eachcol(positions) ]
+    end
+    return posvec
 end
 
 # Abstrct type only for cleaner dispatch
@@ -402,44 +413,44 @@ end
 """
 
 ```
-reductor!(x,y)
+reducer!(x,y)
 ```
 
 Function that defines how to reduce (combine, or merge) to variables computed in parallel
 to obtain a single instance of the variable with the reduced result.
 
-The most commont `reductor` is the sum. For example, when computin energies, or forces,
+The most commont `reducer` is the sum. For example, when computin energies, or forces,
 the total energy is the sum of the energies. The force on one particle is the sum of the
-forces between the particle and every other particle. Thus, the implemented reductor is
+forces between the particle and every other particle. Thus, the implemented reducer is
 the sum: 
 
 ```
-reductor(x,y) = +(x,y)
+reducer(x,y) = +(x,y)
 ```
 
 However, in  many cases, reduction must be done differently. For instance, if the minimum
 distance between particles is to be computed, it is interesting to define a custom type
-and associated reductor. For example:
+and associated reducer. For example:
 
 ```
 struct MinimumDistance d::Float64 end
-reductor(x::MinimumDistance, y::MinimumDistance) = MinimumDistance(min(x.d, y.d))
+reducer(x::MinimumDistance, y::MinimumDistance) = MinimumDistance(min(x.d, y.d))
 ```
 
-The overloading of `reductor` allows the use of parallel computations for custom, 
+The overloading of `reducer` allows the use of parallel computations for custom, 
 complex data types, containing different types of variables, fields, or sizes.
 
-The appropriate behavior of the reductor should be carefuly inspected by the user
+The appropriate behavior of the reducer should be carefuly inspected by the user
 to avoid spurious results. 
 
 """
-reductor!(x,y) = +(x,y)
-const reductor = reductor!
+reducer!(x,y) = +(x,y)
+const reducer = reducer!
 
 """
 
 ```
-reduce_output!(reductor::Function, output, output_threaded)
+reduce_output!(reducer::Function, output, output_threaded)
 ```
 
 $(INTERNAL)
@@ -508,22 +519,22 @@ map_pairwise!((x,y,i,j,d2,output) -> sqrt(d2) < output.d ? MinimumDistance(sqrt(
 ```
 
 """
-function reduce_output!(reductor::Function, output::T, output_threaded::Vector{T}) where {T}
+function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}) where {T}
     output = reset_output!(output)
     for ibatch in eachindex(output_threaded)
-        output = reductor(output, output_threaded[ibatch])
+        output = reducer(output, output_threaded[ibatch])
     end
     return output
 end
 function reduce_output!(
-    reductor::Function, 
+    reducer::Function, 
     output::AbstractVecOrMat{T}, 
     output_threaded::Vector{<:AbstractVecOrMat{T}}
 ) where {T}
     output = reset_output!(output)
     for ibatch in eachindex(output_threaded)
         for i in eachindex(output, output_threaded[ibatch])
-            output[i] = reductor(output[i], output_threaded[ibatch][i])
+            output[i] = reducer(output[i], output_threaded[ibatch][i])
         end
     end
     return output
@@ -728,7 +739,7 @@ function map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
         parallel=sys.parallel,
-        reduce=(output, output_threaded) -> reduce_output!(reductor, output, output_threaded),
+        reduce=(output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
         show_progress=show_progress
     )
     return sys.output
