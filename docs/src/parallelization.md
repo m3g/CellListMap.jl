@@ -51,7 +51,7 @@ This function *must* return the updated `output` variable, being it mutable or n
 
 Using the `length` of the `output_threaded` vector as the measure of how many copies of the array is available is convenient because it will be insensitive in changes in the number of batches that may be set.
 
-## Number of batches
+## [Number of batches](@id Number-of-batches)
 
 Every calculation with cell lists has two steps: the construction of the lists, and the mapping of the computation among the pairs of particles that satisfy the cutoff criterion. 
 
