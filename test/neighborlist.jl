@@ -1,3 +1,5 @@
+module NeighborLists
+
 using CellListMap
 using StaticArrays
 using NearestNeighbors
@@ -116,5 +118,6 @@ end
 
     end
 
-end
+end # testset
+end # module
 

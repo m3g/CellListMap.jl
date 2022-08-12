@@ -1,7 +1,9 @@
+module NAMD;
+
+using Test
 import Chemfiles
 using CellListMap
 using StaticArrays
-using Test
 
 const ε = 0.0441795
 const σ = 2*1.64009
@@ -200,4 +202,5 @@ end
   u = map_pairwise!((x,y,i,j,d2,u) -> lj_NE(d2,u),0.0,box,cl)
   @test u ≈ correct
 
-end
+end # testset
+end # module
