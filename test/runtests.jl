@@ -179,7 +179,7 @@ end
     new_x = copy(x) .+ [rand(SVector{3,Float64}) for _ in 1:N ]
     new_sides = sides + rand(SVector{3,Float64})
     new_cutoff = cutoff + rand()
-    new_box = Box(sides,cutoff)
+    new_box = Box(new_sides,new_cutoff)
     new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl)
     new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
@@ -201,7 +201,7 @@ end
     new_x = copy(x) .+ [rand(SVector{3,Float64}) for _ in 1:N ]
     new_sides = sides + rand(SVector{3,Float64})
     new_cutoff = cutoff + rand()
-    new_box = Box(sides,cutoff)
+    new_box = Box(new_sides,new_cutoff)
     new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl,new_aux)
     new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
@@ -385,3 +385,6 @@ end
 
 include("./namd/compare_with_namd.jl")
 include("./neighborlist.jl")
+
+include("./namd/PeriodicSystems_vs_NAMD.jl")
+include("./BasicForPeriodicSystems.jl")
