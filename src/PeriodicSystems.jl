@@ -681,6 +681,7 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem2)
     return sys
 end
 
+import CellListMap.map_pairwise!
 """
 
 ```

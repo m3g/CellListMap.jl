@@ -24,7 +24,7 @@ include("./linearalgebra.jl")
 include("./show.jl")
 include("./Box.jl")
 include("./CellLists.jl")
-include("./PeriodicSystem.jl")
+include("./PeriodicSystems.jl")
 include("./CellOperations.jl")
 include("./CoreComputing.jl")
 
