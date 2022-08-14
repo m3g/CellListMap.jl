@@ -79,7 +79,7 @@ julia> map_pairwise!((x,y,i,j,d2,energy) -> energy += 1 / sqrt(d2), system)
 The `system.energy` field accesses the resulting value of the computation:
 ```julia-repl
 julia> system.energy
-1914.7714461887822
+30679.386366872823
 ```
 because the `output_name` field was provided. If it is not provided, you can access the output value from the `system.output` field.
 
@@ -318,6 +318,11 @@ PeriodicSystem1 of dimension 3, composed of:
       Number of batches for function mapping: 12
     Type of output variable (forces): Vector{SVector{3, Float64}}
 ```
+
+!!! note
+    The unit cell can be set initially using a vector or a unit cell matrix. If a vector is provided
+    the system is considered Orthorhombic, if a matrix is provided, a Triclinic system is built. 
+    Unit cells updates must preserve the system type. 
 
 ### Updating the cutoff
 
