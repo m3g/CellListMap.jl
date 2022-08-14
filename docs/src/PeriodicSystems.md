@@ -428,61 +428,6 @@ julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
 MinimumDistance(276, 617, 0.006009804808785543)
 ```
 
-## Running a simulation
-
-Here we exemplify how to run a simulation updating forces using the `PeriodicSystems` interface.
-We use the softer potential of the form `1 / (1 + d)`, to avoid explosive interactions. The
-`CairoMakie` package is used for visualization of the trajectory.
-
-```julia
-using CellListMap.PeriodicSystems
-using StaticArrays
-using Plots
-# Function that updates the forces (potential of the form 1 / (1 + d))
-function update_forces!(x,y,i,j,d2,forces)
-    d = sqrt(d2)
-    dx = x - y
-    dfdx = -1/(d + 1)^2 * (dx / d)
-    forces[i] += dfdx
-    forces[j] -= dfdx
-    return forces
-end
-function simulate(;N::Int = 1000, nsteps::Int = 100, isave=10)
-    Vec2D = SVector{2,Float64}
-    positions = rand(Vec2D, N)
-    system = PeriodicSystem(
-        positions = positions, 
-        cutoff = 0.1,
-        unitcell = [ 1.0, 1.0 ],
-        output = similar(positions),
-        output_name = :forces,
-    )
-    velocities = [ -1.0 .+ 2.0*randn(Vec2D) for _ in 1:N ] 
-    dt = 0.01
-    trajectory = typeof(positions)[]
-    for step in 1:nsteps
-        # compute forces at this step
-        map_pairwise!(update_forces!, system)
-        # Update positions and velocities
-        for i in eachindex(system.forces)
-            f = system.forces[i]
-            x = system.positions[i]
-            v = velocities[i]
-            x = x + v*dt + (f/2)*dt^2
-            v = v + (f/2)*dt
-            # !!! IMPORTANT: Update arrays of positions and velocities
-            system.positions[i] = x
-            velocities[i] = v
-        end
-        # Save step for printing
-        if step%isave == 0
-            push!(trajectory, system.positions)
-        end
-    end
-    return trajectory
-end
-```
-
 ## Additional execution options
 
 - [Turn parallelization on and off](#Turn-parallelization-on-and-off)
@@ -768,7 +713,6 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
         unitcell=unitcell,
         output=similar(positions),
         output_name=:forces,
-        parallel=false,
     )
     velocities = [-1.0 .+ 2.0 * randn(Vec2D) for _ in 1:N]
     dt = 1e-3

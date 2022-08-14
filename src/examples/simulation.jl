@@ -21,7 +21,6 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
         unitcell=unitcell,
         output=similar(positions),
         output_name=:forces,
-        parallel=false,
     )
     velocities = [-1.0 .+ 2.0 * randn(Vec2D) for _ in 1:N]
     dt = 1e-3
