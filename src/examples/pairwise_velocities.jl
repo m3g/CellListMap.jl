@@ -23,7 +23,7 @@ function pairwise_velocities(::Type{T}=Float64;
     end
   
     function reduce_hist(hist, hist_threaded)
-        for i in 1:length(hist_threaded)
+        for i in eachindex(hist_threaded)
             hist[1] .+= hist_threaded[i][1]
             hist[2] .+= hist_threaded[i][2]
         end

@@ -367,7 +367,7 @@ function AuxThreaded(cl::CellList{N,T};particles_per_batch=10_000) where {N,T}
     )
     # If the calculation is not parallel, no need to initialize this
     nbatches == 1 && return aux
-    for ibatch in 1:nbatches
+    for ibatch in eachindex(aux.lists)
         cl_batch = CellList{N,T}(
             n_real_particles=particles_per_batch, # this is reset before filling, in UpdateCellList!
             number_of_cells=cl.number_of_cells,
@@ -402,7 +402,7 @@ function set_idxs!(idxs, n_particles, nbatches)
     nrem = n_particles%nbatches
     nperthread = (n_particles-nrem)÷nbatches
     first = 1
-    for ibatch in 1:nbatches
+    for ibatch in eachindex(idxs)
         nx = nperthread
         if ibatch <= nrem
             nx += 1
@@ -530,7 +530,7 @@ function reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
     if new_number_of_cells > cl.number_of_cells
         resize!(cl.cell_indices,new_number_of_cells)
     end
-    for i in 1:length(cl.cells)
+    for i in eachindex(cl.cells)
         cl.cells[i] = Cell{N,T}(particles=cl.cells[i].particles)
     end
     @. cl.cell_indices = 0
@@ -789,7 +789,7 @@ function UpdateCellList!(
         cl = reset!(cl,box,0)
         # Update the aux.idxs ranges, for if the number of particles changed
         set_idxs!(aux.idxs, length(x), nbatches)
-        @sync for ibatch in 1:nbatches
+        @sync for ibatch in eachindex(aux.idxs, aux.lists)
             Threads.@spawn begin
                 prange = aux.idxs[ibatch]
                 aux.lists[ibatch] = reset!(aux.lists[ibatch],box,length(prange))
@@ -797,7 +797,7 @@ function UpdateCellList!(
                 aux.lists[ibatch] = add_particles!(xt,box,prange[begin]-1,aux.lists[ibatch])
             end
         end
-        for ibatch in 1:nbatches
+        for ibatch in eachindex(aux.lists)
             cl = merge_cell_lists!(cl,aux.lists[ibatch])
         end
     end
@@ -807,7 +807,7 @@ function UpdateCellList!(
     for i in 1:cl.n_cells_with_particles
         maxnp = max(maxnp,cl.cells[i].n_particles)
     end
-    for i in 1:length(cl.projected_particles)
+    for i in eachindex(cl.projected_particles)
         if maxnp > length(cl.projected_particles[i])
             resize!(cl.projected_particles[i],maxnp)
         end

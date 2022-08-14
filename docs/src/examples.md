@@ -219,7 +219,7 @@ end
 
 # Reduction function
 function reduce_pairs(pairs,pairs_threaded)
-    for i in 1:length(pairs_threaded)
+    for i in eachindex(pairs_threaded)
         append!(pairs,pairs_threaded[i])
     end
     return pairs

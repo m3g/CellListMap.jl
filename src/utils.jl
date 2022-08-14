@@ -83,7 +83,7 @@ function neighborlist(box::Box, cl; parallel=true)
         ranges = cumsum(length.(pairs_threaded))
         npairs = ranges[end]
         pairs = resize!(pairs,npairs)
-        @sync for it in 1:length(pairs_threaded)
+        @sync for it in eachindex(pairs_threaded)
             range = ranges[it]-length(pairs_threaded[it])+1:ranges[it]
             Threads.@spawn pairs[range] .= pairs_threaded[it]
         end
