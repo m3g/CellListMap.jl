@@ -16,6 +16,19 @@ that the upper boundary belongs to current cell.
 """
 
 ```
+fastmod1(x)
+```
+
+$(INTERNAL)
+
+Computes `mod(x,1)`, quickly, using `x - floor(x)`. Maybe irrelevant.
+
+"""
+@inline fastmod1(x) = x - floor(x)
+
+"""
+
+```
 wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
@@ -48,7 +61,8 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
     # see: https://github.com/PainterQubits/Unitful.jl/issues/46
     x_stripped = x ./ oneunit(eltype(x))
     m_stripped = unit_cell_matrix ./ oneunit(eltype(x))
-    p = mod.(m_stripped\x_stripped,1)
+    #p = mod.(m_stripped\x_stripped,1)
+    p = fastmod1.(m_stripped\x_stripped)
     p = fix_upper_boundary.(p,1)
     return p
 end
