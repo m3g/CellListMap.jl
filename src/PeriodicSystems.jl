@@ -236,7 +236,7 @@ is done through the `PeriodicSystem(;xpositions, ypositions, unitcell, cutoff, o
 auxiliary function.
 
 """
-mutable struct PeriodicSystem2{OutputName,V,B,C,O,A} <: AbstractPeriodicSystem{OutputName}
+mutable struct PeriodicSystem2{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
     xpositions::Vector{V}
     ypositions::Vector{V}
     output::O
@@ -246,8 +246,8 @@ mutable struct PeriodicSystem2{OutputName,V,B,C,O,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem2{OutputName}(vx::Vector{V},vy::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,B,C,O,A} = 
-    PeriodicSystem2{OutputName,V,B,C,O,A}(vx,vy,o,b,c,vo,a,p)
+PeriodicSystem2{OutputName}(vx::Vector{V},vy::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,O,B,C,A} = 
+    PeriodicSystem2{OutputName,V,O,B,C,A}(vx,vy,o,b,c,vo,a,p)
 
 #
 # This method of getproperty allows the user to access the output
@@ -280,7 +280,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputNa
     show(io_sub, mime, sys._cell_list)
     println("\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.nbatches)
-    print("\n    Type of output variable ($OutputName)): $(typeof(sys.output))")
+    print("\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2{OutputName}) where {OutputName}
@@ -660,11 +660,11 @@ PeriodicSystem1 of dimension 3, composed of:
     Type of output variable: Float64
 ```
 """
-function update_cutoff!(sys::PeriodicSystem1{OutputName,V,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,UnitCellType}
+function update_cutoff!(sys::PeriodicSystem1{OutputName,V,O,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,O,UnitCellType}
     sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
     return sys
 end
-function update_cutoff!(sys::PeriodicSystem2{OutputName,V,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,UnitCellType}
+function update_cutoff!(sys::PeriodicSystem2{OutputName,V,O,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,O,UnitCellType}
     sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
     return sys
 end
