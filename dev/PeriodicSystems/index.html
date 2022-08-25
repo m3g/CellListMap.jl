@@ -13,7 +13,7 @@ const masses = # ... some masses
 u = map_pairwise((x,y,i,j,d2,u) -&gt; energy(d2,u,masses), system)</code></pre><h2 id="Potential-energy-example"><a class="docs-heading-anchor" href="#Potential-energy-example">Potential energy example</a><a id="Potential-energy-example-1"></a><a class="docs-heading-anchor-permalink" href="#Potential-energy-example" title="Permalink"></a></h2><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The <code>output</code> of the <code>CellListMap</code> computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (<code>SVectors</code> in particular), such as arrays of forces.  </p><p>Additionally, the properties are frequently additive (the energy is the sum of the energy of the particles, or the forces are added by summation). </p><p>For these types of <code>output</code> data the usage of <code>CellListMap.PeriodicSystems</code> is the simplest, and does not require the implementation of any data-type dependent function. </p></div></div><p>For example, let us build a system of random particles in a cubic box, and compute an &quot;energy&quot;, which in this case is simply the sum of <code>1/d</code> over all pair of particles, within a cutoff.</p><p>The <code>PeriodicSystem</code> constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. </p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap.PeriodicSystems, StaticArrays
 
 julia&gt; system = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1.0,1.0,1.0], 
            cutoff = 0.1, 
            output = 0.0,
@@ -29,7 +29,7 @@ julia&gt; system = PeriodicSystem(
 end</code></pre><p>Importantly, the function <em>must</em> return the <code>forces</code> array to follow the API. </p><p>Now, let us setup the system with the new type of output variable, which will be now an array of forces with the same type as the positions:</p><pre><code class="language-julia-repl hljs">julia&gt; positions = rand(SVector{3,Float64},1000);
 
 julia&gt; system = PeriodicSystem(
-           positions = positions,
+           xpositions = positions,
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = similar(positions),
@@ -70,7 +70,7 @@ end</code></pre><p>Note that in the above example, we reuse the <code>x.forces</
 end</code></pre><p>To finally define the system and compute the properties:</p><pre><code class="language-julia-repl hljs">positions = rand(SVector{3,Float64},1000);
 
 system = PeriodicSystem(
-    positions = positions,
+    xpositions = positions,
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = EnergyAndForces(0.0, similar(positions)),
@@ -85,25 +85,25 @@ julia&gt; system.energy_and_forces.forces
  [-338.1909601911842, 7.7663690656924445, 202.25889647151405]
  [33.67299655756128, 282.7581453168999, -79.09639223837306]
  ⋮
- [38.83014327604529, -204.45236278342745, 249.307871211616]</code></pre><h2 id="Updating-coordinates,-unit-cell,-and-cutoff"><a class="docs-heading-anchor" href="#Updating-coordinates,-unit-cell,-and-cutoff">Updating coordinates, unit cell, and cutoff</a><a id="Updating-coordinates,-unit-cell,-and-cutoff-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates,-unit-cell,-and-cutoff" title="Permalink"></a></h2><p>If the <code>map_pairwise!</code> function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.</p><h3 id="Updating-coordinates"><a class="docs-heading-anchor" href="#Updating-coordinates">Updating coordinates</a><a id="Updating-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates" title="Permalink"></a></h3><p>The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the <code>positions</code> field of the system:</p><pre><code class="language-julia-repl hljs">julia&gt; system.positions[1]
+ [38.83014327604529, -204.45236278342745, 249.307871211616]</code></pre><h2 id="Updating-coordinates,-unit-cell,-and-cutoff"><a class="docs-heading-anchor" href="#Updating-coordinates,-unit-cell,-and-cutoff">Updating coordinates, unit cell, and cutoff</a><a id="Updating-coordinates,-unit-cell,-and-cutoff-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates,-unit-cell,-and-cutoff" title="Permalink"></a></h2><p>If the <code>map_pairwise!</code> function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.</p><h3 id="Updating-coordinates"><a class="docs-heading-anchor" href="#Updating-coordinates">Updating coordinates</a><a id="Updating-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates" title="Permalink"></a></h3><p>The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the <code>xpositions</code> field of the system:</p><pre><code class="language-julia-repl hljs">julia&gt; system.xpositions[1]
 3-element SVector{3, Float64} with indices SOneTo(3):
  0.6391290709055079
  0.43679325975360894
  0.8231829019768698
 
-julia&gt; system.positions[1] = zeros(SVector{3,Float64})
+julia&gt; system.xpositions[1] = zeros(SVector{3,Float64})
 3-element SVector{3, Float64} with indices SOneTo(3):
  0.0
  0.0
  0.0
 
-julia&gt; push!(system.positions, SVector(1.0, 1.0, 1.0))
+julia&gt; push!(system.xpositions, SVector(1.0, 1.0, 1.0))
 1001-element Vector{SVector{3, Float64}}:
  [0.0, 0.0, 0.0]
  [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
  ⋮
  [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
- [1.0, 1.0, 1.0]</code></pre><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>The <code>output</code> variable may have to be resized accordingly, depending on the calculation being performed. </p></div></div><p>If the <code>output</code> array has to be resized, that has to be done with the  <code>resize_output!</code> function, which will keep the consistency of the auxiliary multi-threading buffers. This is, for instance, the case  in the example of computation of forces, as the <code>forces</code> array must be of the same length as the array of positions:</p><pre><code class="language-julia-repl hljs">julia&gt; resize_output!(system, length(system.positons));
+ [1.0, 1.0, 1.0]</code></pre><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>The <code>output</code> variable may have to be resized accordingly, depending on the calculation being performed. </p></div></div><p>If the <code>output</code> array has to be resized, that has to be done with the  <code>resize_output!</code> function, which will keep the consistency of the auxiliary multi-threading buffers. This is, for instance, the case  in the example of computation of forces, as the <code>forces</code> array must be of the same length as the array of positions:</p><pre><code class="language-julia-repl hljs">julia&gt; resize_output!(system, length(system.xpositions));
 
 julia&gt; map_pairwise!((x,y,i,j,d2,forces) -&gt; update_forces!(x,y,i,j,d2,forces), system)
 1001-element Vector{SVector{3, Float64}}:
@@ -217,14 +217,14 @@ julia&gt; map_pairwise(
            show_progress = true
        )
 Progress:  24%|██████████▏                               |  ETA: 0:00:29</code></pre><p>By activating the <code>show_progress</code> flag, a nice progress bar is shown. </p><h3 id="Fine-control-of-the-paralellization"><a class="docs-heading-anchor" href="#Fine-control-of-the-paralellization">Fine control of the paralellization</a><a id="Fine-control-of-the-paralellization-1"></a><a class="docs-heading-anchor-permalink" href="#Fine-control-of-the-paralellization" title="Permalink"></a></h3><p>The number of batches launched in parallel runs can be tunned by the  <code>nbatches</code> keyword parameter of the <code>PeriodicSystem</code> constructor.  By default, the number of batches is defined as heuristic function  dependent on the number of particles, and possibly returns optimal values in most cases. For a detailed dicussion about this parameter,  see <a href="../parallelization/#Number-of-batches">Number of batches</a>.</p><p>For example, to set the number of batches for cell list calculation to 4 and the number of batches for mapping to 8, we can do:</p><pre><code class="language-julia-repl hljs">julia&gt; system = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0,
            output_name = :energy,
            nbatches=(4,8), # use this keyword 
        );</code></pre><p>Most times it is expected that the default parameters are optimal. But particularly for  inhomogeneous systems increasing the number of batches of the mapping phase (second parameter of the tuple) may improve the performance by reducing the idle time of  threads.</p><h3 id="Control-CellList-cell-size"><a class="docs-heading-anchor" href="#Control-CellList-cell-size">Control CellList cell size</a><a id="Control-CellList-cell-size-1"></a><a class="docs-heading-anchor-permalink" href="#Control-CellList-cell-size" title="Permalink"></a></h3><p>The cell sizes of the construction of the cell lists can be controled with the keyword <code>lcell</code> of the <code>PeriodicSystem</code> constructor. For example:</p><pre><code class="language-julia-repl hljs">julia&gt; system = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0,
@@ -233,7 +233,7 @@ Progress:  24%|██████████▏                               |
        );</code></pre><p>Most times using <code>lcell=1</code> (default) or <code>lcell=2</code> will provide the optimal performance. For very dense systems, or systems for which the number of particles within the cutoff is very large, larger values of <code>lcell</code> may improve the performance. To be tested by the user.</p><h2 id="Complete-example-codes"><a class="docs-heading-anchor" href="#Complete-example-codes">Complete example codes</a><a id="Complete-example-codes-1"></a><a class="docs-heading-anchor-permalink" href="#Complete-example-codes" title="Permalink"></a></h2><ul><li><a href="#Simple-energy-computation">Simple energy computation</a></li><li><a href="#Force-computation">Force computation</a></li><li><a href="#Energy-and-forces">Energy and forces</a></li><li><a href="#Two-sets-of-particles">Two sets of particles</a></li><li><a href="#Particle-simulation">Particle simulation</a></li></ul><h3 id="Simple-energy-computation"><a class="docs-heading-anchor" href="#Simple-energy-computation">Simple energy computation</a><a id="Simple-energy-computation-1"></a><a class="docs-heading-anchor-permalink" href="#Simple-energy-computation" title="Permalink"></a></h3><p>In this example, a simple potential energy defined as the sum of the  inverse of the distance between the particles is computed.</p><pre><code class="language-julia hljs">using CellListMap.PeriodicSystems
 using StaticArrays
 system = PeriodicSystem(
-    positions = rand(SVector{3,Float64},1000), 
+    xpositions = rand(SVector{3,Float64},1000), 
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = 0.0,
@@ -243,7 +243,7 @@ map_pairwise!((x,y,i,j,d2,energy) -&gt; energy += 1 / sqrt(d2), system)</code></
 using StaticArrays
 positions = rand(SVector{3,Float64},1000) 
 system = PeriodicSystem(
-    positions = positions, 
+    xpositions = positions, 
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = similar(positions),
@@ -290,7 +290,7 @@ end
 # Initialize system
 positions = rand(SVector{3,Float64},1000);
 system = PeriodicSystem(
-    positions = positions,
+    xpositions = positions,
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = EnergyAndForces(0.0, similar(positions)),
@@ -348,7 +348,7 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
     unitcell = [1.0, 1.0]
     cutoff = 0.1
     system = PeriodicSystem(
-        positions=positions,
+        xpositions=positions,
         cutoff=cutoff,
         unitcell=unitcell,
         output=similar(positions),
@@ -364,10 +364,10 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
             system
         )
         # Update positions and velocities
-        for i in eachindex(system.positions, system.forces)
+        for i in eachindex(system.xpositions, system.forces)
             # obtain forces and positions
             f = system.forces[i]
-            x = system.positions[i]
+            x = system.xpositions[i]
             v = velocities[i]
             # propagate the trajectory (simple Euler step)
             x = x + v * dt + (f / 2) * dt^2
@@ -375,12 +375,12 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
             # wrapping to origin for obtaining a pretty animation
             x = wrap_relative_to(x, SVector(0.0, 0.0), unitcell)
             # !!! IMPORTANT: Update arrays of positions and velocities
-            system.positions[i] = x
+            system.xpositions[i] = x
             velocities[i] = v
         end
         # Save step for printing
         if step % isave == 0
-            push!(trajectory, copy(system.positions))
+            push!(trajectory, copy(system.xpositions))
         end
     end
     return trajectory
@@ -406,4 +406,4 @@ end
 
 # Running and plotting
 trajectory = simulate()
-animate(trajectory)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../examples/">Examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.22 on <span class="colophon-date" title="Thursday 25 August 2022 13:59">Thursday 25 August 2022</span>. Using Julia version 1.8.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+animate(trajectory)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../examples/">Examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.22 on <span class="colophon-date" title="Thursday 25 August 2022 19:13">Thursday 25 August 2022</span>. Using Julia version 1.8.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
