@@ -24,8 +24,17 @@ function getcoor(file)
     return reinterpret(reshape, SVector{3,Float64}, Chemfiles.positions(frame))
 end
 
+function copy_to_svector(positions)
+    if positions isa AbstractVector{<:AbstractVector}
+        posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in positions ]
+    elseif positions isa AbstractMatrix
+        posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in eachcol(positions) ]
+    end
+    return posvec
+end
+
 function with_PeriodicSystem(file, unit_cell, correct, lcell)
-    coordinates = PeriodicSystems.copy_to_vector(getcoor(file))
+    coordinates = PeriodicSystems.copy_to_svector(getcoor(file))
     system = PeriodicSystem(
         positions=coordinates,
         unitcell=unit_cell,
@@ -104,7 +113,7 @@ end
         0.0 0.0 50.0]
     correct = 32230.01699504111
     system = PeriodicSystem(
-        positions=PeriodicSystems.copy_to_vector(coordinates),
+        positions=PeriodicSystems.copy_to_svector(coordinates),
         unitcell=unit_cell,
         cutoff=10.0,
         output=0.0,
@@ -121,7 +130,7 @@ end
     correct = 1093.7225407797744
 
     # Update coordinates and unit cell of PeriodicSystem
-    system.positions .= PeriodicSystems.copy_to_vector(coordinates)
+    system.positions .= PeriodicSystems.copy_to_svector(coordinates)
     update_unitcell!(system, unit_cell)
     u = map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
     @test u ≈ correct
@@ -188,7 +197,7 @@ end
         0.0 0.0 50.0]
     correct = 32230.01699504111
     system = PeriodicSystem(
-        positions=PeriodicSystems.copy_to_vector(coordinates),
+        positions=PeriodicSystems.copy_to_svector(coordinates),
         unitcell=unit_cell,
         cutoff=10.0,
         output=0.0,
@@ -200,7 +209,7 @@ end
     coordinates = getcoor("$dir/o2.dcd")
     unit_cell = [80.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 50.0]
     correct = 1093.7225407797744
-    system.positions .= PeriodicSystems.copy_to_vector(coordinates)
+    system.positions .= PeriodicSystems.copy_to_svector(coordinates)
     update_unitcell!(system, unit_cell)
     u = map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
     @test u ≈ correct
