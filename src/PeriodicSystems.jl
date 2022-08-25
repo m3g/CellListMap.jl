@@ -153,14 +153,14 @@ function PeriodicSystem(;
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem1(positions, output, output_name, parallel, _box, _cell_list, _output_threaded, _aux)
+        sys = PeriodicSystem1{output_name}(positions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     elseif isnothing(positions) && (!isnothing(xpositions) && !isnothing(ypositions))
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem2(xpositions, ypositions, output, output_name, parallel, _box, _cell_list, _output_threaded, _aux)
+        sys = PeriodicSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     else
         throw(ArgumentError(
             """Either define `positions` OR (`xpositions` AND `ypositions`), to build
@@ -180,7 +180,7 @@ function copy_to_vector(positions)
 end
 
 # Abstrct type only for cleaner dispatch
-abstract type AbstractPeriodicSystem end
+abstract type AbstractPeriodicSystem{OutputName} end
 
 """
 
@@ -203,16 +203,17 @@ is done through the `PeriodicSystem(;positions, unitcell, cutoff, output)`
 auxiliary function.
 
 """
-mutable struct PeriodicSystem1{V,B,C,O,A} <: AbstractPeriodicSystem
+mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
     positions::Vector{V}
     output::O
-    output_name::Symbol
-    parallel::Bool
     _box::B
     _cell_list::C
     _output_threaded::Vector{O}
     _aux::A
+    parallel::Bool
 end
+PeriodicSystem1{OutputName}(v::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,O,B,C,A} = 
+    PeriodicSystem1{OutputName,V,O,B,C,A}(v,o,b,c,vo,a,p)
 
 """
 
@@ -235,17 +236,18 @@ is done through the `PeriodicSystem(;xpositions, ypositions, unitcell, cutoff, o
 auxiliary function.
 
 """
-mutable struct PeriodicSystem2{V,B,C,O,A} <: AbstractPeriodicSystem
+mutable struct PeriodicSystem2{OutputName,V,B,C,O,A} <: AbstractPeriodicSystem{OutputName}
     xpositions::Vector{V}
     ypositions::Vector{V}
     output::O
-    output_name::Symbol
-    parallel::Bool
     _box::B
     _cell_list::C
     _output_threaded::Vector{O}
     _aux::A
+    parallel::Bool
 end
+PeriodicSystem2{OutputName}(vx::Vector{V},vy::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,B,C,O,A} = 
+    PeriodicSystem2{OutputName,V,B,C,O,A}(vx,vy,o,b,c,vo,a,p)
 
 #
 # This method of getproperty allows the user to access the output
@@ -255,39 +257,43 @@ end
 # perfomance in the typical use case, but maybe we will get resized
 # of this in the future, changing the interface.
 #
-import Base: getproperty
-function getproperty(sys::AbstractPeriodicSystem, s::Symbol)
-    if s == getfield(sys, :output_name)
+import Base: getproperty, propertynames
+function getproperty(sys::AbstractPeriodicSystem{OutputName}, s::Symbol) where {OutputName}
+    if s == OutputName
         return getfield(sys, :output)
     end
     return getfield(sys, s)
 end
+function propertynames(sys::AbstractPeriodicSystem{OutputName}, private::Bool=true) where {OutputName}
+    names = fieldnames(typeof(sys))
+    ntuple(i -> i <= length(names) ? names[i] : OutputName, length(names) + 1)
+end
 
 import Base.show
-function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1)
+function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
     N = size(sys._box.unit_cell.matrix, 1)
-    println(io, "PeriodicSystem1 of dimension $N, composed of:")
+    println(io, "PeriodicSystem1{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println()
     show(io_sub, mime, sys._cell_list)
     println("\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.nbatches)
-    print("\n    Type of output variable ($(sys.output_name)): $(eltype(sys._output_threaded))")
+    print("\n    Type of output variable ($OutputName)): $(typeof(sys.output))")
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2)
+function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
     N = size(sys._box.unit_cell.matrix, 1)
-    println(io, "PeriodicSystem2 of dimension $N, composed of:")
+    println(io, "PeriodicSystem2{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println()
     show(io_sub, mime, sys._cell_list)
     println("\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.target.nbatches)
-    print("\n    Type of output variable ($(sys.output_name)): $(eltype(sys._output_threaded))")
+    print("\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
 #
