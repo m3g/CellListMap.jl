@@ -61,7 +61,7 @@ The `PeriodicSystem` constructor receives the properties of the system and sets 
 julia> using CellListMap.PeriodicSystems, StaticArrays
 
 julia> system = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1.0,1.0,1.0], 
            cutoff = 0.1, 
            output = 0.0,
@@ -110,7 +110,7 @@ Now, let us setup the system with the new type of output variable, which will be
 julia> positions = rand(SVector{3,Float64},1000);
 
 julia> system = PeriodicSystem(
-           positions = positions,
+           xpositions = positions,
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = similar(positions),
@@ -217,7 +217,7 @@ To finally define the system and compute the properties:
 positions = rand(SVector{3,Float64},1000);
 
 system = PeriodicSystem(
-    positions = positions,
+    xpositions = positions,
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = EnergyAndForces(0.0, similar(positions)),
@@ -246,22 +246,22 @@ If the `map_pairwise!` function will compute energy and/or forces in a iterative
 
 ### Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `positions` field of the system:
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system:
 
 ```julia-repl
-julia> system.positions[1]
+julia> system.xpositions[1]
 3-element SVector{3, Float64} with indices SOneTo(3):
  0.6391290709055079
  0.43679325975360894
  0.8231829019768698
 
-julia> system.positions[1] = zeros(SVector{3,Float64})
+julia> system.xpositions[1] = zeros(SVector{3,Float64})
 3-element SVector{3, Float64} with indices SOneTo(3):
  0.0
  0.0
  0.0
 
-julia> push!(system.positions, SVector(1.0, 1.0, 1.0))
+julia> push!(system.xpositions, SVector(1.0, 1.0, 1.0))
 1001-element Vector{SVector{3, Float64}}:
  [0.0, 0.0, 0.0]
  [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
@@ -281,7 +281,7 @@ in the example of computation of forces, as the `forces` array must be of the
 same length as the array of positions:
 
 ```julia-repl
-julia> resize_output!(system, length(system.positons));
+julia> resize_output!(system, length(system.xpositions));
 
 julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
 1001-element Vector{SVector{3, Float64}}:
@@ -508,7 +508,7 @@ to 4 and the number of batches for mapping to 8, we can do:
 
 ```julia-repl
 julia> system = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0,
@@ -528,7 +528,7 @@ The cell sizes of the construction of the cell lists can be controled with the k
 of the `PeriodicSystem` constructor. For example:
 ```julia-repl
 julia> system = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0,
@@ -557,7 +557,7 @@ inverse of the distance between the particles is computed.
 using CellListMap.PeriodicSystems
 using StaticArrays
 system = PeriodicSystem(
-    positions = rand(SVector{3,Float64},1000), 
+    xpositions = rand(SVector{3,Float64},1000), 
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = 0.0,
@@ -576,7 +576,7 @@ using CellListMap.PeriodicSystems
 using StaticArrays
 positions = rand(SVector{3,Float64},1000) 
 system = PeriodicSystem(
-    positions = positions, 
+    xpositions = positions, 
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = similar(positions),
@@ -632,7 +632,7 @@ end
 # Initialize system
 positions = rand(SVector{3,Float64},1000);
 system = PeriodicSystem(
-    positions = positions,
+    xpositions = positions,
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
     output = EnergyAndForces(0.0, similar(positions)),
@@ -708,7 +708,7 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
     unitcell = [1.0, 1.0]
     cutoff = 0.1
     system = PeriodicSystem(
-        positions=positions,
+        xpositions=positions,
         cutoff=cutoff,
         unitcell=unitcell,
         output=similar(positions),
@@ -724,10 +724,10 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
             system
         )
         # Update positions and velocities
-        for i in eachindex(system.positions, system.forces)
+        for i in eachindex(system.xpositions, system.forces)
             # obtain forces and positions
             f = system.forces[i]
-            x = system.positions[i]
+            x = system.xpositions[i]
             v = velocities[i]
             # propagate the trajectory (simple Euler step)
             x = x + v * dt + (f / 2) * dt^2
@@ -735,12 +735,12 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
             # wrapping to origin for obtaining a pretty animation
             x = wrap_relative_to(x, SVector(0.0, 0.0), unitcell)
             # !!! IMPORTANT: Update arrays of positions and velocities
-            system.positions[i] = x
+            system.xpositions[i] = x
             velocities[i] = v
         end
         # Save step for printing
         if step % isave == 0
-            push!(trajectory, copy(system.positions))
+            push!(trajectory, copy(system.xpositions))
         end
     end
     return trajectory
