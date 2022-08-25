@@ -660,11 +660,11 @@ PeriodicSystem1 of dimension 3, composed of:
     Type of output variable: Float64
 ```
 """
-function update_cutoff!(sys::PeriodicSystem1{V,<:CellListMap.Box{UnitCellType}}, cutoff) where {V,UnitCellType}
+function update_cutoff!(sys::PeriodicSystem1{OutputName,V,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,UnitCellType}
     sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
     return sys
 end
-function update_cutoff!(sys::PeriodicSystem2{V,<:CellListMap.Box{UnitCellType}}, cutoff) where {V,UnitCellType}
+function update_cutoff!(sys::PeriodicSystem2{OutputName,V,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,UnitCellType}
     sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
     return sys
 end
