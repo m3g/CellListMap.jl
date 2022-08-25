@@ -251,13 +251,16 @@ end
 # This method of getproperty allows the user to access the output
 # variable by a custom name given in `output_name`.
 #
+# This overloading causes some allocations, which do not impair
+# perfomance in the typical use case, but maybe we will get resized
+# of this in the future, changing the interface.
+#
 import Base: getproperty
 function getproperty(sys::AbstractPeriodicSystem, s::Symbol)
     if s == getfield(sys, :output_name)
         return getfield(sys, :output)
-    else
-        return getfield(sys, s)
     end
+    return getfield(sys, s)
 end
 
 import Base.show
@@ -672,12 +675,25 @@ Updates the cell lists for periodic systems.
 
 """
 function UpdatePeriodicSystem!(sys::PeriodicSystem1)
-    sys._cell_list = CellListMap.UpdateCellList!(sys.positions, sys._box, sys._cell_list, sys._aux)
+    sys._cell_list = CellListMap.UpdateCellList!(
+        sys.positions, 
+        sys._box, 
+        sys._cell_list, 
+        sys._aux; 
+        parallel=sys.parallel
+    )
     return sys
 end
 
 function UpdatePeriodicSystem!(sys::PeriodicSystem2)
-    sys._cell_list = CellListMap.UpdateCellList!(sys.xpositions, sys.ypositions, sys._box, sys._cell_list, sys._aux)
+    sys._cell_list = CellListMap.UpdateCellList!(
+        sys.xpositions, 
+        sys.ypositions, 
+        sys._box, 
+        sys._cell_list, 
+        sys._aux; 
+        parallel=sys.parallel
+    )
     return sys
 end
 
