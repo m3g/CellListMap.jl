@@ -98,25 +98,25 @@ end
     naive = CellListMap.map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
 
     # Check if changing lcell breaks something
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=1)
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=1)
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=3)
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=3)
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=5)
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=5)
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(3, 5))
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(3, 5))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 1))
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 1))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 7))
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 7))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(7, 1))
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(7, 1))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(13, 17))
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(13, 17))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(positions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(4, 16))
+    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(4, 16))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
 
 end
@@ -129,7 +129,7 @@ end
 
     # Initialize auxiliary linked lists
     system = PeriodicSystem(
-        positions=x,
+        xpositions=x,
         cutoff=cutoff,
         unitcell=sides,
         output=0.0,
@@ -151,7 +151,7 @@ end
     new_box = Box(new_sides, new_cutoff)
     new_naive = CellListMap.map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
     # Update system
-    system.positions .= new_x
+    system.xpositions .= new_x
     update_unitcell!(system, new_sides)
     update_cutoff!(system, new_cutoff)
     system.parallel = false
@@ -163,7 +163,7 @@ end
     new_x, new_box = CellListMap.xatomic(10^5)
     new_cl = CellList(new_x, new_box)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl)
-    system.positions = new_x
+    system.xpositions = new_x
     update_unitcell!(system, [new_box.unit_cell.matrix[i, i] for i in 1:3])
     update_cutoff!(system, new_box.cutoff)
     system.parallel = false
@@ -179,7 +179,7 @@ end
     new_cl = UpdateCellList!(new_x, new_box, new_cl)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl, parallel=true)
     system = PeriodicSystem(
-        positions=system.positions,
+        xpositions=system.xpositions,
         unitcell=unitcell,
         cutoff=cutoff,
         output=0.0,
@@ -196,7 +196,7 @@ end
     new_box = Box(unitcell, cutoff)
     new_cl = UpdateCellList!(new_x, new_box, new_cl)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl)
-    system.positions = new_x
+    system.xpositions = new_x
     update_unitcell!(system, unitcell)
     update_cutoff!(system, cutoff)
     system.parallel = false
@@ -221,7 +221,7 @@ end
         return hist
     end
     naive = CellListMap.map_naive!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), zeros(Int, 10), x, box)
-    system = PeriodicSystem(positions=x, cutoff=cutoff, unitcell=sides, output=zeros(Int, 10))
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=zeros(Int, 10))
     @test naive == PeriodicSystems.map_pairwise!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), system)
 
     # Function to be evalulated for each pair: gravitational potential
@@ -232,7 +232,7 @@ end
     end
     mass = rand(N)
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, box, cl)
-    system = PeriodicSystem(positions=x, cutoff=cutoff, unitcell=sides, output=0.0)
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=0.0)
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
 
     # Function to be evalulated for each pair: gravitational force
@@ -246,7 +246,7 @@ end
     end
     forces = [zeros(SVector{3,Float64}) for i in 1:N]
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces), copy(forces), box, cl)
-    system = PeriodicSystem(positions=x, cutoff=cutoff, unitcell=sides, output=forces)
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=forces)
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces), system) ≈ naive
 
 end # testset
