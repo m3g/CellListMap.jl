@@ -188,7 +188,7 @@ getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(g
 getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:output}) = getfield(sys, :output)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:parallel}) = getfield(sys, :parallel)
-getproperty(sys::AbstractPeriodicSystem{OutputName}) where OutputName = getfield(sys, :output)
+getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where OutputName = getfield(sys, :output)
 propertynames(sys::AbstractPeriodicSystem{OutputName}) where OutputName =
     (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :OutputName)
 # private properties
