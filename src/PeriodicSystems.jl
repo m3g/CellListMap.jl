@@ -163,9 +163,8 @@ function PeriodicSystem(;
         sys = PeriodicSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     else
         throw(ArgumentError(
-            """Either define `positions` OR (`xpositions` AND `ypositions`), to build
-               systems for self- or cross-pair computations, respectively.
-            """))
+            """Either define `positions` OR (`xpositions` AND `ypositions`), to build systems for self- or cross-pair computations, respectively."""
+        ))
     end
     return sys
 end
