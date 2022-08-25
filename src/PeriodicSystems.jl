@@ -170,16 +170,7 @@ function PeriodicSystem(;
     return sys
 end
 
-function copy_to_vector(positions)
-    if positions isa AbstractVector{<:AbstractVector}
-        posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in positions ]
-    elseif positions isa AbstractMatrix
-        posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in eachcol(positions) ]
-    end
-    return posvec
-end
-
-# Abstrct type only for cleaner dispatch
+# Abstract type only for cleaner dispatch
 abstract type AbstractPeriodicSystem{OutputName} end
 
 """
