@@ -89,6 +89,18 @@ function Cell{N,T}(cartesian_index::CartesianIndex,box::Box; sizehint::Int=0) wh
     )
 end
 
+function copy_cell(cell::Cell{N,T}) where {N,T}
+    return Cell{N,T}(
+        linear_index = cell.linear_index,
+        cartesian_index = cell.cartesian_index,
+        center = cell.center,
+        contains_real = cell.contains_real,
+        n_particles = cell.n_particles,
+        particles = ParticleWithIndex{N,T}[ p for p in cell.particles ]
+    )
+end
+
+
 """
 
 $(TYPEDEF)
@@ -964,7 +976,7 @@ function merge_cell_lists!(cl::CellList,aux::CellList)
             cell_index = cl.n_cells_with_particles
             cl.cell_indices[linear_index] = cell_index
             if cell_index > length(cl.cells)
-                push!(cl.cells,deepcopy(aux_cell))
+                push!(cl.cells,copy_cell(aux_cell))
             else
                 cl.cells[cell_index] = copydata!(cl.cells[cell_index],aux_cell)
             end
