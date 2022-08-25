@@ -18,7 +18,7 @@ Parameters = "0.12"
 ProgressMeter = "1.6"
 Setfield = "0.7, 0.8, 0.9, 1"
 StaticArrays = "1"
-julia = "1"
+julia = "1.6"
 
 [extras]
 Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
