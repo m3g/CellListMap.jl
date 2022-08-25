@@ -20,7 +20,7 @@ export reducer!, reducer
 
 ```
 PeriodicSystem( 
-    positions::Vector{<:AbstractVector},
+    xpositions::Vector{<:AbstractVector},
     #or
     xpositions::Vector{<:AbstractVector},
     ypositions::Vector{<:AbstractVector},
@@ -40,7 +40,7 @@ the particles.
 - Positions can be provided as vectors of 2D or 3D vectors 
   (preferentially static vectors from `StaticArrays`).
 
-- If the `positions` array is provided, a single set of coordinates 
+- If only the `xpositions` array is provided, a single set of coordinates 
   is considered, and the computation will be mapped for the `N(N-1)` 
   pairs of this set. 
 
@@ -76,7 +76,7 @@ julia> positions = rand(SVector{3,Float64}, 100)
        cutoff = 0.1
        output = 0.0;
 
-julia> sys = PeriodicSystem(positions = positions, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0)
+julia> sys = PeriodicSystem(xpositions = positions, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0)
 PeriodicSystem1 of dimension 3, composed of:
     Box{CellListMap.OrthorhombicCell, 3}
       unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
@@ -147,14 +147,21 @@ function PeriodicSystem(;
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
 )
-    if !isnothing(positions) && (isnothing(xpositions) && isnothing(ypositions))
+    if !isnothing(positions) && isnothing(xpositions)
+        xpositions = positions
+    elseif !isnothing(positions) && !isnothing(xpositions)
+        throw(ArgumentError(
+            """Either define `positions` OR `xpositions`, they are aliases one to the other."""
+        ))
+    end
+    if !isnothing(xpositions) && isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
-        _cell_list = CellListMap.CellList(positions, _box; parallel=parallel, nbatches=nbatches)
+        _cell_list = CellListMap.CellList(xpositions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem1{output_name}(positions, output, _box, _cell_list, _output_threaded, _aux, parallel)
-    elseif isnothing(positions) && (!isnothing(xpositions) && !isnothing(ypositions))
+        sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
+    elseif !isnothing(xpositions) && !isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
@@ -163,7 +170,7 @@ function PeriodicSystem(;
         sys = PeriodicSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     else
         throw(ArgumentError(
-            """Either define `positions` OR (`xpositions` AND `ypositions`), to build systems for self- or cross-pair computations, respectively."""
+            """Either define `xpositions` OR (`xpositions` AND `ypositions`), to build systems for self- or cross-pair computations, respectively."""
         ))
     end
     return sys
@@ -171,6 +178,24 @@ end
 
 # Abstract type only for cleaner dispatch
 abstract type AbstractPeriodicSystem{OutputName} end
+
+import Base: getproperty, propertynames
+getproperty(sys::AbstractPeriodicSystem, s::Symbol) = getproperty(sys, Val(s))
+# public properties
+getproperty(sys::AbstractPeriodicSystem, ::Val{:xpositions}) = getfield(sys, :xpositions)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:ypositions}) = getfield(sys, :ypositions)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :unit_cell), :matrix)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:output}) = getfield(sys, :output)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:parallel}) = getfield(sys, :parallel)
+getproperty(sys::AbstractPeriodicSystem{OutputName}) where OutputName = getfield(sys, :output)
+propertynames(sys::AbstractPeriodicSystem{OutputName}) where OutputName =
+    (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :OutputName)
+# private properties
+getproperty(sys::AbstractPeriodicSystem, ::Val{:_box}) = getfield(sys, :_box)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:_cell_list}) = getfield(sys, :_cell_list)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:_output_threaded}) = getfield(sys, :_output_threaded)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:_aux}) = getfield(sys, :_aux)
 
 """
 
@@ -182,19 +207,19 @@ Structure that carries the information necessary for `map_pairwise!` computation
 for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
 pairs of particles of the set). 
 
-The `positions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrive or mutate `positions`, retrieve the `output` or its elements,
+The `xpositions`, `output`, and `parallel` fields are considered part of the API,
+and you can retrive or mutate `xpositions`, retrieve the `output` or its elements,
 and set the computation to use or not parallelization by directly accessing these
 elements.
 
 The other fileds of the structure (starting with `_`) are internal and must not 
 be modified or accessed directly. The construction of the `PeriodicSystem1` structure
-is done through the `PeriodicSystem(;positions, unitcell, cutoff, output)` 
+is done through the `PeriodicSystem(;xpositions, unitcell, cutoff, output)` 
 auxiliary function.
 
 """
 mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
-    positions::Vector{V}
+    xpositions::Vector{V}
     output::O
     _box::B
     _cell_list::C
@@ -204,6 +229,7 @@ mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
 end
 PeriodicSystem1{OutputName}(v::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,O,B,C,A} = 
     PeriodicSystem1{OutputName,V,O,B,C,A}(v,o,b,c,vo,a,p)
+getproperty(sys::PeriodicSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 
 """
 
@@ -239,31 +265,11 @@ end
 PeriodicSystem2{OutputName}(vx::Vector{V},vy::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,O,B,C,A} = 
     PeriodicSystem2{OutputName,V,O,B,C,A}(vx,vy,o,b,c,vo,a,p)
 
-#
-# This method of getproperty allows the user to access the output
-# variable by a custom name given in `output_name`.
-#
-# This overloading causes some allocations, which do not impair
-# perfomance in the typical use case, but maybe we will get resized
-# of this in the future, changing the interface.
-#
-import Base: getproperty, propertynames
-function getproperty(sys::AbstractPeriodicSystem{OutputName}, s::Symbol) where {OutputName}
-    if s == OutputName
-        return getfield(sys, :output)
-    end
-    return getfield(sys, s)
-end
-function propertynames(sys::AbstractPeriodicSystem{OutputName}, private::Bool=true) where {OutputName}
-    names = fieldnames(typeof(sys))
-    ntuple(i -> i <= length(names) ? names[i] : OutputName, length(names) + 1)
-end
-
 import Base.show
 function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
-    N = size(sys._box.unit_cell.matrix, 1)
+    N = size(sys.unitcell, 1)
     println(io, "PeriodicSystem1{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println()
@@ -276,7 +282,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
-    N = size(sys._box.unit_cell.matrix, 1)
+    N = size(sys.unitcell, 1)
     println(io, "PeriodicSystem2{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println()
@@ -581,7 +587,7 @@ where the size of the simulation box changes during the simulation.
 julia> using CellListMap.PeriodicSystems, StaticArrays
 
 julia> sys = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0
@@ -626,7 +632,7 @@ This function can be used to update the system geometry in iterative schemes.
 julia> using CellListMap.PeriodicSystems, StaticArrays
 
 julia> sys = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0
@@ -672,7 +678,7 @@ Updates the cell lists for periodic systems.
 """
 function UpdatePeriodicSystem!(sys::PeriodicSystem1)
     sys._cell_list = CellListMap.UpdateCellList!(
-        sys.positions, 
+        sys.xpositions, 
         sys._box, 
         sys._cell_list, 
         sys._aux; 
@@ -729,7 +735,7 @@ distance between particles of a set, for `d < cutoff`.
 
 ```julia-repl
 julia> sys = PeriodicSystem(
-           positions = rand(SVector{3,Float64},1000), 
+           xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
            output = 0.0
