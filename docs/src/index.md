@@ -14,11 +14,9 @@ julia> Pkg.add("CellListMap")
 
 ## Overview
 
-
-
 ### High level interface for periodic system
 
-Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface](PeriodicSystems) menu for details. 
+Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface](@ref) menu for details. 
 
 ### Lower level interface
 

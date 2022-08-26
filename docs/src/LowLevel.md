@@ -10,12 +10,12 @@ using CellListMap
 
 The full code of the examples described here is available at the [examples](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/) directory. 
 
-- [Mean difference of coordinates](#Mean-difference-of-coordinates)
-- [Histogram of distances](#Histogram-of-distances)
-- [Gravitational potential](#Gravitational-potential)
-- [Gravitational force](#Gravitational-force)
-- [Nearest neighbor](#Nearest-neighbor)
-- [Neighbor lists](#Neighbor-lists)
+- [Mean difference of coordinates](@ref)
+- [Histogram of distances](@ref)
+- [Gravitational potential](@ref)
+- [Gravitational force](@ref)
+- [Nearest neighbor](@ref)
+- [Implementing Neighbor lists](@ref)
 
 ### Mean difference of coordinates 
 
@@ -182,7 +182,7 @@ The example above can be run with `CellListMap.Examples.nearest_neighbor()` and 
 
 The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
 
-### Neighbor lists
+### Implementing Neighbor lists
 
 The implementation of the `CellLIstMap.neighborlist` (see [Neighbor lists](@ref)) is as follows:
 The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 

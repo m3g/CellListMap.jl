@@ -9,11 +9,11 @@ using CellListMap.PeriodicSystems
 !!! note
     - This interface requires `CellListMap.jl` version `0.7.22` or greater.
     - The complete codes of the examples are at the end of this page, with examples of:
-        - [Simple energy computation](#Simple-energy-computation)
-        - [Force computation](#Force-computation)
-        - [Energy and forces](#Energy-and-forces)
-        - [Two sets of particles](#Two-sets-of-particles)
-        - [Particle simulation](#Particle-simulation)
+        - [Simple energy computation](@ref)
+        - [Force computation](@ref)
+        - [Energy and forces](@ref)
+        - [Two sets of particles](@ref)
+        - [Particle simulation](@ref)
 
 
 
@@ -450,10 +450,10 @@ MinimumDistance(276, 617, 0.006009804808785543)
 
 ## Additional execution options
 
-- [Turn parallelization on and off](#Turn-parallelization-on-and-off)
-- [Displaying a progress bar](#Displaying-a-progress-bar)
-- [Fine control of the paralellization](#Fine-control-of-the-paralellization)
-- [Control CellList cell size](#Control-CellList-cell-size)
+- [Turn parallelization on and off](@ref)
+- [Displaying a progress bar](@ref)
+- [Fine control of the paralellization](@ref)
+- [Control CellList cell size](@ref)
 
 ### Turn parallelization on and off
 
@@ -562,11 +562,11 @@ larger values of `lcell` may improve the performance. To be tested by the user.
 
 ## Complete example codes
 
-- [Simple energy computation](#Simple-energy-computation)
-- [Force computation](#Force-computation)
-- [Energy and forces](#Energy-and-forces)
-- [Two sets of particles](#Two-sets-of-particles)
-- [Particle simulation](#Particle-simulation)
+- [Simple energy computation](@ref)
+- [Force computation](@ref)
+- [Energy and forces](@ref)
+- [Two sets of particles](@ref)
+- [Particle simulation](@ref)
 
 ### Simple energy computation
 
