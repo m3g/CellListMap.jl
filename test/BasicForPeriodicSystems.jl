@@ -67,13 +67,15 @@ using CellListMap.PeriodicSystems
         x = rand(SVector{2,Float64}, 1100)
         cl = UpdateCellList!(x, y, box, cl)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system.xpositions = x
+        resize!(system.xpositions, length(x))
+        system.xpositions .= x
         @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
 
         y = rand(SVector{2,Float64}, 200)
         cl = UpdateCellList!(x, y, box, cl)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system.ypositions = y
+        resize!(system.ypositions, length(y))
+        system.ypositions .= y
         @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
 
     end
@@ -163,7 +165,8 @@ end
     new_x, new_box = CellListMap.xatomic(10^5)
     new_cl = CellList(new_x, new_box)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl)
-    system.xpositions = new_x
+    resize!(system.xpositions, length(new_x))
+    system.xpositions .= new_x
     update_unitcell!(system, [new_box.unit_cell.matrix[i, i] for i in 1:3])
     update_cutoff!(system, new_box.cutoff)
     system.parallel = false
@@ -196,7 +199,8 @@ end
     new_box = Box(unitcell, cutoff)
     new_cl = UpdateCellList!(new_x, new_box, new_cl)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl)
-    system.xpositions = new_x
+    resize!(system.xpositions, length(new_x))
+    system.xpositions .= new_x
     update_unitcell!(system, unitcell)
     update_cutoff!(system, cutoff)
     system.parallel = false
