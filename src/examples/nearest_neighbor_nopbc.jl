@@ -42,7 +42,7 @@ function nearest_neighbor_nopbc(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y
     # We have to define our own reduce function here (for the parallel version)
     function reduce_mind(output, output_threaded)
         mind = output_threaded[1]
-        for i in 2:length(output_threaded)
+        for i in firstindex(output_threaded)+1:lastindex(output_threaded)
             if output_threaded[i][3] < mind[3]
                 mind = output_threaded[i]
             end

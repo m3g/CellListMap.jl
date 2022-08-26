@@ -68,9 +68,9 @@ end
 
 function map_naive!(f, output, x, y, box::Box)
     @unpack unit_cell, cutoff_sq = box
-    for i in 1:length(x)
+    for i in eachindex(x)
         xᵢ = x[i]
-        for j in 1:length(y)
+        for j in eachindex(y)
             yⱼ = wrap_relative_to(y[j], xᵢ, box)
             d2 = norm_sqr(xᵢ - yⱼ)
             if d2 <= cutoff_sq

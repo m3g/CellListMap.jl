@@ -28,13 +28,13 @@ include("../src/examples/generic_types.jl")
 
     # Test disjoint sets, with matrices
     xmat = zeros(3,length(x))
-    for i in 1:length(x)
+    for i in eachindex(x)
         for j in 1:3
             xmat[j,i] = x[i][j]
         end
     end
     ymat = zeros(3,length(y))
-    for i in 1:length(y)
+    for i in eachindex(x)
         for j in 1:3
             ymat[j,i] = y[i][j]
         end
