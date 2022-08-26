@@ -246,9 +246,21 @@ If the `map_pairwise!` function will compute energy and/or forces in a iterative
 
 ### Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system:
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system. Let us exemplify the interface with the computation of forces:
 
 ```julia-repl
+julia> using CellListMap.PeriodicSystems, StaticArrays
+
+julia> positions = rand(SVector{3,Float64}, 1000);
+
+julia> system = PeriodicSystem(
+           xpositions = positions,
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = similar(positions),
+           output_name = :forces
+       );
+
 julia> system.xpositions[1]
 3-element SVector{3, Float64} with indices SOneTo(3):
  0.6391290709055079
@@ -261,18 +273,19 @@ julia> system.xpositions[1] = zeros(SVector{3,Float64})
  0.0
  0.0
 
-julia> push!(system.xpositions, SVector(1.0, 1.0, 1.0))
+julia> push!(system.xpositions, SVector(0.5, 0.5, 0.5))
 1001-element Vector{SVector{3, Float64}}:
  [0.0, 0.0, 0.0]
  [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
  ⋮
  [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
- [1.0, 1.0, 1.0]
+ [0.5, 0.5, 0.5]
 ```
 
 !!! warning
     The `output` variable may have to be resized accordingly, depending on
-    the calculation being performed. 
+    the calculation being performed. Use the `resize_output!` function 
+    (do **not** use `Base.resize!` on your output array directly).
 
 If the `output` array has to be resized, that has to be done
 with the  `resize_output!` function, which will keep the consistency
@@ -445,21 +458,21 @@ julia> f(system) = map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), 
 f (generic function with 1 method)
 
 julia> Threads.nthreads()
-12
+8
 
 julia> system.parallel = true
 true
 
 julia> @btime f($system)
-  173.656 μs (185 allocations: 22.42 KiB)
-MinimumDistance(402, 571, 0.0035741414027147954)
+  268.265 μs (144 allocations: 16.91 KiB)
+MinimumDistance(783, 497, 0.007213710914619913)
 
 julia> system.parallel = false
 false
 
 julia> @btime f($system)
-  453.995 μs (76 allocations: 7.72 KiB)
-MinimumDistance(402, 571, 0.0035741414027147954)
+  720.304 μs (0 allocations: 0 bytes)
+MinimumDistance(783, 497, 0.007213710914619913)
 ```
 
 ### Displaying a progress bar
