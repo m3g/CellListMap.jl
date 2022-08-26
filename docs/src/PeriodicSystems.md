@@ -8,7 +8,14 @@ using CellListMap.PeriodicSystems
 
 !!! note
     - This interface requires `CellListMap.jl` version `0.7.22` or greater.
-    - The complete codes of the examples are at the [end of this page.](#Complete-example-codes)
+    - The complete codes of the examples are at the end of this page, with examples of:
+        - [Simple energy computation](#Simple-energy-computation)
+        - [Force computation](#Force-computation)
+        - [Energy and forces](#Energy-and-forces)
+        - [Two sets of particles](#Two-sets-of-particles)
+        - [Particle simulation](#Particle-simulation)
+
+
 
 ## The mapped function
 
