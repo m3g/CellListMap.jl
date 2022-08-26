@@ -197,6 +197,17 @@ getproperty(sys::AbstractPeriodicSystem, ::Val{:_cell_list}) = getfield(sys, :_c
 getproperty(sys::AbstractPeriodicSystem, ::Val{:_output_threaded}) = getfield(sys, :_output_threaded)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:_aux}) = getfield(sys, :_aux)
 
+import Base: setproperty!
+# public properties
+setproperty!(sys::AbstractPeriodicSystem, s::Symbol, x) = setproperty!(sys, Val(s), x)
+setproperty!(sys::AbstractPeriodicSystem, ::Val{:unitcell}, x) = update_unitcell!(sys, x)
+setproperty!(sys::AbstractPeriodicSystem, ::Val{:cutoff}, x) = update_cutoff!(sys, x)
+setproperty!(sys::AbstractPeriodicSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
+# private properties
+setproperty!(sys::AbstractPeriodicSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
+setproperty!(sys::AbstractPeriodicSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
+setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+
 """
 
 $(TYPEDEF)
