@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Low level interface · CellListMap.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../PeriodicSystems/">PeriodicSystems interface</a></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li class="is-active"><a class="tocitem" href>Low level interface</a><ul class="internal"><li><a class="tocitem" href="#Examples"><span>Examples</span></a></li><li><a class="tocitem" href="#Periodic-boundary-conditions"><span>Periodic boundary conditions</span></a></li><li><a class="tocitem" href="#Parallelization-splitting-and-reduction"><span>Parallelization splitting and reduction</span></a></li><li><a class="tocitem" href="#Performance-tunning-and-additional-options"><span>Performance tunning and additional options</span></a></li><li><a class="tocitem" href="#Output-progress"><span>Output progress</span></a></li><li><a class="tocitem" href="#Some-benchmarks"><span>Some benchmarks</span></a></li><li><a class="tocitem" href="#Additional-options"><span>Additional options</span></a></li></ul></li><li><a class="tocitem" href="../units_etc/">Units, autodiff, etc.</a></li><li><a class="tocitem" href="../python/">From Python</a></li><li><a class="tocitem" href="../help/">Help entries</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Low level interface</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Low level interface</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/LowLevel.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Low-level-interface"><a class="docs-heading-anchor" href="#Low-level-interface">Low level interface</a><a id="Low-level-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Low-level-interface" title="Permalink"></a></h1><p>Since version <code>0.7.22</code> we strongly encourage the use of the <code>PeriodicSystems</code> interface. Yet,  the low level interface is still available. To use it, load the package as usual:</p><pre><code class="language-julia hljs">using CellListMap</code></pre><h2 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h2><p>The full code of the examples described here is available at the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/">examples</a> directory. </p><ul><li><a href="#Mean-difference-of-coordinates">Mean difference of coordinates</a></li><li><a href="#Histogram-of-distances">Histogram of distances</a></li><li><a href="#Gravitational-potential">Gravitational potential</a></li><li><a href="#Gravitational-force">Gravitational force</a></li><li><a href="#Nearest-neighbor">Nearest neighbor</a></li><li><a href="#Neighbor-lists">Neighbor lists</a></li></ul><h3 id="Mean-difference-of-coordinates"><a class="docs-heading-anchor" href="#Mean-difference-of-coordinates">Mean difference of coordinates</a><a id="Mean-difference-of-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Mean-difference-of-coordinates" title="Permalink"></a></h3><p>Computing the mean difference in <code>x</code> position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.</p><pre><code class="language-julia hljs">using CellListMap
+
+# System properties
+N = 100_000
+sides = [250,250,250]
+cutoff = 10
+
+# Particle positions
+x = [ sides .* rand(3) for i in 1:N ]
+
+# Initialize linked lists and box structures
+box = Box(sides,cutoff)
+cl = CellList(x,box)
+
+# Function to be evaluated from positions 
+f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
+normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
+
+# Run calculation (0.0 is the initial value)
+avg_dx = normalization * map_pairwise(
+    (x,y,i,j,d2,sum_dx) -&gt; f(x,y,sum_dx), 0.0, box, cl 
+)</code></pre><p>The example above can be run with <code>CellListMap.Examples.average_displacement()</code> and is available in the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl">average_displacement.jl</a> file.</p><h3 id="Histogram-of-distances"><a class="docs-heading-anchor" href="#Histogram-of-distances">Histogram of distances</a><a id="Histogram-of-distances-1"></a><a class="docs-heading-anchor-permalink" href="#Histogram-of-distances" title="Permalink"></a></h3><p>Computing the histogram of the distances between particles (considering the same particles as in the above example). Again, we use a closure to remove the positions and indexes of the particles from the function arguments, because they are not needed. The distance, on the other side, is needed in this example:</p><pre><code class="language-julia hljs"># Function that accumulates the histogram of distances
+function build_histogram!(d2,hist)
+    d = sqrt(d2)
+    ibin = floor(Int,d) + 1
+    hist[ibin] += 1
+    return hist
+end;
+
+# Initialize (and preallocate) the histogram
+hist = zeros(Int,10);
+
+# Run calculation
+map_pairwise!(
+    (x,y,i,j,d2,hist) -&gt; build_histogram!(d2,hist),
+    hist,box,cl
+)</code></pre><p>Note that, since <code>hist</code> is mutable, there is no need to assign the output of <code>map_pairwise!</code> to it. </p><p>The example above can be run with <code>CellListMap.Examples.distance_histogram()</code> and is available in the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl">distance_histogram.jl</a> file.</p><h3 id="Gravitational-potential"><a class="docs-heading-anchor" href="#Gravitational-potential">Gravitational potential</a><a id="Gravitational-potential-1"></a><a class="docs-heading-anchor-permalink" href="#Gravitational-potential" title="Permalink"></a></h3><p>In this test we compute the &quot;gravitational potential&quot;, assigning to each particle a different mass. In this case, the closure is used to pass the masses to the function that computes the potential.</p><pre><code class="language-julia hljs"># masses
+const mass = rand(N)
+
+# Function to be evaluated for each pair 
+function potential(i,j,d2,mass,u)
+    d = sqrt(d2)
+    u = u - 9.8*mass[i]*mass[j]/d
+    return u
+end
+
+# Run pairwise computation
+u = map_pairwise((x,y,i,j,d2,u) -&gt; potential(i,j,d2,mass,u),0.0,box,cl)</code></pre><p>The example above can be run with <code>CellListMap.Examples.gravitational_potential()</code> and is available in the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_potential.jl">gravitational_potential.jl</a> file.</p><h3 id="Gravitational-force"><a class="docs-heading-anchor" href="#Gravitational-force">Gravitational force</a><a id="Gravitational-force-1"></a><a class="docs-heading-anchor-permalink" href="#Gravitational-force" title="Permalink"></a></h3><p>In the following example, we update a force vector of for all particles.</p><pre><code class="language-julia hljs"># masses
+const mass = rand(N)
+
+# Function to be evaluated for each pair: update force vector
+function calc_forces!(x,y,i,j,d2,mass,forces)
+    G = 9.8*mass[i]*mass[j]/d2
+    d = sqrt(d2)
+    df = (G/d)*(x - y)
+    forces[i] = forces[i] - df
+    forces[j] = forces[j] + df
+    return forces
+end
+
+# Initialize and preallocate forces
+forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
+
+# Run pairwise computation
+map_pairwise!(
+    (x,y,i,j,d2,forces) -&gt; calc_forces!(x,y,i,j,d2,mass,forces),
+    forces,box,cl
+)
+</code></pre><p>The example above can be run with <code>CellListMap.Examples.gravitational_force()</code> and is available in the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl">gravitational_force.jl</a> file.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The parallelization works by splitting the <code>forces</code> vector in as many tasks as necessary, and each task will update an independent <code>forces</code> array, which will be reduced at the end. Therefore, there is no need to deal with atomic operations or blocks in the <code>calc_forces!</code> function above for the update of <code>forces</code>, which is implemented as if the code was running serially. The same applies to other examples in this section.</p></div></div><h3 id="Nearest-neighbor"><a class="docs-heading-anchor" href="#Nearest-neighbor">Nearest neighbor</a><a id="Nearest-neighbor-1"></a><a class="docs-heading-anchor-permalink" href="#Nearest-neighbor" title="Permalink"></a></h3><p>Here we compute the indexes of the particles that satisfy the minimum distance between two sets of points, using the linked lists. The distance and the indexes are stored in a tuple, and a reducing method has to be defined for that tuple to run the calculation.  The function does not need the coordinates of the points, only their distance and indexes.</p><pre><code class="language-julia hljs"># Number of particles, sides and cutoff
+N1=1_500
+N2=1_500_000
+sides = [250,250,250]
+cutoff = 10.
+box = Box(sides,cutoff)
+
+# Particle positions
+x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N1 ]
+y = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N2 ]
+
+# Initialize auxiliary linked lists
+cl = CellList(x,y,box)
+
+# Function that keeps the minimum distance
+f(i,j,d2,mind) = d2 &lt; mind[3] ? (i,j,d2) : mind
+
+# We have to define our own reduce function here
+function reduce_mind(output,output_threaded)
+    mind = output_threaded[1]
+    for i in 2:length(output_threaded)
+        if output_threaded[i][3] &lt; mind[3]
+            mind = output_threaded[i]
+        end
+    end
+    return mind
+end
+
+# Initial value
+mind = ( 0, 0, +Inf )
+
+# Run pairwise computation
+mind = map_pairwise( 
+    (x,y,i,j,d2,mind) -&gt; f(i,j,d2,mind),
+    mind,box,cl;reduce=reduce_mind
+)</code></pre><p>The example above can be run with <code>CellListMap.Examples.nearest_neighbor()</code> and is available in the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor.jl">nearest_neighbor.jl</a> file.</p><p>The example <code>CellListMap.Examples.nearest_neighbor_nopbc()</code> of <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl">nearest_neighbor_nopbc.jl</a> describes a similar problem but <em>without</em> periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. </p><h3 id="Neighbor-lists"><a class="docs-heading-anchor" href="#Neighbor-lists">Neighbor lists</a><a id="Neighbor-lists-1"></a><a class="docs-heading-anchor-permalink" href="#Neighbor-lists" title="Permalink"></a></h3><p>The implementation of the <code>CellLIstMap.neighborlist</code> (see <a href="@ref">Neighbor lists</a>) is as follows: The empty <code>pairs</code> output array will be split in one vector for each thread, and reduced with a custom reduction function. </p><pre><code class="language-julia hljs"># Function to be evaluated for each pair: push pair
+function push_pair!(i,j,d2,pairs)
+    d = sqrt(d2)
+    push!(pairs,(i,j,d))
+    return pairs
+end
+
+# Reduction function
+function reduce_pairs(pairs,pairs_threaded)
+    for i in eachindex(pairs_threaded)
+        append!(pairs,pairs_threaded[i])
+    end
+    return pairs
+end
+
+# Initialize output
+pairs = Tuple{Int,Int,Float64}[]
+
+# Run pairwise computation
+map_pairwise!(
+    (x,y,i,j,d2,pairs) -&gt; push_pair!(i,j,d2,pairs),
+    pairs,box,cl,
+    reduce=reduce_pairs
+)</code></pre><p>The full example can be run with <code>CellListMap.Examples.neighborlist()</code>, available in the file  <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/neighborlist.jl">neighborlist.jl</a>.</p><h2 id="Periodic-boundary-conditions"><a class="docs-heading-anchor" href="#Periodic-boundary-conditions">Periodic boundary conditions</a><a id="Periodic-boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Periodic-boundary-conditions" title="Permalink"></a></h2><ul><li><a href="#Orthorhombic-periodic-boundary-conditions">Orthorhombic periodic boundary conditions</a></li><li><a href="#Triclinic-periodic-boundary-conditions">Triclinic periodic boundary conditions</a></li><li><a href="#Without-periodic-boundary-conditions">Without periodic boundary conditions</a></li></ul><h3 id="Orthorhombic-periodic-boundary-conditions"><a class="docs-heading-anchor" href="#Orthorhombic-periodic-boundary-conditions">Orthorhombic periodic boundary conditions</a><a id="Orthorhombic-periodic-boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Orthorhombic-periodic-boundary-conditions" title="Permalink"></a></h3><p>Orthorhombic periodic boundary conditions allow some special methods that are faster than those for general cells. To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the cutoff. For example:</p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([100,70,130],12)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [100.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 130.0]
+  cutoff: 12.0
+  number of computing cells on each dimension: [10, 7, 12]
+  computing cell sizes: [12.5, 14.0, 13.0] (lcell: 1)
+  Total number of cells: 840</code></pre><h3 id="Triclinic-periodic-boundary-conditions"><a class="docs-heading-anchor" href="#Triclinic-periodic-boundary-conditions">Triclinic periodic boundary conditions</a><a id="Triclinic-periodic-boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Triclinic-periodic-boundary-conditions" title="Permalink"></a></h3><p>Triclinic periodic boundary conditions of any kind can be used. However, the input has some limitations for the moment. The lattice vectors must have strictly positive coordinates, and the smallest distance within the cell cannot be smaller than twice the size of the cutoff. An error will be produced if the cell does not satisfy these conditions. </p><p>Let us illustrate building a two-dimensional cell, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. </p><p>Here, the lattice vectors are <code>[1,0]</code> and <code>[0.5,1]</code> (and we illustrate with <code>cutoff=0.1</code>): </p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([ 1.0  0.5
+                     0  1.0 ], 0.1);
+
+julia&gt; x = 10*rand(SVector{2,Float64},1000);</code></pre><p>We have created random coordinates for <code>1000</code> particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:</p><pre><code class="language-julia-repl hljs">julia&gt; using Plots
+
+julia&gt; CellListMap.draw_computing_cell(x,box)</code></pre><img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/lattice.png><p>The construction of the cell list is, as always, done with:</p><pre><code class="language-julia-repl hljs">julia&gt; cl = CellList(x,box)
+CellList{2, Float64}
+  109 cells with real particles.
+  2041 particles in computing box, including images.
+</code></pre><p>Upon construction of the cell lists, the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (this is an implementation detail only). </p><p>In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:</p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([ 50.  0. 00. 
+                    0. 30. 30.          
+                    0. 00. 50. ],  2.)
+
+julia&gt; x = 100*rand(SVector{3,Float64},10000);
+
+julia&gt; p = [ CellListMap.wrap_to_first(x,box) for x in x ];
+
+julia&gt; using Plots
+
+julia&gt; scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)</code></pre><p>to work with an arbitrary 3D lattice, Which in this case looks like:</p><img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/3Dlattice.png><h3 id="Without-periodic-boundary-conditions"><a class="docs-heading-anchor" href="#Without-periodic-boundary-conditions">Without periodic boundary conditions</a><a id="Without-periodic-boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Without-periodic-boundary-conditions" title="Permalink"></a></h3><p>To avoid the use of periodic boundary conditions it is enough to define an Orthorhombic box with lengths in each direction that are larger than the limits of the coordinates of the particles plus the cutoff. This can be done automatically with the <code>limits</code> function. The box must be constructed with:</p><pre><code class="language-julia-repl hljs">julia&gt; x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
+
+julia&gt; box = Box(limits(x),12)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [111.99749159163106 0.0 0.0; 0.0 111.99757156637344 0.0; 0.0 0.0 111.99910298572958]
+  cutoff: 12.0
+  number of computing cells on each dimension: [11, 11, 11]
+  computing cell sizes: [12.444165732403452, 12.444174618485938, 12.444344776192175] (lcell: 1)
+  Total number of cells: 1331</code></pre><p>or, for computing the interaction between two disjoint sets of particles, call the <code>limits</code> function with two arguments:</p><pre><code class="language-julia-repl hljs">julia&gt; x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
+
+julia&gt; y = [ [120,180,100] .* rand(3) for i in 1:100_000 ];
+
+julia&gt; box = Box(limits(x,y),12)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [131.9978650409108 0.0 0.0; 0.0 191.99730748624336 0.0; 0.0 0.0 111.99917288242698]
+  cutoff: 12.0
+  number of computing cells on each dimension: [12, 17, 11]
+  computing cell sizes: [13.19978650409108, 12.799820499082891, 12.444352542491886] (lcell: 1)
+  Total number of cells: 2244</code></pre><p>Note that the unit cell length is, on each direction, the maximum coordinates of all particles plus the cutoff. This will avoid the computation of pairs of periodic images. The algorithms used for computing interactions in Orthorhombic cells will then be used.</p><h2 id="Parallelization-splitting-and-reduction"><a class="docs-heading-anchor" href="#Parallelization-splitting-and-reduction">Parallelization splitting and reduction</a><a id="Parallelization-splitting-and-reduction-1"></a><a class="docs-heading-anchor-permalink" href="#Parallelization-splitting-and-reduction" title="Permalink"></a></h2><ul><li><a href="#How-output-is-updated-thread-safely">How output is updated thread-safely</a></li><li><a href="#Custom-reduction-functions">Custom reduction functions</a></li><li><a href="#Number-of-batches">Number of batches</a></li></ul><p>The parallel execution requires the splitting of the computation among tasks. </p><h3 id="How-output-is-updated-thread-safely"><a class="docs-heading-anchor" href="#How-output-is-updated-thread-safely">How output is updated thread-safely</a><a id="How-output-is-updated-thread-safely-1"></a><a class="docs-heading-anchor-permalink" href="#How-output-is-updated-thread-safely" title="Permalink"></a></h3><p>To allow general output types, the approach of <code>CellListMap</code> is to copy the output variable the number of times necessary for each parallel task to update an independent output variables, which are reduced at the end. This, of course, requires some additional memory, particularly if the output being updated is formed by arrays. These copies can be preallocated, and custom reduction functions can be defined. </p><p>To control these steps, set manually the <code>output_threaded</code> and <code>reduce</code> optional input parameters of the <code>map_pairwise!</code> function. </p><p>By default, we define:</p><pre><code class="language-julia hljs">output_threaded = [ deepcopy(output) for i in 1:nbatches(cl) ]</code></pre><p>where <code>nbatches(cl)</code> is the number of batches into which the computation will be divided. The number of batches is <em>not</em> necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the <strong>Number of batches</strong> section below. </p><p>The default reduction function just assumes the additivity of the results obtained by each batch:</p><pre><code class="language-julia hljs">reduce(output::Number,output_threaded) = sum(output_threaded)
+function reduce(output::Vector,output_threaded) 
+    @. output = output_threaded[1]
+    for i in 2:length(output_threaded)
+         @. output += output_threaded[i] 
+    end
+    return output
+end</code></pre><h3 id="Custom-reduction-functions"><a class="docs-heading-anchor" href="#Custom-reduction-functions">Custom reduction functions</a><a id="Custom-reduction-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-reduction-functions" title="Permalink"></a></h3><p>In some cases, as in the <a href="#nearest-neighbor">Nearest neighbor</a> example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the <code>reduce</code> parameter of <code>map_pairwise!</code>:</p><pre><code class="language-julia hljs">mind = map_pairwise!( 
+    (x,y,i,j,d2,mind) -&gt; f(i,j,d2,mind), mind,box,cl;
+    reduce=reduce_mind
+)</code></pre><p>where here the <code>reduce</code> function is set to be the custom function that keeps the tuple associated to the minimum distance obtained between threads:</p><pre><code class="language-julia hljs">function reduce_mind(output,output_threaded)
+    mind = output_threaded[1]
+    for i in 2:length(output_threaded)
+        if output_threaded[i][3] &lt; mind[3]
+            mind = output_threaded[i]
+        end
+    end
+    return mind
+end</code></pre><p>This function <em>must</em> return the updated <code>output</code> variable, being it mutable or not, to be compatible with the interface.  </p><p>Using the <code>length</code> of the <code>output_threaded</code> vector as the measure of how many copies of the array is available is convenient because it will be insensitive in changes in the number of batches that may be set.</p><h3 id="Number-of-batches"><a class="docs-heading-anchor" href="#Number-of-batches">Number of batches</a><a id="Number-of-batches-1"></a><a class="docs-heading-anchor-permalink" href="#Number-of-batches" title="Permalink"></a></h3><p>Every calculation with cell lists has two steps: the construction of the lists, and the mapping of the computation among the pairs of particles that satisfy the cutoff criterion. </p><p>The construction of the cell list is harder to parallelize, because assigning each particle to a cell is fast, such that the cost of merging a set of lists generated in parallel can be as costly as building the lists themselves. Therefore, it is frequent that it is not worthwhile (actually it is detrimental for performance) to split the construction of the cell lists in too many threads. This is particularly relevant for smaller systems, for which the cost of constructing the lists can be comparable to the cost of actually computing the mapped function. </p><p>At the same time, the homogeneity of the computation of the mapped function may be fast or not, homogeneous or not. These characteristics affect the optimal workload splitting strategy. For very large systems, or systems for which the function to be computed is not homogeneous in time, it may be interesting to split the workload in many tasks as possible, such that slow tasks do not dominate the final computational time.   </p><p>Both the above considerations can be used to tunning the <code>nbatches</code> parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations. </p><p>By default, the number of batches for the computation of the cell lists is smaller than <code>nthreads()</code> if the number of particles per cell is small. The default value by the internal function <code>CellListMap._nbatches_build_cell_lists(cl::CellList)</code>. </p><p>The values assumed for each number of batches can bee seen by printing the <code>nbatches</code> parameter of the cell lists:</p><pre><code class="language-julia-repl hljs">julia&gt; Threads.nthreads()
+64
+
+julia&gt; x, box = CellListMap.xatomic(10^4) # random set with atomic density of water
+
+julia&gt; cl = CellList(x,box);
+
+julia&gt; cl.nbatches
+NumberOfBatches
+  Number of batches for cell list construction: 8 
+  Number of batches for function mapping: 32 </code></pre><p>The construction of the cell lists is performed by creating copies of the data, and currently does not scale very well. Thus, no more than 8 batches are used by default, to avoid delays associated to data copying and gargabe collection. The number of batches of the mapping function uses an heuristic which currently limits somewhat the number of batches for small systems, when the overhead of spawning tasks is greater than the computation.  Using more batches than threads for the function mapping is effective most times in avoiding uneven workload, but it may be a problem if the output to be reduced is too large, as the threaded version of the output contains <code>nbatches</code> copies of the output. </p><p>Using less batches than the number of threads also allows the efficient use of nested multi-threading, as the computations will only use the number of threads required, leaving the other threads available for other tasks.</p><p>The number of batches is set <em>on the construction of the cell list</em>, using the <code>nbatches</code> keyword parameter. For example:</p><pre><code class="language-julia-repl hljs">julia&gt; cl = CellList(x,box,nbatches=(1,4))
+CellList{3, Float64}
+  1000000 real particles.
+  1000 cells with real particles.
+  1727449 particles in computing box, including images.
+
+julia&gt; cl.nbatches
+NumberOfBatches
+  Number of batches for cell list construction: 1
+  Number of batches for function mapping: 4</code></pre><p>fine tunning of the performance for a specific problem can be obtained by adjusting this parameter. </p><p>If the number of batches is set as zero for any of the two options, the default value is retained. For example:</p><pre><code class="language-julia-repl hljs">julia&gt; cl = CellList(x,box,nbatches=(0,4));
+
+julia&gt; cl.nbatches
+NumberOfBatches
+  Number of batches for cell list construction: 8 
+  Number of batches for function mapping: 4
+
+julia&gt; cl = CellList(x,box,nbatches=(4,0));
+
+julia&gt; cl.nbatches
+NumberOfBatches
+  Number of batches for cell list construction: 4
+  Number of batches for function mapping: 64</code></pre><p>The number of batches can also be retrieved from the cell list using the <code>nbatches</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; cl = CellList(x,box,nbatches=(2,4));
+
+julia&gt; cl.nbatches
+NumberOfBatches
+  Number of batches for cell list construction: 2
+  Number of batches for function mapping: 4
+
+julia&gt; nbatches(cl) # returns cl.nbatches.map_computation
+4
+
+julia&gt; nbatches(cl,:map) # returns cl.nbatches.map_computation
+4
+
+julia&gt; nbatches(cl,:build) # returns cl.nbatches.build_cell_lists
+2</code></pre><p>The call <code>nbatches(cl)</code> is important for defining the number of copies of preallocated threaded output variables, as explained in the previous section.</p><h2 id="Performance-tunning-and-additional-options"><a class="docs-heading-anchor" href="#Performance-tunning-and-additional-options">Performance tunning and additional options</a><a id="Performance-tunning-and-additional-options-1"></a><a class="docs-heading-anchor-permalink" href="#Performance-tunning-and-additional-options" title="Permalink"></a></h2><ul><li><a href="#Preallocating-the-cell-lists-and-cell-list-auxiliary-arrays">Preallocating the cell lists and cell list auxiliary arrays</a></li><li><a href="#Preallocating-threaded-output-auxiliary-arrays">Preallocating threaded output auxiliary arrays</a></li><li><a href="#Optimizing-the-cell-grid">Optimizing the cell grid</a></li></ul><h3 id="Preallocating-the-cell-lists-and-cell-list-auxiliary-arrays"><a class="docs-heading-anchor" href="#Preallocating-the-cell-lists-and-cell-list-auxiliary-arrays">Preallocating the cell lists and cell list auxiliary arrays</a><a id="Preallocating-the-cell-lists-and-cell-list-auxiliary-arrays-1"></a><a class="docs-heading-anchor-permalink" href="#Preallocating-the-cell-lists-and-cell-list-auxiliary-arrays" title="Permalink"></a></h3><p>The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrink) on this update. </p><pre><code class="language-julia hljs"># Initialize cell lists with initial coordinates
+cl = CellList(x,box)
+# Allocate auxiliary arrays for threaded cell list construction
+aux = CellListMap.AuxThreaded(cl)
+for i in 1:nsteps
+    x = ... # new coordinates
+    box = Box(sides,cutoff) # perhaps the box has changed
+    cl = UpdateCellList!(x,box,cl,aux) 
+    map_pairwise!(...)
+end</code></pre><p>The procedure is identical if using two sets of coordinates, in which case, one would do:</p><pre><code class="language-julia hljs">cl = CellList(x,y,box)
+aux = CellListMap.AuxThreaded(cl)
+for i in 1:nsteps
+    x = ... # new coordinates
+    box = Box(sides,cutoff) # perhaps the box has changed
+    cl = UpdateCellList!(x,y,box,cl,aux)
+    map_pairwise(...)
+end</code></pre><p>By passing the <code>aux</code> auxiliary structure, the <code>UpdateCellList!</code> functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater. </p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>If the number of batches of threading is changed, the structure of auxiliary arrays must be reinitialized. Otherwise, incorrect results can be obtained.</p></div></div><h3 id="Preallocating-threaded-output-auxiliary-arrays"><a class="docs-heading-anchor" href="#Preallocating-threaded-output-auxiliary-arrays">Preallocating threaded output auxiliary arrays</a><a id="Preallocating-threaded-output-auxiliary-arrays-1"></a><a class="docs-heading-anchor-permalink" href="#Preallocating-threaded-output-auxiliary-arrays" title="Permalink"></a></h3><p>On parallel runs, note that <code>output_threaded</code> is, by default, initialized on the call to <code>map_pairwise!</code>. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:</p><pre><code class="language-julia hljs">forces = zeros(SVector{3,Float64},N)
+forces_threaded = [ deepcopy(forces) for i in 1:nbatches(cl) ]
+for i in 1:nsteps
+    map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
+    # work with the final forces vector
+    ...
+    # Reset forces_threaded
+    for i in 1:nbatches(cl)
+        @. forces_threaded[i] = zero(SVector{3,Float64}) 
+    end
+end</code></pre><p>In this case, the <code>forces</code> vector will be updated by the default reduction method. <code>nbatches(cl)</code> is the number of batches of the parallel calculation, which is defined on the construction of the cell list (see the <strong>Parallelization</strong> section).</p><h3 id="Optimizing-the-cell-grid"><a class="docs-heading-anchor" href="#Optimizing-the-cell-grid">Optimizing the cell grid</a><a id="Optimizing-the-cell-grid-1"></a><a class="docs-heading-anchor-permalink" href="#Optimizing-the-cell-grid" title="Permalink"></a></h3><p>The partition of the space into cells is dependent on a parameter <code>lcell</code> which can be passed to <code>Box</code>. For example:</p><pre><code class="language-julia hljs">box = Box(x,box,lcell=2)
+cl = CellList(x,box)
+map_pairwise!(...)</code></pre><p>This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of <code>lcell</code> to check which is the optimal choice for your system. Usually the best value is <code>lcell=1</code>, because in <code>CellListMap</code> implements a method to avoid spurious computations of distances on top of the cell lists, but for very dense systems, or for very large cutoffs (meaning, for situations in which the number of particles per cell may be very large), a greater <code>lcell</code> may provide a better performance. It is unlikely that <code>lcell &gt; 3</code> is useful in any practical situation. For molecular systems with normal densities <code>lcell=1</code> is likely the optimal choice. The performance can be tested using the progress meter, as explained below.  </p><p>As a rough guide, <code>lcell &gt; 1</code> is only worthwhile if the number of particles per cell is greater than  <code>~200-400</code>.  </p><h2 id="Output-progress"><a class="docs-heading-anchor" href="#Output-progress">Output progress</a><a id="Output-progress-1"></a><a class="docs-heading-anchor-permalink" href="#Output-progress" title="Permalink"></a></h2><p>For long-running computations, the user might want to see the progress. A progress meter can be turned on with the <code>show_progress</code> option. For example:</p><pre><code class="language-julia hljs">map_pairwise!(f,output,box,cl,show_progress=true)</code></pre><p>whill print something like:</p><pre><code class="language-julia-repl hljs">Progress:  43%|█████████████████                    | ETA: 0:18:25</code></pre><p>Thus, besides being useful for following the progress of a long run, it is useful to test different values of <code>lcell</code> to tune the performance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. The default and recommended option for production runs is to use <code>show_progress=false</code>, because tracking the progress introduces a small overhead into the computation. </p><h2 id="Some-benchmarks"><a class="docs-heading-anchor" href="#Some-benchmarks">Some benchmarks</a><a id="Some-benchmarks-1"></a><a class="docs-heading-anchor-permalink" href="#Some-benchmarks" title="Permalink"></a></h2><h3 id="Computing-a-histogram-of-pairwise-velocities"><a class="docs-heading-anchor" href="#Computing-a-histogram-of-pairwise-velocities">Computing a histogram of pairwise velocities</a><a id="Computing-a-histogram-of-pairwise-velocities-1"></a><a class="docs-heading-anchor-permalink" href="#Computing-a-histogram-of-pairwise-velocities" title="Permalink"></a></h3><p>The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python <a href="https://github.com/astropy/halotools">halotools</a> package, in the computation of an histogram of mean pairwise velocities. </p><center>
+<img src=https://raw.githubusercontent.com/lmiq/PairVelocities/main/data/cd_v0.5.3.png>
+<br>
+<img src=https://raw.githubusercontent.com/lmiq/PairVelocities/main/data/cv_v0.5.3.png>
+</center><p>The full test is available <a href="https://github.com/lmiq/PairVelocities">at this</a> repository. And we kindly thank <a href="https://github.com/florpi">Carolina Cuesta</a> for providing the example. These benchmarks were run on an Intel i7 8th gen laptop, with 4 cores (8 threads). </p><h2 id="Additional-options"><a class="docs-heading-anchor" href="#Additional-options">Additional options</a><a id="Additional-options-1"></a><a class="docs-heading-anchor-permalink" href="#Additional-options" title="Permalink"></a></h2><h3 id="Input-coordinates-as-matrices"><a class="docs-heading-anchor" href="#Input-coordinates-as-matrices">Input coordinates as matrices</a><a id="Input-coordinates-as-matrices-1"></a><a class="docs-heading-anchor-permalink" href="#Input-coordinates-as-matrices" title="Permalink"></a></h3><p>For compatibility with other software, the input coordinates can be provided as matrices. The matrices must have dimensions <code>(2,N)</code> or <code>(3,N)</code>, where <code>N</code> is the number of particles (because Julia is column-major, thus this has the same memory layout of an array of length <code>N</code> of static vectors). </p><p>For example:</p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(3,100);
+
+julia&gt; box = Box([1,1,1],0.1);
+
+julia&gt; cl = CellList(x,box)
+CellList{3, Float64}
+  100 real particles.
+  99 cells with real particles.
+  162 particles in computing box, including images.
+
+julia&gt; map_pairwise!((x,y,i,j,d2,n) -&gt; n += 1, 0, box, cl) # count neighbors
+23</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neighborlists/">« Neighbor lists</a><a class="docs-footer-nextpage" href="../units_etc/">Units, autodiff, etc. »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Friday 26 August 2022 15:47">Friday 26 August 2022</span>. Using Julia version 1.8.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
