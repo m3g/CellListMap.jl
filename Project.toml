@@ -11,6 +11,7 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 DocStringExtensions = "0.8, 0.9"
@@ -18,6 +19,7 @@ Parameters = "0.12"
 ProgressMeter = "1.6"
 Setfield = "0.7, 0.8, 0.9, 1"
 StaticArrays = "1"
+TestItems = "0.1"
 julia = "1.6"
 
 [extras]
@@ -28,6 +30,7 @@ Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Test", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements"]
+test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements"]

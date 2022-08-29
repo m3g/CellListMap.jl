@@ -1,6 +1,7 @@
 module CellListMap
 
 using DocStringExtensions
+using TestItems
 using ProgressMeter
 using Parameters
 using StaticArrays
