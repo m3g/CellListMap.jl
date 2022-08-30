@@ -12,7 +12,7 @@ function update_forces!(x, y, i, j, d2, forces, cutoff)
 end
 # Function that initializes the system: it is preferrable to initialize
 # the system outside the function that performs the simulation, because
-# the system type is defined on initialization. Initializing it outside
+# the system (data)type is defined on initialization. Initializing it outside
 # the simulation function avoids possible type-instabilities. 
 function init_system(;N::Int=200)
     Vec2D = SVector{2,Float64}

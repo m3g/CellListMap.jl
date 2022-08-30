@@ -12,7 +12,7 @@ makedocs(
         "PeriodicSystems interface" => "PeriodicSystems.md",
         "Neighbor lists" => "neighborlists.md",
         "Low level interface" => "LowLevel.md",
-        "Units, autodiff, etc." => "units_etc.md",
+        "Ecosystem integration" => "ecosystem.md",
         "From Python" => "python.md",
         "Help entries" => "help.md",
         "Reference" => "reference.md",

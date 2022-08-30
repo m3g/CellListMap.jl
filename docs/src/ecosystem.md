@@ -1,104 +1,69 @@
-# Units, automatic differentiation, etc.
+# Ecosystem integration
+
+- [Agents.jl](@ref)
+- [Unitful and units](@ref)
+- [Automatic differentiation](@ref)
+- [Measurements](@ref)
+
+## Agents.jl
+
+[Agents.jl](https://juliadynamics.github.io/Agents.jl) provides a comprehensive framework for simulation, analysis and visualization of agent-based systems. `CellListMap` can be used to accelerate these simulations, and the integration of the packages is rather simple, particularly using the `PeriodicSystems` interface. A [complete integration example](https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap/) can be obtained in the `Agents` documentation (currently at the development branch). 
+
+The example will produce the following animation:
+
+```@raw html
+<video width="auto" controls autoplay loop>
+<source src="https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap.mp4" type="video/mp4">
+</video>
+```
+
+## Unitful and units
 
 The functions of CellListMap.jl support the propagation of generic (isbits) types, and thus units and thus automatic differentiation and the use of `Unitful`. A set of working examples can be found in the [generic_types.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/generic_types.jl) file.
 
-## `Unitful` and units
-
 We start illustrating the support for unit propagation. We need to define all involved quantities in the same units:
 
+### Using the PeriodicSystems interface
+
+The only requirement is to attach proper units to all quantities (positions, cutoff, unitcell, and output variables).
+Here we compute the square of the distances of the particles within the cutoff:
 ```julia-repl
-julia> using Unitful, StaticArrays
+julia> using CellListMap.PeriodicSystems, Unitful, StaticArrays
 
-julia> cutoff = 0.1u"nm" 
-0.1 nm
+julia> system = PeriodicSystem(
+           positions = rand(SVector{3,Float64}, 1000)u"nm",
+           cutoff = 0.1u"nm",
+           unitcell = [1.0,1.0,1.0]u"nm",
+           output = 0.0u"nm^2",
+           output_name = :sum_sqr
+       );
 
-julia> box = Box([1.0, 1.0, 1.0]u"nm",cutoff)
-Box{OrthorhombicCell, 3, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}, Quantity{Float64, 𝐋^2, Unitful.FreeUnits{(nm^2,), 𝐋^2, nothing}}, 9}
-  unit cell matrix = [ 1.0 nm, 0.0 nm, 0.0 nm; 0.0 nm, 1.0 nm, 0.0 nm; 0.0 nm, 0.0 nm, 1.0 nm ]
-  cutoff = 0.1 nm
-  number of computing cells on each dimension = [12, 12, 12]
-  computing cell sizes = [0.1 nm, 0.1 nm, 0.1 nm] (lcell: 1)
-  Total number of cells = 1728
-
-julia> x = [ rand(typeof(cutoff),3) for _ in 1:1000 ];
-
-julia> cl = CellList(x,box)
-CellList{3, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}
-  1000 real particles.
-  626 cells with real particles.
-  1694 particles in computing box, including images.
+julia> map_pairwise((x,y,i,j,d2,out) -> out += d2, system)
+12.467455105066907 nm^2
 ```
 
-The corresponding mapping must take care of defining the result in the correct units associated to the expected output. For example, here we will compute just the sum of the squared distances between the particles within the cutoff. Thus, the expected output has the same units as the square of the dimensions: 
+### Units in neighbor lists
+
+`CellListMap.neighborlist` propagates units correctly:
 
 ```julia-repl
-julia> sum_sqr = zero(typeof(cutoff^2))
-0.0 nm^2
+julia> import CellListMap
 
-julia> sum_sqr = map_pairwise!(
-           (x,y,i,j,d2,sum_sqr) -> sum_sqr += d2,
-           sum_sqr, box, cl
-       )
-12.983283925249138 nm^2
-```
+julia> positions = rand(SVector{3,Float64}, 1000)u"nm";
 
-The performance penalty associated to propagating units is small. With units, we get:
-```julia-repl
-julia> using BenchmarkTools
+julia> cutoff = 0.1u"nm";
 
-julia> @btime let x = $x
-           cutoff = 0.1u"nm" 
-           box = Box([1.0,1.0,1.0]u"nm",cutoff)
-           cl = CellList(x,box)
-           sum_sqr = zero(typeof(cutoff^2))
-           map_pairwise!(
-               (x,y,i,j,d2,sum_sqr) -> sum_sqr += d2,
-               sum_sqr, box, cl
-           )
-       end
-  1.828 ms (6547 allocations: 1.22 MiB)
-12.983283925249138 nm^2
-```
-
-and the same problem without units runs in:
-
-```julia-repl
-julia> @btime let x = $([ SVector{3,Float64}(ustrip.(v)) for v in x ])
-           cutoff = 0.1 
-           box = Box([1.0,1.0,1.0],cutoff)
-           cl = CellList(x,box)
-           sum_sqr = 0.
-           map_pairwise!(
-               (x,y,i,j,d2,sum_sqr) -> sum_sqr += d2,
-               sum_sqr, box, cl
-           )
-       end
-  1.783 ms (6547 allocations: 1.22 MiB)
-12.983283925249138
-```
-
-Auxiliary functions, like `CellListMap.neighborlist`, propagate units correctly:
-
-```julia-repl
-julia> cutoff = 0.1u"nm"
-0.1 nm
-
-julia> box = Box([1.0, 1.0, 1.0]u"nm",cutoff);
-
-julia> x = [ rand(typeof(cutoff),3) for _ in 1:1000 ];
-
-julia> CellListMap.neighborlist(x,cutoff)
-1796-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
- (1, 583, 0.06456224519583421 nm)
- (10, 216, 0.04958058924623024 nm)
+julia> CellListMap.neighborlist(positions, cutoff)
+1842-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
+ (1, 89, 0.09181950064928723 nm)
+ (1, 820, 0.0862244300739942 nm)
  ⋮
- (934, 615, 0.08834318454969409 nm)
- (934, 692, 0.05002019032986014 nm)
+ (998, 782, 0.07772327062692863 nm)
 ```
 
 ## Automatic differentiation
 
-Allowing automatic differentiation follows the same principles, meaning that we only need to allow the propagation of dual types through the computation by proper initialization of the input data.
+Allowing automatic differentiation follows the same principles, meaning that we only need to allow the propagation of dual types through the computation by proper initialization of the input data. However, it is easier to work with the low level interface, which accepts matrices as the input for positions and a more fine control of the types of the variables. Matrices are easier input types for auto diff packages.
 
 The variables are each component of each vector, thus the easiest way to represent the points such that automatic differentiation packages understand is by creating a matrix:
 
@@ -218,3 +183,5 @@ In the function above, the `xᵢ` and `xⱼ` coordinates, which correspond to th
 
 !!! note
     All these computations should be performed inside the scope of a function for optimal performance. The examples here can be followed by copying and pasting the code into the REPL, but this is not the recommended practice for critical code. The strategy of bypassing the internal computations of `CellListMap` may be useful for improving performance even if the previous and simpler method is possible. 
+
+
