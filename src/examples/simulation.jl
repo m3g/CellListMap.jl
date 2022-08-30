@@ -10,7 +10,11 @@ function update_forces!(x, y, i, j, d2, forces, cutoff)
     forces[j] -= dudr
     return forces
 end
-function simulate(; N::Int=200, nsteps::Int=100, isave=1)
+# Function that initializes the system: it is preferrable to initialize
+# the system outside the function that performs the simulation, because
+# the system type is defined on initialization. Initializing it outside
+# the simulation function avoids possible type-instabilities. 
+function init_system(;N::Int=200)
     Vec2D = SVector{2,Float64}
     positions = rand(Vec2D, N)
     unitcell = [1.0, 1.0]
@@ -22,13 +26,17 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
         output=similar(positions),
         output_name=:forces,
     )
-    velocities = [-1.0 .+ 2.0 * randn(Vec2D) for _ in 1:N]
+    return system
+end
+function simulate(system=init_system(); nsteps::Int=100, isave=1)
+    # initial velocities
+    velocities = [ randn(eltype(system.positions)) for _ in 1:length(system.positions) ]
     dt = 1e-3
-    trajectory = typeof(positions)[]
+    trajectory = typeof(system.positions)[]
     for step in 1:nsteps
         # compute forces at this step
         map_pairwise!(
-            (x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces,cutoff),
+            (x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces,system.cutoff),
             system
         )
         # Update positions and velocities
@@ -39,7 +47,7 @@ function simulate(; N::Int=200, nsteps::Int=100, isave=1)
             x = x + v * dt + (f / 2) * dt^2
             v = v + f * dt
             # wrapping to origin for obtaining a pretty animation
-            x = wrap_relative_to(x, SVector(0.0, 0.0), unitcell)
+            x = wrap_relative_to(x, SVector(0.0, 0.0), system.unitcell)
             # !!! IMPORTANT: Update arrays of positions and velocities
             system.positions[i] = x
             velocities[i] = v
