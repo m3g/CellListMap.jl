@@ -706,8 +706,18 @@ map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
 
 ### Particle simulation
 
-In this example, a complete particle simulation is illustrated, with a simple potential.
-This example can illustrate how particle positions and forces can be updated.
+In this example, a complete particle simulation is illustrated, with a simple potential.  This example can illustrate how particle positions and forces can be updated. Run this
+simulation with:
+
+```julia-repl
+julia> system = init_system(N=200); # number of particles
+
+julia> trajectory = simulate(system);
+
+julia> animate(trajectory)
+```
+
+One important characteristic of this example is that the `system` is built outside the function that performs the simulation. This is done because the construction of the system is type-unstable (it is dimension, geometry and output-type dependent). Adding a function barrier avoids type-instabilities to propagate to the simulation causing possible performance problems. 
 
 ```julia
 using StaticArrays
@@ -722,54 +732,56 @@ function update_forces!(x, y, i, j, d2, forces, cutoff)
     forces[j] -= dudr
     return forces
 end
-function simulate(; N::Int=200, nsteps::Int=100, isave=1)
+# Function that initializes the system: it is preferrable to initialize
+# the system outside the function that performs the simulation, because
+# the system (data)type is defined on initialization. Initializing it outside
+# the simulation function avoids possible type-instabilities. 
+function init_system(;N::Int=200)
     Vec2D = SVector{2,Float64}
     positions = rand(Vec2D, N)
     unitcell = [1.0, 1.0]
     cutoff = 0.1
     system = PeriodicSystem(
-        xpositions=positions,
+        positions=positions,
         cutoff=cutoff,
         unitcell=unitcell,
         output=similar(positions),
         output_name=:forces,
     )
-    velocities = [-1.0 .+ 2.0 * randn(Vec2D) for _ in 1:N]
+    return system
+end
+function simulate(system=init_system(); nsteps::Int=100, isave=1)
+    # initial velocities
+    velocities = [ randn(eltype(system.positions)) for _ in 1:length(system.positions) ]
     dt = 1e-3
-    trajectory = typeof(positions)[]
+    trajectory = typeof(system.positions)[]
     for step in 1:nsteps
         # compute forces at this step
         map_pairwise!(
-            (x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces,cutoff),
+            (x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces,system.cutoff),
             system
         )
         # Update positions and velocities
-        for i in eachindex(system.xpositions, system.forces)
-            # obtain forces and positions
+        for i in eachindex(system.positions, system.forces)
             f = system.forces[i]
-            x = system.xpositions[i]
+            x = system.positions[i]
             v = velocities[i]
-            # propagate the trajectory (simple Euler step)
             x = x + v * dt + (f / 2) * dt^2
             v = v + f * dt
             # wrapping to origin for obtaining a pretty animation
-            x = wrap_relative_to(x, SVector(0.0, 0.0), unitcell)
+            x = wrap_relative_to(x, SVector(0.0, 0.0), system.unitcell)
             # !!! IMPORTANT: Update arrays of positions and velocities
-            system.xpositions[i] = x
+            system.positions[i] = x
             velocities[i] = v
         end
         # Save step for printing
         if step % isave == 0
-            push!(trajectory, copy(system.xpositions))
+            push!(trajectory, copy(system.positions))
         end
     end
     return trajectory
 end
 
-#
-# The following function produces a nice animation of the 
-# trajectory
-#
 using Plots
 function animate(trajectory)
     anim = @animate for step in trajectory
@@ -783,9 +795,5 @@ function animate(trajectory)
     end
     gif(anim, "simulation.gif", fps=10)
 end
-
-# Running and plotting
-trajectory = simulate()
-animate(trajectory)
 ```
 
