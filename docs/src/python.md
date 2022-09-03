@@ -4,9 +4,9 @@ Callling `CellListMap` from python can be useful if lists of neighbors or other 
 
 ## Installing
 
-First, install `julia` through the `pip` package manager, with
+First, install `juliacall` using the `pip` package manager, with
 ```bash
-% pip install julia
+% pip install juliacall
 ```
 
 Using `ipython3` (only Python $\geq$ 3 is supported), do:
