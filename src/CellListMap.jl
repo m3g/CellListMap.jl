@@ -156,7 +156,7 @@ bang as a valid character.
 const map_pairwise = map_pairwise!
 
 # Utils
-include("./utils.jl")
+include("./neighborlists.jl")
 
 #
 # Test and example functions
