@@ -104,25 +104,26 @@ function InPlaceNeighborList(;
     unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
     parallel::Bool=true,
     show_progress::Bool=false,
-    autoswap=true
+    autoswap=true,
+    nbatches=(0,0),
 ) where {T<:Real}
     if isnothing(y)
         if isnothing(unitcell)
             unitcell = limits(x)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, box)
+        cl = CellList(x, box, parallel=parallel, nbatches=nbatches)
         aux = AuxThreaded(cl)
     else
         if isnothing(unitcell)
             unitcell = limits(x, y)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box, autoswap=autoswap)
+        cl = CellList(x, y, box, autoswap=autoswap, parallel=parallel, nbatches=nbatches)
         aux = AuxThreaded(cl)
     end
     nb = NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[])
-    nb_threaded = [copy(nb) for _ in 1:nbatches(cl)]
+    nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl)]
     return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
 end
 
@@ -201,13 +202,20 @@ julia> CellListMap.neighborlist(x,0.05)
 ```
 
 """
-function neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)
+function neighborlist(
+    x, cutoff; 
+    unitcell=nothing, 
+    parallel=true, 
+    show_progress=false, 
+    nbatches=(0,0)
+)
     system = InPlaceNeighborList(;
         x=x,
         cutoff=cutoff,
         unitcell=unitcell,
         parallel=parallel,
-        show_progress=show_progress
+        show_progress=show_progress,
+        nbatches=nbatches
     )
     return neighborlist!(system)
 end
@@ -215,7 +223,13 @@ end
 """
 
 ```
-neighborlist(x, y, cutoff; unitcell=nothing, parallel=true, show_progress=false, autoswap=true)
+neighborlist(
+    x, y, cutoff; 
+    unitcell=nothing, 
+    parallel=true, 
+    show_progress=false, 
+    autoswap=true,
+    nbatches=(0,0))
 ```
 
 Computes the list of pairs of particles of `x` which are closer than `r` to
@@ -239,7 +253,14 @@ julia> CellListMap.neighborlist(x,y,0.05)
 ```
 
 """
-function neighborlist(x, y, cutoff; unitcell=nothing, parallel=true, show_progress=false, autoswap=true)
+function neighborlist(
+    x, y, cutoff; 
+    unitcell=nothing, 
+    parallel=true, 
+    show_progress=false, 
+    autoswap=true,
+    nbatches=(0,0),
+)
     system = InPlaceNeighborList(
         x=x,
         y=y,
