@@ -1,4 +1,3 @@
-
 export InPlaceNeighborList
 export update!
 export neighborlist, neighborlist!
@@ -11,7 +10,7 @@ mutable struct NeighborList{T}
     list::Vector{Tuple{Int,Int,T}}
 end
 
-import Base: push!, empty!, resize!, copy, length, getindex
+import Base: push!, empty!, resize!, copy
 empty!(x::NeighborList) = x.n = 0
 function push!(x::NeighborList, pair)
     x.n += 1
@@ -29,7 +28,20 @@ function resize!(x::NeighborList, n::Int)
 end
 copy(x::NeighborList{T}) where {T} = NeighborList{T}(x.n, copy(x.list))
 copy(x::Tuple{Int,Int,T}) where {T} = (x[1], x[2], x[3])
-length(x::NeighborList) = length(x.list)
+
+@testitem "NeighborList operations" begin
+    using CellListMap
+    nb = CellListMap.NeighborList(0, Tuple{Int,Int,Float64}[])
+    @test length(nb.list) == 0
+    push!(nb, (0, 0, 0.0))
+    @test (nb.n, length(nb.list)) == (1, 1)
+    empty!(nb)
+    @test (nb.n, length(nb.list)) == (0, 1)
+    resize!(nb, 5)
+    @test (nb.n, length(nb.list), nb.n) == (5, 5, 5)
+    nb2 = copy(nb)
+    @test (nb.n, nb.list) == (nb2.n, nb2.list)
+end
 
 # Function adds pair to the list
 function push_pair!(i, j, d2, list::NeighborList)
@@ -41,24 +53,70 @@ end
 # We have to define our own reduce function here (for the parallel version)
 # this reduction can be dum assynchronously on a preallocated array
 function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborList{T}}) where {T}
-    ranges = cumsum(length.(list_threaded))
+    ranges = cumsum([length(nb.list) for nb in list_threaded])
     npairs = ranges[end]
     list = resize!(list, npairs)
     @sync for it in eachindex(list_threaded)
-        range = ranges[it]-length(list_threaded[it])+1:ranges[it]
+        range = ranges[it]-length(list_threaded[it].list)+1:ranges[it]
         Threads.@spawn list.list[range] .= list_threaded[it].list
     end
     return list
+end
+
+@testitem "Neighborlist push/reduce" begin
+    using CellListMap
+    nb1 = CellListMap.NeighborList(2, [(0, 0, 0.0), (1, 1, 1.0)])
+    CellListMap.push_pair!(3, 3, 9.0, nb1)
+    @test (nb1.n, nb1.list[3]) == (3, (3, 3, 3.0))
+    nb2 = [copy(nb1), CellListMap.NeighborList(1, [(4, 4, 4.0)])]
+    CellListMap.reduce_lists(nb1, nb2)
+    @test nb1.n == 4 
+    @test nb1.list == [(0, 0, 0.0), (1, 1, 1.0), (3, 3, 3.0), (4, 4, 4.0)]
 end
 
 """
 
 $(TYPEDEF)
 
-Structure that carries the data needed for computing neighbor lists. Can be explicitit constructured
-if repeated in-place lists are required. 
+$(INTERNAL)
+
+Structure that containst the system information for neighborlist computations. All fields are internal.
+
+## Extended help
 
 $(TYPEDFIELDS)
+
+"""
+mutable struct InPlaceNeighborList{B,C,A,NB<:NeighborList}
+    box::B
+    cl::C
+    aux::A
+    nb::NB
+    nb_threaded::Vector{NB}
+    parallel::Bool
+    show_progress::Bool
+end
+
+"""
+
+```
+function InPlaceNeighborList(;
+    x::AbstractVecOrMat,
+    y::Union{AbstractVecOrMat,Nothing}=nothing,
+    cutoff::T,
+    unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
+    parallel::Bool=true,
+    show_progress::Bool=false,
+) where {T<:Real}
+```
+
+Function that initializes the `InPlaceNeighborList` structure, to be used for in-place
+computation of neighbor lists.
+
+- If only `x` is provided, the neighbor list of the set is computed. 
+- If `x` and `y` are provided, the neighbor list between the sets is computed.
+- If `unitcell` is provided, periodic boundary conditions will be used. The `unitcell` can
+  be a vector of Orthorhombic box sides, or an actual unitcell matrix for general cells. 
 
 ## Examples
 
@@ -77,7 +135,7 @@ Box{OrthorhombicCell, 3, Float64, Float64, 9}
 Current list buffer size: 0
 
 julia> neighborlist!(system)
-209116-element Vector{Tuple{Int64, Int64, Float64}}:
+210034-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 357, 0.09922225615002134)
  (1, 488, 0.043487074695938925)
  (1, 2209, 0.017779967072139684)
@@ -86,17 +144,41 @@ julia> neighborlist!(system)
  (9596, 7927, 0.0898266280344037)
 ```
 
-"""
-mutable struct InPlaceNeighborList{B,C,A,NB<:NeighborList}
-    box::B
-    cl::C
-    aux::A
-    nb::NB
-    nb_threaded::Vector{NB}
-    parallel::Bool
-    show_progress::Bool
-end
+The coordinates of the system, its unitcell, or the cutoff can be changed with
+the `update!` function. If the number of pairs of the list does not change 
+significantly, the new calculation is minimally allocating, or non-allocating 
+at all, in particular if the computation is run without parallelization:
+    
+If the structure is used repeatedly for similar systems, the allocations will
+vanish, except for minor allocations used in the threading computation (if a 
+non-parallel computation is executed, the allocations will vanish completely):
 
+```julia-repl
+julia> x = rand(SVector{3,Float64}, 10^4);
+
+julia> system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]);
+
+julia> @time neighborlist!(system);
+  0.008004 seconds (228 allocations: 16.728 MiB)
+
+julia> update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia> @time neighborlist!(system);
+  0.024811 seconds (167 allocations: 7.887 MiB)
+
+julia> update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia> @time neighborlist!(system);
+  0.005213 seconds (164 allocations: 1.439 MiB)
+
+julia> update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia> @time neighborlist!(system);
+  0.005276 seconds (162 allocations: 15.359 KiB)
+
+```
+
+"""
 function InPlaceNeighborList(;
     x::AbstractVecOrMat,
     y::Union{AbstractVecOrMat,Nothing}=nothing,
@@ -105,7 +187,7 @@ function InPlaceNeighborList(;
     parallel::Bool=true,
     show_progress::Bool=false,
     autoswap=true,
-    nbatches=(0,0),
+    nbatches=(0, 0)
 ) where {T<:Real}
     if isnothing(y)
         if isnothing(unitcell)
@@ -168,6 +250,10 @@ function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
 end
 
 function neighborlist!(system::InPlaceNeighborList)
+    # Empty lists and auxiliary threaded arrays
+    empty!(system.nb)
+    empty!.(system.nb_threaded)
+    # Compute the neighbor lists
     map_pairwise!(
         (x, y, i, j, d2, nb) -> push_pair!(i, j, d2, nb),
         system.nb, system.box, system.cl,
@@ -203,11 +289,11 @@ julia> CellListMap.neighborlist(x,0.05)
 
 """
 function neighborlist(
-    x, cutoff; 
-    unitcell=nothing, 
-    parallel=true, 
-    show_progress=false, 
-    nbatches=(0,0)
+    x, cutoff;
+    unitcell=nothing,
+    parallel=true,
+    show_progress=false,
+    nbatches=(0, 0)
 )
     system = InPlaceNeighborList(;
         x=x,
@@ -254,12 +340,12 @@ julia> CellListMap.neighborlist(x,y,0.05)
 
 """
 function neighborlist(
-    x, y, cutoff; 
-    unitcell=nothing, 
-    parallel=true, 
-    show_progress=false, 
+    x, y, cutoff;
+    unitcell=nothing,
+    parallel=true,
+    show_progress=false,
     autoswap=true,
-    nbatches=(0,0),
+    nbatches=(0, 0)
 )
     system = InPlaceNeighborList(
         x=x,
@@ -268,17 +354,17 @@ function neighborlist(
         unitcell=unitcell,
         parallel=parallel,
         show_progress=show_progress,
-        autoswap=autoswap
+        autoswap=autoswap,
+        nbatches=nbatches
     )
     return neighborlist!(system)
 end
 
-@testitem "neighborlist.jl" begin
+@testitem "Compare with NearestNeighbors" begin
 
     using CellListMap
     using StaticArrays
     using NearestNeighbors
-    using Test
 
     function nl_NN(x, y, r)
         balltree = BallTree(x)
