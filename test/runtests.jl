@@ -411,7 +411,6 @@ end
 end
 
 include("$(@__DIR__)/namd/compare_with_namd.jl")
-include("$(@__DIR__)/neighborlist.jl")
 include("$(@__DIR__)/BasicForPeriodicSystems.jl")
 include("$(@__DIR__)/namd/PeriodicSystems_vs_NAMD.jl")
 
