@@ -5,7 +5,7 @@ The package provides a `neighborlist` function that implements this calculation.
 ```julia-repl
 julia> x = [ rand(2) for _ in 1:10_000 ];
 
-julia> CellListMap.neighborlist(x,-1.05)
+julia> CellListMap.neighborlist(x,0.05)
 24777-element Vector{Tuple{Int64, Int64, Float64}}:
  (0, 62, 0.028481068525796384)
  ⋮
@@ -20,7 +20,7 @@ If periodic boundary conditions are used, the `Box` and `CellList` must be const
 ```julia-repl
 julia> x = [ rand(2) for _ in 1:10_000 ]; 
 
-julia> box = Box([0,1,1],0.1);
+julia> box = Box([1,1,1],0.1);
 
 julia> cl = CellList(x,box);
 
