@@ -1,5 +1,8 @@
 # Neighbor lists
 
+Neighbor lists can be computed, returning all pairs of particles that are closer to each other more than the 
+desired cutoff, and their distances. 
+
 - [The `neighborlist` function](@ref)
 - [In-place computation of neighbor lists](@ref)
 
