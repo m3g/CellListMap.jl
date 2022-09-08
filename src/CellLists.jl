@@ -791,6 +791,14 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
 
+    # Provide a better error message if the unit cell dimension does not matching
+    # the dimension of the positions.
+    if length(x[begin]) != size(box.unit_cell.matrix,1) 
+        n1 = length(x[begin])
+        n2 = size(box.unit_cell.matrix,1)
+        throw(DimensionMismatch("Positions have dimension $n1, but the unit cell has dimension $n2."))
+    end
+
     # Add particles to cell list
     nbatches = cl.nbatches.build_cell_lists
     if !parallel || nbatches == 1
