@@ -15,6 +15,7 @@ export map_pairwise!, map_pairwise
 export limits
 export TriclinicCell
 export OrthorhombicCell
+export NonPeriodicCell
 export nbatches
 export PeriodicSystem
 

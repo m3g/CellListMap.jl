@@ -5,6 +5,9 @@
 #
 struct TriclinicCell end
 struct OrthorhombicCell end
+struct NonPeriodicCell end
+const OrthorhombicCellType = Union{OrthorhombicCell,NonPeriodicCell}
+const PeriodicCellType = Union{OrthorhombicCell,TriclinicCell}
 
 struct UnitCell{UnitCellType,N,T,M}
     matrix::SMatrix{N,N,T,M}
@@ -169,7 +172,7 @@ function Box(
     # be  multiple of the cell size. In some pathological cases this
     # may be bad for performance, because we are increasing the 
     # effective cell cutoff
-    if UnitCellType == OrthorhombicCell
+    if UnitCellType <: OrthorhombicCellType
         nc = floor.(Int,lcell*unit_cell_max/cutoff)
         cell_size = unit_cell_max ./ nc 
         nc = nc .+ 2*lcell 
@@ -314,8 +317,9 @@ Box(
 This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
 the coordinates of the particles involved, and constructs a `Box` with size larger than
 the maximum coordinates ranges of all particles plus twice the cutoff. This is used to 
-emulate pairwise interactions in non-periodic boxes. The output box is always an `Orthorhombic`
-cell.
+emulate pairwise interactions in non-periodic boxes. The output box is an `NonPeriodicCell`
+box type, which internally is treated as Orthorhombic with boundaries that guarantee that
+particles do not see images of each other. 
 
 ## Examples
 
@@ -323,27 +327,26 @@ cell.
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),10)
-Box{OrthorhombicCell, 3, Float64, Float64, 9}
-  unit cell matrix = [ 119.99907193208746, 0.0, 0.0; 0.0, 119.99968623301143, 0.0; 0.0, 0.0, 119.99539603156498 ]
+Box{NonPeriodicCell, 3}
+  unit cell matrix = [ 110.0, 0.0, 0.0; 0.0, 110.0, 0.0; 0.0, 0.0, 110.0 ]
   cutoff = 10.0
-  number of computing cells on each dimension = [13, 13, 13]
-  computing cell sizes = [10.909006539280679, 10.90906238481922, 10.908672366505908] (lcell: 1)
-  Total number of cells = 2197
+  number of computing cells on each dimension = [12, 12, 12]
+  computing cell sizes = [11.0, 11.0, 11.0] (lcell: 1)
+  Total number of cells = 1728
 
 julia> y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x,y),10)
-Box{OrthorhombicCell, 3, Float64, Float64, 9}
-  unit cell matrix = [ 169.99914503548962, 0.0, 0.0; 0.0, 169.9990736881799, 0.0; 0.0, 0.0, 119.99726063023918 ]
+Box{NonPeriodicCell, 3}
+  unit cell matrix = [ 160.0, 0.0, 0.0; 0.0, 160.0, 0.0; 0.0, 0.0, 110.0 ]
   cutoff = 10.0
-  number of computing cells on each dimension = [18, 18, 13]
-  computing cell sizes = [10.624946564718101, 10.624942105511243, 10.90884187547629] (lcell: 1)
-  Total number of cells = 4212
-
+  number of computing cells on each dimension = [17, 17, 12]
+  computing cell sizes = [10.67, 10.67, 11.0] (lcell: 1)
+  Total number of cells = 3468
 ```
 
 """
 function Box(limits::Limits, cutoff::T; lcell::Int=1) where T
     sides = max.(limits.limits .+ cutoff, 2 * cutoff)
-    return Box(sides, cutoff, lcell, OrthorhombicCell) 
+    return Box(sides, cutoff, lcell, NonPeriodicCell) 
 end

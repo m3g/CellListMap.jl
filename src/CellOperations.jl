@@ -119,7 +119,7 @@ first unit cell with all-positive coordinates, given the `Box` structure.
 """
 
 ```
-wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
+wrap_to_first(x,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
 ```
 
 $(INTERNAL)
@@ -131,7 +131,7 @@ first unit cell with all-positive coordinates, given an Orthorhombic cell.
 This is slightly cheaper than for general cells.  
 
 """
-@inline function wrap_to_first(x,box::Box{OrthorhombicCell,N,T}) where {N,T}
+@inline function wrap_to_first(x,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
     sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
     x = mod.(x,sides)
     x = fix_upper_boundary.(x,sides)
@@ -178,7 +178,7 @@ given a general `Box` structure.
 """
 
 ```
-wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
+wrap_relative_to(x,xref,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
 ```
 
 $(INTERNAL)
@@ -189,7 +189,7 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 given an Orthorhombic cell. This is slightly cheaper than for general cells.
 
 """
-@inline function wrap_relative_to(x,xref,box::Box{OrthorhombicCell,N,T}) where {N,T}
+@inline function wrap_relative_to(x,xref,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
     sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
     return wrap_relative_to(x,xref,sides)
 end
