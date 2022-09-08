@@ -53,12 +53,13 @@ end
 # We have to define our own reduce function here (for the parallel version)
 # this reduction can be dum assynchronously on a preallocated array
 function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborList{T}}) where {T}
-    ranges = cumsum([length(nb.list) for nb in list_threaded])
+    ranges = cumsum(nb.n for nb in list_threaded)
     npairs = ranges[end]
     list = resize!(list, npairs)
     @sync for it in eachindex(list_threaded)
-        range = ranges[it]-length(list_threaded[it].list)+1:ranges[it]
-        Threads.@spawn list.list[range] .= list_threaded[it].list
+        lt = list_threaded[it]
+        range = ranges[it]-lt.n+1:ranges[it]
+        Threads.@spawn list.list[range] .= @view(lt.list[1:lt.n])
     end
     return list
 end
@@ -117,6 +118,8 @@ computation of neighbor lists.
 - If `x` and `y` are provided, the neighbor list between the sets is computed.
 - If `unitcell` is provided, periodic boundary conditions will be used. The `unitcell` can
   be a vector of Orthorhombic box sides, or an actual unitcell matrix for general cells. 
+- If `unicell` is not provide (value `nothing`), no periodic boundary conditions will
+  be considered. 
 
 ## Examples
 
@@ -209,36 +212,65 @@ function InPlaceNeighborList(;
     return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
 end
 
+#
+# Function that updates the box if the cutoff or unitcell has changed
+#
+# System without perioidc boundary conditions: update limits
+function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, cutoff::Real, unitcell::Nothing)
+    system.box = Box(limits(x), cutoff)
+    return system
+end
+function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, y, cutoff::Real, unitcell::Nothing)
+    system.box = Box(limits(x,y), cutoff)
+    return system
+end
+# Nothing change for systems with periodic boundary conditions: just return
+update_box!(system::InPlaceNeighborList{Box{<:PeriodicCellType}}, x, cutoff::Nothing, unitcell::Nothing) = system
+update_box!(system::InPlaceNeighborList{Box{<:PeriodicCellType}}, x, y, cutoff::Nothing, unitcell::Nothing) = system
+# Systems with periodic boundary conditions
+function update_box!(system::InPlaceNeighborList{<:Box{UnitCellType}}, cutoff::Real, unitcell) where {UnitCellType<:PeriodicCellType}
+    if isnothing(cutoff)
+        cutoff = system.box.cutoff
+    end
+    if isnothing(unitcell)
+        unitcell = system.box.unit_cell.matrix
+        box = Box(unitcell, cutoff, UnitCellType=UnitCellType)
+    else
+        box = Box(unitcell, cutoff)
+    end
+    # Error if the type of box was changed: this is not supported
+    B = typeof(system.box)
+    if typeof(box) != B
+        throw(ArgumentError(" The unitcell must be of the same type (Orthorhombic **or** general) as of the initial constructor"))
+    end
+    system.box = box
+    return system
+end
+
+#
+# update system for self computations
+#
 function update!(
-    system::InPlaceNeighborList{B,C},
+    system::InPlaceNeighborList{<:Box{UnitCellType},C},
     x::AbstractVecOrMat;
     cutoff=nothing, unitcell=nothing
-) where {B,C<:CellList}
-    if !isnothing(cutoff) || !isnothing(unitcell)
-        box = Box(unitcell, cutoff)
-        if typeof(box) != B
-            throw(ArgumentError(" The unitcell must be of the same type (Orthorhombic **or** general) as of the initial constructor"))
-        end
-        system.box = box
-    end
+) where {UnitCellType,C<:CellList}
+    update_box!(system, x, cutoff, unitcell)
     system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel=system.parallel)
     return system
 end
 
+#
+# update system for cross-computations
+#
 function update!(
-    system::InPlaceNeighborList{B,C},
+    system::InPlaceNeighborList{<:Box{UnitCellType},C},
     x::AbstractVecOrMat,
     y::AbstractVecOrMat;
     cutoff=nothing, unitcell=nothing
-) where {B,C<:CellListPair}
-    if !isnothing(cutoff) || !isnothing(unitcell)
-        box = Box(unitcell, cutoff)
-        if typeof(box) != B
-            throw(ArgumentError(" The unitcell must be of the same type (Orthorhombic **or** general) as of the initial constructor"))
-        end
-        system.box = box
-    end
-    system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux, parallel=system.parallel)
+) where {UnitCellType,C<:CellListPair}
+    update_box!(system, x, y, cutoff, unitcell)
+    system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel=system.parallel)
     return system
 end
 
@@ -263,6 +295,49 @@ function neighborlist!(system::InPlaceNeighborList)
         show_progress=system.show_progress
     )
     return system.nb.list
+end
+
+
+@testitem "InPlaceNeighborList vs. NearestNeighbors" begin
+
+    using CellListMap
+    using CellListMap.TestingNeighborLists
+    using NearestNeighbors
+
+    for N in [2,3]
+    
+        x = rand(N, 500)
+        cutoff = 0.1
+        nb = nl_NN(BallTree, inrange, x, x, cutoff)
+        system = InPlaceNeighborList(x = x, cutoff = cutoff)
+        cl = neighborlist!(system)
+        @test compare_nb_lists(cl, nb, self=true)
+        # Test system updating for self-lists
+        cutoff = 0.05
+        new_x = rand(N, 450)
+        nb = nl_NN(BallTree, inrange, new_x, new_x, cutoff)
+        update!(system, new_x; cutoff=cutoff)
+        cl = neighborlist!(system)
+        @test compare_nb_lists(cl, nb, self=true)
+
+        # Test system updating for cross-lists
+        x = rand(N, 500)
+        y = rand(N, 1000)
+        cutoff = 0.1
+        nb = nl_NN(BallTree, inrange, x, y, cutoff)
+        system = InPlaceNeighborList(x = x, y = y, cutoff = cutoff)
+        cl = neighborlist!(system)
+        @test compare_nb_lists(cl, nb, self=false)
+        cutoff = 0.05
+        new_x = rand(N, 500) 
+        new_y = rand(N, 831) 
+        nb = nl_NN(BallTree, inrange, new_x, new_y, cutoff)
+        update!(system, new_x, new_y; cutoff=cutoff)
+        cl = neighborlist!(system)
+        @test compare_nb_lists(cl, nb, self=false)
+
+    end
+
 end
 
 """
@@ -363,10 +438,97 @@ end
 @testitem "Compare with NearestNeighbors" begin
 
     using CellListMap
+    using CellListMap.TestingNeighborLists
     using StaticArrays
     using NearestNeighbors
 
-    function nl_NN(x, y, r)
+    r = 0.1
+
+    for N in [2, 3]
+
+        #
+        # Using vectors as input
+        #
+
+        # With y smaller than x
+        x = [rand(SVector{N,Float64}) for _ in 1:1000]
+        y = [rand(SVector{N,Float64}) for _ in 1:500]
+
+        nb = nl_NN(BallTree, inrange, x, x, r)
+        cl = CellListMap.neighborlist(x, r)
+        @test compare_nb_lists(cl, nb, self=true)
+
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test compare_nb_lists(cl, nb, self=false)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test compare_nb_lists(cl, nb, self=false)
+
+        # with x smaller than y
+        x = [rand(SVector{N,Float64}) for _ in 1:500]
+        y = [rand(SVector{N,Float64}) for _ in 1:1000]
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test compare_nb_lists(cl, nb, self=false)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test compare_nb_lists(cl, nb, self=false)
+
+        # Using matrices as input
+        x = rand(N, 1000)
+        y = rand(N, 500)
+
+        nb = nl_NN(BallTree, inrange, x, x, r)
+        cl = CellListMap.neighborlist(x, r)
+        @test compare_nb_lists(cl, nb, self=true)
+
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test compare_nb_lists(cl, nb, self=false)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test compare_nb_lists(cl, nb, self=false)
+
+        # with x smaller than y
+        x = rand(N, 500)
+        y = rand(N, 1000)
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test compare_nb_lists(cl, nb, self=false)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test compare_nb_lists(cl, nb, self=false)
+
+        # Check random coordinates to test the limits more thoroughly
+        check_random_NN = true
+        for i in 1:500
+            x = rand(SVector{N,Float64}, 100)
+            y = rand(SVector{N,Float64}, 50)
+            nb = nl_NN(BallTree, inrange, x, y, r)
+            cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+            check_random_NN = compare_nb_lists(cl, nb, self=false)
+        end
+        @test check_random_NN
+
+        # with different types
+        x = rand(Float32, N, 500)
+        y = rand(Float32, N, 1000)
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test compare_nb_lists(cl, nb, self=false)
+        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test compare_nb_lists(cl, nb, self=false)
+
+    end
+
+end
+
+#
+# some auxiliary functions for testing neighbor lists
+#
+module TestingNeighborLists
+
+    export nl_NN
+    export compare_nb_lists
+
+    function nl_NN(BallTree, inrange, x, y, r)
         balltree = BallTree(x)
         return inrange(balltree, y, r, true)
     end
@@ -403,83 +565,10 @@ end
         return true
     end
 
-    r = 0.1
+end # module TestingNeighborLists
 
-    for N in [2, 3]
 
-        #
-        # Using vectors as input
-        #
 
-        # With y smaller than x
-        x = [rand(SVector{N,Float64}) for _ in 1:1000]
-        y = [rand(SVector{N,Float64}) for _ in 1:500]
-
-        nb = nl_NN(x, x, r)
-        cl = CellListMap.neighborlist(x, r)
-        @test compare_nb_lists(cl, nb, self=true)
-
-        nb = nl_NN(x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test compare_nb_lists(cl, nb, self=false)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test compare_nb_lists(cl, nb, self=false)
-
-        # with x smaller than y
-        x = [rand(SVector{N,Float64}) for _ in 1:500]
-        y = [rand(SVector{N,Float64}) for _ in 1:1000]
-        nb = nl_NN(x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test compare_nb_lists(cl, nb, self=false)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test compare_nb_lists(cl, nb, self=false)
-
-        # Using matrices as input
-        x = rand(N, 1000)
-        y = rand(N, 500)
-
-        nb = nl_NN(x, x, r)
-        cl = CellListMap.neighborlist(x, r)
-        @test compare_nb_lists(cl, nb, self=true)
-
-        nb = nl_NN(x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test compare_nb_lists(cl, nb, self=false)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test compare_nb_lists(cl, nb, self=false)
-
-        # with x smaller than y
-        x = rand(N, 500)
-        y = rand(N, 1000)
-        nb = nl_NN(x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test compare_nb_lists(cl, nb, self=false)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test compare_nb_lists(cl, nb, self=false)
-
-        # Check random coordinates to test the limits more thoroughly
-        check_random_NN = true
-        for i in 1:500
-            x = rand(SVector{N,Float64}, 100)
-            y = rand(SVector{N,Float64}, 50)
-            nb = nl_NN(x, y, r)
-            cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-            check_random_NN = compare_nb_lists(cl, nb, self=false)
-        end
-        @test check_random_NN
-
-        # with different types
-        x = rand(Float32, N, 500)
-        y = rand(Float32, N, 1000)
-        nb = nl_NN(x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test compare_nb_lists(cl, nb, self=false)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test compare_nb_lists(cl, nb, self=false)
-
-    end
-
-end
 
 #
 # TO BE DEPRECATED IN 1.0
