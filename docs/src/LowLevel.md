@@ -303,12 +303,12 @@ To avoid the use of periodic boundary conditions it is enough to define an Ortho
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),12)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [111.99749159163106 0.0 0.0; 0.0 111.99757156637344 0.0; 0.0 0.0 111.99910298572958]
-  cutoff: 12.0
-  number of computing cells on each dimension: [11, 11, 11]
-  computing cell sizes: [12.444165732403452, 12.444174618485938, 12.444344776192175] (lcell: 1)
-  Total number of cells: 1331
+Box{NonPeriodicCell, 3}
+  unit cell matrix = [ 112.0, 0.0, 0.0; 0.0, 112.0, 0.0; 0.0, 0.0, 112.0 ]
+  cutoff = 12.0
+  number of computing cells on each dimension = [11, 11, 11]
+  computing cell sizes = [12.44, 12.44, 12.44] (lcell: 1)
+  Total number of cells = 1331
 ```
 
 or, for computing the interaction between two disjoint sets of particles, call the `limits` function with two arguments:
@@ -319,16 +319,15 @@ julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 julia> y = [ [120,180,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x,y),12)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [131.9978650409108 0.0 0.0; 0.0 191.99730748624336 0.0; 0.0 0.0 111.99917288242698]
-  cutoff: 12.0
-  number of computing cells on each dimension: [12, 17, 11]
-  computing cell sizes: [13.19978650409108, 12.799820499082891, 12.444352542491886] (lcell: 1)
-  Total number of cells: 2244
+Box{NonPeriodicCell, 3}
+  unit cell matrix = [ 132.0, 0.0, 0.0; 0.0, 192.0, 0.0; 0.0, 0.0, 112.0 ]
+  cutoff = 12.0
+  number of computing cells on each dimension = [12, 17, 11]
+  computing cell sizes = [13.2, 12.8, 12.44] (lcell: 1)
+  Total number of cells = 2244
 ```
 
 Note that the unit cell length is, on each direction, the maximum coordinates of all particles plus the cutoff. This will avoid the computation of pairs of periodic images. The algorithms used for computing interactions in Orthorhombic cells will then be used.
-
 
 ## Parallelization splitting and reduction
 
