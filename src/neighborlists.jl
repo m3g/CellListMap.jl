@@ -347,12 +347,16 @@ neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)
 ```
 
 Computes the list of pairs of particles in `x` which are closer to each other than `cutoff`.
+If the keyword parameter `unitcell` is provided (as a vector of sides or a general unit cell
+matrix, periodic boundary conditions are considered). 
 
 ## Example
 ```julia-repl
+julia> using CellListMap
+
 julia> x = [ rand(3) for i in 1:10_000 ];
 
-julia> CellListMap.neighborlist(x,0.05)
+julia> neighborlist(x,0.05)
 24848-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 1055, 0.022977369806392412)
  (1, 5086, 0.026650609138167428)
@@ -566,40 +570,3 @@ module TestingNeighborLists
     end
 
 end # module TestingNeighborLists
-
-
-
-
-#
-# TO BE DEPRECATED IN 1.0
-#
-
-"""
-
-```
-neighborlist(box, cl; parallel=true)
-```
-
-Compute the neighbor list of a single set or set pairs of particles. Returns a vector of tuples
-with all indices of the particles that are within `box.cutoff`, and the distances.  
-
-WARNING: This function will be deprecated. Use the `InPlaceNeighborList` interface.
-
-```
-
-"""
-function neighborlist(box::Box, cl; parallel=true)
-    println("""
-
-        WARNING: this method will be deprecated. Use the InPlaceNeighborList interface.
-
-    """)
-    # Initialize list of pairs
-    list = NeighborList(0, Tuple{Int,Int,typeof(box.cutoff)}[])
-    map_pairwise!(
-        (x, y, i, j, d2, list) -> push_pair!(i, j, d2, list),
-        list, box, cl,
-        reduce=reduce_lists, parallel=parallel
-    )
-    return list.list
-end
