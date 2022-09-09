@@ -24,8 +24,24 @@ julia> neighborlist(x,0.05)
  (6575, 7378, 0.03791567990447959)
  (7378, 3450, 0.01748757015908321)
 ```
-or `neighborlist(x,y,r)` for computing the lists of pairs of two sets closer than `r`.
 
+If the neighbor lists between two sets of points are required, use the following notation:
+```julia-repl
+julia> x = rand(SVector{3,Float64},10^4);
+
+julia> y = rand(SVector{3,Float64},10^3);
+
+julia> list = neighborlist(x,y,0.1)
+37309-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 971, 0.09867846773727411)
+ (1, 567, 0.06630101425431004)
+ (1, 3, 0.04103170149300593)
+ ⋮
+ (10000, 156, 0.08549899843141298)
+ (10000, 444, 0.0737386384422871)
+```
+
+where, similarly, the third parameter is the cutoff.
 The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.
 
 ## Periodic systems
@@ -111,8 +127,6 @@ julia> @time list = neighborlist!(system);
 ```
 
 !!! note
-    - If two sets of coordinates are provide (i. e. `x,y`), the pairs between the sets are
-      obtained.  
     - Here we illustrate the behavior of the functions in their second calls, to remove the 
       effects of compilation on the allocation results.
     - The `cutoff` and `unitcell`  can be modified by providing additional keyword parameters
