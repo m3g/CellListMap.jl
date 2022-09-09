@@ -284,7 +284,9 @@ end
 function neighborlist!(system::InPlaceNeighborList)
     # Empty lists and auxiliary threaded arrays
     empty!(system.nb)
-    empty!.(system.nb_threaded)
+    for i in eachindex(system.nb_threaded)
+        empty!(system.nb_threaded[i])
+    end
     # Compute the neighbor lists
     map_pairwise!(
         (x, y, i, j, d2, nb) -> push_pair!(i, j, d2, nb),
