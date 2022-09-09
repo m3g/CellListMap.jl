@@ -216,11 +216,17 @@ end
 # Function that updates the box if the cutoff or unitcell has changed
 #
 # System without perioidc boundary conditions: update limits
-function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, cutoff::Real, unitcell::Nothing)
+function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, cutoff::Union{Nothing,Real}, unitcell::Nothing)
+    if isnothing(cutoff)
+        cutoff = system.box.cutoff
+    end
     system.box = Box(limits(x), cutoff)
     return system
 end
-function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, y, cutoff::Real, unitcell::Nothing)
+function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, y, cutoff::Union{Nothing,Real}, unitcell::Nothing)
+    if isnothing(cutoff)
+        cutoff = system.box.cutoff
+    end
     system.box = Box(limits(x,y), cutoff)
     return system
 end
@@ -228,7 +234,7 @@ end
 update_box!(system::InPlaceNeighborList{<:Box{<:PeriodicCellType}}, x, cutoff::Nothing, unitcell::Nothing) = system
 update_box!(system::InPlaceNeighborList{<:Box{<:PeriodicCellType}}, x, y, cutoff::Nothing, unitcell::Nothing) = system
 # Systems with periodic boundary conditions
-function update_box!(system::InPlaceNeighborList{<:Box{UnitCellType}}, cutoff::Real, unitcell) where {UnitCellType<:PeriodicCellType}
+function update_box!(system::InPlaceNeighborList{<:Box{UnitCellType}}, cutoff::Union{Nothing,Real}, unitcell) where {UnitCellType<:PeriodicCellType}
     if isnothing(cutoff)
         cutoff = system.box.cutoff
     end
@@ -255,7 +261,11 @@ function update!(
     x::AbstractVecOrMat;
     cutoff=nothing, unitcell=nothing
 ) where {UnitCellType,C<:CellList}
-    update_box!(system, x, cutoff, unitcell)
+    if UnitCellType == NonPeriodicCell
+        update_box!(system, x, cutoff, unitcell)
+    else
+        update_box!(system, cutoff, unitcell)
+    end
     system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel=system.parallel)
     return system
 end
@@ -269,9 +279,71 @@ function update!(
     y::AbstractVecOrMat;
     cutoff=nothing, unitcell=nothing
 ) where {UnitCellType,C<:CellListPair}
-    update_box!(system, x, y, cutoff, unitcell)
+    if UnitCellType == NonPeriodicCell
+        update_box!(system, x, y, cutoff, unitcell)
+    else
+        update_box!(system, cutoff, unitcell)
+    end
     system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel=system.parallel)
     return system
+end
+
+@testitem "InPlaceNeighborLists Updates" begin
+    using CellListMap
+    using StaticArrays
+
+    # Non-periodic systems
+    x = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, cutoff=0.1)
+    update!(system, x)
+    @test system.box.cutoff == 0.1
+    update!(system, x; cutoff = 0.05)
+    @test system.box.cutoff == 0.05
+
+    x = rand(SVector{3,Float64}, 10^3)
+    y = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1)
+    update!(system, x, y)
+    @test system.box.cutoff == 0.1
+    update!(system, x, y; cutoff = 0.05)
+    @test system.box.cutoff == 0.05
+
+    # Orthorhombic systems
+    x = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1])
+    update!(system, x)
+    @test system.box.cutoff == 0.1
+    update!(system, x; cutoff = 0.05)
+    @test system.box.cutoff == 0.05
+    update!(system, x; cutoff=0.05, unitcell=[2,2,2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1,1,1])
+    update!(system, x, y)
+    @test system.box.cutoff == 0.1
+    update!(system, x, y; cutoff = 0.05)
+    @test system.box.cutoff == 0.05
+    update!(system, x, y; cutoff=0.05, unitcell=[2,2,2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+
+    # Triclinic systems
+    x = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1])
+    update!(system, x)
+    @test system.box.cutoff == 0.1
+    update!(system, x; cutoff = 0.05)
+    @test system.box.cutoff == 0.05
+    update!(system, x; cutoff=0.05, unitcell=[2 0 0; 0 2 0; 0 0 2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1])
+    update!(system, x, y)
+    @test system.box.cutoff == 0.1
+    update!(system, x, y; cutoff = 0.05)
+    @test system.box.cutoff == 0.05
+    update!(system, x, y; cutoff=0.05, unitcell=[2 0 0; 0 2 0; 0 0 2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+
 end
 
 function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
@@ -298,7 +370,6 @@ function neighborlist!(system::InPlaceNeighborList)
     )
     return system.nb.list
 end
-
 
 @testitem "InPlaceNeighborList vs. NearestNeighbors" begin
 
@@ -340,6 +411,27 @@ end
 
     end
 
+end
+
+@testitem "Allocations" begin
+    using CellListMap
+    using StaticArrays
+    using BenchmarkTools
+
+    x = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1],parallel=false)
+    neighborlist!(system)
+    x = rand(SVector{3,Float64}, 10^3)
+    allocs = @ballocated neighborlist!($system) evals=1 samples=1
+    @test allocs == 0
+
+    y = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1,1,1],parallel=false)
+    neighborlist!(system)
+    x = rand(SVector{3,Float64}, 10^3)
+    y = rand(SVector{3,Float64}, 10^3)
+    allocs = @ballocated neighborlist!($system) evals=1 samples=1
+    @test allocs == 0
 end
 
 """
