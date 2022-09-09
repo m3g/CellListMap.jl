@@ -29,8 +29,18 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 
 [targets]
-test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements"]
+test = [ 
+    "Test", 
+    "TestItemRunner", 
+    "Chemfiles", 
+    "NearestNeighbors", 
+    "ForwardDiff", 
+    "Unitful", 
+    "Measurements",
+    "BenchmarkTools",
+]
