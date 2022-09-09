@@ -13,6 +13,8 @@ and the corresponding distances.
 Without periodic boundary conditions, just provide the coordinates and the cutoff:
 
 ```julia-repl
+julia> using CellListMap
+
 julia> x = [ rand(2) for _ in 1:10_000 ];
 
 julia> neighborlist(x,0.05)
@@ -82,7 +84,8 @@ julia> neighborlist(x, 0.05; unitcell=[1.0 0.5; 0.5 1.0])
 
 If neighbor lists are computed within a interative scenario, it is interesting preallocate all the necessary
 data and just update the lists at every iteration. This can be achieved by constructing the `InPlaceNeighborList` 
-object in advance. 
+object in advance. The performance gain of performing the operations in place might vary and may not be 
+important for single runs, as the allocations do not dominate the computing time. 
 
 We will first illustrate the interface for a non-parallel run:
 ```julia-repl

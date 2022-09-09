@@ -1,10 +1,14 @@
 # CellListMap.jl
 
-This package implements an efficient cell list scheme for the computation of interactions, or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. It maps a generic function to be computed pairwise, using periodic boundary conditions of any type. Parallel and serial implementations can be used. 
+This package implements an efficient cell list scheme for the computation of interactions, neighbor lists, or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. 
 
-It allows the fast computation of any quantity from the pairs that are within the desired cutoff, for example an average distance or an histogram of distances, forces, potentials, minimum distances, etc., as the examples illustrate. This is done by passing the function to be evaluated as a parameter of the `map_pairwise!` function. 
+It maps a generic function to be computed for each pair of particles, using periodic boundary conditions of any type. Parallel and serial implementations can be used. The user defined function will be evaluated only for the pairs closer to each other than the desired cutoff distance.
 
 ## Installation
+
+This is a [Julia](http://julialang.org) package. Install `Julia` first following the instructions in the [download page](https://julialang.org/downloads/), or using [juliaup](https://github.com/JuliaLang/juliaup).
+
+Once Julia is installed, install the `CellListMap` package from the Julia REPL with:
 
 ```julia-repl
 julia> import Pkg
@@ -18,46 +22,13 @@ julia> Pkg.add("CellListMap")
 
 Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface](@ref) menu for details. 
 
+### Cutoff-delimited neighbor lists
+
+The user might be more confortable in using the package to compute the list of neighboring particles. A custom interface for this application is provided though the [Neighbor lists](@ref) interface. 
+
+Note that, in general, neighbor lists are used to compute other pairwise dependent properties, and these can be, in principle, computed directly with `CellListMap` without the need to compute or store the lists of neighbors. 
+
 ### Lower level interface
 
-The main function is `map_parwise!` (or `map_pairwise`): 
+The [Low level interface](@ref) allows the customization and optimization of very demanding calculations (although the PeriodicSystems interface does not have any performance limitation and is easier to use).
 
-If the analysis is performed on the pairs of a single vector `x` (`n*(n-1)/2` pairs), the function can be called with:
-```julia
-map_pairwise!(f::Function,output,box::Box,cl::CellList)
-```
-while if two distinct sets of points are provided (`n*m` pairs), it is called with:
-```julia
-map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
-```
-where the `cl` variable of type `CellList` or `CellListPair` contains the cell lists built from the coordinates of the system, and `box` contains the system box properties.
-
-These functions will run over every pair of particles which are closer than `box.cutoff` and compute the (squared) Euclidean distance between the particles, considering the periodic boundary conditions given
-in the `Box` structure. If the distance is smaller than the cutoff, a user defined function `f` of the coordinates of the two particles will be computed. 
-
-The function `f` receives six arguments as input: 
-```julia
-f(x,y,i,j,d2,output)
-```
-Which are the coordinates of one particle, the coordinates of the second particle, the index of the first particle, the index of the second particle, the squared distance between them, and the `output` variable. It has also to return the same `output` variable. Thus, `f` may or not mutate `output`, but in either case it must return it.  The squared distance `d2` is computed   internally for comparison with the `cutoff`, and is passed to the `f` because many times it is used for the desired computation. Thus, the function `f` that is passed to `map_pairwise!` must be always of the form:
-```julia
-function f(x,y,i,j,d2,output)
-    # update output
-    return output
-end
-```
-and the user can define more or less parameters or additional data required to compute the function using closures, as shown in the examples.
-
-Parallel calculations are the default if more than one thread is available. Use `parallel=false` as an optional argument to `map_pairwise!` to run the serial version instead.
-
-### Mutable and immutable outputs
-
-`map_pairwise!` and `map_pairwise` (with the bang, or not) are aliases of the same function, which always returns the result value. It is a convention in Julia that functions ending with the `!` mutate the arguments, while those without do not. Here, this behavior is dependent on the type of input. If the output variable is immutable, its value won't be mutated, and the assignment of the result to the output value depends on explicit assignment. In these cases, it is customary to use the `map_pairwise` (without `!`) function name:
-```julia
-output = map_pairwise(function, output0, box, cl)
-```
-where `output0` represents the initial value of the immutable `output`. When, on the contrary, the output is a mutable variable (an array, for example), the `map_pairwise!` version is preferred for code clarity, and the reassignment is not needed (nor recommendable): 
-```julia
-output = zeros(10) # example of mutable output
-map_pairwise!(function, output, box, cl)
-```
