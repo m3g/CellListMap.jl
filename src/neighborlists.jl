@@ -225,8 +225,8 @@ function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, y, 
     return system
 end
 # Nothing change for systems with periodic boundary conditions: just return
-update_box!(system::InPlaceNeighborList{Box{<:PeriodicCellType}}, x, cutoff::Nothing, unitcell::Nothing) = system
-update_box!(system::InPlaceNeighborList{Box{<:PeriodicCellType}}, x, y, cutoff::Nothing, unitcell::Nothing) = system
+update_box!(system::InPlaceNeighborList{<:Box{<:PeriodicCellType}}, x, cutoff::Nothing, unitcell::Nothing) = system
+update_box!(system::InPlaceNeighborList{<:Box{<:PeriodicCellType}}, x, y, cutoff::Nothing, unitcell::Nothing) = system
 # Systems with periodic boundary conditions
 function update_box!(system::InPlaceNeighborList{<:Box{UnitCellType}}, cutoff::Real, unitcell) where {UnitCellType<:PeriodicCellType}
     if isnothing(cutoff)
