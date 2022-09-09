@@ -14,9 +14,22 @@ Using `ipython3` (only Python $\geq$ 3 is supported), do:
 ```python
 In [1]: from juliacall import Main as jl
 ```
-which, *on the first call only*, will install the latest stable version of Julia. Then, install `CellListMap`, with:
+which, *on the first use only*, will install the latest stable version of Julia. 
+
+Then, install `CellListMap`, with:
+
 ```python
 In [2]: jl.Pkg.add("CellListMap")
+```
+
+## Using
+
+On new `ipython` executions, the package can be loaded with:
+
+```python
+In [1]: from juliacall import Main as jl
+
+In [2]: jl.seval("using CellListMap")
 ```
 
 ## Calling `neighborlist` 
@@ -36,10 +49,6 @@ In [3]: coords_t = coords.transpose()
 
 These transposed coordinates can be used in the `CellListMap.neighborlist` function. For example:
 ```python
-In [4]: from juliacall import Main as jl
-
-In [5]: jl.seval("using CellListMap")
-
 In [6]: neighbor_list = jl.CellListMap.neighborlist(coords_t,0.05)
 ```
 which will return a list of tuples, containing all pairs of coordinates withing the cutoff (remember that the *first* call to a Julia function will always take longer than subsequent calls, because the function is JIT compiled):
@@ -53,12 +62,69 @@ Out[13]: (1, 37197, 0.047189685889846615)
 ```
 Note that the third element of the tuple is the distance between the points.
 
-### Benchmark
+## Converting the list to numpy arrays
+
+The output of `CellListMap.neighborlist` is a Julia `Vector{Tuple{Int,Int,Float64}}` array (or `Float32`, if the coordinates
+and cutoff were given in 32-bit precision). This Julia list can be accessed from within python normally:
+```python
+In [36]: neighbor_list = jl.neighborlist(x_t, 0.05);
+
+In [37]: neighbor_list[0:2]
+Out[37]: 
+2-element view(::Vector{Tuple{Int64, Int64, Float64}}, 1:1:2) with eltype Tuple{Int64, Int64, Float64}:
+ (1, 6717, 0.020052121336342873)
+ (1, 7208, 0.03880915662838867)
+
+In [38]: neighbor_list[0][0]
+Out[38]: 1
+
+In [40]: neighbor_list[0][2]
+Out[40]: 0.020052121336342873
+```
+
+Yet, this list may not be interoperable with many other python packages, particularly with `numpy` standard 
+operations. Thus, it may be interesting to convert the list to `numpy`  arrays. This can be done with a simple
+helper function, which uses a Julia function to copy the list values to the `numpy` arrays:
+
+```python
+jl.seval("""
+function copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    for i in eachindex(nb_list)
+        i_inds[i], j_inds[i], d[i] = nb_list[i]
+    end
+    return nothing
+end
+""")
+def neighborlist(x, cutoff) :
+    x_t = x.transpose()
+    nb_list = jl.neighborlist(x_t, cutoff)
+    i_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    j_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    d = np.full((len(nb_list),), 0.0, dtype=np.float64)
+    jl.copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    return i_inds, j_inds, d
+```
+
+Now, the output of the python `neighborlist` contains the `numpy` arrays for the indexes
+of the two particles involved in each pair, and their distances:
+```python
+In [61]: neighborlist(coords,0.05)
+Out[61]: 
+(array([    1,     1,     1, ..., 49802, 49802, 49885]),
+ array([ 6717,  7208,  9303, ..., 11542, 27777, 43853]),
+ array([0.02005212, 0.03880916, 0.04543936, ..., 0.04671987, 0.02671908,
+        0.02772025]))
+```
+
+The overhead of these conversions, array creation and copies is not very large, and the benchmarks
+below are still valid considering this auxiliary python function.
+
+## Benchmarking vs. Scipy
 
 To properly benchmark the `neighborlist` function from `CellListMap`, let us first define a simple wrapper that will include the transposition of the coordinates in the time:
 
 ```python
-In [14]: def neighborlist(x,cutoff):
+In [14]: def neighborlist_simple(x,cutoff):
     ...:     y = x.transpose()
     ...:     nn = jl.CellListMap.neighborlist(y,cutoff)
     ...:     return nn
@@ -80,7 +146,7 @@ In [30]: def neighborlist_scipy(x,cutoff) :
     ...:
 
 In [31]: %timeit neighborlist_scipy(coords,0.05)
-206 ms ± 2.07 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+312 ms ± 2.85 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 ```
 
 Just to confirm, this is the number of pairs that is being output in this test
@@ -92,18 +158,11 @@ In [20]: len(neighborlist(coords,0.05)) # using CellListMap
 Out[20]: 618475
 ```
 
-## Multi-threading
-
-These examples were run single-threaded. To run multi-threaded, an environment variable for `Julia` needs to be set. For example,
-in `bash`, do:
-```bash
-% export JULIA_NUM_THREADS=8
-```
-
-For the current example, this provides a small additional speedup:
+If we use the `neighborlist` function from [Converting the list to numpy arrays](@ref), the result is similar,
+thus copying the output to numpy arrays does not create a large overhead:
 ```python
-In [11]: %timeit neighborlist(coords,0.05)
-31.3 ms ± 1.22 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+In [30]: %timeit neighborlist(coords, 0.05)
+67.4 ms ± 4.04 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
 ```
 
 ### Overhead
@@ -116,50 +175,64 @@ julia> using CellListMap
 
 julia> x = rand(3,50_000);
 
-julia> @btime CellListMap.neighborlist($x,0.05);
-  27.294 ms (35935 allocations: 58.39 MiB)
-
 julia> @btime CellListMap.neighborlist($x,0.05,parallel=false);
   51.299 ms (17687 allocations: 37.43 MiB)
 ```
 
-## General mappings
+### Multi-threading
 
-A greater flexibility on the use of `CellListMap` from python can be obtained by defining custom Julia functions. The construction of the systems and of the cell lists can be performed without modification. For example:
-
-```python
-In [28]: box = jl.Box(np.array([1,1,1]),0.05)
-
-In [29]: box
-
-Out[29]: 
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]
-  cutoff: 0.05
-  number of computing cells on each dimension: [22, 22, 22]
-  computing cell sizes: [0.05, 0.05, 0.05] (lcell: 1)
-  Total number of cells: 10648
+These examples were run single-threaded. To run multi-threaded, an environment variable for `Julia` needs to be set. For example,
+in `bash`, do:
+```bash
+% export JULIA_NUM_THREADS=8
 ```
 
+!!! warning 
+    Because the python garbage collector can clear Julia objects causing memory corruption (see [this issue](https://github.com/cjdoris/PythonCall.jl/issues/201)), the use multi-threading is currently discouraged. When a suitable solution to these problems is found, we will support this feature.
+
+For the current example, this provides a small additional speedup:
 ```python
-In [30]: x = np.random.random((50_000,3))
+In [11]: %timeit neighborlist(coords,0.05)
+31.3 ms ± 1.22 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
 
-In [31]: x_t = x.transpose()
+## General mappings
 
-In [32]: cl = jl.CellList(x_t,box)
+A greater flexibility on the use of `CellListMap` from python can be obtained by defining custom Julia functions.
+This feature must be used with the low level interface of `CellListMap`, and is somewhat limited in scope.
 
-In [33]: cl
-Out[33]: 
+```python
+In [36]: jl.seval("using CellListMap")
+
+In [37]: x = np.random.random((50_000,3));
+
+In [38]: x_t = x.transpose()
+
+In [39]: box = jl.Box(np.array([1,1,1]), 0.05)
+
+In [40]: box
+Out[41]: 
+Box{OrthorhombicCell, 3}
+  unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+  cutoff = 0.05
+  number of computing cells on each dimension = [22, 22, 22]
+  computing cell sizes = [0.05, 0.05, 0.05] (lcell: 1)
+  Total number of cells = 10648
+
+In [41]: cl = jl.CellList(x_t,box)
+
+In [42]: cl
+Out[42]: 
 CellList{3, Float64}
   50000 real particles.
-  7982 cells with real particles.
-  66532 particles in computing box, including images.
+  7985 cells with real particles.
+  66594 particles in computing box, including images.
 ```
 
 The function to be mapped, however, has to be defined in Julia, using `seval`. For example, here we define a function that computes the histogram of the distances within the cutoff. 
 
 ```python
-In [34]: jl.seval("""  
+In [43]: jl.seval("""  
     ...: function histogram(x,y,i,j,d2,hist) 
     ...:     cutoff = 0.05 
     ...:     dc = sqrt(d2)/cutoff # in [0,1] 
@@ -168,20 +241,20 @@ In [34]: jl.seval("""
     ...:     return hist 
     ...: end 
     ...: """)
-Out[34]: histogram (generic function with 1 method)
+Out[44]: histogram (generic function with 1 method)
 ```
 
 We can initialize the output variable (the histogram) using a regular `numpy` array: 
 
 ```python
-In [8]: hist = np.zeros(10)
+In [45]: hist = np.zeros(10)
 ```
 
 and call the `map_pairwise` function to obtain the histogram of the distances within the `cutoff`:
 
 ```python
-In [37]: jl.map_pairwise(jl.histogram, hist, box, cl)
-Out[37]: 
+In [46]: jl.map_pairwise(jl.histogram, hist, box, cl)
+Out[46]: 
 10-element PythonCall.PyArray{Float64, 1, true, true, Float64}:
  153344.0
       1.151744e6

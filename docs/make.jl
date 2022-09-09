@@ -15,7 +15,7 @@ makedocs(
         "Ecosystem integration" => "ecosystem.md",
         "From Python" => "python.md",
         "Help entries" => "help.md",
-        "Reference" => "reference.md",
+        "Citation" => "citation.md",
     ]
 )
 deploydocs(
