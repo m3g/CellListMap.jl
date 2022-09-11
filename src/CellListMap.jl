@@ -1,6 +1,7 @@
 module CellListMap
 
 using DocStringExtensions
+using TestItems
 using ProgressMeter
 using Parameters
 using StaticArrays
@@ -14,6 +15,7 @@ export map_pairwise!, map_pairwise
 export limits
 export TriclinicCell
 export OrthorhombicCell
+export NonPeriodicCell
 export nbatches
 export PeriodicSystem
 
@@ -155,7 +157,7 @@ bang as a valid character.
 const map_pairwise = map_pairwise!
 
 # Utils
-include("./utils.jl")
+include("./neighborlists.jl")
 
 #
 # Test and example functions

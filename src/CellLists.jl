@@ -791,6 +791,14 @@ function UpdateCellList!(
     parallel::Bool=true
 ) where {N,T}
 
+    # Provide a better error message if the unit cell dimension does not matching
+    # the dimension of the positions.
+    if length(x[begin]) != size(box.unit_cell.matrix,1) 
+        n1 = length(x[begin])
+        n2 = size(box.unit_cell.matrix,1)
+        throw(DimensionMismatch("Positions have dimension $n1, but the unit cell has dimension $n2."))
+    end
+
     # Add particles to cell list
     nbatches = cl.nbatches.build_cell_lists
     if !parallel || nbatches == 1
@@ -1155,10 +1163,10 @@ end
 function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
-    box::Box{UnitCellType,N,T},
+    box::Box{UnitCellType,N},
     cl_pair::CellListPair;
     parallel::Bool=true
-) where {UnitCellType,N,T}
+) where {UnitCellType,N}
 ```
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
@@ -1169,10 +1177,10 @@ matrices must be the dimension of the points (`2` or `3`).
 function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
-    box::Box{UnitCellType,N,T},
+    box::Box{UnitCellType,N},
     cl_pair::CellListPair;
     parallel::Bool=true
-) where {UnitCellType,N,T}
+) where {UnitCellType,N}
     size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     size(y,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
@@ -1276,8 +1284,7 @@ function UpdateCellList!(
     return cl_pair
 end
 
-# Function barrier that was required to avoid the `Swap` type to cause
-# some instability
+# Function barrier that was required to avoid the `Swap` type to cause some instability
 function _update_CellListPair!(ref,target,cl_pair::CellListPair{V,N,T,Swap}) where {V,N,T,Swap}
     # This resizing will fail if the data was input as a (N,M) matrix, because resizing
     # is not implemented for reinterpreted arrays. 
@@ -1301,7 +1308,7 @@ function UpdateCellList!(
     cl_pair::CellListPair,
     aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
-) where {UnitCellType,N,T}
+) where {UnitCellType,N}
 ```
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
@@ -1312,11 +1319,11 @@ matrices must be the dimension of the points (`2` or `3`).
 function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
-    box::Box{UnitCellType,N,T},
-    cl_pair::CellListPair{N,T},
-    aux::Union{Nothing,AuxThreaded{N,T}};
+    box::Box{UnitCellType,N},
+    cl_pair::CellListPair,
+    aux::Union{Nothing,AuxThreaded};
     parallel::Bool=true
-) where {UnitCellType,N,T}
+) where {UnitCellType,N}
     size(x,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     size(y,1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)

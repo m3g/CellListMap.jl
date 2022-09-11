@@ -1,5 +1,6 @@
 module PeriodicSystems
 
+using TestItems
 using DocStringExtensions
 using StaticArrays
 
@@ -181,21 +182,13 @@ abstract type AbstractPeriodicSystem{OutputName} end
 
 import Base: getproperty, propertynames
 getproperty(sys::AbstractPeriodicSystem, s::Symbol) = getproperty(sys, Val(s))
-# public properties
-getproperty(sys::AbstractPeriodicSystem, ::Val{:xpositions}) = getfield(sys, :xpositions)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:ypositions}) = getfield(sys, :ypositions)
+getproperty(sys::AbstractPeriodicSystem, s::Val{S}) where S = getfield(sys, S)
+# publi properties
 getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :unit_cell), :matrix)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:output}) = getfield(sys, :output)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:parallel}) = getfield(sys, :parallel)
 getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where OutputName = getfield(sys, :output)
 propertynames(sys::AbstractPeriodicSystem{OutputName}) where OutputName =
     (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, OutputName)
-# private properties
-getproperty(sys::AbstractPeriodicSystem, ::Val{:_box}) = getfield(sys, :_box)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:_cell_list}) = getfield(sys, :_cell_list)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:_output_threaded}) = getfield(sys, :_output_threaded)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:_aux}) = getfield(sys, :_aux)
 
 import Base: setproperty!
 # public properties
@@ -207,6 +200,35 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:parallel}, x) = setfield!(sys, 
 setproperty!(sys::AbstractPeriodicSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
 setproperty!(sys::AbstractPeriodicSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
 setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+
+@testitem "PeriodicSystems properties" begin
+
+    using CellListMap.PeriodicSystems
+    using StaticArrays
+    sys = PeriodicSystem(
+        positions = rand(SVector{3,Float64}, 1000),
+        cutoff = 0.1,
+        unitcell = [1,1,1],
+        output = 0,
+        output_name = :test
+    )
+    @test length(sys.positions) == 1000
+    @test sys.cutoff == 0.1
+    @test sys.unitcell == @SMatrix [ 1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0 ] 
+    @test sys.output == 0
+    @test sys.test == 0
+    @test sys.parallel == true
+
+    sys.parallel = false
+    @test sys.parallel == false
+    sys.cutoff = 0.2
+    @test sys.cutoff == 0.2
+    sys.positions[1] = SVector(0.0, 0.0, 0.0)
+    @test sys.positions[1] == SVector(0.0, 0.0, 0.0)
+    sys.unitcell = [1.2, 1.2, 1.2]
+    @test sys.unitcell == @SMatrix [ 1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2 ] 
+
+end
 
 """
 

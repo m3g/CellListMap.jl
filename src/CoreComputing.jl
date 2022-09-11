@@ -282,7 +282,7 @@ end
 # there are not repeated computations even if running over half of the cells.
 #
 function inner_loop!(
-    f, box::Box{OrthorhombicCell}, cellᵢ,
+    f, box::Box{<:OrthorhombicCellType}, cellᵢ,
     cl::CellList{N,T},
     output,
     ibatch
@@ -316,7 +316,7 @@ end
 
 function cell_output!(
     f,
-    box::Box{OrthorhombicCell},
+    box::Box{<:OrthorhombicCellType},
     cellᵢ,
     cellⱼ,
     cl::CellList{N,T},

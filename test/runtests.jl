@@ -1,11 +1,9 @@
-using CellListMap
-using StaticArrays
-using Test
+using TestItemRunner
 
-# Loads Unitful and ForwardDiff
-include("../src/examples/generic_types.jl")
+@testitem "disjoint sets" begin
 
-@testset "disjoint sets" begin
+    using CellListMap
+    using StaticArrays
 
     N = 2000
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
@@ -68,10 +66,10 @@ include("../src/examples/generic_types.jl")
        [ rand(SVector{2,Float64},1000), rand(SVector{2,Float64},100) ], # with static vectors
        [ [ rand(2) for _ in 1:1000 ], [ rand(2) for _ in 1:100 ] ], # with standard vectors
     ]
-        x = arrays[1]
-        y = arrays[2]
-        box = Box([1,1],0.1)
-        cl = CellList(x,y,box)
+        local x = arrays[1]
+        local y = arrays[2]
+        local box = Box([1,1],0.1)
+        local cl = CellList(x,y,box)
         r_naive = CellListMap.map_naive!((x,y,i,j,d2,r) -> r += d2, 0., x, y, box)
         r = map_pairwise!((x,y,i,j,d2,r) -> r += d2, 0., box, cl)
         @test r_naive ≈ r
@@ -89,7 +87,10 @@ include("../src/examples/generic_types.jl")
 
 end
 
-@testset "matrix inputs" begin
+@testitem "matrix inputs" begin
+
+    using CellListMap
+    using StaticArrays
 
     # Function to be evalulated for each pair: sum of displacements on x
     f(x,y,avg_dx) = avg_dx + abs(x[1] - y[1])
@@ -115,7 +116,10 @@ end
 
 end
 
-@testset "parallelization" begin
+@testitem "parallelization" begin
+
+    using CellListMap
+    using StaticArrays
 
     if Threads.nthreads() == 1
         println("""
@@ -158,7 +162,10 @@ end
 
 end
 
-@testset "updating lists" begin
+@testitem "updating lists" begin
+
+    using CellListMap
+    using StaticArrays
 
     N = 2000
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
@@ -206,12 +213,21 @@ end
     new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
-    # If the number of particles and box change
+    # If the number of particles and box change (more)
     new_x, new_box = CellListMap.xatomic(10^4)
     new_cl = CellList(new_x,new_box)
     new_aux = CellListMap.AuxThreaded(new_cl)
-    new_x, new_box = CellListMap.xatomic(10^5)
-    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box) # slow
+    new_x, new_box = CellListMap.xatomic(10^4 + 10^3)
+    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
+    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
+    # If the number of particles and box change (less)
+    new_x, new_box = CellListMap.xatomic(10^4)
+    new_cl = CellList(new_x,new_box)
+    new_aux = CellListMap.AuxThreaded(new_cl)
+    new_x, new_box = CellListMap.xatomic(10^4 - 10^3)
+    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
     new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
@@ -263,7 +279,10 @@ end
 
 end
 
-@testset "random cells" begin
+@testitem "random cells" begin
+
+    using CellListMap
+    using StaticArrays
 
     # Test random cells of all possible types
     for N in 2:3, 
@@ -282,7 +301,14 @@ end
 
 end
 
-@testset "applications" begin
+@testitem "applications" begin
+
+    using CellListMap
+    using StaticArrays
+
+    # Loads Unitful and ForwardDiff
+    dir = @__DIR__
+    include(dir*"/../src/examples/generic_types.jl")
 
     N = 2000
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
@@ -383,8 +409,8 @@ end
 
 end
 
-include("./namd/compare_with_namd.jl")
-include("./neighborlist.jl")
+include("$(@__DIR__)/namd/compare_with_namd.jl")
+include("$(@__DIR__)/BasicForPeriodicSystems.jl")
+include("$(@__DIR__)/namd/PeriodicSystems_vs_NAMD.jl")
 
-include("./namd/PeriodicSystems_vs_NAMD.jl")
-include("./BasicForPeriodicSystems.jl")
+@run_package_tests
