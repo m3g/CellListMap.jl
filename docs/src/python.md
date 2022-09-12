@@ -22,15 +22,49 @@ Then, install `CellListMap`, with:
 In [2]: jl.Pkg.add("CellListMap")
 ```
 
-## Using
+## A Python module
 
-On new `ipython` executions, the package can be loaded with:
+The [CellListMap.py](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/CellListMap.py) 
+provides a complete small python module that interfaces the `neighborlist` function of `CellListMap` 
+with python, returning `numpy` arrays of indices and distances: 
+
+By saving the file aboce in a `CellListMap.py` file, within python we just need to do:
 
 ```python
-In [1]: from juliacall import Main as jl
+In [1]: import CellListMap as cl
 
-In [2]: jl.seval("using CellListMap")
+In [2]: import numpy as np
+
+In [3]: coords = np.random.random((50_000,3))
+
+In [4]: i_inds, j_inds, d = cl.neighborlist(coords, 0.05)
 ```
+
+The output `i_inds`, `j_inds` and `d` variables are `numpy` arrays with the indexes of the particles and their distances.
+
+For periodic systems, the `unitcell` must be provided, as uni-dimensional `np.array` (for orthorhombic systems) or a `np.matrix` (for
+general periodic boundary conditions). For example: 
+```python
+In [5]: i_inds, j_inds, d = cl.neighborlist(coords, 0.05, unitcell=np.array([1, 1, 1]))
+
+In [6]: i_inds, j_inds, d = cl.neighborlist(coords, 0.05, unitcell=np.matrix('1 0 0; 0 1 0; 0 0 1'))
+```
+
+The `neighborlist_cross` function provided above has a similar syntax, but to compute the neighboring particles of two
+independent sets:
+```python
+In [7]: x = np.random.random((50_000,3))
+
+In [8]: y = np.random.random((50_000,3))
+
+In [9]: i_inds, j_inds, d = cl.neighborlist_cross(x, y, 0.05, unitcell=np.array([1, 1, 1]))
+```
+
+To run the code multi-threaded, set the `JULIA_NUM_THREADS` environment variable before launching python.
+
+!!! note
+    The details of the above module are explained below, for a more in depth understanding of the
+    interface between Julia and Python through the [`PythonCall.jl`](https://github.com/cjdoris/PythonCall.jl) library.
 
 ## Calling `neighborlist` 
 
@@ -49,7 +83,9 @@ In [3]: coords_t = coords.transpose()
 
 These transposed coordinates can be used in the `CellListMap.neighborlist` function. For example:
 ```python
-In [6]: neighbor_list = jl.CellListMap.neighborlist(coords_t,0.05)
+In [4]: jl.seval("using CellListMap")
+
+In [6]: neighbor_list = jl.neighborlist(coords_t,0.05)
 ```
 which will return a list of tuples, containing all pairs of coordinates withing the cutoff (remember that the *first* call to a Julia function will always take longer than subsequent calls, because the function is JIT compiled):
 
@@ -61,6 +97,8 @@ In [13]: neighbor_list[1]
 Out[13]: (1, 37197, 0.047189685889846615)
 ```
 Note that the third element of the tuple is the distance between the points.
+
+
 
 ## Converting the list to numpy arrays
 
@@ -179,21 +217,76 @@ julia> @btime CellListMap.neighborlist($x,0.05,parallel=false);
   51.299 ms (17687 allocations: 37.43 MiB)
 ```
 
-### Multi-threading
+## Multi-threading
 
 These examples were run single-threaded. To run multi-threaded, an environment variable for `Julia` needs to be set. For example,
 in `bash`, do:
 ```bash
-% export JULIA_NUM_THREADS=8
+% export JULIA_NUM_THREADS=12
 ```
 
 !!! warning 
-    Because the python garbage collector can clear Julia objects causing memory corruption (see [this issue](https://github.com/cjdoris/PythonCall.jl/issues/201)), the use multi-threading is currently discouraged. When a suitable solution to these problems is found, we will support this feature.
+    There is a conflict between garbage collectors that may cause segmentation faults in multi-threaded runs 
+    (see [this issue](https://github.com/cjdoris/PythonCall.jl/issues/201)). The workaround appears to be to 
+    disable the Julia garbage collector during the execution of multi-threaded code. 
+    
+    Here we provide the necessary syntax as an auxiliary Python function.
 
-For the current example, this provides a small additional speedup:
+Consider the following python file, let us call it `neighborlist.py`, that provides the `neighborlist`
+python function with the conversion of the output to `numpy` arrays:
+
 ```python
-In [11]: %timeit neighborlist(coords,0.05)
-31.3 ms ± 1.22 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+from juliacall import Main as jl
+jl.seval("using CellListMap")
+import numpy as np
+jl.seval("""
+function copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    for i in eachindex(nb_list)
+        i_inds[i], j_inds[i], d[i] = nb_list[i]
+    end
+    return nothing
+end
+""")
+def neighborlist(x, cutoff) :
+    x_t = x.transpose()
+    jl.GC.enable(False)
+    nb_list = jl.neighborlist(x_t, cutoff)
+    jl.GC.enable(True)
+    i_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    j_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    d = np.full((len(nb_list),), 0.0, dtype=np.float64)
+    jl.copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    return i_inds, j_inds, d
+```
+
+Then, in Python, do:
+
+```python
+In [1]: import neighborlist as nb
+
+In [2]: import numpy as np
+
+In [3]: coords = np.random.random((50_000,3))
+
+In [4]: i_inds, j_inds, d = nb.neighborlist(coords, 0.05)
+```
+
+In a notebook with 6 cores (12 threads) this led to the following performance:
+```python
+In [5]: %timeit i_inds, j_inds, d = nb.neighborlist(coords, 0.05)
+23.7 ms ± 910 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+Which, is about 3x faster than the serial execution:
+```python
+In [4]: %timeit i_inds, j_inds, d = nb.neighborlist(coords, 0.05)
+59.2 ms ± 959 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+and thus about 10x faster than `scipy.spatial`:
+```python
+In [7]: %timeit neighborlist_scipy(coords,0.05)
+204 ms ± 2.86 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 ```
 
 ## General mappings
