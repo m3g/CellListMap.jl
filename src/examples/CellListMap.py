@@ -4,6 +4,7 @@
 # 
 # see: https://m3g.github.io/CellListMap.jl/stable/python/
 #
+from juliacall import Main as jl
 jl.seval("using CellListMap")
 import numpy as np
 jl.seval("""
