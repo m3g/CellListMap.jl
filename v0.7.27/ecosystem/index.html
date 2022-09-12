@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Ecosystem integration · CellListMap.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../PeriodicSystems/">PeriodicSystems interface</a></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li><a class="tocitem" href="../LowLevel/">Low level interface</a></li><li class="is-active"><a class="tocitem" href>Ecosystem integration</a><ul class="internal"><li><a class="tocitem" href="#Agents.jl"><span>Agents.jl</span></a></li><li><a class="tocitem" href="#Unitful-and-units"><span>Unitful and units</span></a></li><li><a class="tocitem" href="#Automatic-differentiation"><span>Automatic differentiation</span></a></li><li><a class="tocitem" href="#Measurements"><span>Measurements</span></a></li></ul></li><li><a class="tocitem" href="../python/">From Python</a></li><li><a class="tocitem" href="../help/">Help entries</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Ecosystem integration</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Ecosystem integration</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/ecosystem.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Ecosystem-integration"><a class="docs-heading-anchor" href="#Ecosystem-integration">Ecosystem integration</a><a id="Ecosystem-integration-1"></a><a class="docs-heading-anchor-permalink" href="#Ecosystem-integration" title="Permalink"></a></h1><ul><li><a href="#Agents.jl">Agents.jl</a></li><li><a href="#Unitful-and-units">Unitful and units</a></li><li><a href="#Automatic-differentiation">Automatic differentiation</a></li><li><a href="#Measurements">Measurements</a></li></ul><h2 id="Agents.jl"><a class="docs-heading-anchor" href="#Agents.jl">Agents.jl</a><a id="Agents.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Agents.jl" title="Permalink"></a></h2><p><a href="https://juliadynamics.github.io/Agents.jl">Agents.jl</a> provides a comprehensive framework for simulation, analysis and visualization of agent-based systems. <code>CellListMap</code> can be used to accelerate these simulations, and the integration of the packages is rather simple, particularly using the <code>PeriodicSystems</code> interface. A <a href="https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap/">complete integration example</a> can be obtained in the <code>Agents</code> documentation (currently at the development branch). </p><p>The example will produce the following animation:</p><video width="auto" controls autoplay loop>
+<source src="https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap.mp4" type="video/mp4">
+</video><h2 id="Unitful-and-units"><a class="docs-heading-anchor" href="#Unitful-and-units">Unitful and units</a><a id="Unitful-and-units-1"></a><a class="docs-heading-anchor-permalink" href="#Unitful-and-units" title="Permalink"></a></h2><p>The functions of CellListMap.jl support the propagation of generic (isbits) types, and thus units and thus automatic differentiation and the use of <code>Unitful</code>. A set of working examples can be found in the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/generic_types.jl">generic_types.jl</a> file.</p><p>We start illustrating the support for unit propagation. We need to define all involved quantities in the same units:</p><h3 id="Using-the-PeriodicSystems-interface"><a class="docs-heading-anchor" href="#Using-the-PeriodicSystems-interface">Using the PeriodicSystems interface</a><a id="Using-the-PeriodicSystems-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Using-the-PeriodicSystems-interface" title="Permalink"></a></h3><p>The only requirement is to attach proper units to all quantities (positions, cutoff, unitcell, and output variables). Here we compute the square of the distances of the particles within the cutoff:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap.PeriodicSystems, Unitful, StaticArrays
+
+julia&gt; system = PeriodicSystem(
+           positions = rand(SVector{3,Float64}, 1000)u&quot;nm&quot;,
+           cutoff = 0.1u&quot;nm&quot;,
+           unitcell = [1.0,1.0,1.0]u&quot;nm&quot;,
+           output = 0.0u&quot;nm^2&quot;,
+           output_name = :sum_sqr
+       );
+
+julia&gt; map_pairwise((x,y,i,j,d2,out) -&gt; out += d2, system)
+12.467455105066907 nm^2</code></pre><h3 id="Units-in-neighbor-lists"><a class="docs-heading-anchor" href="#Units-in-neighbor-lists">Units in neighbor lists</a><a id="Units-in-neighbor-lists-1"></a><a class="docs-heading-anchor-permalink" href="#Units-in-neighbor-lists" title="Permalink"></a></h3><p><code>CellListMap.neighborlist</code> propagates units correctly:</p><pre><code class="language-julia-repl hljs">julia&gt; import CellListMap
+
+julia&gt; positions = rand(SVector{3,Float64}, 1000)u&quot;nm&quot;;
+
+julia&gt; cutoff = 0.1u&quot;nm&quot;;
+
+julia&gt; CellListMap.neighborlist(positions, cutoff)
+1842-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
+ (1, 89, 0.09181950064928723 nm)
+ (1, 820, 0.0862244300739942 nm)
+ ⋮
+ (998, 782, 0.07772327062692863 nm)</code></pre><h2 id="Automatic-differentiation"><a class="docs-heading-anchor" href="#Automatic-differentiation">Automatic differentiation</a><a id="Automatic-differentiation-1"></a><a class="docs-heading-anchor-permalink" href="#Automatic-differentiation" title="Permalink"></a></h2><p>Allowing automatic differentiation follows the same principles, meaning that we only need to allow the propagation of dual types through the computation by proper initialization of the input data. However, it is easier to work with the low level interface, which accepts matrices as the input for positions and a more fine control of the types of the variables. Matrices are easier input types for auto diff packages.</p><p>The variables are each component of each vector, thus the easiest way to represent the points such that automatic differentiation packages understand is by creating a matrix:</p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(3,1000)
+3×1000 Matrix{Float64}:
+ 0.186744  0.328719  0.874102  0.503535   …  0.328161  0.0895699  0.917338
+ 0.176157  0.972954  0.80729   0.624724      0.655268  0.470754   0.327578
+ 0.648482  0.537362  0.599624  0.0688776     0.92333   0.497984   0.208924</code></pre><p>The key here is allow all the types of the parameters to follow the type propagation of the elements of <code>x</code> inside the differentiation routine. The function we define to compute the derivative is, then:</p><pre><code class="language-julia-repl hljs">julia&gt; function sum_sqr(x,sides,cutoff)
+           cutoff = eltype(x)(cutoff)
+           sides = eltype(x).(sides)
+           box = Box(sides,cutoff)
+           cl = CellList(x,box)
+           sum_sqr = zero(eltype(x))
+           sum_sqr = map_pairwise!(
+               (x,y,i,j,d2,sum_sqr) -&gt; sum_sqr += d2,
+               sum_sqr, box, cl
+           )
+           return sum_sqr
+       end
+sum_sqr (generic function with 1 method)</code></pre><p>Note that we allow <code>cutoff</code>  and <code>sides</code>  to be converted to the same type of the input <code>x</code>  of the function. For a simple call to the function this is inconsequential:</p><pre><code class="language-julia-repl hljs">julia&gt; cutoff = 0.1; sides = [1,1,1];
+
+julia&gt; sum_sqr(x,sides,cutoff)
+12.897650398753228</code></pre><p>but the conversion is required to allow the differentiation to take place:</p><pre><code class="language-julia-repl hljs">julia&gt; ForwardDiff.gradient(x -&gt; sum_sqr(x,sides,cutoff),x)
+3×1000 Matrix{Float64}:
+ -0.132567   0.029865  -0.101301  …   0.249267    0.0486424  -0.0400487
+  0.122421   0.207495  -0.184366     -0.201648   -0.105031    0.218342
+  0.0856502  0.288924   0.122445     -0.0147022  -0.103314   -0.0862264</code></pre><h2 id="Measurements"><a class="docs-heading-anchor" href="#Measurements">Measurements</a><a id="Measurements-1"></a><a class="docs-heading-anchor-permalink" href="#Measurements" title="Permalink"></a></h2><p>Propagating uncertainties through the <code>Measurements</code>  and other similar packages requires a different strategy, because within <code>CellListMap</code> only <code>isbits</code> types can be used, which is not the case of the type <code>Measurement</code> type. </p><p>In cases like this, it is better to bypass all the internals of <code>CellListMap</code>  and provide the data to the function that computes pairwise properties directly as a closure. For example:</p><p>A vector of particles with uncertainties in their coordinates can be created with: </p><pre><code class="language-julia-repl hljs">julia&gt; using StaticArrays 
+
+julia&gt; x_input = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for j in 1:1000 ]
+1000-element Vector{SVector{3, Measurement{Float64}}}:
+ [0.1658 ± 0.003, 0.9951 ± 0.0054, 0.5067 ± 0.0035]
+ [0.2295 ± 0.0074, 0.2987 ± 0.0021, 0.42828 ± 0.00099]
+ ⋮
+ [0.1362 ± 0.0034, 0.2219 ± 0.0048, 0.2119 ± 0.0072]
+ [0.2521 ± 0.0038, 0.4988 ± 0.00013, 0.856046 ± 4.3e-5]</code></pre><p>The variables within the <code>CellListMap</code> functions will be stripped from the uncertainties. We do:</p><pre><code class="language-julia-repl hljs">julia&gt; cutoff = 0.1; box = Box([1,1,1],cutoff);
+
+julia&gt; x_strip = [ getproperty.(v,:val) for v in x_input ]
+1000-element Vector{SVector{3, Float64}}:
+ [0.08441931492362276, 0.9911530546181084, 0.07408559584648788]
+ [0.12084764467339837, 0.8284551316333133, 0.9021906852432111]
+ ⋮
+ [0.2418752113326077, 0.4429225751775432, 0.13576355747772784]
+ [0.24440380524702654, 0.07148275176890073, 0.26722687487212315]</code></pre><p>The cell list is built with the stripped values:</p><pre><code class="language-julia-repl hljs">julia&gt; cl = CellList(x_strip,box)
+CellList{3, Float64}
+  1000 real particles.
+  637 cells with real particles.
+  1695 particles in computing box, including images.</code></pre><p>The result is initialized with the proper type,</p><pre><code class="language-julia-repl hljs">julia&gt; sum_sqr = measurement(0.,0.)
+0.0 ± 0.0</code></pre><p>and the mapping is performed with the stripped coordinates, but passing the values with uncertainties to the mapped function, which will perform the computation on the pairs with those values:</p><pre><code class="language-julia-repl hljs">julia&gt; using LinearAlgebra: norm_sqr
+
+julia&gt; sum_sqr = map_pairwise!(
+           (xᵢ,xⱼ,i,j,d2,sum_sqr) -&gt; begin
+               x1 = x_input[i]
+               x2 = CellListMap.wrap_relative_to(x_input[j],x1,box)
+               sum_sqr += norm_sqr(x2-x1)
+               return sum_sqr
+           end, 
+           sum_sqr, box, cl
+       )
+13.14 ± 0.061</code></pre><p>In the function above, the <code>xᵢ</code> and <code>xⱼ</code> coordinates, which correspond to the coordinates in <code>x_input[i]</code> and <code>x_input[j]</code>, but already wrapped relative to each other, are ignored, because they don&#39;t carry the uncertainties. We use only the indexes <code>i</code> and <code>j</code> to recompute the relative position of the particles according to the periodic boundary conditions (using the <code>CellListMap.wrap_relative_to</code> function) and their (squared) distance. Since the <code>x_input</code>  array carries the uncertainties, the computation of <code>sum_sqr</code> will propagate them.   </p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>All these computations should be performed inside the scope of a function for optimal performance. The examples here can be followed by copying and pasting the code into the REPL, but this is not the recommended practice for critical code. The strategy of bypassing the internal computations of <code>CellListMap</code> may be useful for improving performance even if the previous and simpler method is possible. </p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../LowLevel/">« Low level interface</a><a class="docs-footer-nextpage" href="../python/">From Python »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Monday 12 September 2022 00:22">Monday 12 September 2022</span>. Using Julia version 1.8.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
