@@ -28,7 +28,7 @@ The [CellListMap.py](https://github.com/m3g/CellListMap.jl/blob/main/src/example
 provides a complete small python module that interfaces the `neighborlist` function of `CellListMap` 
 with python, returning `numpy` arrays of indices and distances: 
 
-By saving the file aboce in a `CellListMap.py` file, within python we just need to do:
+By saving the file above in a `CellListMap.py` file, within python we just need to do:
 
 ```python
 In [1]: import CellListMap as cl
