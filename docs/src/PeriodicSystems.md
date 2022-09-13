@@ -147,9 +147,20 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
 
 ## Computing both energy and forces
 
+In this example we define a general type of `output` variable, for which custom copy, reset, and reduction functions
+must be defined. It can be followed for the computation of other general properties from the particle positions.
+
 !!! note
-    In this example we define a general type of `output` variable, for which custom copy, reset, and reduction functions
-    must be defined. It can be followed for the computation of other general properties from the particle positions.
+    Interface to be implemented:
+
+    |   Method              |   Return    |  What it does    |
+    |:----------------------|:-----------:|:---------------- |
+    | `copy_output(x::T)`   | new instance of type `T` | Copies an element of the output type `T`. |
+    | `reset_output!(x::T)` | mutated `x` | Resets (usually zero) the value of x to the initial value it must assume before mapping.  If `x` is immutable, the function can return a new instance of `T`. |
+    | `reducer(x::T,y::T)` | `mutated x` | Reduces `x` and `y` into `x` (for example `x = x + y`). If `x` is immutable, returns a new instance of type `T`.    
+
+    **Remark:** if the output is an array of an immutable type `T`, the methods above can be defined for single *instances* of `T`, which is simpler
+    than for the arrays.
 
 ```julia
 using CellListMap.PeriodicSystems, StaticArrays
@@ -174,7 +185,6 @@ copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces)
 ```
 
 The reset method will zero both the energy and all forces:
-import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer
 ```julia
 import CellListMap.PeriodicSystems: reset_output!
 function reset_output!(output::EnergyAndForces)
