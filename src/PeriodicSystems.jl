@@ -17,6 +17,8 @@ export resize_output!
 export reset_output!, reset_output
 export reducer!, reducer
 
+const SupportedTypes = Union{Number,SVector,FieldVector}
+
 """
 
 ```
@@ -336,7 +338,7 @@ copy_output(x)
 ```
 
 Function that defines how the `output` variable is copied. Identical to `Base.copy(x)`
-and implemented for `Number` types, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s.
+and implemented for the types in `$(SupportedTypes)`.
 
 Other custom output types must have their `copy_output` method implemented.
 
@@ -365,14 +367,16 @@ function copy_output(x)
     error("""
         MethodError: no method matching `copy_output($(typeof(x)))`
 
-        Please implement a method `PeriodicSystems.copy_output(x::$(typeof(x))` defining
-        an appropriate way to copy the required output variable. Many times just
+        Please implement a method 
+       
+        PeriodicSystems.copy_output(x::$(typeof(x)))
+
+        with an appropriate way to copy the required output variable. Many times just
         defining `output_copy(x::$(typeof(x))) = deepcopy(x)` is ok. 
-    """
-    )
+    """)
 end
-copy_output(x::Number) = copy(x)
-copy_output(x::AbstractVecOrMat{T}) where {T} = copy(x)
+copy_output(x::T) where {T<:SupportedTypes} = copy(x)
+copy_output(x::AbstractVecOrMat{T}) where {T} = T[ copy_output(el) for el in x ]
 
 """
 
@@ -380,7 +384,7 @@ copy_output(x::AbstractVecOrMat{T}) where {T} = copy(x)
 reset_output!(x)
 ```
 
-Function that defines how to reset (or zero) the `output` variable. For `Number`s it is 
+Function that defines how to reset (or zero) the `output` variable. For `$(SupportedTypes)` it is 
 implemented as `zero(x)`, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s
 it is implemented as `fill!(x, zero(eltype(x))`.
 
@@ -402,30 +406,22 @@ struct MinimumDistance d::Float64 end
 PeriodicSystems.reset_output!(x::MinimumDistance) = MinimumDistance(+Inf)
 ```
 
-The `reset_output!` function **must** return the output variable, being
-it mutable or immutable. The user must guarantee that the operation takes place in-place,
-for mutable output variables.  
-
 """
 function reset_output!(x)
     error("""
         MethodError: no method matching `reset_output!($(typeof(x)))`
 
-        Please add a method `PeriodicSystems.reset_output!(x::$(typeof(x))`, defining
-        the appropriate way to reset (zero) the data of the output variables.
+        Please add a method 
+        
+        PeriodicSystems.reset_output!(x::$(typeof(x)))
+        
+        with the appropriate way to reset (zero) the data of the output variables.
 
         The `reset_output!` methods **must** return the output variable to
-        conform with the interface, even if the variable is mutable. For example:
-
-        ```
-        struct A x::Float64 end
-        PeriodicSystems.reset_output!(v::Vector{A}) = fill!(v, A(0.0))
-        ```
-    """
-    )
+        conform with the interface, even if the variable is mutable. 
+    """)
 end
-reset_output!(x::Number) = zero(x)
-reset_output!(x::SVector) = zero(x)
+reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
 reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin]))
 const reset_output = reset_output!
 
@@ -457,7 +453,8 @@ reducer!(x,y)
 Function that defines how to reduce (combine, or merge) to variables computed in parallel
 to obtain a single instance of the variable with the reduced result.
 
-The most commont `reducer` is the sum. For example, when computin energies, or forces,
+The most commont `reducer` is the sum, and this is how it is implemented for
+`$(SupportedTypes)`. For example, when computin energies, or forces,
 the total energy is the sum of the energies. The force on one particle is the sum of the
 forces between the particle and every other particle. Thus, the implemented reducer is
 the sum: 
@@ -482,7 +479,19 @@ The appropriate behavior of the reducer should be carefuly inspected by the user
 to avoid spurious results. 
 
 """
-reducer!(x,y) = +(x,y)
+function reducer!(x,y)
+    error("""
+        MethodError: no method matching `reducer!($(typeof(x)),$(typeof(x)))`
+
+        Please implement a method 
+        
+        PeriodicSystems.reducer(x::$(typeof(x)),y::$(typeof(x)))
+        
+        with the appropriate way to combine two instances of the type (summing, keeping
+        the minimum, etc), such that threaded computations can be reduced.
+    """)
+end
+reducer!(x::T,y::T) where {T<:SupportedTypes} = +(x,y)
 const reducer = reducer!
 
 """
