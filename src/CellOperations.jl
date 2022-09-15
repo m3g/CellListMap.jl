@@ -611,7 +611,7 @@ function _minmax(x::AbstractVector{<:AbstractVector})
         @. xmin = min(xmin,v)       
         @. xmax = max(xmax,v)       
     end
-    return xmin, xmax
+    return SVector(xmin), SVector(xmax)
 end
 
 """
