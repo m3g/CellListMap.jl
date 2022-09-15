@@ -29,8 +29,8 @@ to dispatch on the construction of boxes without periodic boundary
 conditions.
 
 """
-struct Limits{T<:AbstractVector}
-    limits::T
+struct Limits{N,T}
+    limits::SVector{N,T}
 end
 
 """
