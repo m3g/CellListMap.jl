@@ -71,7 +71,7 @@ end
     @test (nb1.n, nb1.list[3]) == (3, (3, 3, 3.0))
     nb2 = [copy(nb1), CellListMap.NeighborList(1, [(4, 4, 4.0)])]
     CellListMap.reduce_lists(nb1, nb2)
-    @test nb1.n == 4 
+    @test nb1.n == 4
     @test nb1.list == [(0, 0, 0.0), (1, 1, 1.0), (3, 3, 3.0), (4, 4, 4.0)]
 end
 
@@ -212,59 +212,55 @@ function InPlaceNeighborList(;
     return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
 end
 
-#
-# Function that updates the box if the cutoff or unitcell has changed
-#
-# System without perioidc boundary conditions: update limits
-function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, cutoff::Union{Nothing,Real}, unitcell::Nothing)
-    if isnothing(cutoff)
-        cutoff = system.box.cutoff
-    end
-    system.box = Box(limits(x), cutoff)
-    return system
-end
-function update_box!(system::InPlaceNeighborList{<:Box{NonPeriodicCell}}, x, y, cutoff::Union{Nothing,Real}, unitcell::Nothing)
-    if isnothing(cutoff)
-        cutoff = system.box.cutoff
-    end
-    system.box = Box(limits(x,y), cutoff)
-    return system
-end
-# Nothing change for systems with periodic boundary conditions: just return
-update_box!(system::InPlaceNeighborList{<:Box{<:PeriodicCellType}}, x, cutoff::Nothing, unitcell::Nothing) = system
-update_box!(system::InPlaceNeighborList{<:Box{<:PeriodicCellType}}, x, y, cutoff::Nothing, unitcell::Nothing) = system
-# Systems with periodic boundary conditions
-function update_box!(system::InPlaceNeighborList{<:Box{UnitCellType}}, cutoff::Union{Nothing,Real}, unitcell) where {UnitCellType<:PeriodicCellType}
-    if isnothing(cutoff)
-        cutoff = system.box.cutoff
-    end
-    if isnothing(unitcell)
-        unitcell = system.box.unit_cell.matrix
-        box = Box(unitcell, cutoff, UnitCellType=UnitCellType)
-    else
-        box = Box(unitcell, cutoff)
-    end
-    # Error if the type of box was changed: this is not supported
-    B = typeof(system.box)
-    if typeof(box) != B
-        throw(ArgumentError(" The unitcell must be of the same type (Orthorhombic **or** general) as of the initial constructor"))
-    end
-    system.box = box
-    return system
-end
+"""
 
-#
-# update system for self computations
-#
+update!(system::InPlaceNeighborList, x::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
+update!(system::InPlaceNeighborList, x::AbstractVecOrMat, y::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
+
+Function that updates a `InPlaceNeighborList` system, by updating the coordinates, cutoff, and unitcell.
+
+## Examples
+
+### For self-pairs computations
+
+```julia-repl
+julia> x = rand(SVector{3,Float64}, 10^3);
+
+julia> system = InPlaceNeighborList(x=x; cutoff=0.1)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{NonPeriodicCell, 3, Float64, Float64, 9}
+Current list buffer size: 0
+
+julia> neighborlist!(system);
+
+julia> new_x = rand(SVector{3,Float64}, 10^3);
+
+julia> update!(system, new_x; cutoff = 0.05)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{NonPeriodicCell, 3, Float64, Float64, 9}
+Current list buffer size: 1826
+
+julia> neighborlist!(system)
+224-element Vector{Tuple{Int64, Int64, Float64}}:
+ (25, 486, 0.03897345036790646)
+ ⋮
+ (723, 533, 0.04795768478723409)
+ (868, 920, 0.042087156715720137)
+```
+
+"""
 function update!(
     system::InPlaceNeighborList{<:Box{UnitCellType},C},
     x::AbstractVecOrMat;
     cutoff=nothing, unitcell=nothing
 ) where {UnitCellType,C<:CellList}
     if UnitCellType == NonPeriodicCell
-        update_box!(system, x, cutoff, unitcell)
+        isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
+        system.box = update_box(system.box; unitcell=limits(x), cutoff=cutoff)
     else
-        update_box!(system, cutoff, unitcell)
+        system.box = update_box(system.box; unitcell=unitcell, cutoff=cutoff)
     end
     system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel=system.parallel)
     return system
@@ -280,9 +276,10 @@ function update!(
     cutoff=nothing, unitcell=nothing
 ) where {UnitCellType,C<:CellListPair}
     if UnitCellType == NonPeriodicCell
-        update_box!(system, x, y, cutoff, unitcell)
+        isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
+        system.box = update_box(system.box; unitcell=limits(x, y), cutoff=cutoff)
     else
-        update_box!(system, cutoff, unitcell)
+        system.box = update_box(system.box; unitcell=unitcell, cutoff=cutoff)
     end
     system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel=system.parallel)
     return system
@@ -291,58 +288,66 @@ end
 @testitem "InPlaceNeighborLists Updates" begin
     using CellListMap
     using StaticArrays
+    using LinearAlgebra: diag
 
     # Non-periodic systems
     x = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, cutoff=0.1)
+    @test diag(system.box.unit_cell.matrix) == limits(x).limits .+ 0.1
+    x = rand(SVector{3,Float64}, 10^3)
     update!(system, x)
     @test system.box.cutoff == 0.1
-    update!(system, x; cutoff = 0.05)
+    update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
+    @test diag(system.box.unit_cell.matrix) == limits(x).limits .+ 0.05
 
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, y=y, cutoff=0.1)
+    @test diag(system.box.unit_cell.matrix) == limits(x, y).limits .+ 0.1
+    x = rand(SVector{3,Float64}, 10^3)
+    y = rand(SVector{3,Float64}, 10^3)
     update!(system, x, y)
     @test system.box.cutoff == 0.1
-    update!(system, x, y; cutoff = 0.05)
+    update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
+    @test diag(system.box.unit_cell.matrix) == limits(x, y).limits .+ 0.05
 
     # Orthorhombic systems
     x = rand(SVector{3,Float64}, 10^3)
-    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1])
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1, 1, 1])
     update!(system, x)
     @test system.box.cutoff == 0.1
-    update!(system, x; cutoff = 0.05)
+    update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    update!(system, x; cutoff=0.05, unitcell=[2,2,2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+    update!(system, x; cutoff=0.05, unitcell=[2, 2, 2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
-    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1,1,1])
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1, 1, 1])
     update!(system, x, y)
     @test system.box.cutoff == 0.1
-    update!(system, x, y; cutoff = 0.05)
+    update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    update!(system, x, y; cutoff=0.05, unitcell=[2,2,2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+    update!(system, x, y; cutoff=0.05, unitcell=[2, 2, 2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     # Triclinic systems
     x = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1])
     update!(system, x)
     @test system.box.cutoff == 0.1
-    update!(system, x; cutoff = 0.05)
+    update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
     update!(system, x; cutoff=0.05, unitcell=[2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1])
     update!(system, x, y)
     @test system.box.cutoff == 0.1
-    update!(system, x, y; cutoff = 0.05)
+    update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
     update!(system, x, y; cutoff=0.05, unitcell=[2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0 ; 0 0 2])
+    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
 end
 
@@ -377,12 +382,12 @@ end
     using CellListMap.TestingNeighborLists
     using NearestNeighbors
 
-    for N in [2,3]
-    
+    for N in [2, 3]
+
         x = rand(N, 500)
         cutoff = 0.1
         nb = nl_NN(BallTree, inrange, x, x, cutoff)
-        system = InPlaceNeighborList(x = x, cutoff = cutoff)
+        system = InPlaceNeighborList(x=x, cutoff=cutoff)
         cl = neighborlist!(system)
         @test compare_nb_lists(cl, nb, self=true)
         # Test system updating for self-lists
@@ -398,12 +403,12 @@ end
         y = rand(N, 1000)
         cutoff = 0.1
         nb = nl_NN(BallTree, inrange, x, y, cutoff)
-        system = InPlaceNeighborList(x = x, y = y, cutoff = cutoff)
+        system = InPlaceNeighborList(x=x, y=y, cutoff=cutoff)
         cl = neighborlist!(system)
         @test compare_nb_lists(cl, nb, self=false)
         cutoff = 0.05
-        new_x = rand(N, 500) 
-        new_y = rand(N, 831) 
+        new_x = rand(N, 500)
+        new_y = rand(N, 831)
         nb = nl_NN(BallTree, inrange, new_x, new_y, cutoff)
         update!(system, new_x, new_y; cutoff=cutoff)
         cl = neighborlist!(system)
@@ -418,20 +423,64 @@ end
     using StaticArrays
     using BenchmarkTools
 
+    #
+    # Single set of particles
+    #
+
+    # Periodic systems
     x = rand(SVector{3,Float64}, 10^3)
-    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1],parallel=false)
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1, 1, 1], parallel=false)
     neighborlist!(system)
     x = rand(SVector{3,Float64}, 10^3)
-    allocs = @ballocated neighborlist!($system) evals=1 samples=1
+    allocs = @ballocated update!($system, $x) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated update!($system, $x; cutoff=0.2) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
     @test allocs == 0
 
+    # Non-Periodic systems
+    x = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, cutoff=0.1, parallel=false)
+    neighborlist!(system)
+    x = rand(SVector{3,Float64}, 10^3)
+    allocs = @ballocated update!($system, $x) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated update!($system, $x; cutoff=0.2) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
+    @test allocs == 0
+
+    #
+    # Two sets of particles
+    #
+
+    # Periodic systems
     y = rand(SVector{3,Float64}, 10^3)
-    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1,1,1],parallel=false)
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1, 1, 1], parallel=false)
     neighborlist!(system)
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
-    allocs = @ballocated neighborlist!($system) evals=1 samples=1
+    allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
     @test allocs == 0
+    allocs = @ballocated update!($system, $x, $y) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated update!($system, $x, $y; cutoff=0.2) evals = 1 samples = 1
+    @test allocs == 0
+
+    # Non-Periodic systems
+    y = rand(SVector{3,Float64}, 10^3)
+    system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, parallel=false)
+    neighborlist!(system)
+    x = rand(SVector{3,Float64}, 10^3)
+    y = rand(SVector{3,Float64}, 10^3)
+    allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated update!($system, $x, $y) evals = 1 samples = 1
+    @test allocs == 0
+    allocs = @ballocated update!($system, $x, $y; cutoff=0.2) evals = 1 samples = 1
+    @test allocs == 0
+
 end
 
 """
@@ -623,44 +672,44 @@ end
 #
 module TestingNeighborLists
 
-    export nl_NN
-    export compare_nb_lists
+export nl_NN
+export compare_nb_lists
 
-    function nl_NN(BallTree, inrange, x, y, r)
-        balltree = BallTree(x)
-        return inrange(balltree, y, r, true)
-    end
+function nl_NN(BallTree, inrange, x, y, r)
+    balltree = BallTree(x)
+    return inrange(balltree, y, r, true)
+end
 
-    function compare_nb_lists(list_CL, list_NN; self=false)
-        if self
-            for (i, list_original) in pairs(list_NN)
-                list = filter(!isequal(i), list_original)
-                cl = filter(tup -> (tup[1] == i || tup[2] == i), list_CL)
-                if length(cl) != length(list)
-                    @show i
-                    @show length(list), list
-                    @show length(cl), cl
-                    return false
-                end
-                for j in list
-                    length(findall(tup -> (tup[1] == j || tup[2] == j), cl)) == 1 || return false
-                end
+function compare_nb_lists(list_CL, list_NN; self=false)
+    if self
+        for (i, list_original) in pairs(list_NN)
+            list = filter(!isequal(i), list_original)
+            cl = filter(tup -> (tup[1] == i || tup[2] == i), list_CL)
+            if length(cl) != length(list)
+                @show i
+                @show length(list), list
+                @show length(cl), cl
+                return false
             end
-        else
-            for (i, list) in pairs(list_NN)
-                cl = filter(tup -> tup[2] == i, list_CL)
-                if length(cl) != length(list)
-                    @show i
-                    @show length(list), list
-                    @show length(cl), cl
-                    return false
-                end
-                for j in list
-                    length(findall(tup -> tup[1] == j, cl)) == 1 || return false
-                end
+            for j in list
+                length(findall(tup -> (tup[1] == j || tup[2] == j), cl)) == 1 || return false
             end
         end
-        return true
+    else
+        for (i, list) in pairs(list_NN)
+            cl = filter(tup -> tup[2] == i, list_CL)
+            if length(cl) != length(list)
+                @show i
+                @show length(list), list
+                @show length(cl), cl
+                return false
+            end
+            for j in list
+                length(findall(tup -> tup[1] == j, cl)) == 1 || return false
+            end
+        end
     end
+    return true
+end
 
 end # module TestingNeighborLists
