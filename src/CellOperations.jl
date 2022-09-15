@@ -603,15 +603,27 @@ end
 # the particle sets
 #
 function _minmax(x::AbstractVector{<:AbstractVector})
-    xmin = similar(x[begin])
-    xmax = similar(x[begin])
-    xmin .= typemax(eltype(xmin))
-    xmax .= typemin(eltype(xmax))
+    N = size(x[begin],1)
+    T = eltype(x[begin])
+    xmin = fill(typemax(T), MVector{N,T})
+    xmax = fill(typemin(T), MVector{N,T})
     for v in x
         @. xmin = min(xmin,v)       
         @. xmax = max(xmax,v)       
     end
     return SVector(xmin), SVector(xmax)
+end
+
+@testitem "_minmax" begin
+    using BenchmarkTools
+    using StaticArrays
+    import CellListMap: _minmax
+    x = [ [0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5] ]
+    @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
+    x = [ SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5) ]
+    @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
+    a = @ballocated _minmax($x) evals = 1 samples = 1
+    @test a == 0
 end
 
 """
