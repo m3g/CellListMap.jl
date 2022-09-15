@@ -26,3 +26,4 @@ Manifest.toml
 .vscode/settings.json
 simulation.gif
 profile.pb.gz
+src/examples/__pycache__/*
