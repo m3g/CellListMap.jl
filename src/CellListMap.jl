@@ -7,7 +7,7 @@ using Parameters
 using StaticArrays
 using Setfield
 using Base.Threads
-using LinearAlgebra: cross
+using LinearAlgebra: cross, diagm
 
 export Box
 export CellList, UpdateCellList!
