@@ -6,6 +6,7 @@ using StaticArrays
 
 import ..CellListMap
 import ..CellListMap: INTERNAL
+import ..CellListMap: Box, update_box
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
@@ -17,6 +18,8 @@ export resize_output!
 export reset_output!, reset_output
 export reducer!, reducer
 
+# Types of variables that have support for multi-threading without having 
+# to explicit add methods to copy_output, reset_output!, and reducer functions.
 const SupportedTypes = Union{Number,SVector,FieldVector}
 
 """
@@ -655,8 +658,27 @@ PeriodicSystem1 of dimension 3, composed of:
 
 """
 function update_unitcell!(sys, unitcell)
-    sys._box = CellListMap.Box(unitcell, sys._box.cutoff)
+    sys._box = update_box(sys._box; unitcell=unitcell)
     return sys
+end
+
+@testitem "update_unitcell!" begin
+    using BenchmarkTools
+    using LinearAlgebra: diag
+    using StaticArrays
+    using CellListMap.PeriodicSystems
+    x = rand(SVector{3,Float64}, 1000)
+    sys1 = PeriodicSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    update_unitcell!(sys1, SVector(2, 2, 2))
+    @test diag(sys1.unitcell) == [2,2,2]
+    a = @ballocated update_unitcell!($sys1, SVector(2,2,2)) evals=1 samples=1
+    @test a == 0
+    y = rand(SVector{3,Float64}, 1000)
+    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    update_unitcell!(sys2, SVector(2,2,2))
+    @test diag(sys2.unitcell) == [2,2,2]
+    a = @ballocated update_unitcell!($sys2, SVector(2,2,2)) evals=1 samples=1
+    @test a == 0
 end
 
 """
@@ -698,13 +720,27 @@ PeriodicSystem1 of dimension 3, composed of:
     Type of output variable: Float64
 ```
 """
-function update_cutoff!(sys::PeriodicSystem1{OutputName,V,O,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,O,UnitCellType}
-    sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
+function update_cutoff!(sys, cutoff)
+    sys._box = update_box(sys._box; cutoff = cutoff)
     return sys
 end
-function update_cutoff!(sys::PeriodicSystem2{OutputName,V,O,<:CellListMap.Box{UnitCellType}}, cutoff) where {OutputName,V,O,UnitCellType}
-    sys._box = CellListMap.Box(sys._box.unit_cell.matrix, cutoff; UnitCellType=UnitCellType)
-    return sys
+
+@testitem "update_cutoff!" begin
+    using BenchmarkTools
+    using StaticArrays
+    using CellListMap.PeriodicSystems
+    x = rand(SVector{3,Float64}, 1000)
+    sys1 = PeriodicSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    update_cutoff!(sys1, 0.2)
+    @test sys1.cutoff == 0.2
+    a = @ballocated update_cutoff!($sys1, 0.1) evals=1 samples=1
+    @test a == 0
+    y = rand(SVector{3,Float64}, 1000)
+    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    update_cutoff!(sys2, 0.2)
+    @test sys2.cutoff == 0.2
+    a = @ballocated update_cutoff!($sys2, 0.1) evals=1 samples=1
+    @test a == 0
 end
 
 """
