@@ -261,6 +261,10 @@ julia> system.energy_and_forces.forces
 
 If the `map_pairwise!` function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.
 
+- [Updating coordinates](@ref)
+- [Updating the unit cell](@ref)
+- [Updating the cutoff](@ref)
+
 ### Updating coordinates
 
 The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system. Let us exemplify the interface with the computation of forces:
@@ -331,7 +335,7 @@ be attempted.
 The unit cell can be updated to new dimensions at any moment, with the `update_unitcell!` function:
 
 ```julia-repl
-julia> update_unitcell!(system, [1.2, 1.2, 1.2])
+julia> update_unitcell!(system, SVector(1.2, 1.2, 1.2))
 PeriodicSystem1 of dimension 3, composed of:
     Box{CellListMap.OrthorhombicCell, 3}
       unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.2, 0.0; 0.0, 0.0, 1.2 ]
@@ -350,9 +354,13 @@ PeriodicSystem1 of dimension 3, composed of:
 ```
 
 !!! note
-    The unit cell can be set initially using a vector or a unit cell matrix. If a vector is provided
-    the system is considered Orthorhombic, if a matrix is provided, a Triclinic system is built. 
-    Unit cells updates must preserve the system type. 
+    - The unit cell can be set initially using a vector or a unit cell matrix. If a vector is provided
+      the system is considered Orthorhombic, if a matrix is provided, a Triclinic system is built. 
+      Unit cells updates must preserve the system type. 
+
+    - It is recommended (but not mandatory) to use static arrays (or Tuples) to update the unitcell, 
+      as in this case the update will be non-allocating. 
+
 
 ### Updating the cutoff
 
