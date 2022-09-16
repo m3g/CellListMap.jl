@@ -777,6 +777,21 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem2)
     return sys
 end
 
+# this updates must be non-allocating in the serial case
+@testitem "UpdatePeriodicSystem!" begin
+    using BenchmarkTools
+    using StaticArrays
+    using CellListMap.PeriodicSystems
+    x = rand(SVector{3,Float64}, 1000)
+    sys = PeriodicSystem(xpositions = x, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0, parallel = false)
+    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    @test a == 0
+    y = rand(SVector{3,Float64}, 1000)
+    sys = PeriodicSystem(xpositions = x, ypositions = y, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0, parallel = false)
+    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    @test a == 0
+end
+
 """
 
 ```
