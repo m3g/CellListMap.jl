@@ -151,7 +151,7 @@ function PeriodicSystem(;
     output_name::Symbol=:output,
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
-    lcell=1,
+    lcell=1
 )
     if !isnothing(positions) && isnothing(xpositions)
         xpositions = positions
@@ -187,12 +187,12 @@ abstract type AbstractPeriodicSystem{OutputName} end
 
 import Base: getproperty, propertynames
 getproperty(sys::AbstractPeriodicSystem, s::Symbol) = getproperty(sys, Val(s))
-getproperty(sys::AbstractPeriodicSystem, s::Val{S}) where S = getfield(sys, S)
+getproperty(sys::AbstractPeriodicSystem, s::Val{S}) where {S} = getfield(sys, S)
 # publi properties
 getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :unit_cell), :matrix)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
-getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where OutputName = getfield(sys, :output)
-propertynames(sys::AbstractPeriodicSystem{OutputName}) where OutputName =
+getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
+propertynames(sys::AbstractPeriodicSystem{OutputName}) where {OutputName} =
     (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, OutputName)
 
 import Base: setproperty!
@@ -211,15 +211,15 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :o
     using CellListMap.PeriodicSystems
     using StaticArrays
     sys = PeriodicSystem(
-        positions = rand(SVector{3,Float64}, 1000),
-        cutoff = 0.1,
-        unitcell = [1,1,1],
-        output = 0,
-        output_name = :test
+        positions=rand(SVector{3,Float64}, 1000),
+        cutoff=0.1,
+        unitcell=[1, 1, 1],
+        output=0,
+        output_name=:test
     )
     @test length(sys.positions) == 1000
     @test sys.cutoff == 0.1
-    @test sys.unitcell == @SMatrix [ 1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0 ] 
+    @test sys.unitcell == @SMatrix [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]
     @test sys.output == 0
     @test sys.test == 0
     @test sys.parallel == true
@@ -231,7 +231,7 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :o
     sys.positions[1] = SVector(0.0, 0.0, 0.0)
     @test sys.positions[1] == SVector(0.0, 0.0, 0.0)
     sys.unitcell = [1.2, 1.2, 1.2]
-    @test sys.unitcell == @SMatrix [ 1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2 ] 
+    @test sys.unitcell == @SMatrix [1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]
 
 end
 
@@ -265,8 +265,8 @@ mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem1{OutputName}(v::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,O,B,C,A} = 
-    PeriodicSystem1{OutputName,V,O,B,C,A}(v,o,b,c,vo,a,p)
+PeriodicSystem1{OutputName}(v::Vector{V}, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
+    PeriodicSystem1{OutputName,V,O,B,C,A}(v, o, b, c, vo, a, p)
 getproperty(sys::PeriodicSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 
 """
@@ -300,8 +300,8 @@ mutable struct PeriodicSystem2{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem2{OutputName}(vx::Vector{V},vy::Vector{V},o::O,b::B,c::C,vo::Vector{O},a::A,p::Bool) where {OutputName,V,O,B,C,A} = 
-    PeriodicSystem2{OutputName,V,O,B,C,A}(vx,vy,o,b,c,vo,a,p)
+PeriodicSystem2{OutputName}(vx::Vector{V}, vy::Vector{V}, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
+    PeriodicSystem2{OutputName,V,O,B,C,A}(vx, vy, o, b, c, vo, a, p)
 
 import Base.show
 function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputName}) where {OutputName}
@@ -379,7 +379,7 @@ function copy_output(x)
     """)
 end
 copy_output(x::T) where {T<:SupportedTypes} = copy(x)
-copy_output(x::AbstractVecOrMat{T}) where {T} = T[ copy_output(el) for el in x ]
+copy_output(x::AbstractVecOrMat{T}) where {T} = T[copy_output(el) for el in x]
 
 """
 
@@ -482,7 +482,7 @@ The appropriate behavior of the reducer should be carefuly inspected by the user
 to avoid spurious results. 
 
 """
-function reducer!(x,y)
+function reducer!(x, y)
     error("""
         MethodError: no method matching `reducer!($(typeof(x)),$(typeof(x)))`
 
@@ -494,7 +494,7 @@ function reducer!(x,y)
         the minimum, etc), such that threaded computations can be reduced.
     """)
 end
-reducer!(x::T,y::T) where {T<:SupportedTypes} = +(x,y)
+reducer!(x::T, y::T) where {T<:SupportedTypes} = +(x, y)
 const reducer = reducer!
 
 """
@@ -577,8 +577,8 @@ function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}
     return output
 end
 function reduce_output!(
-    reducer::Function, 
-    output::AbstractVecOrMat{T}, 
+    reducer::Function,
+    output::AbstractVecOrMat{T},
     output_threaded::Vector{<:AbstractVecOrMat{T}}
 ) where {T}
     output = reset_output!(output)
@@ -668,16 +668,16 @@ end
     using StaticArrays
     using CellListMap.PeriodicSystems
     x = rand(SVector{3,Float64}, 1000)
-    sys1 = PeriodicSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    sys1 = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
-    @test diag(sys1.unitcell) == [2,2,2]
-    a = @ballocated update_unitcell!($sys1, SVector(2,2,2)) evals=1 samples=1
+    @test diag(sys1.unitcell) == [2, 2, 2]
+    a = @ballocated update_unitcell!($sys1, SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1,1,1], cutoff=0.1, output=0.0)
-    update_unitcell!(sys2, SVector(2,2,2))
-    @test diag(sys2.unitcell) == [2,2,2]
-    a = @ballocated update_unitcell!($sys2, SVector(2,2,2)) evals=1 samples=1
+    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    update_unitcell!(sys2, SVector(2, 2, 2))
+    @test diag(sys2.unitcell) == [2, 2, 2]
+    a = @ballocated update_unitcell!($sys2, SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == 0
 end
 
@@ -721,7 +721,7 @@ PeriodicSystem1 of dimension 3, composed of:
 ```
 """
 function update_cutoff!(sys, cutoff)
-    sys._box = update_box(sys._box; cutoff = cutoff)
+    sys._box = update_box(sys._box; cutoff=cutoff)
     return sys
 end
 
@@ -730,16 +730,16 @@ end
     using StaticArrays
     using CellListMap.PeriodicSystems
     x = rand(SVector{3,Float64}, 1000)
-    sys1 = PeriodicSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    sys1 = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys1, 0.2)
     @test sys1.cutoff == 0.2
-    a = @ballocated update_cutoff!($sys1, 0.1) evals=1 samples=1
+    a = @ballocated update_cutoff!($sys1, 0.1) evals = 1 samples = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys2, 0.2)
     @test sys2.cutoff == 0.2
-    a = @ballocated update_cutoff!($sys2, 0.1) evals=1 samples=1
+    a = @ballocated update_cutoff!($sys2, 0.1) evals = 1 samples = 1
     @test a == 0
 end
 
@@ -756,10 +756,10 @@ Updates the cell lists for periodic systems.
 """
 function UpdatePeriodicSystem!(sys::PeriodicSystem1)
     sys._cell_list = CellListMap.UpdateCellList!(
-        sys.xpositions, 
-        sys._box, 
-        sys._cell_list, 
-        sys._aux; 
+        sys.xpositions,
+        sys._box,
+        sys._cell_list,
+        sys._aux;
         parallel=sys.parallel
     )
     return sys
@@ -767,11 +767,11 @@ end
 
 function UpdatePeriodicSystem!(sys::PeriodicSystem2)
     sys._cell_list = CellListMap.UpdateCellList!(
-        sys.xpositions, 
-        sys.ypositions, 
-        sys._box, 
-        sys._cell_list, 
-        sys._aux; 
+        sys.xpositions,
+        sys.ypositions,
+        sys._box,
+        sys._cell_list,
+        sys._aux;
         parallel=sys.parallel
     )
     return sys
@@ -783,11 +783,11 @@ end
     using StaticArrays
     using CellListMap.PeriodicSystems
     x = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions = x, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0, parallel = false)
+    sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions = x, ypositions = y, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0, parallel = false)
+    sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 end
