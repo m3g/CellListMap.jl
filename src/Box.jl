@@ -238,8 +238,22 @@ julia> CellListMap.cell_matrix_from_sides([1,1,1])
 ```
 
 """
-cell_matrix_from_sides(sides::AbstractVector) = diagm(sides)
-cell_matrix_from_sides(sides::Tuple) = diagm(SVector(sides))
+cell_matrix_from_sides(sides::AbstractVector) = oneunit(eltype(sides)) * diagm(sides ./ oneunit(eltype(sides)))
+cell_matrix_from_sides(sides::Tuple) = cell_matrix_from_sides(SVector(sides))
+
+@testitem "cell_matrix_from_sides: units" begin
+    using StaticArrays
+    using Unitful
+    import CellListMap: cell_matrix_from_sides
+
+    sides = SVector(1.0, 1.0, 1.0)u"nm"
+    cell_matrix = cell_matrix_from_sides(sides)
+    @test eltype(sides) == eltype(cell_matrix) 
+
+    sides = (1.0u"nm", 1.0u"nm", 1.0u"nm")
+    cell_matrix = cell_matrix_from_sides(sides)
+    @test eltype(sides) == eltype(cell_matrix) 
+end
 
 """
 
