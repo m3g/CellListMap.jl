@@ -74,7 +74,7 @@ end
 """
 
 ```
-partition!(x::AbstractVector,by)
+partition!(by, x::AbstractVector)
 ```
 
 $(INTERNAL)
