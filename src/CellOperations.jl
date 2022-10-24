@@ -603,6 +603,7 @@ end
 # the particle sets
 #
 function _minmax(x::AbstractVector{<:AbstractVector})
+    length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from coordinates without particles."))
     N = size(x[begin],1)
     T = eltype(x[begin])
     xmin = fill(typemax(T), MVector{N,T})
@@ -638,6 +639,7 @@ to be used to set a box without effective periodic boundary conditions.
 """
 function limits(x::AbstractVector{<:AbstractVector})
     xmin, xmax = _minmax(x)
+
     return Limits(xmax .- xmin)
 end
 

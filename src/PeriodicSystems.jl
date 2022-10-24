@@ -214,7 +214,7 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :o
         positions=rand(SVector{3,Float64}, 1000),
         cutoff=0.1,
         unitcell=[1, 1, 1],
-        output=0,
+        output=0.0,
         output_name=:test
     )
     @test length(sys.positions) == 1000
@@ -232,6 +232,18 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :o
     @test sys.positions[1] == SVector(0.0, 0.0, 0.0)
     sys.unitcell = [1.2, 1.2, 1.2]
     @test sys.unitcell == @SMatrix [1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]
+
+    # test the construction with pathologically few particles
+    for x in [ SVector{3,Float64}[], Vector{Float64}[], [rand(SVector{3,Float64})], [rand(3)] ]
+        sys = PeriodicSystem(
+            positions=x,
+            cutoff=0.1,
+            unitcell=[1, 1, 1],
+            output=0.0,
+            output_name=:test
+        )
+        @test PeriodicSystems.map_pairwise((x,y,i,j,d2,out) -> out += d2, sys) == 0.0
+    end
 
 end
 
