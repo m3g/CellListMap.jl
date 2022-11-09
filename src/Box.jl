@@ -91,6 +91,36 @@ Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M}
 end
 
 """
+    unitcelltype(::Box{T}) where T = T
+
+Returns the type of a unitcell from the `Box` structure.
+
+## Example
+
+```julia-repl
+julia> box = Box([1,1,1], 0.1)
+
+julia> unitcelltype(box)
+OrthorhombicCell
+
+julia> box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
+
+julia> unitcelltype(box)
+TriclinicCell
+```
+
+"""
+unitcelltype(::Box{T}) where T = T
+
+@testitem "unitcelltype" begin
+    using CellListMap
+    @test unitcelltype(Box([1,1,1], 0.1)) == OrthorhombicCell
+    @test unitcelltype(Box([1 0 0; 0 1 0; 0 0 1], 0.1)) == TriclinicCell
+    x = rand(3,100)
+    @test unitcelltype(Box(limits(x), 0.1)) == NonPeriodicCell
+end
+
+"""
 
 ```
 _promote_types(cell,cutoff)

@@ -16,6 +16,7 @@ export limits
 export TriclinicCell
 export OrthorhombicCell
 export NonPeriodicCell
+export unitcelltype
 export nbatches
 export PeriodicSystem
 

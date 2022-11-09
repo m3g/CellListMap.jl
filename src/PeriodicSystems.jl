@@ -6,12 +6,13 @@ using StaticArrays
 
 import ..CellListMap
 import ..CellListMap: INTERNAL
-import ..CellListMap: Box, update_box
+import ..CellListMap: Box, update_box, unitcelltype
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
 export update_cutoff!
 export update_unitcell!
+export unitcelltype
 
 export copy_output
 export resize_output!
@@ -182,6 +183,7 @@ function PeriodicSystem(;
     return sys
 end
 
+
 # Abstract type only for cleaner dispatch
 abstract type AbstractPeriodicSystem{OutputName} end
 
@@ -205,6 +207,14 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:parallel}, x) = setfield!(sys, 
 setproperty!(sys::AbstractPeriodicSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
 setproperty!(sys::AbstractPeriodicSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
 setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+
+"""
+    unitcelltype(sys::AbstractPeriodicSystem)
+
+Returns the type of a unitcell from the `PeriodicSystem` structure.
+
+"""
+unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
 
 @testitem "PeriodicSystems properties" begin
 
@@ -244,6 +254,11 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :o
         )
         @test PeriodicSystems.map_pairwise((x,y,i,j,d2,out) -> out += d2, sys) == 0.0
     end
+
+    # unitcell type
+    x = rand(SVector{3,Float64},100)
+    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)) == OrthorhombicCell
+    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1], output=0.0)) == TriclinicCell
 
 end
 
