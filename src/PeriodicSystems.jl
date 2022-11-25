@@ -796,8 +796,14 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem1, preserve_lists::Bool=false)
     return sys
 end
 
-_update_ref_positions(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: NotSwapped} = cl.ref .= sys.xpositions
-_update_ref_positions(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: Swapped} = cl.ref .= sys.ypositions
+# voltar: esta função tem que bater com a outra condição marcada com voltar
+_update_ref_positions(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap} 
+    if Swap == NotSwapped() || length(y) < length(x)
+        cl.ref .= sys.xpositions
+    else 
+        cl.ref .= sys.ypositions
+    end
+end
 function UpdatePeriodicSystem!(sys::PeriodicSystem2, preserve_lists::Bool=false)
     # We always update the reference set positions (the cell lists of the target set are not updated)
     _update_ref_positions(sys._cell_list, sys)
