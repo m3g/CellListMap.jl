@@ -7,6 +7,7 @@ using StaticArrays
 import ..CellListMap
 import ..CellListMap: INTERNAL
 import ..CellListMap: Box, update_box, unitcelltype
+import ..CellListMap: CellListPair, Swapped, NotSwapped
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
@@ -152,7 +153,8 @@ function PeriodicSystem(;
     output_name::Symbol=:output,
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
-    lcell=1
+    lcell=1,
+    autoswap::Bool=true,
 )
     if !isnothing(positions) && isnothing(xpositions)
         xpositions = positions
@@ -170,7 +172,7 @@ function PeriodicSystem(;
         sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     elseif !isnothing(xpositions) && !isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
-        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches)
+        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches, autoswap=autoswap)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
@@ -781,26 +783,34 @@ $(INTERNAL)
 Updates the cell lists for periodic systems.
 
 """
-function UpdatePeriodicSystem!(sys::PeriodicSystem1)
-    sys._cell_list = CellListMap.UpdateCellList!(
-        sys.xpositions,
-        sys._box,
-        sys._cell_list,
-        sys._aux;
-        parallel=sys.parallel
-    )
+function UpdatePeriodicSystem!(sys::PeriodicSystem1, preserve_lists::Bool=false)
+    if !preserve_lists
+        sys._cell_list = CellListMap.UpdateCellList!(
+            sys.xpositions,
+            sys._box,
+            sys._cell_list,
+            sys._aux;
+            parallel=sys.parallel
+        )
+    end
     return sys
 end
 
-function UpdatePeriodicSystem!(sys::PeriodicSystem2)
-    sys._cell_list = CellListMap.UpdateCellList!(
-        sys.xpositions,
-        sys.ypositions,
-        sys._box,
-        sys._cell_list,
-        sys._aux;
-        parallel=sys.parallel
-    )
+_update_ref_positions(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: NotSwapped} = cl.ref .= sys.xpositions
+_update_ref_positions(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: Swapped} = cl.ref .= sys.ypositions
+function UpdatePeriodicSystem!(sys::PeriodicSystem2, preserve_lists::Bool=false)
+    # We always update the reference set positions (the cell lists of the target set are not updated)
+    _update_ref_positions(sys._cell_list, sys)
+    if !preserve_lists
+        sys._cell_list = CellListMap.UpdateCellList!(
+            sys.xpositions,
+            sys.ypositions,
+            sys._box,
+            sys._cell_list,
+            sys._aux;
+            parallel=sys.parallel
+        )
+    end
     return sys
 end
 
@@ -877,7 +887,7 @@ function map_pairwise!(
     show_progress::Bool=false
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
-    preserve_lists || UpdatePeriodicSystem!(sys)
+    UpdatePeriodicSystem!(sys, preserve_lists)
     sys.output = CellListMap.map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
