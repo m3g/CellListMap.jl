@@ -15,8 +15,6 @@ using CellListMap.PeriodicSystems
         - [Two sets of particles](@ref)
         - [Particle simulation](@ref)
 
-
-
 ## The mapped function
 
 The function to be mapped for every pair of particles within the cutoff follows the same interface as the standard interface. It must be of the form
@@ -50,6 +48,14 @@ end
 const masses = # ... some masses
 u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 ```
+
+To compute a different property from the same coordinates and cell lists, use `preserve_lists=true`, for example,
+```julia
+u = map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; preserve_lists = true)
+```
+in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
+(requires version 0.8.7). Specifically, this will skip the updatding of the cell lists, thus be careful to not use this
+option if the cutoff, unitcell, or any other property of the system changed. 
 
 ## Potential energy example
 

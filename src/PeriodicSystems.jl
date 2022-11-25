@@ -822,7 +822,7 @@ end
 """
 
 ```
-map_pairwise!(f::Function, system; show_progress = true)
+map_pairwise!(f::Function, system; show_progress = true, preserve_lists = false)
 ```
 
 Function that maps the `f` function into all pairs of particles of
@@ -848,6 +848,10 @@ Thread-safety is taken care automatically in parallel executions.
 `map_pairwise` is an alias to `map_pairwise!` for syntax consistency
 when the `output` variable is immutable.
 
+If `preserve_lists` is `true`, the cell lists will not be recomputed,
+this may be useful for computing a different function from the same
+coordinates.
+
 # Example
 
 In this example we compute the sum of `1/(1+d)` where `d` is the
@@ -869,10 +873,11 @@ julia> map_pairwise((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), sys)
 function map_pairwise!(
     f::F,
     sys::AbstractPeriodicSystem;
+    preserve_lists::Bool=false,
     show_progress::Bool=false
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
-    UpdatePeriodicSystem!(sys)
+    preserve_lists || UpdatePeriodicSystem!(sys)
     sys.output = CellListMap.map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,

@@ -250,6 +250,10 @@ end
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, box, cl)
     system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=0.0)
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
+
+    # Check the functionality of computing a different function from the same coordinates (new_coordinates=false)
+    naive = CellListMap.map_pairwise!((x, y, i, j, d2, u) -> u += d2, 0.0, box, cl)
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> u += d2, system; preserve_lists = true) ≈ naive
     
     # Function to be evalulated for each pair: gravitational force
     function calc_forces!(x, y, i, j, d2, mass, forces)
