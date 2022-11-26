@@ -49,14 +49,6 @@ const masses = # ... some masses
 u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 ```
 
-To compute a different property from the same coordinates and cell lists, use `preserve_lists=true`, for example,
-```julia
-u = map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; preserve_lists = true)
-```
-in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
-(requires version 0.8.7). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
-option if the cutoff, unitcell, or any other property of the system changed. 
-
 ## Potential energy example
 
 !!! note
@@ -588,6 +580,36 @@ Most times it is expected that the default parameters are optimal. But particula
 inhomogeneous systems increasing the number of batches of the mapping phase (second
 parameter of the tuple) may improve the performance by reducing the idle time of 
 threads.
+
+### Preserving the cell lists
+
+To compute a different property from the same coordinates and cell lists, use `preserve_lists=true`, for example,
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+system = PeriodicSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
+map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
+# Second run: preserve the cell lists but compute a different property
+map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; preserve_lists = true)
+```
+in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
+(requires version 0.8.8). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
+option if the cutoff, unitcell, or any other property of the system changed. 
+
+For systems with two sets of particles, the 
+coordinates of the `xpositions` set can be updated, preserving the cell lists computed for the `ypositions`, but this requires
+setting `autoswap=false` in the construction of the `PeriodicSystem`: 
+```julia
+using CellListMap.PeriodicSystems, StaticArrays
+system = PeriodicSystem(
+    xpositions=rand(SVector{3,Float64},1000), 
+    ypositions=rand(SVector{3,Float64},2000),
+    output=0.0, cutoff=0.1, unitcell=[1,1,1],
+    autoswap=false # Cell lists are constructred for ypositions
+)
+map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
+# Second run: preserve the cell lists but compute a different property
+map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; preserve_lists = true)
+```
 
 ### Control CellList cell size
 
