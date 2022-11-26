@@ -469,6 +469,7 @@ MinimumDistance(276, 617, 0.006009804808785543)
 - [Turn parallelization on and off](@ref)
 - [Displaying a progress bar](@ref)
 - [Fine control of the paralellization](@ref)
+- [Avoid cell list updating](@ref)
 - [Control CellList cell size](@ref)
 
 ### Turn parallelization on and off
