@@ -610,7 +610,6 @@ function CellList(
     nbatches::Tuple{Int,Int} = (0,0),
     autoswap=true
 ) where {UnitCellType,N,T} 
-#voltar: ajustar o update de coordenadas em periodicsystems
     if !autoswap || length(x) >= length(y)
         ref = [ SVector{N,T}(ntuple(i->el[i],N)) for el in x ]
         target = CellList(y,box,parallel=parallel)

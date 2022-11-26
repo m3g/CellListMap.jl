@@ -796,17 +796,14 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem1, preserve_lists::Bool=false)
     return sys
 end
 
-# voltar: esta função tem que bater com a outra condição marcada com voltar
-_update_ref_positions(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap} 
-    if Swap == NotSwapped() || length(y) < length(x)
-        cl.ref .= sys.xpositions
-    else 
-        cl.ref .= sys.ypositions
-    end
+function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: NotSwapped} 
+    resize!(cl.ref, length(sys.xpositions))
+    cl.ref .= sys.xpositions
+end
+function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: Swapped} 
+    error("preserve_lists requires autoswap == false for 2-set systems.")
 end
 function UpdatePeriodicSystem!(sys::PeriodicSystem2, preserve_lists::Bool=false)
-    # We always update the reference set positions (the cell lists of the target set are not updated)
-    _update_ref_positions(sys._cell_list, sys)
     if !preserve_lists
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
@@ -816,6 +813,9 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem2, preserve_lists::Bool=false)
             sys._aux;
             parallel=sys.parallel
         )
+    else
+        # We always update the reference set positions (the cell lists of the target set are not updated)
+        _update_ref_positions!(sys._cell_list, sys)
     end
     return sys
 end
