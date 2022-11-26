@@ -86,7 +86,7 @@
 
 end
 
-@testitem "PeriodicSystems - preserve lists" begin
+@testitem "PeriodicSystems - update_lists" begin
     using StaticArrays
     using CellListMap
     using CellListMap.PeriodicSystems
@@ -101,7 +101,7 @@ end
     system = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0, unitcell=[1, 1, 1])
     @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
     r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), 0.0, box, cl)
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), system; preserve_lists = true)
+    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), system; update_lists = false)
 
     #
     # two-set systems
@@ -124,7 +124,7 @@ end
     cl = CellList(x, y, box)
     r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
     system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; preserve_lists = true)
+    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists = false)
 
     # increase x size
     x = rand(SVector{3,Float64}, 200)
@@ -132,7 +132,7 @@ end
     r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
     resize!(system.xpositions, length(x))
     system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; preserve_lists = true)
+    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists = false)
 
     #
     # x is greater
@@ -151,7 +151,7 @@ end
     cl = CellList(x, y, box)
     r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
     system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; preserve_lists = true)
+    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists = false)
 
     # increase x size
     x = rand(SVector{3,Float64}, 1100)
@@ -159,7 +159,7 @@ end
     r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
     resize!(system.xpositions, length(x))
     system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; preserve_lists = true)
+    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists = false)
 
 end
 
@@ -338,7 +338,7 @@ end
 
     # Check the functionality of computing a different function from the same coordinates (new_coordinates=false)
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, u) -> u += d2, 0.0, box, cl)
-    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> u += d2, system; preserve_lists = true) ≈ naive
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> u += d2, system; update_lists = false) ≈ naive
     
     # Function to be evalulated for each pair: gravitational force
     function calc_forces!(x, y, i, j, d2, mass, forces)

@@ -783,8 +783,8 @@ $(INTERNAL)
 Updates the cell lists for periodic systems.
 
 """
-function UpdatePeriodicSystem!(sys::PeriodicSystem1, preserve_lists::Bool=false)
-    if !preserve_lists
+function UpdatePeriodicSystem!(sys::PeriodicSystem1, update_lists::Bool=true)
+    if update_lists
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys._box,
@@ -801,10 +801,10 @@ function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,
     cl.ref .= sys.xpositions
 end
 function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: Swapped} 
-    error("preserve_lists requires autoswap == false for 2-set systems.")
+    error("update_lists === false requires autoswap == false for 2-set systems.")
 end
-function UpdatePeriodicSystem!(sys::PeriodicSystem2, preserve_lists::Bool=false)
-    if !preserve_lists
+function UpdatePeriodicSystem!(sys::PeriodicSystem2, update_lists::Bool=true)
+    if update_lists
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
@@ -814,7 +814,7 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem2, preserve_lists::Bool=false)
             parallel=sys.parallel
         )
     else
-        # We always update the reference set positions (the cell lists of the target set are not updated)
+        # Always update the reference set positions (the cell lists of the target set are not updated)
         _update_ref_positions!(sys._cell_list, sys)
     end
     return sys
@@ -838,7 +838,7 @@ end
 """
 
 ```
-map_pairwise!(f::Function, system; show_progress = true, preserve_lists = false)
+map_pairwise!(f::Function, system; show_progress = true, update_lists = true)
 ```
 
 Function that maps the `f` function into all pairs of particles of
@@ -864,7 +864,7 @@ Thread-safety is taken care automatically in parallel executions.
 `map_pairwise` is an alias to `map_pairwise!` for syntax consistency
 when the `output` variable is immutable.
 
-If `preserve_lists` is `true`, the cell lists will not be recomputed,
+If `update_lists` is `false`, the cell lists will not be recomputed,
 this may be useful for computing a different function from the same
 coordinates.
 
@@ -889,11 +889,11 @@ julia> map_pairwise((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), sys)
 function map_pairwise!(
     f::F,
     sys::AbstractPeriodicSystem;
-    preserve_lists::Bool=false,
+    update_lists::Bool=true,
     show_progress::Bool=false
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
-    UpdatePeriodicSystem!(sys, preserve_lists)
+    UpdatePeriodicSystem!(sys, update_lists)
     sys.output = CellListMap.map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,

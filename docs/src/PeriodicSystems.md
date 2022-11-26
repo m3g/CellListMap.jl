@@ -328,29 +328,6 @@ In this case, if the `output` is not resized, a `BoundsError:` is
 be obtained, because updates of forces at unavailable positions will
 be attempted. 
 
-One particular case of coordinate updating must be mentioned. If the properties
-are being computed for pairs of particles of two sets, it is possible that
-one wants to preserve the cell lists computed for the largest set, and
-change the coordinates of the smallest set only. It is possible to do that
-by, first, constructing the system with the `autoswap` option turned off:
-```julia
-system = PeriodicSystem(
-   xpositions = xpositions,
-   ypositions = ypositions, 
-   unitcell=[1.0,1.0,1.0], 
-   cutoff = 0.1, 
-   output = MinimumDistance(0,0,+Inf),
-   output_name = :minimum_distance,
-   autoswap = false
-)
-```
-
-With that given, the cell lists will be constructed for the `ypositions`. By using
-`preserve_lists = true` in `map_pairwise`, the lists won't be recomputed. Yet,
-one can update the coordinates in `xpositions`, thus computing the pairwise properties
-between `xpositions` and the cell lists previously computed for `ypositions`. This
-is available in version `0.8.8`.  
-
 ### Updating the unit cell
 
 The unit cell can be updated to new dimensions at any moment, with the `update_unitcell!` function:
@@ -581,18 +558,20 @@ inhomogeneous systems increasing the number of batches of the mapping phase (sec
 parameter of the tuple) may improve the performance by reducing the idle time of 
 threads.
 
-### Preserving the cell lists
+### Avoid cell list updating
 
-To compute a different property from the same coordinates and cell lists, use `preserve_lists=true`, for example,
+To compute different properties without recomputing cell lists, use `update_lists=false` in 
+the call of `map_pairwise` methods, for example,
 ```julia
 using CellListMap.PeriodicSystems, StaticArrays
 system = PeriodicSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
+# First call, will compute the cell lists
 map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
-# Second run: preserve the cell lists but compute a different property
-map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; preserve_lists = true)
+# Second run: do not update the cell lists but compute a different property
+map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
 ```
 in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
-(requires version 0.8.8). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
+(requires version 0.8.9). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
 option if the cutoff, unitcell, or any other property of the system changed. 
 
 For systems with two sets of particles, the 
@@ -608,7 +587,7 @@ system = PeriodicSystem(
 )
 map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
 # Second run: preserve the cell lists but compute a different property
-map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; preserve_lists = true)
+map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
 ```
 
 ### Control CellList cell size
