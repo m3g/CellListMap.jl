@@ -38,7 +38,8 @@ PeriodicSystem(
     output::Any;
     output_name::Symbol,
     parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0)
+    nbatches::Tuple{Int,Int}=(0, 0),
+    autoswap::Bool = true
 )
 ```
 
@@ -67,7 +68,9 @@ structure using the `system.forces` notation.
 The `parallel` and `nbatches` flags control the parallelization scheme of
 computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
 By default the parallelization is turned on and `nbatches` is set with heuristics
-that may provide good efficiency in most cases.
+that may provide good efficiency in most cases. `autoswap = false` will guarantee that
+the cell lists will be buitl for the `ypositions` (by default they are constructed
+for the smallest set, which is faster).
 
 # Example
 
@@ -163,6 +166,7 @@ function PeriodicSystem(;
             """Either define `positions` OR `xpositions`, they are aliases one to the other."""
         ))
     end
+    # Single set of positions
     if !isnothing(xpositions) && isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, _box; parallel=parallel, nbatches=nbatches)
@@ -170,6 +174,7 @@ function PeriodicSystem(;
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
+    # Two sets of positions
     elseif !isnothing(xpositions) && !isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches, autoswap=autoswap)
