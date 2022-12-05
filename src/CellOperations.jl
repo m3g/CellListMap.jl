@@ -561,7 +561,7 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
     ca = ca / norm(ca)
     bproj = dot(b,ca) 
 
-    if (aproj < 2*cutoff) || (bproj < 2*cutoff) || (cproj < 2*cutoff)
+    if (aproj <= 2*cutoff) || (bproj <= 2*cutoff) || (cproj <= 2*cutoff)
         printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
         check = false
     end
@@ -590,7 +590,7 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
     j = b / norm(b)
     aproj = sqrt(norm_sqr(a) - dot(a,j)^2)
 
-    if (aproj < 2*cutoff) || (bproj < 2*cutoff)
+    if (aproj <= 2*cutoff) || (bproj <= 2*cutoff)
          printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
          check = false
     end

@@ -582,6 +582,20 @@ function neighborlist(
     return neighborlist!(system)
 end
 
+@testitem "Neighborlist - pathological" begin
+    using CellListMap
+    @test neighborlist([[0.0,0.0,1.0],[0.0,0.0,10.0],[0.0,0.0,7.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,0.0,1.0],[0.0,0.0,10.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,1.0],[0.0,10.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,1.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,0.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,0.0,0.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,0.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,0.0],[0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == [(1, 2, 1.0)]
+    @test neighborlist([[0.0,0.0],[0.0,1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64, Int64, Float64}[]
+    @test neighborlist([[0.0,0.0],[0.0,1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) == [(2, 1, 0.9999999999999998)]
+end
+
 @testitem "Compare with NearestNeighbors" begin
 
     using CellListMap

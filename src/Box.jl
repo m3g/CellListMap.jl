@@ -352,10 +352,9 @@ Box{NonPeriodicCell, 3}
 
 """
 function Box(unitcell::Limits, cutoff::T; lcell::Int=1) where {T}
-    sides = max.(unitcell.limits .+ cutoff, 2 * cutoff)
+    sides = nextfloat.(max.(unitcell.limits .+ cutoff, 2 * cutoff))
     return Box(sides, cutoff, lcell, NonPeriodicCell)
 end
-
 
 # Types of input variables that are acceptable as a unitcell, to construct
 # the unitcell matrix. 
