@@ -639,7 +639,6 @@ to be used to set a box without effective periodic boundary conditions.
 """
 function limits(x::AbstractVector{<:AbstractVector})
     xmin, xmax = _minmax(x)
-
     return Limits(xmax .- xmin)
 end
 
