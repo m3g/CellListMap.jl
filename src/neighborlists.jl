@@ -293,7 +293,7 @@ end
     # Non-periodic systems
     x = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, cutoff=0.1)
-    @test diag(system.box.unit_cell.matrix) == limits(x).limits .+ 0.1
+    @test diag(system.box.unit_cell.matrix) == nextfloat.(limits(x).limits .+ 0.1)
     x = rand(SVector{3,Float64}, 10^3)
     update!(system, x)
     @test system.box.cutoff == 0.1
@@ -304,14 +304,14 @@ end
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, y=y, cutoff=0.1)
-    @test diag(system.box.unit_cell.matrix) == limits(x, y).limits .+ 0.1
+    @test diag(system.box.unit_cell.matrix) ≈ nextfloat.(limits(x, y).limits .+ 0.1)
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     update!(system, x, y)
     @test system.box.cutoff == 0.1
     update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    @test diag(system.box.unit_cell.matrix) == limits(x, y).limits .+ 0.05
+    @test diag(system.box.unit_cell.matrix) ≈ nextfloat.(limits(x, y).limits .+ 0.05)
 
     # Orthorhombic systems
     x = rand(SVector{3,Float64}, 10^3)
