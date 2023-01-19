@@ -32,6 +32,38 @@
         end
     end
 
+    # The following function was copied from VMD's pbcset.tcl pbc_vmd2namd function.
+    # the result is the transpose of the Chemfiles.matrix(unit_cell) function. 
+    # Nevertheless, neither of those appear to be useful in reconstructing the correct
+    # coordinates from the lengths and angles reported in the DCD file. By the way,
+    # not even VMD wraps the coordinates of this box correctly, so I'm unsure if we can
+    # do somethign about that. Maybe we cannot really support trajectory analysis of 
+    # triclinic cells if the simulation was saved in DCD format. 
+    function convert_DCD_unitcell(a,b,c,α,β,γ)
+        cosBC = cosd(α)
+        cosAC = cosd(β)
+        cosAB = cosd(γ)
+        sinAB = sind(γ)
+        Ax = a
+        Bx = b * cosAB
+        By = b * sinAB
+        # If sinAB is zero, then we can't determine C uniquely since it's defined
+        # in terms of the angle between A and B.
+        if sinAB > 0 
+            Cx = cosAC
+            Cy = (cosBC - cosAC * cosAB) / sinAB
+            Cz = sqrt(1.0 - Cx^2 - Cy^2)
+        else
+            Cx = 0.0
+            Cy = 0.0
+            Cz = 0.0
+        end
+        A = SVector(Ax, 0.0, 0.0)
+        B = SVector(Bx, By, 0.0)
+        C = SVector(Cx, Cy, Cz) * c
+        return [ A B C ]
+    end
+
     dir = @__DIR__
 
     lcell = 1
