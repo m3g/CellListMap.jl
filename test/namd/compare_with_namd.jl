@@ -5,10 +5,9 @@
     using CellListMap
     using StaticArrays
 
-    ε = 0.0441795
-    σ = 2 * 1.64009
-
     function lj_NE(d2, u)
+        ε = 0.0441795
+        σ = 2 * 1.64009
         d = sqrt(d2)
         u += ε * ((σ / d)^12 - 2 * (σ / d)^6)
     end
