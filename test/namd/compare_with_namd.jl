@@ -24,7 +24,12 @@
         box = Box(unit_cell, 10.0, lcell=lcell)
         cl = CellList(coordinates, box)
         u = map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), 0.0, box, cl)
-        return u ≈ correct
+        if !(u ≈ correct)
+            @show (u, correct)
+            return false
+        else
+            return true
+        end
     end
 
     dir = @__DIR__
