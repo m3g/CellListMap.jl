@@ -405,6 +405,21 @@ function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
 end
 
 """
+    current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+
+$(INTERNAL)
+
+# Extended help
+
+Returns an iterator over all neighbor cells, including the center one.
+
+"""
+function current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+    @unpack lcell = box
+    return CartesianIndices(ntuple(i -> -lcell:lcell, N))
+end
+
+"""
 
 ```
 particle_cell(x::SVector{N,T}, box::Box) where {N,T}

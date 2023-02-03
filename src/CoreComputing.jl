@@ -344,7 +344,7 @@ function inner_loop!(
     @unpack nc, cutoff_sq = box
     xpᵢ = wrap_to_first(cl.ref[i], box)
     ic = particle_cell(xpᵢ, box)
-    for neighbor_cell in neighbor_cells(box)
+    for neighbor_cell in current_and_neighbor_cells(box)
         jc_cartesian = neighbor_cell + ic
         jc_linear = cell_linear_index(nc, jc_cartesian)
         # If cellⱼ is empty, cycle
