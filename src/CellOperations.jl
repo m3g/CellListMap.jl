@@ -452,8 +452,17 @@ Computes the geometric center of a computing cell, to be used in the projection
 of points. Returns a `SVector{N,T}`
 
 """
-@inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - box.lcell) - box.cell_size[i]/2, N))
+#@inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
+#    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - box.lcell) - box.cell_size[i]/2, N))
+@inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
+    SVector{N,T}(
+        ntuple(N) do i
+            xmin = -box.lcell * box.cell_size[i]
+            ci = xmin + box.cell_size[i] * c[i] - box.cell_size[i] / 2
+            return ci
+        end
+    )
+end
 
 """
 
