@@ -516,6 +516,49 @@ end
 
 
 
+function test_pathological(; nmax=1000, npoints=2)
+
+    function g(i, j, d2, cutoff, out)
+        if !(d2 ≈ cutoff^2)
+            out += i + j
+        end
+        return out
+    end
+
+    l = sqrt(2)/2
+    matrices = [
+        @SMatrix[1 0; 0 1],
+        @SMatrix[l 0; l 1],
+        @SMatrix[1.1 0; 0 1],
+        @SMatrix[1.2 0; 0 1],
+        @SMatrix[1 0; 0 1.1],
+        @SMatrix[1 0; 0 1.2],
+        @SMatrix[1 0.2; 0 1.2],
+        @SMatrix[1 0.2; 0.2 1.2],
+        @SMatrix[1.2 0.2; 0.2 1.2],
+#        @SMatrix[-1.2 0.2; 0.2 1.2],
+#        @SMatrix[-1.2 0.2; 0.2 -1.2],
+    ]
+
+    n = 0
+    while n < nmax
+        x = rand(SVector{2,Float64},npoints)
+        matrix = rand(matrices)
+        lcell = rand(1:5)
+        cutoff = 0.2
+        box = Box(matrix, cutoff; lcell=lcell)
+        naive = CellListMap.map_naive!((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, x, box)
+        cl = CellList(x, box)
+        clmap = map_pairwise((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, box, cl)
+        if naive != clmap
+            @show naive
+            @show clmap
+            return x, box
+        end
+        n += 1
+    end
+    return nothing, nothing
+end
 
 
 
