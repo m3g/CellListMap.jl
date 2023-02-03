@@ -425,14 +425,11 @@ and the `cell_size` vector. The computing box is always Orthorhombic, and the fi
 computing box with positive coordinates has indexes `Box.lcell + 1`.
 
 """
-#@inline particle_cell(x::SVector{N}, box::Box) where N =
-#    CartesianIndex(ntuple(i -> floor(Int,x[i]/box.cell_size[i]) + box.lcell + 1, N))
-
 @inline function particle_cell(x::SVector{N}, box::Box) where {N}
     CartesianIndex(
         ntuple(N) do i
-            xmin = zero(eltype(x)) - box.cell_size[i]
-            xmax = box.unit_cell_max[i] + box.cell_size[i]
+            xmin = -box.lcell * box.cell_size[i]
+            xmax = box.unit_cell_max[i] + box.lcell * box.cell_size[i]
             xi = fix_upper_boundary(x[i], xmin, xmax)
             xi = (xi - xmin) / box.cell_size[i]
             index = floor(Int, xi) + 1
