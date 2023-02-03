@@ -11,7 +11,7 @@ Move `x` to `x -side` if `x == side`, because we use the convention
 that the upper boundary belongs to current cell.
 
 """
-@inline fix_upper_boundary(x::T,side) where T = ifelse(x == side, zero(T), x)
+@inline fix_upper_boundary(x::T, side) where {T} = ifelse(x == side, zero(T), x)
 
 """
     fix_upper_boundary(x,xmin,xmax)
@@ -66,15 +66,15 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
 """
-@inline function wrap_cell_fraction(x,unit_cell_matrix)
+@inline function wrap_cell_fraction(x, unit_cell_matrix)
     # Division by `oneunit` is to support Unitful quantities. 
     # this workaround works here because the units cancel.
     # see: https://github.com/PainterQubits/Unitful.jl/issues/46
     x_stripped = x ./ oneunit(eltype(x))
     m_stripped = unit_cell_matrix ./ oneunit(eltype(x))
     #p = mod.(m_stripped\x_stripped,1)
-    p = fastmod1.(m_stripped\x_stripped)
-    p = fix_upper_boundary.(p,1)
+    p = fastmod1.(m_stripped \ x_stripped)
+    p = fix_upper_boundary.(p, 1)
     return p
 end
 
@@ -106,9 +106,9 @@ julia> wrap_to_first(x,unit_cell_matrix)
 ```
 
 """
-@inline function wrap_to_first(x,unit_cell_matrix)
-    p = wrap_cell_fraction(x,unit_cell_matrix)
-    return unit_cell_matrix*p
+@inline function wrap_to_first(x, unit_cell_matrix)
+    p = wrap_cell_fraction(x, unit_cell_matrix)
+    return unit_cell_matrix * p
 end
 
 """
@@ -125,7 +125,7 @@ Wraps the coordinates of point `x` such that the returning coordinates are in th
 first unit cell with all-positive coordinates, given the `Box` structure.
 
 """
-@inline wrap_to_first(x,box::Box) = wrap_to_first(x,box.unit_cell.matrix)
+@inline wrap_to_first(x, box::Box) = wrap_to_first(x, box.unit_cell.matrix)
 
 """
 
@@ -142,10 +142,10 @@ first unit cell with all-positive coordinates, given an Orthorhombic cell.
 This is slightly cheaper than for general cells.  
 
 """
-@inline function wrap_to_first(x,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-    sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
-    x = mod.(x,sides)
-    x = fix_upper_boundary.(x,sides)
+@inline function wrap_to_first(x, box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
+    sides = SVector{N,T}(ntuple(i -> box.unit_cell.matrix[i, i], N))
+    x = mod.(x, sides)
+    x = fix_upper_boundary.(x, sides)
     return x
 end
 
@@ -163,9 +163,9 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-    x_f = wrap_cell_fraction(x,unit_cell_matrix)
-    xref_f = wrap_cell_fraction(xref,unit_cell_matrix)
-    xw = wrap_relative_to(x_f,xref_f,SVector{N,T}(ntuple(i->1,N)))
+    x_f = wrap_cell_fraction(x, unit_cell_matrix)
+    xref_f = wrap_cell_fraction(xref, unit_cell_matrix)
+    xw = wrap_relative_to(x_f, xref_f, SVector{N,T}(ntuple(i -> 1, N)))
     return unit_cell_matrix * (xw - xref_f) + xref
 end
 
@@ -183,8 +183,8 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 given a general `Box` structure.
 
 """
-@inline wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-    wrap_relative_to(x,xref,box.unit_cell.matrix)
+@inline wrap_relative_to(x, xref, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
+    wrap_relative_to(x, xref, box.unit_cell.matrix)
 
 """
 
@@ -200,9 +200,9 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 given an Orthorhombic cell. This is slightly cheaper than for general cells.
 
 """
-@inline function wrap_relative_to(x,xref,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-    sides = SVector{N,T}(ntuple(i->box.unit_cell.matrix[i,i],N))
-    return wrap_relative_to(x,xref,sides)
+@inline function wrap_relative_to(x, xref, box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
+    sides = SVector{N,T}(ntuple(i -> box.unit_cell.matrix[i, i], N))
+    return wrap_relative_to(x, xref, sides)
 end
 
 """
@@ -219,19 +219,19 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 for an Orthorhombic cell of which only the side lengths are provided.
 
 """
-@inline function wrap_relative_to(x,xref,sides::AbstractVector)
-    xw = mod.(x-xref,sides)
-    xw = _wrap_single_coordinate.(xw,sides)
+@inline function wrap_relative_to(x, xref, sides::AbstractVector)
+    xw = mod.(x - xref, sides)
+    xw = _wrap_single_coordinate.(xw, sides)
     return xw + xref
 end
 
 #
 # Wrap a single coordinate
 #
-@inline function _wrap_single_coordinate(x,s)
-    if x >= s/2
+@inline function _wrap_single_coordinate(x, s)
+    if x >= s / 2
         x = x - s
-    elseif x < -s/2
+    elseif x < -s / 2
         x = x + s
     end
     return x
@@ -251,8 +251,8 @@ Translate vector `x` according to the `unit_cell_matrix` lattice vectors and the
 provided.
 
 """
-@inline translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T} =
-    x + unit_cell_matrix*SVector{N,Int}(ntuple(i -> indices[i],N))
+@inline translation_image(x::SVector{N,T}, unit_cell_matrix, indices) where {N,T} =
+    x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], N))
 
 """
 ```
@@ -280,10 +280,10 @@ julia> CellListMap.translation_image(x,box.unit_cell.matrix,(1,1))
 ```
 
 """
-function translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
+function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix, indices)
     x_new = similar(x)
     for i in eachindex(x)
-        x_new[i] = translation_image(x[i],unit_cell_matrix,indices)
+        x_new[i] = translation_image(x[i], unit_cell_matrix, indices)
     end
     return x_new
 end
@@ -333,20 +333,20 @@ function replicate_system!(
     )
     x0 = copy(x)
     for img in imgs
-        x_new = translation_image(x0,unit_cell_matrix,img)
-        append!(x,x_new)
+        x_new = translation_image(x0, unit_cell_matrix, img)
+        append!(x, x_new)
     end
     return x
 end
 
-replicate_system!(x::AbstractVector,box::Box,ranges::Tuple) =
-    replicate_system!(x,box.unit_cell.matrix,ranges)
+replicate_system!(x::AbstractVector, box::Box, ranges::Tuple) =
+    replicate_system!(x, box.unit_cell.matrix, ranges)
 
-function replicate_system!(x::AbstractMatrix{T},cell,ranges) where T
-    N = size(x,1)
-    x_re = [ SVector{N,T}(ntuple(i -> x[i,j], N)) for j in axes(x,2) ]
-    replicate_system!(x_re,cell,ranges)
-    x = Matrix(reinterpret(reshape,Float64,x_re))
+function replicate_system!(x::AbstractMatrix{T}, cell, ranges) where {T}
+    N = size(x, 1)
+    x_re = [SVector{N,T}(ntuple(i -> x[i, j], N)) for j in axes(x, 2)]
+    replicate_system!(x_re, cell, ranges)
+    x = Matrix(reinterpret(reshape, Float64, x_re))
     return x
 end
 
@@ -366,48 +366,42 @@ if the cells have sides of length `box.cell_size`. `N` can be
 `2` or `3`, for two- or three-dimensional systems.
 
 """
-function neighbor_cells_forward(box::Box{UnitCellType,3}) where UnitCellType 
+function neighbor_cells_forward(box::Box{UnitCellType,3}) where {UnitCellType}
     @unpack lcell = box
     nb = Iterators.flatten((
-        CartesianIndices((1:lcell,-lcell:lcell,-lcell:lcell)),
-        CartesianIndices((0:0,1:lcell,-lcell:lcell)),
-        CartesianIndices((0:0,0:0,1:lcell))
+        CartesianIndices((1:lcell, -lcell:lcell, -lcell:lcell)),
+        CartesianIndices((0:0, 1:lcell, -lcell:lcell)),
+        CartesianIndices((0:0, 0:0, 1:lcell))
     ))
     return nb
 end
 
-function neighbor_cells_forward(box::Box{UnitCellType,2}) where UnitCellType 
+function neighbor_cells_forward(box::Box{UnitCellType,2}) where {UnitCellType}
     @unpack lcell = box
     nb = Iterators.flatten((
-        CartesianIndices((1:lcell,-lcell:lcell)),
-        CartesianIndices((0:0,1:lcell))
+        CartesianIndices((1:lcell, -lcell:lcell)),
+        CartesianIndices((0:0, 1:lcell))
     ))
     return nb
 end
 
 """
-
-```
-neighbor_cells(box::Box{UnitCellType,N}) where N
-```
+    neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
 
 $(INTERNAL)
 
 # Extended help
 
 Function that returns the iterator of the cartesian indices of all neighboring
-cells of a cell if the cells have sides of `box.cell_size`. `N` can be
-`2` or `3`, for two- or three-dimensional systems.
+cells of a cell where the computing cell index is `box.lcell`.
 
 """
-function neighbor_cells(box::Box{UnitCellType,3}) where UnitCellType
+function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
     @unpack lcell = box
-    return CartesianIndices((-lcell:lcell,-lcell:lcell,-lcell:lcell))
-end
-
-function neighbor_cells(box::Box{UnitCellType,2}) where UnitCellType  
-    @unpack lcell = box
-    return CartesianIndices((-lcell:lcell,-lcell:lcell))
+    return Iterators.filter(
+        !isequal(CartesianIndex(ntuple(i -> 0, N))),
+        CartesianIndices(ntuple(i -> -lcell:lcell, N))
+    )
 end
 
 """
@@ -478,8 +472,8 @@ Given the linear index of the cell in the cell list, returns the cartesian indic
 of the cell (for arbitrary dimension N).
 
 """
-@inline cell_cartesian_indices(nc::SVector{N,Int}, i1D) where N = 
-    CartesianIndices(ntuple(i -> nc[i],N))[i1D]
+@inline cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} =
+    CartesianIndices(ntuple(i -> nc[i], N))[i1D]
 
 """
 
@@ -494,8 +488,8 @@ $(INTERNAL)
 Returns the index of the cell, in the 1D representation, from its cartesian coordinates. 
 
 """
-@inline cell_linear_index(nc::SVector{N,Int}, indices) where N =
-    LinearIndices(ntuple(i -> nc[i],N))[ntuple(i->indices[i],N)...]
+@inline cell_linear_index(nc::SVector{N,Int}, indices) where {N} =
+    LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
 
 """
 
@@ -511,16 +505,16 @@ Function that evaluates if a particle is outside the computing bounding box,
 defined by the maximum and minimum unit cell coordinates. 
 
 """
-function out_of_bounding_box(x::SVector{N},box::Box) where N
+function out_of_bounding_box(x::SVector{N}, box::Box) where {N}
     @unpack cutoff, unit_cell_max = box
     for i in 1:N
         (x[i] < -cutoff) && return true
-        (x[i] >= unit_cell_max[i]+cutoff) && return true
+        (x[i] >= unit_cell_max[i] + cutoff) && return true
     end
     return false
 end
-out_of_bounding_box(p::ParticleWithIndex,box::Box) =
-    out_of_bounding_box(p.coordinates,box)
+out_of_bounding_box(p::ParticleWithIndex, box::Box) =
+    out_of_bounding_box(p.coordinates, box)
 
 """
 
@@ -535,15 +529,15 @@ $(INTERNAL)
 Replicates the particle as many times as necessary to fill the computing box.
 
 """
-function replicate_particle!(ip,p::SVector{N},box,cl) where N
-    itr = Iterators.product(ntuple(i->box.ranges[i],N)...)
+function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
+    itr = Iterators.product(ntuple(i -> box.ranges[i], N)...)
     for indexes in itr
-        (count(isequal(0),indexes) == N) && continue
-        x = translation_image(p,box.unit_cell.matrix,indexes)
-        if ! out_of_bounding_box(x,box)
-            cl = add_particle_to_celllist!(ip,x,box,cl;real_particle=false) 
+        (count(isequal(0), indexes) == N) && continue
+        x = translation_image(p, box.unit_cell.matrix, indexes)
+        if !out_of_bounding_box(x, box)
+            cl = add_particle_to_celllist!(ip, x, box, cl; real_particle=false)
         end
-    end 
+    end
     return cl
 end
 
@@ -561,37 +555,37 @@ Checks if the unit cell satisfies the conditions for using the minimum-image
 convention. 
 
 """
-check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix,box.cutoff)
+check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix, box.cutoff)
 
-function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
-    a = @view(unit_cell_matrix[:,1])
-    b = @view(unit_cell_matrix[:,2])
-    c = @view(unit_cell_matrix[:,3])
+function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
+    a = @view(unit_cell_matrix[:, 1])
+    b = @view(unit_cell_matrix[:, 2])
+    c = @view(unit_cell_matrix[:, 3])
     check = true
 
-    if size(unit_cell_matrix) != (3,3) 
+    if size(unit_cell_matrix) != (3, 3)
         printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (3,3).")
         check = false
     end
 
     if count(el -> el < zero(eltype(unit_cell_matrix)), unit_cell_matrix) != 0
-         printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
-         check = false
+        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
+        check = false
     end
 
-    bc = cross(b,c)
+    bc = cross(b, c)
     bc = bc / norm(bc)
-    aproj = dot(a,bc) 
+    aproj = dot(a, bc)
 
-    ab = cross(a,b)
+    ab = cross(a, b)
     ab = ab / norm(ab)
-    cproj = dot(c,ab) 
+    cproj = dot(c, ab)
 
-    ca = cross(c,a)
+    ca = cross(c, a)
     ca = ca / norm(ca)
-    bproj = dot(b,ca) 
+    bproj = dot(b, ca)
 
-    if (aproj <= 2*cutoff) || (bproj <= 2*cutoff) || (cproj <= 2*cutoff)
+    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff) || (cproj <= 2 * cutoff)
         printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
         check = false
     end
@@ -599,30 +593,30 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3},cutoff;printerr=true)
     return check
 end
 
-function check_unit_cell(unit_cell_matrix::SMatrix{2},cutoff;printerr=true)
-    a = @view(unit_cell_matrix[:,1])
-    b = @view(unit_cell_matrix[:,2])
+function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
+    a = @view(unit_cell_matrix[:, 1])
+    b = @view(unit_cell_matrix[:, 2])
     check = true
 
-    if size(unit_cell_matrix) != (2,2) 
+    if size(unit_cell_matrix) != (2, 2)
         printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (2,2).")
         check = false
     end
 
     if count(el -> el < zero(eltype(unit_cell_matrix)), unit_cell_matrix) != 0
-         printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
-         check = false
+        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
+        check = false
     end
 
     i = a / norm(a)
-    bproj = sqrt(norm_sqr(b) - dot(b,i)^2)
+    bproj = sqrt(norm_sqr(b) - dot(b, i)^2)
 
     j = b / norm(b)
-    aproj = sqrt(norm_sqr(a) - dot(a,j)^2)
+    aproj = sqrt(norm_sqr(a) - dot(a, j)^2)
 
-    if (aproj <= 2*cutoff) || (bproj <= 2*cutoff)
-         printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
-         check = false
+    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
+        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        check = false
     end
 
     return check
@@ -634,13 +628,13 @@ end
 #
 function _minmax(x::AbstractVector{<:AbstractVector})
     length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from coordinates without particles."))
-    N = size(x[begin],1)
+    N = size(x[begin], 1)
     T = eltype(x[begin])
     xmin = fill(typemax(T), MVector{N,T})
     xmax = fill(typemin(T), MVector{N,T})
     for v in x
-        @. xmin = min(xmin,v)       
-        @. xmax = max(xmax,v)       
+        @. xmin = min(xmin, v)
+        @. xmax = max(xmax, v)
     end
     return SVector(xmin), SVector(xmax)
 end
@@ -649,9 +643,9 @@ end
     using BenchmarkTools
     using StaticArrays
     import CellListMap: _minmax
-    x = [ [0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5] ]
+    x = [[0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5]]
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
-    x = [ SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5) ]
+    x = [SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5)]
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
     a = @ballocated _minmax($x) evals = 1 samples = 1
     @test a == 0
@@ -672,8 +666,8 @@ function limits(x::AbstractVector{<:AbstractVector})
     return Limits(xmax .- xmin)
 end
 
-function limits(x::AbstractMatrix) 
-    N = size(x,1)
+function limits(x::AbstractMatrix)
+    N = size(x, 1)
     (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     return limits(x_re)
@@ -689,22 +683,22 @@ Returns the lengths of a orthorhombic box that encompasses all the particles def
 and `y`, to used to set a box without effective periodic boundary conditions.
 
 """
-function limits(x::T,y::T) where T <: AbstractVector{<:AbstractVector}
+function limits(x::T, y::T) where {T<:AbstractVector{<:AbstractVector}}
     xmin, xmax = _minmax(x)
     ymin, ymax = _minmax(y)
-    xymin = min.(xmin,ymin)
-    xymax = max.(xmax,ymax)
+    xymin = min.(xmin, ymin)
+    xymax = max.(xmax, ymax)
     return Limits(xymax .- xymin)
 end
 
-function limits(x::T,y::T) where T <: AbstractMatrix 
-    N = size(x,1)
-    M = size(y,1)
+function limits(x::T, y::T) where {T<:AbstractMatrix}
+    N = size(x, 1)
+    M = size(y, 1)
     N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
     (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
-    return limits(x_re,y_re)
+    return limits(x_re, y_re)
 end
 
 #
@@ -726,23 +720,23 @@ Function that sets which is the range of periodic images necessary to fill
 the computing box, in 3D.
 
 """
-function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
+function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where {T}
     V = SVector{3,T}
-    cmin = -lcell*cell_size
+    cmin = -lcell * cell_size
     cmax = (nc .- lcell) .* cell_size
-    cell_vertices = SVector{8,V}( 
-        V(   cmin[1],   cmin[2],   cmin[3] ), 
-        V(   cmin[1],   cmin[2],   cmax[3] ),
-        V(   cmin[1],   cmax[2],   cmin[3] ),
-        V(   cmin[1],   cmax[2],   cmax[3] ),
-        V(   cmax[1],   cmin[2],   cmin[3] ), 
-        V(   cmax[1],   cmin[2],   cmax[3] ), 
-        V(   cmax[1],   cmax[2],   cmin[3] ), 
-        V(   cmax[1],   cmax[2],   cmax[3] ) 
+    cell_vertices = SVector{8,V}(
+        V(cmin[1], cmin[2], cmin[3]),
+        V(cmin[1], cmin[2], cmax[3]),
+        V(cmin[1], cmax[2], cmin[3]),
+        V(cmin[1], cmax[2], cmax[3]),
+        V(cmax[1], cmin[2], cmin[3]),
+        V(cmax[1], cmin[2], cmax[3]),
+        V(cmax[1], cmax[2], cmin[3]),
+        V(cmax[1], cmax[2], cmax[3])
     )
     r_min, r_max = _ranges_of_replicas(
-        SVector{3,Int}(10^6,10^6,10^6), #min
-        SVector{3,Int}(-1,-1,-1),       #max
+        SVector{3,Int}(10^6, 10^6, 10^6), #min
+        SVector{3,Int}(-1, -1, -1),       #max
         unit_cell_matrix,
         cell_vertices
     )
@@ -768,19 +762,19 @@ Function that sets which is the range of periodic images necessary to fill
 the computing box, in 2D.
 
 """
-function ranges_of_replicas(cell_size, lcell, nc,unit_cell_matrix::SMatrix{2,2,T}) where T
+function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{2,2,T}) where {T}
     V = SVector{2,T}
-    cmin = -lcell*cell_size
+    cmin = -lcell * cell_size
     cmax = (nc .- lcell) .* cell_size
-    cell_vertices = SVector{4,V}( 
-        V(   cmin[1],   cmin[2] ), 
-        V(   cmin[1],   cmax[2] ),
-        V(   cmax[1],   cmin[2] ), 
-        V(   cmax[1],   cmax[2] ), 
+    cell_vertices = SVector{4,V}(
+        V(cmin[1], cmin[2]),
+        V(cmin[1], cmax[2]),
+        V(cmax[1], cmin[2]),
+        V(cmax[1], cmax[2]),
     )
     r_min, r_max = _ranges_of_replicas(
-        SVector{2,Int}(10^6,10^6), #min
-        SVector{2,Int}(-1,-1),     #max
+        SVector{2,Int}(10^6, 10^6), #min
+        SVector{2,Int}(-1, -1),     #max
         unit_cell_matrix,
         cell_vertices
     )
@@ -791,19 +785,19 @@ function ranges_of_replicas(cell_size, lcell, nc,unit_cell_matrix::SMatrix{2,2,T
     return ranges
 end
 
-function _ranges_of_replicas(r_min,r_max,unit_cell,cell_vertices)
+function _ranges_of_replicas(r_min, r_max, unit_cell, cell_vertices)
     for vert in cell_vertices
-        r = unit_cell \ vert 
-        ri = @. ceil(Int,abs(r))
-        for (i,el) in pairs(r)
+        r = unit_cell \ vert
+        ri = @. ceil(Int, abs(r))
+        for (i, el) in pairs(r)
             if el < 0
                 @set! ri[i] = -ri[i]
             end
         end
-        r_min = min.(ri,r_min)
-        r_max = max.(ri,r_max)
+        r_min = min.(ri, r_min)
+        r_max = max.(ri, r_max)
     end
     return r_min, r_max
 end
 
- 
+
