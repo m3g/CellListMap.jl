@@ -205,96 +205,36 @@ end
 # Inner loop for Orthorhombic cells is faster because we can guarantee that
 # there are not repeated computations even if running over half of the cells.
 #
+inner_loop!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
+    inner_loop!(f, neighbor_cells_forward, box, cellᵢ, cl, output, ibatch)
+inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
+    inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
+
+# The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
+skip_particle_i(pᵢ,::Box{<:OrthorhombicCellType}) = false
+skip_pair(pᵢ,pⱼ,::Box{<:OrthorhombicCellType}) = false
+skip_particle_i(pᵢ,::Box{<:TriclinicCell}) = !pᵢ.real
+skip_pair(pᵢ,pⱼ,::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
+
 function inner_loop!(
-    f, box::Box{TriclinicCell}, cellᵢ,
-    cl::CellList{N,T},
-    output,
+    f::Function, 
+    _neighbor_cells::F, # depends on cell type
+    box::Box, 
+    cellᵢ, 
+    cl::CellList{N,T}, 
+    output, 
     ibatch
-) where {N,T}
-    @unpack cutoff, cutoff_sq, nc = box
-
-    for neighbor_cell in neighbor_cells(box)
-        jc_cartesian = cellᵢ.cartesian_index + neighbor_cell
-        jc_linear = cell_linear_index(nc, jc_cartesian)
-        # if cellⱼ is empty, cycle
-        if cl.cell_indices[jc_linear] == 0
-            continue
-        end
-        cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
-
-        # same cell
-        if cellⱼ.linear_index == cellᵢ.linear_index
-            for i in 1:cellᵢ.n_particles
-                @inbounds pᵢ = cellᵢ.particles[i]
-                (!pᵢ.real) && continue
-                xpᵢ = pᵢ.coordinates
-                for j in 1:cellᵢ.n_particles
-                    @inbounds pⱼ = cellᵢ.particles[j]
-                    if pᵢ.index < pⱼ.index
-                        xpⱼ = pⱼ.coordinates
-                        d2 = norm_sqr(xpᵢ - xpⱼ)
-                        if d2 <= cutoff_sq
-                            output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
-                        end
-                    end
-                end
-            end
-            # neighbor cells
-        else
-            # Vector connecting cell centers
-            Δc = cellⱼ.center - cellᵢ.center
-            Δc_norm = norm(Δc)
-            Δc = Δc / Δc_norm
-            pp = project_particles!(cl.projected_particles[ibatch], cellⱼ, cellᵢ, Δc, Δc_norm, box)
-            for i in 1:cellᵢ.n_particles
-                @inbounds pᵢ = cellᵢ.particles[i]
-                (!pᵢ.real) && continue
-                xpᵢ = pᵢ.coordinates
-
-                # Partition pp array according to the current projections. This
-                # is faster than it looks, because after the first partitioning, the
-                # array will be almost correct, and essentially the algorithm
-                # will only run over most elements. Avoiding this partitioning or
-                # trying to sort the array before always resulted to be much more
-                # expensive. 
-                xproj = dot(xpᵢ - cellᵢ.center, Δc)
-                n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
-
-                for j in 1:n
-                    @inbounds pⱼ = pp[j]
-                    if pᵢ.index < pⱼ.index
-                        xpⱼ = pⱼ.coordinates
-                        d2 = norm_sqr(xpᵢ - xpⱼ)
-                        if d2 <= cutoff_sq
-                            output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    return output
-end
-
-#
-# Inner loop for Orthorhombic cells is faster because we can guarantee that
-# there are not repeated computations even if running over half of the cells.
-#
-function inner_loop!(
-    f, box::Box{<:OrthorhombicCellType}, cellᵢ,
-    cl::CellList{N,T},
-    output,
-    ibatch
-) where {N,T}
+) where {F<:Function,N,T} 
     @unpack cutoff_sq = box
 
     # loop over list of non-repeated particles of cell ic
     for i in 1:cellᵢ.n_particles-1
         @inbounds pᵢ = cellᵢ.particles[i]
+        skip_particle_i(pᵢ,box) && continue
         xpᵢ = pᵢ.coordinates
         for j in i+1:cellᵢ.n_particles
             @inbounds pⱼ = cellᵢ.particles[j]
+            skip_pair(pᵢ,pⱼ,box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -303,7 +243,7 @@ function inner_loop!(
         end
     end
 
-    for jcell in neighbor_cells_forward(box)
+    for jcell in _neighbor_cells(box)
         jc_linear = cell_linear_index(box.nc, cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
@@ -314,18 +254,10 @@ function inner_loop!(
     return output
 end
 
-function cell_output!(
-    f,
-    box::Box{<:OrthorhombicCellType},
-    cellᵢ,
-    cellⱼ,
-    cl::CellList{N,T},
-    output,
-    ibatch
-) where {N,T}
+function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {N,T}
     @unpack cutoff, cutoff_sq, nc = box
 
-    # Vector connecting cell centers
+    # project particles in vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center
     Δc_norm = norm(Δc)
     Δc = Δc / Δc_norm
@@ -337,6 +269,9 @@ function cell_output!(
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
+        skip_particle_i(pᵢ,box) && continue
+
+        # project particle in vector connecting cell centers
         xpᵢ = pᵢ.coordinates
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
 
@@ -346,6 +281,7 @@ function cell_output!(
         # Compute the interactions 
         for j in 1:n
             @inbounds pⱼ = pp[j]
+            skip_pair(pᵢ,pⱼ,box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
