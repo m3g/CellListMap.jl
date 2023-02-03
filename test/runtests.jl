@@ -413,6 +413,47 @@ end
 
 end
 
+@testitem "pathological cells" begin
+    using StaticArrays
+    # This function is an interesting function because it sort of counts 
+    # the indexes of the particles within the cutoff. However, we need to 
+    # check for numerical precision innacuracies before adding them, otherwise
+    # pairs that match in one test can be skiped in another. This kind of issue
+    # exists for any property that does not goes to zero when the distance
+    # approaches that of the cutoff.
+    function f(i,j,d2,out)
+        d = sqrt(d2)
+        if !(d ≈ 0.2) 
+            out += (i + j)
+        end
+        return out
+    end
+    l = sqrt(2)/2
+    for m in [
+        @SMatrix[1 0; 0 1],
+        @SMatrix[l 0; l 1],
+        @SMatrix[1.1 0; 0 1],
+        @SMatrix[1.2 0; 0 1],
+        @SMatrix[1 0; 0 1.1],
+        @SMatrix[1 0; 0 1.2],
+        @SMatrix[1 0.2; 0 1.2],
+        @SMatrix[1 0.2; 0.2 1.2],
+        @SMatrix[1.2 0.2; 0.2 1.2],
+    ]
+        box = Box(m,0.2)
+        for x in [
+            100 .* rand(SVector{2,Float64}, 100),
+            [SVector{2,Float64}(0.1 * i + 0.1*j, 0.1 * j + 0.1*j) for i in 0:5 for j in 0:5],
+            [SVector{2,Float64}(0.1 * i, 0.1 * j) for i in 0:5 for j in 0:5]
+        ]
+            cl = CellList(x, box)
+            d0 = map_pairwise((x, y, i, j, d2, out) -> f(i,j,d2,out), 0, box, cl)
+            d1 = CellListMap.map_naive!((x, y, i, j, d2, out) -> f(i,j,d2,out), 0, x, box)
+            @test d0 ≈ d1
+        end
+    end
+end
+
 include("$(@__DIR__)/namd/compare_with_namd.jl")
 include("$(@__DIR__)/BasicForPeriodicSystems.jl")
 include("$(@__DIR__)/namd/PeriodicSystems_vs_NAMD.jl")
