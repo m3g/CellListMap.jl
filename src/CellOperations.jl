@@ -14,6 +14,17 @@ that the upper boundary belongs to current cell.
 @inline fix_upper_boundary(x::T,side) where T = ifelse(x == side, zero(T), x)
 
 """
+    fix_upper_boundary(x,xmin,xmax)
+
+$(INTERNAL)
+
+# Extended help
+
+If `x == xmax` move `x` to `xmin` such that the coordinate belongs to the minimum frontier, as we conventionated here.
+"""
+@inline fix_upper_boundary(x, xmin, xmax) = ifelse(x == xmax, xmin, x)
+
+"""
 
 ```
 fastmod1(x)
