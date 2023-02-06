@@ -194,7 +194,7 @@ end
     # If the number of particles and box change
     new_x, new_box = CellListMap.xatomic(10^4)
     new_cl = CellList(new_x,new_box)
-    new_x, new_box = CellListMap.xatomic(10^5)
+    new_x, new_box = CellListMap.xatomic(10^4 + 10^3)
     new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box) # slow
     new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
