@@ -34,9 +34,9 @@ function pathological_coordinates(N)
     return x, y, sides, cutoff
 end
 
-
 """
-    map_naive!(f,output,x,box)
+    map_naive!(f::Function, output, x::AbstractVector, box::Box)
+    map_naive!(f::Function, output, x::AbstractVector, y::AbstractVector, box::Box)
 
 $(INTERNAL)
 
@@ -45,7 +45,7 @@ $(INTERNAL)
 Function that uses the naive pairwise mapping algorithm, for testing.
 
 """
-function map_naive!(f, output, x, box::Box)
+function map_naive!(f::Function, output, x::AbstractVector, box::Box)
     @unpack input_unit_cell, cutoff_sqr = box
     for i in 1:length(x)-1
         xᵢ = x[i]
@@ -60,7 +60,7 @@ function map_naive!(f, output, x, box::Box)
     return output
 end
 
-function map_naive!(f, output, x, y, box::Box)
+function map_naive!(f::Function, output, x::AbstractVector, y::AbstractVector, box::Box)
     @unpack input_unit_cell, cutoff_sqr = box
     for i in eachindex(x)
         xᵢ = x[i]
