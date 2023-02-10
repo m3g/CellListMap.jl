@@ -163,10 +163,14 @@ function check_random_cells(
             @show unit_cell_matrix, cutoff
             return false
         end
-        if UnitCellType == OrthorhombicCell
-            box = Box([unit_cell_matrix[i, i] for i in 1:N], cutoff, lcell=lcell)
-        else
-            box = Box(unit_cell_matrix, cutoff, lcell=lcell)
+        box = try
+            if UnitCellType == OrthorhombicCell
+                box = Box([unit_cell_matrix[i, i] for i in 1:N], cutoff, lcell=lcell)
+            else
+                box = Box(unit_cell_matrix, cutoff, lcell=lcell)
+            end
+        catch
+            return UnitCelType, unit_cell_matrix, cutoff, lcell
         end
         if prod(box.nc) > 100000
             continue
@@ -176,8 +180,12 @@ function check_random_cells(
         for i in eachindex(x)
             x[i] = x[i] .- 50
         end
-        cl = CellList(x, box, parallel=parallel)
-        test = test_map(box, cl, parallel=parallel)
+        test = try 
+            cl = CellList(x, box, parallel=parallel)
+            test_map(box, cl, parallel=parallel)
+        catch
+            return x, box
+        end
         if test ≈ 0
             continue
         end
@@ -200,32 +208,33 @@ function check_random_cells(
         end
     end
     show_progress && println(" ALL PASSED! ")
-    return true, x, box
+    return true, nothing, nothing
+end
+
+function test_random_cells()
+    for N in 2:3, 
+        M in rand(10:20), 
+        UnitCellType in [ TriclinicCell, OrthorhombicCell ],
+        parallel in [ false, true ],
+        lcell in 1:3
+        test = CellListMap.check_random_cells(
+            N,M,
+            UnitCellType=UnitCellType,
+            parallel=parallel,
+            lcell=lcell,
+            show_progress=false
+        )
+        if test[1] != true
+            return test
+        end
+    end
+    return nothing
 end
 
 @testitem "random cells" begin
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    function test_random_cells()
-        for N in 2:3, 
-            M in rand(10:20), 
-            UnitCellType in [ TriclinicCell, OrthorhombicCell ],
-            parallel in [ false, true ],
-            lcell in 1:3
-            test = CellListMap.check_random_cells(
-                N,M,
-                UnitCellType=UnitCellType,
-                parallel=parallel,
-                lcell=lcell,
-                show_progress=false
-            )
-            if !test[1]
-                return x, box
-            end
-        end
-        return nothing, nothing
-    end
     @test test_random_cells() == (nothing, nothing) 
 end
 
