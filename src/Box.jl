@@ -249,9 +249,9 @@ end
 function Base.show(io::IO, ::MIME"text/plain", box::Box{UnitCellType,N}) where {UnitCellType,N}
     _println(io, "Box{$UnitCellType, $N}")
     _print(io, "  unit cell matrix = [ ")
-    print(io, join(_uround.(box.input_unit_cell.matrix[1:N, 1]), ", "))
+    print(io, join(_uround.(box.input_unit_cell.matrix[1:N, 1]), " "))
     for i in 2:N
-        print(io, "; ", join(_uround.(box.input_unit_cell.matrix[1:N, i]), ", "))
+        print(io, "; ", join(_uround.(box.input_unit_cell.matrix[1:N, i]), " "))
     end
     println(io, " ]")
     _println(io, "  cutoff = ", box.cutoff)
