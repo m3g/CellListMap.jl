@@ -1,5 +1,5 @@
 #
-# Some internal function to help the `show` functios to be prettier
+# Some internal function to help the `show` functions to be prettier
 #
 
 # Adapt round to adhere with units

@@ -32,17 +32,14 @@ include("./CellOperations.jl")
 include("./CoreComputing.jl")
 
 """
-
-```
-map_pairwise!(
-  f::Function,
-  output,
-  box::Box,
-  cl::CellList
-  ;parallel::Bool=true,
-  show_progress::Bool=false
-)
-```
+    map_pairwise!(
+    f::Function,
+    output,
+    box::Box,
+    cl::CellList
+    ;parallel::Bool=true,
+    show_progress::Bool=false
+    )
 
 This function will run over every pair of particles which are closer than 
 `box.cutoff` and compute the Euclidean distance between the particles, 
@@ -111,10 +108,7 @@ function map_pairwise!(f::F, output, box::Box, cl::CellList;
 end
 
 """
-
-```
-map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
-```
+    map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
 
 The same but to evaluate some function between pairs of the particles of the vectors.
 
@@ -145,10 +139,7 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{V,N,T,Swap};
 end
 
 """
-
-```
-map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
-````
+    map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
 
 is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the funciton is immutable, it may be 
 clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the 

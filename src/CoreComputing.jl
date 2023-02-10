@@ -4,10 +4,7 @@
 splitter(first, nbatches, n) = first:nbatches:n
 
 """
-
-```
-reduce(output, output_threaded)
-```
+    reduce(output, output_threaded)
 
 Most common reduction function, which sums the elements of the output. 
 Here, `output_threaded` is a vector containing `nbatches(cl)` copies of
@@ -45,7 +42,7 @@ julia> output
 
 """
 reduce(output::T, output_threaded::Vector{T}) where {T} = sum(output_threaded)
-function reduce(output::T, output_threaded::Vector{T}) where {T <: AbstractArray}
+function reduce(output::T, output_threaded::Vector{T}) where {T<:AbstractArray}
     for ibatch in eachindex(output_threaded)
         @. output += output_threaded[ibatch]
     end
@@ -72,10 +69,7 @@ function reduce(output, output_threaded)
 end
 
 """
-
-```
-partition!(by, x::AbstractVector)
-```
+    partition!(by, x::AbstractVector)
 
 $(INTERNAL)
 
@@ -211,30 +205,30 @@ inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibat
     inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
 
 # The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
-skip_particle_i(pᵢ,::Box{<:OrthorhombicCellType}) = false
-skip_pair(pᵢ,pⱼ,::Box{<:OrthorhombicCellType}) = false
-skip_particle_i(pᵢ,::Box{<:TriclinicCell}) = !pᵢ.real
-skip_pair(pᵢ,pⱼ,::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
+skip_particle_i(pᵢ, ::Box{<:OrthorhombicCellType}) = false
+skip_pair(pᵢ, pⱼ, ::Box{<:OrthorhombicCellType}) = false
+skip_particle_i(pᵢ, ::Box{<:TriclinicCell}) = !pᵢ.real
+skip_pair(pᵢ, pⱼ, ::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
 
 function inner_loop!(
-    f::Function, 
+    f::Function,
     _neighbor_cells::F, # depends on cell type
-    box::Box, 
-    cellᵢ, 
-    cl::CellList{N,T}, 
-    output, 
+    box::Box,
+    cellᵢ,
+    cl::CellList{N,T},
+    output,
     ibatch
-) where {F<:Function,N,T} 
+) where {F<:Function,N,T}
     @unpack cutoff_sq = box
 
     # loop over list of non-repeated particles of cell ic
     for i in 1:cellᵢ.n_particles-1
         @inbounds pᵢ = cellᵢ.particles[i]
-        skip_particle_i(pᵢ,box) && continue
+        skip_particle_i(pᵢ, box) && continue
         xpᵢ = pᵢ.coordinates
         for j in i+1:cellᵢ.n_particles
             @inbounds pⱼ = cellᵢ.particles[j]
-            skip_pair(pᵢ,pⱼ,box) && continue
+            skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -269,7 +263,7 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
-        skip_particle_i(pᵢ,box) && continue
+        skip_particle_i(pᵢ, box) && continue
 
         # project particle in vector connecting cell centers
         xpᵢ = pᵢ.coordinates
@@ -281,7 +275,7 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
         # Compute the interactions 
         for j in 1:n
             @inbounds pⱼ = pp[j]
-            skip_pair(pᵢ,pⱼ,box) && continue
+            skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sq
@@ -294,10 +288,7 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
 end
 
 """
-
-```
-project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,box)
-```
+    project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,box)
 
 $(INTERNAL)
 

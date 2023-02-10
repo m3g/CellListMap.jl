@@ -110,21 +110,18 @@ TriclinicCell
 ```
 
 """
-unitcelltype(::Box{T}) where T = T
+unitcelltype(::Box{T}) where {T} = T
 
 @testitem "unitcelltype" begin
     using CellListMap
-    @test unitcelltype(Box([1,1,1], 0.1)) == OrthorhombicCell
+    @test unitcelltype(Box([1, 1, 1], 0.1)) == OrthorhombicCell
     @test unitcelltype(Box([1 0 0; 0 1 0; 0 0 1], 0.1)) == TriclinicCell
-    x = rand(3,100)
+    x = rand(3, 100)
     @test unitcelltype(Box(limits(x), 0.1)) == NonPeriodicCell
 end
 
 """
-
-```
-_promote_types(cell,cutoff)
-```
+    _promote_types(cell,cutoff)
 
 $(INTERNAL)
 
@@ -158,16 +155,14 @@ end
 end
 
 """
-
-```
-Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)
-```
+    Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)
 
 Construct box structure given the cell matrix of lattice vectors. This 
 constructor will always return a `TriclinicCell` box type, unless the
 `UnitCellType` parameter is set manually to `OrthorhombicCell`
 
 ## Example
+
 ```julia-repl
 julia> unit_cell = [ 100   50    0 
                        0  120    0
@@ -201,7 +196,7 @@ function Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCe
 
     return Box{UnitCellType,N,T,typeof(cutoff^2),N * N}(unit_cell, lcell, nc, cutoff, cutoff^2, ranges, cell_size, unit_cell_max)
 end
-Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int=1, UnitCellType=TriclinicCell) = 
+Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int=1, UnitCellType=TriclinicCell) =
     Box(unit_cell_matrix, cutoff, lcell, UnitCellType)
 
 #
@@ -245,10 +240,7 @@ function Base.show(io::IO, ::MIME"text/plain", box::Box{UnitCellType,N}) where {
 end
 
 """
-
-```
-cell_matrix_from_sides(sides::AbstractVector)
-```
+    cell_matrix_from_sides(sides::AbstractVector)
 
 $(INTERNAL)
 
@@ -278,18 +270,15 @@ cell_matrix_from_sides(sides::Tuple) = cell_matrix_from_sides(SVector(sides))
 
     sides = SVector(1.0, 1.0, 1.0)u"nm"
     cell_matrix = cell_matrix_from_sides(sides)
-    @test eltype(sides) == eltype(cell_matrix) 
+    @test eltype(sides) == eltype(cell_matrix)
 
     sides = (1.0u"nm", 1.0u"nm", 1.0u"nm")
     cell_matrix = cell_matrix_from_sides(sides)
-    @test eltype(sides) == eltype(cell_matrix) 
+    @test eltype(sides) == eltype(cell_matrix)
 end
 
 """
-
-```
-Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=OrthorhombicCell)
-```
+    Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=OrthorhombicCell)
 
 For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side. 
 
@@ -314,10 +303,7 @@ end
 Box(sides::AbstractVector, cutoff; lcell::Int=1, UnitCellType=OrthorhombicCell) = Box(sides, cutoff, lcell, UnitCellType)
 
 """
-
-```
-Box(unitcell::Limits, cutoff; lcell::Int=1)
-```
+    Box(unitcell::Limits, cutoff; lcell::Int=1)
 
 This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
 the coordinates of the particles involved, and constructs a `Box` with size larger than
@@ -361,12 +347,12 @@ end
 const InputUnitCellTypes = Union{Nothing,AbstractVector,AbstractMatrix,Limits,Tuple}
 
 """
-update_box(
-    box::Box{UnitCellType,N,T,TSQ,M};
-    unitcell::Union{Nothing,AbstractVector{T},AbstractMatrix{T},Limits,Tuple}=nothing,
-    cutoff::Union{Nothing,T}=nothing,
-    lcell::Union{Nothing,Int}=nothing
-)
+    update_box(
+        box::Box{UnitCellType,N,T,TSQ,M};
+        unitcell::Union{Nothing,AbstractVector{T},AbstractMatrix{T},Limits,Tuple}=nothing,
+        cutoff::Union{Nothing,T}=nothing,
+        lcell::Union{Nothing,Int}=nothing
+    )
 
 $(INTERNAL)
 
@@ -408,7 +394,7 @@ end
 
     # update with tuples
     box = Box([1, 1, 1], 0.1)
-    a = @ballocated CellListMap.update_box($box; unitcell=(2, 2, 2), cutoff=0.2) evals=1 samples=1
+    a = @ballocated CellListMap.update_box($box; unitcell=(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
     @test new_box.cutoff == 0.2
@@ -416,7 +402,7 @@ end
 
     # update with SVector
     box = Box([1, 1, 1], 0.1)
-    a = @ballocated CellListMap.update_box($box; unitcell=SVector(2, 2, 2), cutoff=0.2) evals=1 samples=1
+    a = @ballocated CellListMap.update_box($box; unitcell=SVector(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
     @test new_box.cutoff == 0.2
@@ -426,7 +412,7 @@ end
     x = rand(SVector{3,Float64}, 1000)
     box = Box(limits(x), 0.1)
     new_x = rand(SVector{3,Float64}, 1500)
-    a = @ballocated CellListMap.update_box($box; unitcell=$(limits(new_x)), cutoff=0.2) evals=1 samples=1
+    a = @ballocated CellListMap.update_box($box; unitcell=$(limits(new_x)), cutoff=0.2) evals = 1 samples = 1
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=limits(new_x), cutoff=0.2)
     @test new_box.cutoff == 0.2
@@ -435,7 +421,7 @@ end
     # Update with SMatrix
     box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
     new_matrix = SMatrix{3,3,Float64,9}(2, 0, 0, 0, 2, 0, 0, 0, 2)
-    a = @ballocated CellListMap.update_box($box; unitcell=$new_matrix, cutoff=0.2) evals=1 samples=1
+    a = @ballocated CellListMap.update_box($box; unitcell=$new_matrix, cutoff=0.2) evals = 1 samples = 1
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=new_matrix, cutoff=0.2)
     @test new_box.cutoff == 0.2

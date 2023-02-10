@@ -99,17 +99,14 @@ mutable struct InPlaceNeighborList{B,C,A,NB<:NeighborList}
 end
 
 """
-
-```
-function InPlaceNeighborList(;
-    x::AbstractVecOrMat,
-    y::Union{AbstractVecOrMat,Nothing}=nothing,
-    cutoff::T,
-    unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
-    parallel::Bool=true,
-    show_progress::Bool=false,
-) where {T<:Real}
-```
+    InPlaceNeighborList(;
+        x::AbstractVecOrMat,
+        y::Union{AbstractVecOrMat,Nothing}=nothing,
+        cutoff::T,
+        unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
+        parallel::Bool=true,
+        show_progress::Bool=false,
+    ) where {T<:Real}
 
 Function that initializes the `InPlaceNeighborList` structure, to be used for in-place
 computation of neighbor lists.
@@ -213,11 +210,10 @@ function InPlaceNeighborList(;
 end
 
 """
+    update!(system::InPlaceNeighborList, x::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
+    update!(system::InPlaceNeighborList, x::AbstractVecOrMat, y::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
 
-update!(system::InPlaceNeighborList, x::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
-update!(system::InPlaceNeighborList, x::AbstractVecOrMat, y::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
-
-Function that updates a `InPlaceNeighborList` system, by updating the coordinates, cutoff, and unitcell.
+Updates a `InPlaceNeighborList` system, by updating the coordinates, cutoff, and unitcell.
 
 ## Examples
 
@@ -484,10 +480,7 @@ end
 end
 
 """
-
-```
-neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)
-```
+    neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)
 
 Computes the list of pairs of particles in `x` which are closer to each other than `cutoff`.
 If the keyword parameter `unitcell` is provided (as a vector of sides or a general unit cell
@@ -529,16 +522,14 @@ function neighborlist(
 end
 
 """
-
-```
-neighborlist(
-    x, y, cutoff; 
-    unitcell=nothing, 
-    parallel=true, 
-    show_progress=false, 
-    autoswap=true,
-    nbatches=(0,0))
-```
+    neighborlist(
+        x, y, cutoff; 
+        unitcell=nothing, 
+        parallel=true, 
+        show_progress=false, 
+        autoswap=true,
+        nbatches=(0,0)
+    )
 
 Computes the list of pairs of particles of `x` which are closer than `r` to
 the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
@@ -584,16 +575,16 @@ end
 
 @testitem "Neighborlist - pathological" begin
     using CellListMap
-    @test neighborlist([[0.0,0.0,1.0],[0.0,0.0,10.0],[0.0,0.0,7.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,0.0,1.0],[0.0,0.0,10.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,1.0],[0.0,10.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,1.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,0.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,0.0,0.0]], 2.0) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,0.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,0.0],[0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == [(1, 2, 1.0)]
-    @test neighborlist([[0.0,0.0],[0.0,1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64, Int64, Float64}[]
-    @test neighborlist([[0.0,0.0],[0.0,1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) == [(2, 1, 0.9999999999999998)]
+    @test neighborlist([[0.0, 0.0, 1.0], [0.0, 0.0, 10.0], [0.0, 0.0, 7.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 0.0, 1.0], [0.0, 0.0, 10.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 1.0], [0.0, 10.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 1.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 0.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 0.0, 0.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 0.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == [(1, 2, 1.0)]
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64,Int64,Float64}[]
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) == [(2, 1, 0.9999999999999998)]
 end
 
 @testitem "Compare with NearestNeighbors" begin

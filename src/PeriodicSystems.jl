@@ -25,23 +25,20 @@ export reducer!, reducer
 const SupportedTypes = Union{Number,SVector,FieldVector}
 
 """
-
-```
-PeriodicSystem( 
-    xpositions::Vector{<:AbstractVector},
-    #or
-    xpositions::Vector{<:AbstractVector},
-    ypositions::Vector{<:AbstractVector},
-    # and
-    unitcell::AbstractVecOrMat,
-    cutoff::Number,
-    output::Any;
-    output_name::Symbol,
-    parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0),
-    autoswap::Bool = true
-)
-```
+    PeriodicSystem( 
+        xpositions::Vector{<:AbstractVector},
+        #or
+        xpositions::Vector{<:AbstractVector},
+        ypositions::Vector{<:AbstractVector},
+        # and
+        unitcell::AbstractVecOrMat,
+        cutoff::Number,
+        output::Any;
+        output_name::Symbol,
+        parallel::Bool=true,
+        nbatches::Tuple{Int,Int}=(0, 0),
+        autoswap::Bool = true
+    )
 
 Function that sets up the `PeriodicSystem` type given the positions of
 the particles.
@@ -157,7 +154,7 @@ function PeriodicSystem(;
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
-    autoswap::Bool=true,
+    autoswap::Bool=true
 )
     if !isnothing(positions) && isnothing(xpositions)
         xpositions = positions
@@ -174,7 +171,7 @@ function PeriodicSystem(;
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
-    # Two sets of positions
+        # Two sets of positions
     elseif !isnothing(xpositions) && !isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches, autoswap=autoswap)
@@ -251,7 +248,7 @@ unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
     @test sys.unitcell == @SMatrix [1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]
 
     # test the construction with pathologically few particles
-    for x in [ SVector{3,Float64}[], Vector{Float64}[], [rand(SVector{3,Float64})], [rand(3)] ]
+    for x in [SVector{3,Float64}[], Vector{Float64}[], [rand(SVector{3,Float64})], [rand(3)]]
         sys = PeriodicSystem(
             positions=x,
             cutoff=0.1,
@@ -259,12 +256,12 @@ unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
             output=0.0,
             output_name=:test
         )
-        @test PeriodicSystems.map_pairwise((x,y,i,j,d2,out) -> out += d2, sys) == 0.0
+        @test PeriodicSystems.map_pairwise((x, y, i, j, d2, out) -> out += d2, sys) == 0.0
     end
 
     # unitcell type
-    x = rand(SVector{3,Float64},100)
-    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)) == OrthorhombicCell
+    x = rand(SVector{3,Float64}, 100)
+    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)) == OrthorhombicCell
     @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1], output=0.0)) == TriclinicCell
 
 end
@@ -369,10 +366,7 @@ end
 # by the user for custom output types.
 #
 """
-
-```
-copy_output(x)
-```
+    copy_output(x)
 
 Function that defines how the `output` variable is copied. Identical to `Base.copy(x)`
 and implemented for the types in `$(SupportedTypes)`.
@@ -416,10 +410,7 @@ copy_output(x::T) where {T<:SupportedTypes} = copy(x)
 copy_output(x::AbstractVecOrMat{T}) where {T} = T[copy_output(el) for el in x]
 
 """
-
-```
-reset_output!(x)
-```
+    reset_output!(x)
 
 Function that defines how to reset (or zero) the `output` variable. For `$(SupportedTypes)` it is 
 implemented as `zero(x)`, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s
@@ -463,10 +454,7 @@ reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin
 const reset_output = reset_output!
 
 """
-
-```
-_reset_all_output!(output, output_threaded)
-```
+    _reset_all_output!(output, output_threaded)
 
 $(INTERNAL)
 
@@ -482,10 +470,7 @@ function _reset_all_output!(output, output_threaded)
 end
 
 """
-
-```
-reducer!(x,y)
-```
+    reducer!(x,y)
 
 Function that defines how to reduce (combine, or merge) to variables computed in parallel
 to obtain a single instance of the variable with the reduced result.
@@ -532,10 +517,7 @@ reducer!(x::T, y::T) where {T<:SupportedTypes} = +(x, y)
 const reducer = reducer!
 
 """
-
-```
-reduce_output!(reducer::Function, output, output_threaded)
-```
+    reduce_output!(reducer::Function, output, output_threaded)
 
 $(INTERNAL)
 
@@ -625,10 +607,7 @@ function reduce_output!(
 end
 
 """
-
-```
-resize_output!(sys::AbstractPeriodicSystem, n::Int)
-```
+    resize_output!(sys::AbstractPeriodicSystem, n::Int)
 
 Resizes the output array and the auxiliary output arrays used
 for multithreading, if needed because of the system change.
@@ -646,9 +625,7 @@ end
 # Function used to update the properties of the systems
 #
 """
-```
-update_unitcell!(system, unitcell)
-```
+    update_unitcell!(system, unitcell)
 
 Function to update the unit cell of the system. The `unicell` must be of the 
 same type (`OrthorhombicCell` or `TriclinicCell`) of the original `system` 
@@ -716,9 +693,7 @@ end
 end
 
 """
-```
-update_cutoff!(system, cutoff)
-```
+    update_cutoff!(system, cutoff)
 
 Function to update the `cutoff`` of the system. 
 
@@ -778,10 +753,7 @@ end
 end
 
 """
-
-```
-UpdatePeriodicSystem!
-```
+    UpdatePeriodicSystem!
 
 $(INTERNAL)
 
@@ -801,11 +773,11 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem1, update_lists::Bool=true)
     return sys
 end
 
-function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: NotSwapped} 
+function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:NotSwapped}
     resize!(cl.ref, length(sys.xpositions))
     cl.ref .= sys.xpositions
 end
-function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap <: Swapped} 
+function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:Swapped}
     error("update_lists === false requires autoswap == false for 2-set systems.")
 end
 function UpdatePeriodicSystem!(sys::PeriodicSystem2, update_lists::Bool=true)
@@ -841,10 +813,7 @@ end
 end
 
 """
-
-```
-map_pairwise!(f::Function, system; show_progress = true, update_lists = true)
-```
+    map_pairwise!(f::Function, system; show_progress = true, update_lists = true)
 
 Function that maps the `f` function into all pairs of particles of
 `system` that are found to be within the `cutoff`. 

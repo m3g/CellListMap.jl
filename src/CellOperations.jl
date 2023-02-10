@@ -1,7 +1,5 @@
 """
-```
-fix_upper_boundary(x::T,side) where T
-```
+    fix_upper_boundary(x::T,side) where T
 
 $(INTERNAL)
 
@@ -25,10 +23,7 @@ If `x == xmax` move `x` to `xmin` such that the coordinate belongs to the minimu
 @inline fix_upper_boundary(x, xmin, xmax) = ifelse(x == xmax, xmin, x)
 
 """
-
-```
-fastmod1(x)
-```
+    fastmod1(x)
 
 $(INTERNAL)
 
@@ -38,10 +33,7 @@ Computes `mod(x,1)`, quickly, using `x - floor(x)`. Maybe irrelevant.
 @inline fastmod1(x) = x - floor(x)
 
 """
-
-```
-wrap_cell_fraction(x,unit_cell_matrix)
-```
+    wrap_cell_fraction(x,unit_cell_matrix)
 
 $(INTERNAL)
 
@@ -79,10 +71,7 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 end
 
 """
-
-```
-wrap_to_first(x,unit_cell_matrix)
-```
+    wrap_to_first(x,unit_cell_matrix)
 
 $(INTERNAL)
 
@@ -112,10 +101,7 @@ julia> wrap_to_first(x,unit_cell_matrix)
 end
 
 """
-
-```
-wrap_to_first(x,box::Box)
-```
+    wrap_to_first(x,box::Box)
 
 $(INTERNAL)
 
@@ -128,10 +114,7 @@ first unit cell with all-positive coordinates, given the `Box` structure.
 @inline wrap_to_first(x, box::Box) = wrap_to_first(x, box.unit_cell.matrix)
 
 """
-
-```
-wrap_to_first(x,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-```
+    wrap_to_first(x,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
 
 $(INTERNAL)
 
@@ -170,10 +153,7 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 end
 
 """
-
-```
-wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-```
+    wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
 
 $(INTERNAL)
 
@@ -187,10 +167,7 @@ given a general `Box` structure.
     wrap_relative_to(x, xref, box.unit_cell.matrix)
 
 """
-
-```
-wrap_relative_to(x,xref,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-```
+    wrap_relative_to(x,xref,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
 
 $(INTERNAL)
 
@@ -206,10 +183,7 @@ given an Orthorhombic cell. This is slightly cheaper than for general cells.
 end
 
 """
-
-```
-wrap_relative_to(x,xref,sides::AbstractVector)
-```
+    wrap_relative_to(x,xref,sides::AbstractVector)
 
 $(INTERNAL)
 
@@ -238,10 +212,7 @@ end
 end
 
 """
-
-```
-translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T}
-```
+    translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T}
 
 $(INTERNAL)
 
@@ -255,9 +226,7 @@ provided.
     x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], N))
 
 """
-```
-translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
-```
+    translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
 
 Translates a complete set of coordinates given a set of indexes of unit-cells. Returns a new
 set of coordinates. 
@@ -289,10 +258,7 @@ function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix
 end
 
 """
-
-```
-replicate_system!(x::AbstractVector,box::Box,ranges::Tuple)
-```
+    replicate_system!(x::AbstractVector,box::Box,ranges::Tuple)
 
 $(INTERNAL)
 
@@ -351,10 +317,7 @@ function replicate_system!(x::AbstractMatrix{T}, cell, ranges) where {T}
 end
 
 """
-
-```
-neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
-```
+    neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
 
 $(INTERNAL)
 
@@ -420,10 +383,7 @@ function current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellTyp
 end
 
 """
-
-```
-particle_cell(x::SVector{N,T}, box::Box) where {N,T}
-```
+    particle_cell(x::SVector{N,T}, box::Box) where {N,T}
 
 $(INTERNAL)
 
@@ -448,10 +408,7 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
 end
 
 """
-
-```
-cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-```
+    cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
 
 $(INTERNAL)
 
@@ -461,8 +418,6 @@ Computes the geometric center of a computing cell, to be used in the projection
 of points. Returns a `SVector{N,T}`
 
 """
-#@inline cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-#    SVector{N,T}(ntuple(i -> box.cell_size[i]*(c[i] - box.lcell) - box.cell_size[i]/2, N))
 @inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
     SVector{N,T}(
         ntuple(N) do i
@@ -474,10 +429,7 @@ of points. Returns a `SVector{N,T}`
 end
 
 """
-
-```
-cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
-```
+    cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
 
 $(INTERNAL)
 
@@ -491,10 +443,7 @@ of the cell (for arbitrary dimension N).
     CartesianIndices(ntuple(i -> nc[i], N))[i1D]
 
 """
-
-```
-cell_linear_index(nc::SVector{N,Int}, indices) where N
-```
+    cell_linear_index(nc::SVector{N,Int}, indices) where N
 
 $(INTERNAL)
 
@@ -507,10 +456,7 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
     LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
 
 """
-
-```
-out_of_bounding_box(x::SVector{N},box::Box) where N
-```
+    out_of_bounding_box(x::SVector{N},box::Box) where N
 
 $(INTERNAL)
 
@@ -532,10 +478,7 @@ out_of_bounding_box(p::ParticleWithIndex, box::Box) =
     out_of_bounding_box(p.coordinates, box)
 
 """
-
-```
-replicate_particle!(ip,p::SVector{N},box,cl) where N
-```
+    replicate_particle!(ip,p::SVector{N},box,cl) where N
 
 $(INTERNAL)
 
@@ -557,10 +500,7 @@ function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
 end
 
 """
-
-```
-check_unit_cell(box::Box)
-```
+    check_unit_cell(box::Box)
 
 $(INTERNAL)
 
@@ -667,10 +607,7 @@ end
 end
 
 """
-
-```
-limits(x)
-```
+    limits(x)
 
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
 to be used to set a box without effective periodic boundary conditions.
@@ -689,10 +626,7 @@ function limits(x::AbstractMatrix)
 end
 
 """
-
-```
-limits(x,y)
-```
+    limits(x,y)
 
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`
 and `y`, to used to set a box without effective periodic boundary conditions.
@@ -716,103 +650,5 @@ function limits(x::T, y::T) where {T<:AbstractMatrix}
     return limits(x_re, y_re)
 end
 
-#
-# The following functions are not being used anymore in CellListMap, but may
-# be useful if this is split in into a sepparate package for playing with
-# periodic systems.
-#
-"""
-
-```
-ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where T
-```
-
-$(INTERNAL)
-
-# Extended help
-
-Function that sets which is the range of periodic images necessary to fill
-the computing box, in 3D.
-
-"""
-function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{3,3,T}) where {T}
-    V = SVector{3,T}
-    cmin = -lcell * cell_size
-    cmax = (nc .- lcell) .* cell_size
-    cell_vertices = SVector{8,V}(
-        V(cmin[1], cmin[2], cmin[3]),
-        V(cmin[1], cmin[2], cmax[3]),
-        V(cmin[1], cmax[2], cmin[3]),
-        V(cmin[1], cmax[2], cmax[3]),
-        V(cmax[1], cmin[2], cmin[3]),
-        V(cmax[1], cmin[2], cmax[3]),
-        V(cmax[1], cmax[2], cmin[3]),
-        V(cmax[1], cmax[2], cmax[3])
-    )
-    r_min, r_max = _ranges_of_replicas(
-        SVector{3,Int}(10^6, 10^6, 10^6), #min
-        SVector{3,Int}(-1, -1, -1),       #max
-        unit_cell_matrix,
-        cell_vertices
-    )
-    ranges = SVector{3,UnitRange{Int}}(
-        r_min[1]:r_max[1],
-        r_min[2]:r_max[2],
-        r_min[3]:r_max[3]
-    )
-    return ranges
-end
-
-"""
-
-```
-ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{2,2,T}) where T
-```
-
-$(INTERNAL)
-
-# Extended help
-
-Function that sets which is the range of periodic images necessary to fill
-the computing box, in 2D.
-
-"""
-function ranges_of_replicas(cell_size, lcell, nc, unit_cell_matrix::SMatrix{2,2,T}) where {T}
-    V = SVector{2,T}
-    cmin = -lcell * cell_size
-    cmax = (nc .- lcell) .* cell_size
-    cell_vertices = SVector{4,V}(
-        V(cmin[1], cmin[2]),
-        V(cmin[1], cmax[2]),
-        V(cmax[1], cmin[2]),
-        V(cmax[1], cmax[2]),
-    )
-    r_min, r_max = _ranges_of_replicas(
-        SVector{2,Int}(10^6, 10^6), #min
-        SVector{2,Int}(-1, -1),     #max
-        unit_cell_matrix,
-        cell_vertices
-    )
-    ranges = SVector{2,UnitRange{Int}}(
-        r_min[1]:r_max[1],
-        r_min[2]:r_max[2]
-    )
-    return ranges
-end
-
-function _ranges_of_replicas(r_min, r_max, unit_cell, cell_vertices)
-    for vert in cell_vertices
-        r = unit_cell \ vert
-        ri = @. ceil(Int, abs(r))
-        for (i, el) in pairs(r)
-            if el < 0
-                @set! ri[i] = -ri[i]
-            end
-        end
-        r_min = min.(ri, r_min)
-        r_max = max.(ri, r_max)
-    end
-    return r_min, r_max
-end
 
 
