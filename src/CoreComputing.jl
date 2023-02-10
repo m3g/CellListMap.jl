@@ -219,7 +219,7 @@ function inner_loop!(
     output,
     ibatch
 ) where {F<:Function,N,T}
-    @unpack cutoff_sq = box
+    @unpack cutoff_sqr = box
 
     # loop over list of non-repeated particles of cell ic
     for i in 1:cellᵢ.n_particles-1
@@ -231,7 +231,7 @@ function inner_loop!(
             skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sq
+            if d2 <= cutoff_sqr
                 output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
             end
         end
@@ -249,7 +249,7 @@ function inner_loop!(
 end
 
 function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {N,T}
-    @unpack cutoff, cutoff_sq, nc = box
+    @unpack cutoff, cutoff_sqr, nc = box
 
     # project particles in vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center
@@ -278,7 +278,7 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
             skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sq
+            if d2 <= cutoff_sqr
                 output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
             end
         end
@@ -332,7 +332,7 @@ function inner_loop!(
     f, output, i, box,
     cl::CellListPair{N,T}
 ) where {N,T}
-    @unpack nc, cutoff_sq = box
+    @unpack nc, cutoff_sqr = box
     xpᵢ = wrap_to_first(cl.ref[i], box)
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)
@@ -348,7 +348,7 @@ function inner_loop!(
             @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sq
+            if d2 <= cutoff_sqr
                 output = f(xpᵢ, xpⱼ, i, pⱼ.index, d2, output)
             end
         end

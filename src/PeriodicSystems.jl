@@ -195,7 +195,7 @@ import Base: getproperty, propertynames
 getproperty(sys::AbstractPeriodicSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractPeriodicSystem, s::Val{S}) where {S} = getfield(sys, S)
 # publi properties
-getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :unit_cell), :matrix)
+getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
 getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
 propertynames(sys::AbstractPeriodicSystem{OutputName}) where {OutputName} =

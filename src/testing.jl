@@ -46,13 +46,13 @@ Function that uses the naive pairwise mapping algorithm, for testing.
 
 """
 function map_naive!(f, output, x, box::Box)
-    @unpack unit_cell, cutoff_sq = box
+    @unpack input_unit_cell, cutoff_sqr = box
     for i in 1:length(x)-1
         xᵢ = x[i]
         for j in i+1:length(x)
-            xⱼ = wrap_relative_to(x[j], xᵢ, box)
+            xⱼ = wrap_relative_to(x[j], xᵢ, input_unit_cell.matrix)
             d2 = norm_sqr(xᵢ - xⱼ)
-            if d2 <= cutoff_sq
+            if d2 <= cutoff_sqr
                 output = f(xᵢ, xⱼ, i, j, d2, output)
             end
         end
@@ -61,13 +61,13 @@ function map_naive!(f, output, x, box::Box)
 end
 
 function map_naive!(f, output, x, y, box::Box)
-    @unpack unit_cell, cutoff_sq = box
+    @unpack input_unit_cell, cutoff_sqr = box
     for i in eachindex(x)
         xᵢ = x[i]
         for j in eachindex(y)
-            yⱼ = wrap_relative_to(y[j], xᵢ, box)
+            yⱼ = wrap_relative_to(y[j], xᵢ, input_unit_cell.matrix)
             d2 = norm_sqr(xᵢ - yⱼ)
-            if d2 <= cutoff_sq
+            if d2 <= cutoff_sqr
                 output = f(xᵢ, yⱼ, i, j, d2, output)
             end
         end
@@ -84,23 +84,6 @@ $(INTERNAL)
 
 Auxiliary function to view the particles of a computing box, including images created
 for computing purposes.
-
-## Example
-
-```julia-repl
-julia> box = Box([ 100 50; 50 100 ],10);
-
-julia> x = [ box.unit_cell_max .* rand(SVector{2,Float64}) for i in 1:1000 ];
-
-julia> cl = CellList(x,box);
-
-julia> p = CellListMap.view_celllist_particles(cl);
-
-julia> using Plots
-
-julia> scatter(Tuple.(p),label=nothing,xlims=(-10,180),ylims=(-10,180))
-
-```
 
 """
 function view_celllist_particles(cl::CellList{N,T}) where {N,T}
@@ -222,7 +205,7 @@ end
 
 function drawbox(box::Box{UnitCellType,2}) where {UnitCellType}
     S = SVector{2,Float64}
-    m = box.unit_cell.matrix
+    m = box.input_unit_cell.matrix
     x = [
         S(0.0, 0.0),
         S(m[:, 1]),
@@ -235,7 +218,7 @@ end
 
 function drawbox(box::Box{UnitCellType,3}) where {UnitCellType}
     S = SVector{3,Float64}
-    m = box.unit_cell.matrix
+    m = box.input_unit_cell.matrix
     x = [
         S(0.0, 0.0, 0.0),
         S(m[:, 1]),

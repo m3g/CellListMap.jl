@@ -753,7 +753,7 @@ function UpdateCellList!(
 ) where {N,T}
 
     # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
-    if length(x) > 0 && (length(x[begin]) != size(box.unit_cell.matrix, 1))
+    if length(x) > 0 && (length(x[begin]) != size(box.input_unit_cell.matrix, 1))
         n1 = length(x[begin])
         n2 = size(box.unit_cell.matrix, 1)
         throw(DimensionMismatch("Positions have dimension $n1, but the unit cell has dimension $n2."))
