@@ -220,9 +220,9 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
     # method of running over computing cells without complications associated to boundaries
     # having fractional cells.
     _nc = floor.(Int,(xmax .- xmin) / (cutoff/lcell))
-    if UnitCellType == OrthorhombicCell
+    if UnitCellType <: OrthorhombicCellType
         cell_size = (xmax .- xmin) ./ _nc
-    elseif UnitCellType == TriclinicCell
+    else
         cell_size .= cutoff/lcell
     end
     nc = _nc .+ 2*lcell
