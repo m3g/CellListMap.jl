@@ -110,10 +110,12 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-    x_f = wrap_cell_fraction(x, unit_cell_matrix)
-    xref_f = wrap_cell_fraction(xref, unit_cell_matrix)
-    xw = wrap_relative_to(x_f, xref_f, SVector{N,T}(ntuple(i -> 1, N)))
-    return unit_cell_matrix * (xw - xref_f) + xref
+    invu = inv(oneunit(T))
+    unit_cell_matrix = invu * unit_cell_matrix
+    x_f = wrap_cell_fraction(invu*x, unit_cell_matrix)
+    xref_f = wrap_cell_fraction(invu*xref, unit_cell_matrix)
+    xw = wrap_relative_to(x_f, xref_f, SVector{N,eltype(x_f)}(ntuple(i -> 1, N)))
+    return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
 
 """
@@ -406,29 +408,30 @@ function _align_cell2D!(m::AbstractMatrix{T}) where {T}
 end
 
 function _align_cell3D!(m::AbstractMatrix{T}) where {T}
-    m = m ./ oneunit(T)
+    m = inv(oneunit(T)) * m
     x, y, z = 1, 2, 3
     # Choose a and b to be the largest lattice vectors, in order
     n = SVector{3}(norm_sqr(v) for v in eachcol(m))
     combinations = ((1, 2, 3), (1, 3, 2), (2, 1, 3), (2, 3, 1), (3, 1, 2), (3, 2, 1))
-    local a, b, c
+    local a, b, c, axis_on_x
     for (i, j, k) in combinations
         if n[i] >= n[j] >= n[k]
             a, b, c = (@view(m[:, i]), @view(m[:, j]), @view(m[:, k]))
+            axis_on_x = i
             break
         end
     end
 
     # Find rotation that aligns a with x
     a1 = normalize(a)
-    v = SVector(0, a1[z], -a1[y]) # a1 × i 
-    if norm_sqr(v) ≈ zero(T)
+    v = SVector(zero(T), a1[z], -a1[y]) # a1 × i 
+    if norm_sqr(v) ≈ 0
         R1 = one(m)
     else
         #! format: off
-        vₛ = @SMatrix[    0     -v[z]      v[y]
-                        v[z]       0      -v[x]
-                       -v[y]     v[x]        0  ]
+        vₛ = @SMatrix[     0  -v[z]    v[y]
+                        v[z]      0   -v[x]
+                       -v[y]   v[x]       0  ]
         #! format: on
         R1 = one(m) + vₛ + vₛ^2 * inv(1 + a1[x])
     end
@@ -443,13 +446,13 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
         sinθ = -z * b / (y^2 + z^2)
         cosθ = sqrt(1 - sinθ^2)
         #! format: off
-        R2 = @SMatrix[    1         0            0 
-                          0        cosθ        -sinθ
-                          0        sinθ         cosθ ]
+        R2 = @SMatrix[ 1    0     0
+                       0 cosθ -sinθ
+                       0 sinθ  cosθ ]
         #! format: on
     end
     m = R2 * m
-    return oneunit(T) .* m, R1 * R2
+    return oneunit(T) .* m, R2 * R1
 end
 
 @testitem "align_cell" begin
