@@ -372,13 +372,13 @@ align_cell(m::SMatrix{3}) = _align_cell3D!(m)
 
 function align_cell!(m::AbstractMatrix)
     if size(m) == (2, 2)
-        m, R, axis_on_x = _align_cell2D!(m)
+        m, R = _align_cell2D!(m)
     elseif size(m) == (3, 3)
-        m, R, axis_on_x = _align_cell3D!(m)
+        m, R = _align_cell3D!(m)
     else
         throw(ArgumentError("align_cell! only supports square matrices in 2 or 3 dimensions."))
     end
-    return m, R, axis_on_x
+    return m, R
 end
 
 function _align_cell2D!(m::AbstractMatrix{T}) where {T}
@@ -459,19 +459,17 @@ end
     l = sqrt(2) / 2
 
     m = @SMatrix[1.0 0.0; 0.0 1.0]
-    @test align_cell(m) == (one(m), one(m), 1)
+    @test align_cell(m) == (one(m), one(m))
 
     m = @SMatrix[l 0; l 1]
-    mt, R, axis_on_x = align_cell(m)
+    mt, R = align_cell(m)
     @test mt ≈ [1 l; 0 l]
     @test R ≈ [l l; -l l]
-    @test axis_on_x == 1
 
     m = @SMatrix[-l 0; l 1]
-    mt, R, axis_on_x = align_cell(m)
+    mt, R = align_cell(m)
     @test mt ≈ [1 l; 0 -l]
     @test R ≈ [-l l; -l -l]
-    @test axis_on_x == 1
 
     #! format: off
     m = @SMatrix[ 
@@ -480,7 +478,7 @@ end
         0  0  1
     ]
     #! format: on
-    @test align_cell(m) == (one(m), one(m), 1)
+    @test align_cell(m) == (one(m), one(m))
 
     # Functions that define rotations along each axis, given the angle in 3D
     x_rotation(x) = @SMatrix[1 0 0; 0 cos(x) -sin(x); 0 sin(x) cos(x)]
@@ -498,7 +496,7 @@ end
     for _ in 1:5
         R = random_rotation()
         mr = R * m
-        ma, Ra, axis_on_x = align_cell(mr)
+        ma, Ra = align_cell(mr)
         @test ma ≈ m
     end
 
