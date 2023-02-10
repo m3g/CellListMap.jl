@@ -203,6 +203,32 @@ function check_random_cells(
     return true, x, box
 end
 
+@testitem "random cells" begin
+    using CellListMap
+    using StaticArrays
+    # Test random cells of all possible types
+    function test_random_cells()
+        for N in 2:3, 
+            M in rand(10:20), 
+            UnitCellType in [ TriclinicCell, OrthorhombicCell ],
+            parallel in [ false, true ],
+            lcell in 1:3
+            test = CellListMap.check_random_cells(
+                N,M,
+                UnitCellType=UnitCellType,
+                parallel=parallel,
+                lcell=lcell,
+                show_progress=false
+            )
+            if !test[1]
+                return x, box
+            end
+        end
+        return nothing, nothing
+    end
+    @test test_random_cells() == (nothing, nothing) 
+end
+
 function drawbox(box::Box{UnitCellType,2}) where {UnitCellType}
     S = SVector{2,Float64}
     m = box.input_unit_cell.matrix
@@ -501,8 +527,8 @@ function test_pathological(; nmax=1000, npoints=2)
         @SMatrix[1 0.2; 0 1.2],
         @SMatrix[1 0.2; 0.2 1.2],
         @SMatrix[1.2 0.2; 0.2 1.2],
-        #        @SMatrix[-1.2 0.2; 0.2 1.2],
-        #        @SMatrix[-1.2 0.2; 0.2 -1.2],
+        @SMatrix[-1.2 0.2; 0.2 1.2],
+        @SMatrix[-1.2 0.2; 0.2 -1.2],
     ]
 
     n = 0
@@ -516,13 +542,15 @@ function test_pathological(; nmax=1000, npoints=2)
         cl = CellList(x, box)
         clmap = map_pairwise((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, box, cl)
         if naive != clmap
-            @show naive
-            @show clmap
             return x, box
         end
         n += 1
     end
     return nothing, nothing
+end
+
+@testitem "test_pathological2D" begin
+    @test CellListMap.test_pathological() == (nothing, nothing)
 end
 
 

@@ -41,7 +41,7 @@ $(INTERNAL)
 standard arrays. Thus we define our own `normalize(v)`
 
 """
-@inline normalize(v) = v * inv(norm(v))
+@inline normalize(v::AbstractVector{T}) where {T} = oneunit(T) * v * inv(norm(v))
 
 """
     dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 

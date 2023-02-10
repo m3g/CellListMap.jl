@@ -840,7 +840,7 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
         xp = x[ip]
         # This converts the coordinates to static arrays, if necessary
         p = SVector{N,T}(ntuple(i -> xp[i], N))
-        p = wrap_to_first(p, box.aligned_unit_cell.matrix)
+        p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
         cl = add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
         cl = replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
     end

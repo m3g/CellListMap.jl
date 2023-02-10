@@ -79,11 +79,11 @@ Total number of cells: 2448
 ```
 
 """
-Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M}
+Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M,TR}
     input_unit_cell::UnitCell{UnitCellType,N,T,M}
     aligned_unit_cell::UnitCell{UnitCellType,N,T,M}
-    rotation::SMatrix{N,N,T,M}
-    inv_rotation::SMatrix{N,N,T,M}
+    rotation::SMatrix{N,N,TR,M}
+    inv_rotation::SMatrix{N,N,TR,M}
     lcell::Int
     nc::SVector{N,Int}
     cutoff::T
@@ -219,10 +219,11 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
     # the system has dimensions multiple of cell_size, such that we can use the forward-cell
     # method of running over computing cells without complications associated to boundaries
     # having fractional cells.
-    _nc = floor.(Int,(xmax .- xmin) / (cutoff/lcell))
     if UnitCellType <: OrthorhombicCellType
+        _nc = floor.(Int,(xmax .- xmin) / (cutoff/lcell))
         cell_size = (xmax .- xmin) ./ _nc
     else
+        _nc = ceil.(Int,(xmax .- xmin) / (cutoff/lcell))
         cell_size = SVector{N,T}(ntuple(i -> cutoff/lcell, N))
     end
     nc = _nc .+ 2*lcell
@@ -231,7 +232,7 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
     # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
     cutoff_sqr = cutoff^2
 
-    return Box{UnitCellType,N,T,typeof(cutoff_sqr),N * N}(
+    return Box{UnitCellType,N,T,typeof(cutoff_sqr),N * N, eltype(rotation)}(
         input_unit_cell = input_unit_cell,
         aligned_unit_cell = aligned_unit_cell,
         rotation = rotation,
@@ -561,24 +562,26 @@ of points. Returns a `SVector{N,T}`
 end
 
 """
-    out_of_computing_box(x::SVector{N},box::Box) where N
+    in_computing_box(x::SVector{N},box::Box) where N
 
 $(INTERNAL)
 
 # Extended help
 
-Function that evaluates if a particle is outside the computing bounding box,
-defined by the maximum and minimum unit cell coordinates. 
+Function that evaluates if a particle is inside the computing bounding box,
+defined by the maximum and minimum unit aligned cell coordinates.
 
 """
-function out_of_computing_box(x::SVector{N}, box::Box) where {N}
+function in_computing_box(x::SVector{N}, box::Box) where {N}
     min = box.computing_box[1]
     max = box.computing_box[2]
+    inbox = true
     for i in 1:N
-        (x[i] < min[i]) && return true
-        (x[i] >= max[i]) && return true
+        if !(min[i] <= x[i] < max[i])
+            inbox = false
+        end
     end
-    return false
+    return inbox
 end
 
 """
@@ -596,7 +599,7 @@ function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
     for indices in itr
         (count(isequal(0), indices ) == N) && continue
         x = translation_image(p, box.aligned_unit_cell.matrix, indices)
-        if !out_of_computing_box(x, box)
+        if in_computing_box(x, box)
             cl = add_particle_to_celllist!(ip, x, box, cl; real_particle=false)
         end
     end
