@@ -219,7 +219,7 @@ function inner_loop!(
     output,
     ibatch
 ) where {F<:Function,N,T}
-    @unpack cutoff_sqr = box
+    @unpack cutoff_sqr, inv_rotation, nc = box
 
     # loop over list of non-repeated particles of cell ic
     for i in 1:cellᵢ.n_particles-1
@@ -238,7 +238,7 @@ function inner_loop!(
     end
 
     for jcell in _neighbor_cells(box)
-        jc_linear = cell_linear_index(box.nc, cellᵢ.cartesian_index + jcell)
+        jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
             output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
@@ -249,7 +249,7 @@ function inner_loop!(
 end
 
 function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {N,T}
-    @unpack cutoff, cutoff_sqr, nc = box
+    @unpack cutoff, cutoff_sqr, inv_rotation = box
 
     # project particles in vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center
@@ -332,7 +332,7 @@ function inner_loop!(
     f, output, i, box,
     cl::CellListPair{N,T}
 ) where {N,T}
-    @unpack nc, cutoff_sqr = box
+    @unpack nc, cutoff_sqr, inv_rotation = box
     xpᵢ = wrap_to_first(cl.ref[i], box.aligned_unit_cell.matrix)
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)
