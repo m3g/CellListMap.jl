@@ -423,7 +423,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
     a1 = normalize(a)
     v = SVector(0, a1[z], -a1[y]) # a1 × i 
     if norm_sqr(v) ≈ zero(T)
-        R1 = m
+        R1 = one(m)
     else
         #! format: off
         vₛ = @SMatrix[    0     -v[z]      v[y]
