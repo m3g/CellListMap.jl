@@ -271,7 +271,7 @@ function draw_computing_cell(
     plt = Main.plot()
     Main.plot!(plt, Tuple.(box_points), label=:none)
     Main.scatter!(plt, Tuple.(p), label=:none, markeralpha=0.3)
-    Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box))), label=:none)
+    Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box.aligned_unit_cell.matrix))), label=:none)
     xmin = minimum(el[1] for el in p) - 3 * box.cell_size[1]
     xmax = maximum(el[1] for el in p) + 3 * box.cell_size[1]
     ymin = minimum(el[2] for el in p) - 3 * box.cell_size[2]
@@ -303,7 +303,7 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {
     plt = Main.plot()
     Main.plot!(plt, Tuple.(box_points), label=:none)
     Main.scatter!(plt, Tuple.(p), label=:none, markeralpha=0.3)
-    Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box))), label=:none, markeralpha=0.3)
+    Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box.aligned_unit_cell.matrix))), label=:none, markeralpha=0.3)
     lims = Vector{Float64}[]
     for i in 1:3
         push!(lims, [-2 * box.cell_size[i], box.nc[i] + 2 * box.cell_size[i]])

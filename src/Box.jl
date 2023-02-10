@@ -580,7 +580,6 @@ function out_of_computing_box(x::SVector{N}, box::Box) where {N}
     end
     return false
 end
-out_of_computing_box(p::ParticleWithIndex, box::Box) = out_of_computing_box(p.coordinates, box)
 
 """
     replicate_particle!(ip,p::SVector{N},box,cl) where N

@@ -57,7 +57,7 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
 """
-@inline function wrap_cell_fraction(x, unit_cell_matrix)
+@inline function wrap_cell_fraction(x::AbstractVector, unit_cell_matrix::AbstractMatrix)
     # Division by `oneunit` is to support Unitful quantities. 
     # this workaround works here because the units cancel.
     # see: https://github.com/PainterQubits/Unitful.jl/issues/46
