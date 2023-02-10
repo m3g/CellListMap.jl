@@ -378,56 +378,57 @@ function align_cell!(m::AbstractMatrix)
     else
         throw(ArgumentError("align_cell! only supports square matrices in 2 or 3 dimensions."))
     end
-    return m, R, axis_on_x 
+    return m, R, axis_on_x
 end
 
 function _align_cell2D!(m::AbstractMatrix{T}) where {T}
+    m = m ./ oneunit(T)
     x, y = 1, 2
-    axis_on_x = 1
     a = @view(m[:, 1])
     b = @view(m[:, 2])
-    if norm_sqr(a) < norm_sqr(b)
-        axis_on_x = 2
+    if norm(b) > norm(a)
         a = b
     end
     # cell is already properly rotated
-    if a[y] ≈ 0
+    if a[y] ≈ zero(T)
         R = one(m)
     else
         # rotate first axis to be parallel to x (clockwise)
         sinθ = -norm(a) / (a[x]^2 / a[y] + a[y])
         cosθ = -a[x] * sinθ / a[y]
-        R = @SMatrix[cosθ -sinθ
-            sinθ cosθ]
+        #! format: off
+        R = @SMatrix[cosθ -sinθ 
+                     sinθ  cosθ]
+        #! format: on
         m = R * m
     end
-    return typeof(m)(m), typeof(m)(R), axis_on_x
+    return oneunit(T) .* m, R
 end
 
 function _align_cell3D!(m::AbstractMatrix{T}) where {T}
+    m = m ./ oneunit(T)
     x, y, z = 1, 2, 3
     # Choose a and b to be the largest lattice vectors, in order
     n = SVector{3}(norm_sqr(v) for v in eachcol(m))
     combinations = ((1, 2, 3), (1, 3, 2), (2, 1, 3), (2, 3, 1), (3, 1, 2), (3, 2, 1))
-    local a, b, c, axis_on_x
+    local a, b, c
     for (i, j, k) in combinations
         if n[i] >= n[j] >= n[k]
             a, b, c = (@view(m[:, i]), @view(m[:, j]), @view(m[:, k]))
-            axis_on_x = i
             break
         end
     end
 
     # Find rotation that aligns a with x
     a1 = normalize(a)
-    v = SVector(zero(T), a1[z], -a1[y]) # a1 × i 
-    if norm_sqr(v) ≈ 0
-        R1 = one(m)
+    v = SVector(0, a1[z], -a1[y]) # a1 × i 
+    if norm_sqr(v) ≈ zero(T)
+        R1 = m
     else
         #! format: off
-        vₛ = @SMatrix[     0  -v[z]    v[y]
-                        v[z]      0   -v[x]
-                       -v[y]   v[x]       0  ]
+        vₛ = @SMatrix[    0     -v[z]      v[y]
+                        v[z]       0      -v[x]
+                       -v[y]     v[x]        0  ]
         #! format: on
         R1 = one(m) + vₛ + vₛ^2 * inv(1 + a1[x])
     end
@@ -442,13 +443,13 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
         sinθ = -z * b / (y^2 + z^2)
         cosθ = sqrt(1 - sinθ^2)
         #! format: off
-        R2 = @SMatrix[ 1    0     0
-                       0 cosθ -sinθ
-                       0 sinθ  cosθ ]
+        R2 = @SMatrix[    1         0            0 
+                          0        cosθ        -sinθ
+                          0        sinθ         cosθ ]
         #! format: on
     end
     m = R2 * m
-    return m, typeof(m)(R1 * R2), axis_on_x
+    return oneunit(T) .* m, R1 * R2
 end
 
 @testitem "align_cell" begin
@@ -521,16 +522,16 @@ function cell_vertices(m::AbstractMatrix)
     end
 end
 
-@views function _cell_vertices2D(m::AbstractMatrix)
-    S = SVector{2,Float64}
-    x = SVector{4,S}(S(0.0, 0.0), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
+@views function _cell_vertices2D(m::AbstractMatrix{T}) where {T}
+    S = SVector{2,T}
+    x = SVector{4,S}(S(zero(T), zero(T)), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
     return x
 end
 
-@views function _cell_vertices3D(m::AbstractMatrix)
-    S = SVector{3,Float64}
+@views function _cell_vertices3D(m::AbstractMatrix{T}) where {T}
+    S = SVector{3,T}
     x = SVector{8,S}(
-        S(0.0, 0.0, 0.0),
+        S(zero(T), zero(T), zero(T)),
         S(m[:, 1]),
         S(m[:, 1]) + S(m[:, 2]),
         S(m[:, 2]),
