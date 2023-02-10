@@ -31,6 +31,19 @@ standard arrays. Thus we define our own `norm(x) = norm_sqr(x)`.
 @inline norm(v) = sqrt(norm_sqr(v))
 
 """
+    normalize(v::AbstractVector{T}) where T
+
+$(INTERNAL)
+
+# Extended help
+
+`norm_sqr` from LinearAlgebra is not documented and is slower than this for
+standard arrays. Thus we define our own `normalize(v)`
+
+"""
+@inline normalize(v) = v * inv(norm(v))
+
+"""
     dot(x::AbstractVector{T1},y::AbstractVector{T2}) where {T1,T2} 
 
 $(INTERNAL)
