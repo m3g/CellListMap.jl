@@ -160,8 +160,7 @@ function check_random_cells(
                 continue
             end
         catch
-            @show unit_cell_matrix, cutoff
-            return false
+            return false, unit_cell_matrix, cutoff
         end
         box = try
             if UnitCellType == OrthorhombicCell
@@ -170,7 +169,7 @@ function check_random_cells(
                 box = Box(unit_cell_matrix, cutoff, lcell=lcell)
             end
         catch
-            return UnitCelType, unit_cell_matrix, cutoff, lcell
+            return false, UnitCelType, (unit_cell_matrix, cutoff, lcell)
         end
         if prod(box.nc) > 100000
             continue
@@ -184,7 +183,7 @@ function check_random_cells(
             cl = CellList(x, box, parallel=parallel)
             test_map(box, cl, parallel=parallel)
         catch
-            return x, box
+            return false, x, box
         end
         if test ≈ 0
             continue
@@ -228,14 +227,14 @@ function test_random_cells()
             return test
         end
     end
-    return nothing
+    return nothing, nothing, nothing
 end
 
 @testitem "random cells" begin
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    @test test_random_cells() == (nothing, nothing) 
+    @test CellListMap.test_random_cells() == (nothing, nothing, nothing) 
 end
 
 function drawbox(box::Box{UnitCellType,2}) where {UnitCellType}
