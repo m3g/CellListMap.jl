@@ -223,7 +223,7 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
     if UnitCellType <: OrthorhombicCellType
         cell_size = (xmax .- xmin) ./ _nc
     else
-        cell_size .= cutoff/lcell
+        cell_size = SVector{N,T}(ntuple(i -> cutoff/lcell, N))
     end
     nc = _nc .+ 2*lcell
     computing_box = (xmin .- lcell * cell_size, xmax .+ lcell * cell_size)
