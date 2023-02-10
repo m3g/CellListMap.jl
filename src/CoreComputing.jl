@@ -232,7 +232,7 @@ function inner_loop!(
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
             end
         end
     end
@@ -279,7 +279,7 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
             end
         end
     end
@@ -349,7 +349,7 @@ function inner_loop!(
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(xpᵢ, xpⱼ, i, pⱼ.index, d2, output)
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
             end
         end
     end
