@@ -1,4 +1,4 @@
-testitem "compare_with_namd.jl" begin
+@testitem "compare_with_namd.jl" begin
 
     using Test
     import Chemfiles
