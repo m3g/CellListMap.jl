@@ -424,7 +424,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
 
     # Find rotation that aligns a with x
     a1 = normalize(a)
-    v = SVector(zero(T), a1[z], -a1[y]) # a1 × i 
+    v = SVector(0, a1[z], -a1[y]) # a1 × i 
     if norm_sqr(v) ≈ 0
         R1 = one(m)
     else
