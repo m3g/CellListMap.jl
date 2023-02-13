@@ -226,7 +226,7 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
         _nc = ceil.(Int,(xmax .- xmin) / (cutoff/lcell))
         cell_size = SVector{N,T}(ntuple(i -> cutoff/lcell, N))
     end
-    nc = _nc .+ 2*lcell
+    nc = _nc .+ 2*lcell .+ 1
     computing_box = (xmin .- lcell * cell_size, xmax .+ lcell * cell_size)
 
     # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
@@ -530,10 +530,8 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
 @inline function particle_cell(x::SVector{N}, box::Box) where {N}
     CartesianIndex(
         ntuple(N) do i
-            xmin = box.computing_box[1][i]
-            xmax = box.computing_box[2][i]
-            xi = fix_upper_boundary(x[i], xmin, xmax)
-            xi = (xi - xmin) / box.cell_size[i]
+            xmin = box.computing_box[1][i] 
+            xi = (x[i] - xmin) / box.cell_size[i]
             index = floor(Int, xi) + 1
             return index
         end
