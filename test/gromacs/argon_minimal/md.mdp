@@ -1,0 +1,61 @@
+; RUN CONTROL PARAMETERS
+integrator               = md
+; Start time and timestep in ps
+tinit                    = 0
+dt                       = 0.002
+nsteps                   = 0
+
+; OUTPUT CONTROL OPTIONS
+; Output frequency for coords (x), velocities (v) and forces (f)
+nstxout                  = 1
+nstvout                  = 1
+nstfout                  = 0
+; Output frequency for energies to log file and energy file
+nstlog                   = 1
+nstcalcenergy            = 1
+nstenergy                = 1
+; Output frequency and precision for xtc file
+nstxout-compressed       = 1
+compressed-x-precision   = 1000
+; This selects the subset of atoms for the xtc file. You can
+; select multiple groups. By default all atoms will be written.
+xtc-grps                 = 
+; Selection of energy groups
+energygrps               = System
+
+; long-range cut-off for switched potentials
+cutoff-scheme            = Verlet
+
+; NEIGHBORSEARCHING PARAMETERS
+; nblist update frequency
+nstlist                  = 1
+; Periodic boundary conditions: xyz (default), no (vacuum)
+; or full (infinite systems only)
+pbc                      = xyz
+; nblist cut-off        
+rlist                    = 0.8
+
+; Method for doing electrostatics
+coulombtype              = Cut-off
+rcoulomb-switch          = 0
+rcoulomb                 = 0.8
+
+; Dielectric constant (DC) for cut-off or DC of reaction field
+epsilon-r                = 1
+; Method for doing Van der Waals
+vdw-type                 = Cut-off
+; cut-off lengths       
+;rvdw-switch              = 0
+rvdw                     = 0.8
+vdw-modifier             = None
+; Apply long range dispersion corrections for Energy and Pressure
+DispCorr                 = no
+
+
+; GENERATE VELOCITIES FOR STARTUP RUN
+gen_vel                  = no
+gen_temp                 = 100.0
+gen_seed                 = 173529
+
+continuation      = yes
+

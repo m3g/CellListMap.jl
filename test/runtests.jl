@@ -435,6 +435,7 @@ end
 end
 
 include("$(@__DIR__)/namd/compare_with_namd.jl")
+include("$(@__DIR__)/gromacs/compare_with_gromacs.jl")
 include("$(@__DIR__)/BasicForPeriodicSystems.jl")
 include("$(@__DIR__)/namd/PeriodicSystems_vs_NAMD.jl")
 
