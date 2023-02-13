@@ -624,7 +624,7 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
     check = true
 
     if size(unit_cell_matrix) != (3, 3)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (3,3).")
+        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (3,3).")
         check = false
     end
 
@@ -654,7 +654,7 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
     check = true
 
     if size(unit_cell_matrix) != (2, 2)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (2,2).")
+        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (2,2).")
         check = false
     end
 
