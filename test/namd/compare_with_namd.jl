@@ -39,7 +39,7 @@
     # not even VMD wraps the coordinates of this box correctly, so I'm unsure if we can
     # do somethign about that. Maybe we cannot really support trajectory analysis of 
     # triclinic cells if the simulation was saved in DCD format. 
-    function convert_DCD_unitcell(a,b,c,α,β,γ)
+    function convert_DCD_unitcell(a, b, c, α, β, γ)
         cosBC = cosd(α)
         cosAC = cosd(β)
         cosAB = cosd(γ)
@@ -49,7 +49,7 @@
         By = b * sinAB
         # If sinAB is zero, then we can't determine C uniquely since it's defined
         # in terms of the angle between A and B.
-        if sinAB > 0 
+        if sinAB > 0
             Cx = cosAC
             Cy = (cosBC - cosAC * cosAB) / sinAB
             Cz = sqrt(1.0 - Cx^2 - Cy^2)
@@ -61,7 +61,7 @@
         A = SVector(Ax, 0.0, 0.0)
         B = SVector(Bx, By, 0.0)
         C = SVector(Cx, Cy, Cz) * c
-        return [ A B C ]
+        return [A B C]
     end
 
     dir = @__DIR__
@@ -80,21 +80,26 @@
 
     # Orthorhombic but rotated
 
+    #! format: off
     unit_cell = [50.0 0.0 50.0
-        50.0 50.0 0.0
-        0.0 50.0 50.0]
+                 50.0 50.0 0.0
+                 0.0 50.0 50.0]
+    #! format: on
     correct = 1724.3195067566828
     @test test_newcl("$dir/o3.dcd", unit_cell, correct, lcell)
-
-    unit_cell = transpose([70.7107 0.0 0.0
-        35.3553 61.2372 0.0
-        35.3553 20.4124 57.735])
+    #! format: off
+    unit_cell = transpose([70.7107     0.0    0.0
+                           35.3553 61.2372    0.0
+                           35.3553 20.4124 57.735])
+    #! format: on
     correct = 1754.0802503953591
     @test test_newcl("$dir/o4.dcd", unit_cell, correct, lcell)
 
-    unit_cell = transpose([70.7107 0.0 0.0
-        35.3553 61.2372 0.0
-        35.3553 20.4124 57.735])
+    #! format off
+    unit_cell = transpose([70.7107    0.0  0.0
+                           35.3553 61.2372 0.0
+                           35.3553 20.4124 57.735])
+    #! format on
     correct = 1765.1389457850137
     @test test_newcl("$dir/o5.dcd", unit_cell, correct, lcell)
 
@@ -104,15 +109,19 @@
 
     # Some triclinic cells
 
-    unit_cell = [80.0 0.0 30.0
-        30.0 80.0 0.0
-        0.0 40.0 80.0]
+    #! format: off
+    unit_cell = [80.0  0.0 30.0
+                 30.0 80.0  0.0
+                  0.0 40.0 80.0]
+    #! format: on
     correct = -116.53213607052128
     @test test_newcl("$dir/t1.dcd", unit_cell, correct, lcell)
 
-    unit_cell = [50.0 0.0 0.0
-        50.0 50.0 0.0
-        0.0 50.0 50.0]
+    #! format: off
+    unit_cell = [50.0  0.0  0.0
+                 50.0 50.0  0.0
+                  0.0 50.0 50.0]
+    #! format: on
     correct = 32096.48839031735
     @test test_newcl("$dir/t2.dcd", unit_cell, correct, lcell)
 
@@ -121,9 +130,11 @@
     #
 
     coordinates = getcoor("$dir/o1.dcd")
-    unit_cell = [50.0 0.0 0.0
-        0.0 50.0 0.0
-        0.0 0.0 50.0]
+    #! format: off
+    unit_cell = [50.0  0.0  0.0
+                  0.0 50.0  0.0
+                  0.0  0.0 50.0]
+    #! format: on
     correct = 32230.01699504111
     box = Box(unit_cell, 10.0, lcell=lcell)
     cl = CellList(coordinates, box)
@@ -141,9 +152,11 @@
     # Test preallocated AuxThreaded struct
     aux = CellListMap.AuxThreaded(cl)
     coordinates = getcoor("$dir/t1.dcd")
-    unit_cell = [80.0 0.0 30.0
-        30.0 80.0 0.0
-        0.0 40.0 80.0]
+    #! format: off
+    unit_cell = [80.0  0.0 30.0
+                 30.0 80.0  0.0
+                  0.0 40.0 80.0]
+    #! format: on
     correct = -116.53213607052128
     box = Box(unit_cell, 10.0, lcell=lcell)
     cl = UpdateCellList!(coordinates, box, cl, aux)
@@ -172,15 +185,19 @@
     correct = 1724.3195067566828
     @test test_newcl("$dir/o3.dcd", unit_cell, correct, lcell)
 
-    unit_cell = transpose([70.7107 0.0 0.0
-        35.3553 61.2372 0.0
-        35.3553 20.4124 57.735])
+    #! format: off
+    unit_cell = transpose([70.7107     0.0    0.0
+                           35.3553 61.2372    0.0
+                           35.3553 20.4124 57.735])
+    #! format: on
     correct = 1754.0802503953591
     @test test_newcl("$dir/o4.dcd", unit_cell, correct, lcell)
 
-    unit_cell = transpose([70.7107 0.0 0.0
-        35.3553 61.2372 0.0
-        35.3553 20.4124 57.735])
+    #! format: off
+    unit_cell = transpose([70.7107     0.0    0.0
+                           35.3553 61.2372    0.0
+                           35.3553 20.4124 57.735])
+    #! format: on
     correct = 1765.1389457850137
     @test test_newcl("$dir/o5.dcd", unit_cell, correct, lcell)
 
@@ -190,15 +207,19 @@
 
     # Some triclinic cells
 
-    unit_cell = [80.0 0.0 30.0
-        30.0 80.0 0.0
-        0.0 40.0 80.0]
+    #! format: off
+    unit_cell = [80.0  0.0 30.0
+                 30.0 80.0  0.0
+                  0.0 40.0 80.0]
+    #! format: on
     correct = -116.53213607052128
     @test test_newcl("$dir/t1.dcd", unit_cell, correct, lcell)
 
-    unit_cell = [50.0 0.0 0.0
-        50.0 50.0 0.0
-        0.0 50.0 50.0]
+    #! format: off
+    unit_cell = [50.0  0.0  0.0
+                 50.0 50.0  0.0
+                  0.0 50.0 50.0]
+    #! format: on
     correct = 32096.48839031735
     @test test_newcl("$dir/t2.dcd", unit_cell, correct, lcell)
 
@@ -207,9 +228,11 @@
     #
 
     coordinates = getcoor("$dir/o1.dcd")
-    unit_cell = [50.0 0.0 0.0
-        0.0 50.0 0.0
-        0.0 0.0 50.0]
+    #! format: off
+    unit_cell = [ 50.0  0.0  0.0
+                   0.0 50.0  0.0
+                   0.0  0.0 50.0 ]
+    #! format: on
     correct = 32230.01699504111
     box = Box(unit_cell, 10.0, lcell=lcell)
     cl = CellList(coordinates, box)
@@ -227,9 +250,11 @@
     # Test preallocated AuxThreaded struct
     aux = CellListMap.AuxThreaded(cl)
     coordinates = getcoor("$dir/t1.dcd")
-    unit_cell = [80.0 0.0 30.0
-        30.0 80.0 0.0
-        0.0 40.0 80.0]
+    #! format: off
+    unit_cell = [80.0  0.0 30.0
+                 30.0 80.0  0.0
+                  0.0 40.0 80.0]
+    #! format: on
     correct = -116.53213607052128
     box = Box(unit_cell, 10.0, lcell=lcell)
     cl = UpdateCellList!(coordinates, box, cl, aux)

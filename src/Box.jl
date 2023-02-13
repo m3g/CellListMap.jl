@@ -79,15 +79,17 @@ Total number of cells: 2448
 ```
 
 """
-Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M}
-    unit_cell::UnitCell{UnitCellType,N,T,M}
+Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M,TR}
+    input_unit_cell::UnitCell{UnitCellType,N,T,M}
+    aligned_unit_cell::UnitCell{UnitCellType,N,T,M}
+    rotation::SMatrix{N,N,TR,M}
+    inv_rotation::SMatrix{N,N,TR,M}
     lcell::Int
     nc::SVector{N,Int}
     cutoff::T
-    cutoff_sq::TSQ
-    ranges::SVector{N,UnitRange{Int}}
+    cutoff_sqr::TSQ
+    computing_box::Tuple{SVector{N,T},SVector{N,T}}
     cell_size::SVector{N,T}
-    unit_cell_max::SVector{N,T}
 end
 
 """
@@ -179,56 +181,77 @@ Box{TriclinicCell, 3, Float64, 9}
 ```
 
 """
-function Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
-    unit_cell_matrix, cutoff = _promote_types(unit_cell_matrix, cutoff)
-    T = eltype(unit_cell_matrix)
+function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
+    input_unit_cell_matrix, cutoff = _promote_types(input_unit_cell_matrix, cutoff)
+    T = eltype(input_unit_cell_matrix)
 
-    s = size(unit_cell_matrix)
-    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1] * s[2]}(unit_cell_matrix)
+    s = size(input_unit_cell_matrix)
+    input_unit_cell_matrix = SMatrix{s[1],s[2],T,s[1] * s[2]}(input_unit_cell_matrix)
 
     lcell >= 1 || throw(ArgumentError("lcell must be greater or equal to 1"))
-    N = size(unit_cell_matrix)[1]
-    N == size(unit_cell_matrix)[2] || throw(ArgumentError("Unit cell matrix must be square."))
-    check_unit_cell(unit_cell_matrix, cutoff) || throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
+    N = size(input_unit_cell_matrix)[1]
+    N == size(input_unit_cell_matrix)[2] || throw(ArgumentError("Unit cell matrix must be square."))
 
-    unit_cell = UnitCell{UnitCellType,N,T,N * N}(unit_cell_matrix)
-    unit_cell_max, nc, cell_size, ranges = _set_unitcell_ranges(unit_cell, lcell, cutoff)
+    input_unit_cell = UnitCell{UnitCellType,N,T,N * N}(input_unit_cell_matrix)
 
-    return Box{UnitCellType,N,T,typeof(cutoff^2),N * N}(unit_cell, lcell, nc, cutoff, cutoff^2, ranges, cell_size, unit_cell_max)
+    return _construct_box(input_unit_cell, lcell, cutoff)
 end
+
 Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int=1, UnitCellType=TriclinicCell) =
     Box(unit_cell_matrix, cutoff, lcell, UnitCellType)
 
 #
-# The following functions define some internal parameters required for the calculations. In particular,
-# the maximum lengths of the unit cell in each dimension, the number of cells, the cell size, and the
-# ranges of vicinal cells where it is necessary to create imaginary particles to cope with periodic
-# boundary conditions. 
+# This function construct the box once the concrete type of the unit cell was obtained.
+# This function is useful to perform non-allocating box updates.
 #
-function _set_unitcell_ranges(unitcell::UnitCell{TriclinicCell,N,T}, lcell, cutoff) where {N,T}
-    unit_cell_max = sum(unitcell.matrix[:, i] for i in 1:N)
-    cell_size = SVector{N,T}(ntuple(i -> cutoff / lcell, N))
-    nc = ceil.(Int, (unit_cell_max .+ 2 * cutoff) ./ cell_size)
-    ranges = SVector{N,UnitRange{Int}}(ntuple(i -> -1:1, N))
-    return unit_cell_max, nc, cell_size, ranges
-end
-# For Ortorhombic cells, the cell size must be a multiple of the cell size. In some pathological cases 
-# this may be bad for performance, because we are increasing the effective cell cutoff.
-function _set_unitcell_ranges(unitcell::UnitCell{<:OrthorhombicCellType,N,T}, lcell, cutoff) where {N,T}
-    unit_cell_max = sum(unitcell.matrix[:, i] for i in 1:N)
-    nc = floor.(Int, lcell * unit_cell_max / cutoff)
-    cell_size = unit_cell_max ./ nc
-    nc = nc .+ 2 * lcell
-    ranges = SVector{N,UnitRange{Int}}(ntuple(i -> -1:1, N))
-    return unit_cell_max, nc, cell_size, ranges
+function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cutoff) where {UnitCellType,N,T}
+
+    aligned_unit_cell_matrix, rotation = align_cell(input_unit_cell.matrix)
+    check_unit_cell(aligned_unit_cell_matrix, cutoff) || throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
+
+    aligned_unit_cell = UnitCell{UnitCellType,N,T,N * N}(aligned_unit_cell_matrix)
+
+    # The computing limits are the minimum and maximum coordinates where all particles must be found,
+    # including images away from the primitive cell but within the cutoff
+    xmin, xmax = cell_limits(aligned_unit_cell.matrix)
+
+    # Number of computing cells: for Orthorhombic cells we adjust the cell size such that
+    # the system has dimensions multiple of cell_size, such that we can use the forward-cell
+    # method of running over computing cells without complications associated to boundaries
+    # having fractional cells.
+    if UnitCellType <: OrthorhombicCellType
+        _nc = floor.(Int,(xmax .- xmin) / (cutoff/lcell))
+        cell_size = (xmax .- xmin) ./ _nc
+    else
+        _nc = ceil.(Int,(xmax .- xmin) / (cutoff/lcell))
+        cell_size = SVector{N,T}(ntuple(i -> cutoff/lcell, N))
+    end
+    nc = _nc .+ 2*lcell .+ 1
+    computing_box = (xmin .- lcell * cell_size, xmax .+ lcell * cell_size)
+
+    # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
+    cutoff_sqr = cutoff^2
+
+    return Box{UnitCellType,N,T,typeof(cutoff_sqr),N * N, eltype(rotation)}(
+        input_unit_cell = input_unit_cell,
+        aligned_unit_cell = aligned_unit_cell,
+        rotation = rotation,
+        inv_rotation = inv(rotation),
+        lcell = lcell,
+        nc = nc,
+        cutoff = cutoff,
+        cutoff_sqr = cutoff_sqr,
+        computing_box = computing_box,
+        cell_size = cell_size
+    )
 end
 
 function Base.show(io::IO, ::MIME"text/plain", box::Box{UnitCellType,N}) where {UnitCellType,N}
     _println(io, "Box{$UnitCellType, $N}")
     _print(io, "  unit cell matrix = [ ")
-    print(io, join(_uround.(box.unit_cell.matrix[1:N, 1]), ", "))
+    print(io, join(_uround.(box.input_unit_cell.matrix[1:N, 1]), " "))
     for i in 2:N
-        print(io, "; ", join(_uround.(box.unit_cell.matrix[1:N, i]), ", "))
+        print(io, "; ", join(_uround.(box.input_unit_cell.matrix[1:N, i]), " "))
     end
     println(io, " ]")
     _println(io, "  cutoff = ", box.cutoff)
@@ -369,7 +392,7 @@ function update_box(
     _lcell = isnothing(lcell) ? box.lcell : lcell
     _cutoff = isnothing(cutoff) ? box.cutoff : cutoff
     _unitcell = if isnothing(unitcell)
-        box.unit_cell
+        box.input_unit_cell
     elseif unitcell isa AbstractVector
         UnitCell{UnitCellType,N,T,M}(cell_matrix_from_sides(unitcell))
     elseif unitcell isa Tuple
@@ -380,10 +403,7 @@ function update_box(
         sides = SVector(max.(unitcell.limits .+ _cutoff, 2 * _cutoff))
         UnitCell{UnitCellType,N,T,M}(cell_matrix_from_sides(sides))
     end
-    unit_cell_max, nc, cell_size, ranges = _set_unitcell_ranges(_unitcell, _lcell, _cutoff)
-    return Box{UnitCellType,N,T,TSQ,M}(
-        _unitcell, _lcell, nc, _cutoff, _cutoff^2, ranges, cell_size, unit_cell_max
-    )
+    return _construct_box(_unitcell, _lcell, _cutoff)
 end
 
 @testitem "Stable Box update" begin
@@ -398,7 +418,7 @@ end
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test new_box.unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
+    @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
     # update with SVector
     box = Box([1, 1, 1], 0.1)
@@ -406,7 +426,7 @@ end
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test new_box.unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
+    @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
     # update with Limits
     x = rand(SVector{3,Float64}, 1000)
@@ -416,7 +436,7 @@ end
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=limits(new_x), cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test diag(new_box.unit_cell.matrix) == limits(new_x).limits .+ 0.2
+    @test diag(new_box.input_unit_cell.matrix) == limits(new_x).limits .+ 0.2
 
     # Update with SMatrix
     box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
@@ -425,6 +445,231 @@ end
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=new_matrix, cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test new_box.unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
+    @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
 end
+
+"""
+    neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
+
+$(INTERNAL)
+
+# Extended help
+
+Function that returns the iterator of the cartesian indices of the cells that must be 
+evaluated (forward, i. e. to avoid repeated interactions) 
+if the cells have sides of length `box.cell_size`. `N` can be
+`2` or `3`, for two- or three-dimensional systems.
+
+"""
+function neighbor_cells_forward(box::Box{UnitCellType,3}) where {UnitCellType}
+    @unpack lcell = box
+    nb = Iterators.flatten((
+        CartesianIndices((1:lcell, -lcell:lcell, -lcell:lcell)),
+        CartesianIndices((0:0, 1:lcell, -lcell:lcell)),
+        CartesianIndices((0:0, 0:0, 1:lcell))
+    ))
+    return nb
+end
+
+function neighbor_cells_forward(box::Box{UnitCellType,2}) where {UnitCellType}
+    @unpack lcell = box
+    nb = Iterators.flatten((
+        CartesianIndices((1:lcell, -lcell:lcell)),
+        CartesianIndices((0:0, 1:lcell))
+    ))
+    return nb
+end
+
+"""
+    neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+
+$(INTERNAL)
+
+# Extended help
+
+Function that returns the iterator of the cartesian indices of all neighboring
+cells of a cell where the computing cell index is `box.lcell`.
+
+"""
+function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+    @unpack lcell = box
+    return Iterators.filter(
+        !isequal(CartesianIndex(ntuple(i -> 0, N))),
+        CartesianIndices(ntuple(i -> -lcell:lcell, N))
+    )
+end
+
+"""
+    current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+
+$(INTERNAL)
+
+# Extended help
+
+Returns an iterator over all neighbor cells, including the center one.
+
+"""
+function current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
+    @unpack lcell = box
+    return CartesianIndices(ntuple(i -> -lcell:lcell, N))
+end
+
+"""
+    particle_cell(x::SVector{N,T}, box::Box) where {N,T}
+
+$(INTERNAL)
+
+# Extended help
+
+Returns the coordinates of the *computing cell* to which a particle belongs, given its coordinates
+and the `cell_size` vector. The computing box is always Orthorhombic, and the first
+computing box with positive coordinates has indexes `Box.lcell + 1`.
+
+"""
+@inline function particle_cell(x::SVector{N}, box::Box) where {N}
+    CartesianIndex(
+        ntuple(N) do i
+            xmin = box.computing_box[1][i] 
+            xi = (x[i] - xmin) / box.cell_size[i]
+            index = floor(Int, xi) + 1
+            return index
+        end
+    )
+end
+
+"""
+    cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
+
+$(INTERNAL)
+
+# Extended help
+
+Computes the geometric center of a computing cell, to be used in the projection
+of points. Returns a `SVector{N,T}`
+
+"""
+@inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
+    SVector{N,T}(
+        ntuple(N) do i
+            xmin = box.computing_box[1][i]
+            ci = xmin + box.cell_size[i] * c[i] - box.cell_size[i] / 2
+            return ci
+        end
+    )
+end
+
+"""
+    in_computing_box(x::SVector{N},box::Box) where N
+
+$(INTERNAL)
+
+# Extended help
+
+Function that evaluates if a particle is inside the computing bounding box,
+defined by the maximum and minimum unit aligned cell coordinates.
+
+"""
+function in_computing_box(x::SVector{N}, box::Box) where {N}
+    min = box.computing_box[1]
+    max = box.computing_box[2]
+    inbox = true
+    for i in 1:N
+        if !(min[i] <= x[i] < max[i])
+            inbox = false
+        end
+    end
+    return inbox
+end
+
+"""
+    replicate_particle!(ip,p::SVector{N},box,cl) where N
+
+$(INTERNAL)
+
+# Extended help
+
+Replicates the particle as many times as necessary to fill the computing box.
+
+"""
+function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
+    itr = Iterators.product(ntuple(i -> -1:1, N)...)
+    for indices in itr
+        (count(isequal(0), indices ) == N) && continue
+        x = translation_image(p, box.aligned_unit_cell.matrix, indices)
+        if in_computing_box(x, box)
+            cl = add_particle_to_celllist!(ip, x, box, cl; real_particle=false)
+        end
+    end
+    return cl
+end
+
+"""
+    check_unit_cell(box::Box)
+
+$(INTERNAL)
+
+# Extended help
+
+Checks if the unit cell satisfies the conditions for using the minimum-image
+convention. 
+
+"""
+check_unit_cell(box::Box) = check_unit_cell(box.aligned_unit_cell.matrix, box.cutoff)
+
+function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
+    a = @view(unit_cell_matrix[:, 1])
+    b = @view(unit_cell_matrix[:, 2])
+    c = @view(unit_cell_matrix[:, 3])
+    check = true
+
+    if size(unit_cell_matrix) != (3, 3)
+        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (3,3).")
+        check = false
+    end
+
+    bc = cross(b, c)
+    bc = bc / norm(bc)
+    aproj = dot(a, bc)
+
+    ab = cross(a, b)
+    ab = ab / norm(ab)
+    cproj = dot(c, ab)
+
+    ca = cross(c, a)
+    ca = ca / norm(ca)
+    bproj = dot(b, ca)
+
+    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff) || (cproj <= 2 * cutoff)
+        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        check = false
+    end
+
+    return check
+end
+
+function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
+    a = @view(unit_cell_matrix[:, 1])
+    b = @view(unit_cell_matrix[:, 2])
+    check = true
+
+    if size(unit_cell_matrix) != (2, 2)
+        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (2,2).")
+        check = false
+    end
+
+    i = a / norm(a)
+    bproj = sqrt(norm_sqr(b) - dot(b, i)^2)
+
+    j = b / norm(b)
+    aproj = sqrt(norm_sqr(a) - dot(a, j)^2)
+
+    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
+        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        check = false
+    end
+
+    return check
+end
+
+

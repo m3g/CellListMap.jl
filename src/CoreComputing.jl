@@ -219,7 +219,7 @@ function inner_loop!(
     output,
     ibatch
 ) where {F<:Function,N,T}
-    @unpack cutoff_sq = box
+    @unpack cutoff_sqr, inv_rotation, nc = box
 
     # loop over list of non-repeated particles of cell ic
     for i in 1:cellᵢ.n_particles-1
@@ -231,14 +231,14 @@ function inner_loop!(
             skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sq
-                output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
             end
         end
     end
 
     for jcell in _neighbor_cells(box)
-        jc_linear = cell_linear_index(box.nc, cellᵢ.cartesian_index + jcell)
+        jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
             output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
@@ -249,7 +249,7 @@ function inner_loop!(
 end
 
 function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {N,T}
-    @unpack cutoff, cutoff_sq, nc = box
+    @unpack cutoff, cutoff_sqr, inv_rotation = box
 
     # project particles in vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center
@@ -278,8 +278,8 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
             skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sq
-                output = f(xpᵢ, xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
             end
         end
     end
@@ -332,8 +332,8 @@ function inner_loop!(
     f, output, i, box,
     cl::CellListPair{N,T}
 ) where {N,T}
-    @unpack nc, cutoff_sq = box
-    xpᵢ = wrap_to_first(cl.ref[i], box)
+    @unpack nc, cutoff_sqr, inv_rotation, rotation = box
+    xpᵢ = box.rotation * wrap_to_first(cl.ref[i], box.input_unit_cell.matrix)
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)
         jc_cartesian = neighbor_cell + ic
@@ -348,8 +348,8 @@ function inner_loop!(
             @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sq
-                output = f(xpᵢ, xpⱼ, i, pⱼ.index, d2, output)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
             end
         end
     end

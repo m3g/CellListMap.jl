@@ -753,9 +753,9 @@ function UpdateCellList!(
 ) where {N,T}
 
     # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
-    if length(x) > 0 && (length(x[begin]) != size(box.unit_cell.matrix, 1))
+    if length(x) > 0 && (length(x[begin]) != size(box.input_unit_cell.matrix, 1))
         n1 = length(x[begin])
-        n2 = size(box.unit_cell.matrix, 1)
+        n2 = size(box.input_unit_cell.matrix, 1)
         throw(DimensionMismatch("Positions have dimension $n1, but the unit cell has dimension $n2."))
     end
 
@@ -840,12 +840,15 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
         xp = x[ip]
         # This converts the coordinates to static arrays, if necessary
         p = SVector{N,T}(ntuple(i -> xp[i], N))
-        p = wrap_to_first(p, box)
+        p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
         cl = add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
         cl = replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
     end
     return cl
 end
+
+# define method for the ParticleWithIndex type
+out_of_computing_box(p::ParticleWithIndex, box::Box) = out_of_computing_box(p.coordinates, box)
 
 """
     copydata!(cell1::Cell,cell2::Cell)

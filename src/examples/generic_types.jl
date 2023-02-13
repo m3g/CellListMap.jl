@@ -53,7 +53,7 @@ function sumsq_measurements(x_input,sides,cutoff;parallel=false)
     # with uncertainties.  
     function sum_sqr_pair(i,j,s,x_input,box)
         xi = x_input[i]
-        xj = CellListMap.wrap_relative_to(x_input[j],xi,box)
+        xj = CellListMap.wrap_relative_to(x_input[j],xi,box.input_unit_cell.matrix)
         s += norm_sqr(xi - xj)
         return s
     end

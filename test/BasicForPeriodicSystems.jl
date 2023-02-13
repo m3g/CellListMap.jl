@@ -259,7 +259,7 @@ end
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
-    update_unitcell!(system, [new_box.unit_cell.matrix[i, i] for i in 1:3])
+    update_unitcell!(system, [new_box.input_unit_cell.matrix[i, i] for i in 1:3])
     update_cutoff!(system, new_box.cutoff)
     system.parallel = false
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val

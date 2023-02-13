@@ -1,28 +1,4 @@
 """
-    fix_upper_boundary(x::T,side) where T
-
-$(INTERNAL)
-
-# Extended help
-
-Move `x` to `x -side` if `x == side`, because we use the convention
-that the upper boundary belongs to current cell.
-
-"""
-@inline fix_upper_boundary(x::T, side) where {T} = ifelse(x == side, zero(T), x)
-
-"""
-    fix_upper_boundary(x,xmin,xmax)
-
-$(INTERNAL)
-
-# Extended help
-
-If `x == xmax` move `x` to `xmin` such that the coordinate belongs to the minimum frontier, as we conventionated here.
-"""
-@inline fix_upper_boundary(x, xmin, xmax) = ifelse(x == xmax, xmin, x)
-
-"""
     fastmod1(x)
 
 $(INTERNAL)
@@ -58,15 +34,13 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
 """
-@inline function wrap_cell_fraction(x, unit_cell_matrix)
+@inline function wrap_cell_fraction(x::AbstractVector, unit_cell_matrix::AbstractMatrix)
     # Division by `oneunit` is to support Unitful quantities. 
     # this workaround works here because the units cancel.
     # see: https://github.com/PainterQubits/Unitful.jl/issues/46
     x_stripped = x ./ oneunit(eltype(x))
     m_stripped = unit_cell_matrix ./ oneunit(eltype(x))
-    #p = mod.(m_stripped\x_stripped,1)
     p = fastmod1.(m_stripped \ x_stripped)
-    p = fix_upper_boundary.(p, 1)
     return p
 end
 
@@ -101,42 +75,7 @@ julia> wrap_to_first(x,unit_cell_matrix)
 end
 
 """
-    wrap_to_first(x,box::Box)
-
-$(INTERNAL)
-
-# Extended help
-
-Wraps the coordinates of point `x` such that the returning coordinates are in the
-first unit cell with all-positive coordinates, given the `Box` structure.
-
-"""
-@inline wrap_to_first(x, box::Box) = wrap_to_first(x, box.unit_cell.matrix)
-
-"""
-    wrap_to_first(x,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-
-$(INTERNAL)
-
-# Extended help
-
-Wraps the coordinates of point `x` such that the returning coordinates are in the
-first unit cell with all-positive coordinates, given an Orthorhombic cell. 
-This is slightly cheaper than for general cells.  
-
-"""
-@inline function wrap_to_first(x, box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-    sides = SVector{N,T}(ntuple(i -> box.unit_cell.matrix[i, i], N))
-    x = mod.(x, sides)
-    x = fix_upper_boundary.(x, sides)
-    return x
-end
-
-"""
-
-```
-wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-```
+    wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
 
 $(INTERNAL)
 
@@ -146,40 +85,12 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 
 """
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-    x_f = wrap_cell_fraction(x, unit_cell_matrix)
-    xref_f = wrap_cell_fraction(xref, unit_cell_matrix)
-    xw = wrap_relative_to(x_f, xref_f, SVector{N,T}(ntuple(i -> 1, N)))
-    return unit_cell_matrix * (xw - xref_f) + xref
-end
-
-"""
-    wrap_relative_to(x,xref,box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-
-$(INTERNAL)
-
-# Extended help
-
-Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
-given a general `Box` structure.
-
-"""
-@inline wrap_relative_to(x, xref, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T} =
-    wrap_relative_to(x, xref, box.unit_cell.matrix)
-
-"""
-    wrap_relative_to(x,xref,box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-
-$(INTERNAL)
-
-# Extended help
-
-Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
-given an Orthorhombic cell. This is slightly cheaper than for general cells.
-
-"""
-@inline function wrap_relative_to(x, xref, box::Box{<:OrthorhombicCellType,N,T}) where {N,T}
-    sides = SVector{N,T}(ntuple(i -> box.unit_cell.matrix[i, i], N))
-    return wrap_relative_to(x, xref, sides)
+    invu = inv(oneunit(T))
+    unit_cell_matrix = invu * unit_cell_matrix
+    x_f = wrap_cell_fraction(invu*x, unit_cell_matrix)
+    xref_f = wrap_cell_fraction(invu*xref, unit_cell_matrix)
+    xw = wrap_relative_to(x_f, xref_f, SVector{N,eltype(x_f)}(ntuple(i -> 1, N)))
+    return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
 
 """
@@ -258,7 +169,11 @@ function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix
 end
 
 """
-    replicate_system!(x::AbstractVector,box::Box,ranges::Tuple)
+    replicate_system!(
+        x::AbstractVector{SVector{N,T}},
+        unit_cell_matrix::AbstractMatrix,
+        ranges::Tuple
+    ) where {N,T}
 
 $(INTERNAL)
 
@@ -305,9 +220,6 @@ function replicate_system!(
     return x
 end
 
-replicate_system!(x::AbstractVector, box::Box, ranges::Tuple) =
-    replicate_system!(x, box.unit_cell.matrix, ranges)
-
 function replicate_system!(x::AbstractMatrix{T}, cell, ranges) where {T}
     N = size(x, 1)
     x_re = [SVector{N,T}(ntuple(i -> x[i, j], N)) for j in axes(x, 2)]
@@ -316,117 +228,6 @@ function replicate_system!(x::AbstractMatrix{T}, cell, ranges) where {T}
     return x
 end
 
-"""
-    neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
-
-$(INTERNAL)
-
-# Extended help
-
-Function that returns the iterator of the cartesian indices of the cells that must be 
-evaluated (forward, i. e. to avoid repeated interactions) 
-if the cells have sides of length `box.cell_size`. `N` can be
-`2` or `3`, for two- or three-dimensional systems.
-
-"""
-function neighbor_cells_forward(box::Box{UnitCellType,3}) where {UnitCellType}
-    @unpack lcell = box
-    nb = Iterators.flatten((
-        CartesianIndices((1:lcell, -lcell:lcell, -lcell:lcell)),
-        CartesianIndices((0:0, 1:lcell, -lcell:lcell)),
-        CartesianIndices((0:0, 0:0, 1:lcell))
-    ))
-    return nb
-end
-
-function neighbor_cells_forward(box::Box{UnitCellType,2}) where {UnitCellType}
-    @unpack lcell = box
-    nb = Iterators.flatten((
-        CartesianIndices((1:lcell, -lcell:lcell)),
-        CartesianIndices((0:0, 1:lcell))
-    ))
-    return nb
-end
-
-"""
-    neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-
-$(INTERNAL)
-
-# Extended help
-
-Function that returns the iterator of the cartesian indices of all neighboring
-cells of a cell where the computing cell index is `box.lcell`.
-
-"""
-function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-    @unpack lcell = box
-    return Iterators.filter(
-        !isequal(CartesianIndex(ntuple(i -> 0, N))),
-        CartesianIndices(ntuple(i -> -lcell:lcell, N))
-    )
-end
-
-"""
-    current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-
-$(INTERNAL)
-
-# Extended help
-
-Returns an iterator over all neighbor cells, including the center one.
-
-"""
-function current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-    @unpack lcell = box
-    return CartesianIndices(ntuple(i -> -lcell:lcell, N))
-end
-
-"""
-    particle_cell(x::SVector{N,T}, box::Box) where {N,T}
-
-$(INTERNAL)
-
-# Extended help
-
-Returns the coordinates of the *computing cell* to which a particle belongs, given its coordinates
-and the `cell_size` vector. The computing box is always Orthorhombic, and the first
-computing box with positive coordinates has indexes `Box.lcell + 1`.
-
-"""
-@inline function particle_cell(x::SVector{N}, box::Box) where {N}
-    CartesianIndex(
-        ntuple(N) do i
-            xmin = -box.lcell * box.cell_size[i]
-            xmax = box.unit_cell_max[i] + box.lcell * box.cell_size[i]
-            xi = fix_upper_boundary(x[i], xmin, xmax)
-            xi = (xi - xmin) / box.cell_size[i]
-            index = floor(Int, xi) + 1
-            return index
-        end
-    )
-end
-
-"""
-    cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-
-$(INTERNAL)
-
-# Extended help
-
-Computes the geometric center of a computing cell, to be used in the projection
-of points. Returns a `SVector{N,T}`
-
-"""
-@inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-    SVector{N,T}(
-        ntuple(N) do i
-            xmin = -box.lcell * box.cell_size[i]
-            ci = xmin + box.cell_size[i] * c[i] - box.cell_size[i] / 2
-            return ci
-        end
-    )
-end
 
 """
     cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
@@ -455,134 +256,11 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 @inline cell_linear_index(nc::SVector{N,Int}, indices) where {N} =
     LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
 
-"""
-    out_of_bounding_box(x::SVector{N},box::Box) where N
-
-$(INTERNAL)
-
-# Extended help
-
-Function that evaluates if a particle is outside the computing bounding box,
-defined by the maximum and minimum unit cell coordinates. 
-
-"""
-function out_of_bounding_box(x::SVector{N}, box::Box) where {N}
-    @unpack cutoff, unit_cell_max = box
-    for i in 1:N
-        (x[i] < -cutoff) && return true
-        (x[i] >= unit_cell_max[i] + cutoff) && return true
-    end
-    return false
-end
-out_of_bounding_box(p::ParticleWithIndex, box::Box) =
-    out_of_bounding_box(p.coordinates, box)
-
-"""
-    replicate_particle!(ip,p::SVector{N},box,cl) where N
-
-$(INTERNAL)
-
-# Extended help
-
-Replicates the particle as many times as necessary to fill the computing box.
-
-"""
-function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
-    itr = Iterators.product(ntuple(i -> box.ranges[i], N)...)
-    for indexes in itr
-        (count(isequal(0), indexes) == N) && continue
-        x = translation_image(p, box.unit_cell.matrix, indexes)
-        if !out_of_bounding_box(x, box)
-            cl = add_particle_to_celllist!(ip, x, box, cl; real_particle=false)
-        end
-    end
-    return cl
-end
-
-"""
-    check_unit_cell(box::Box)
-
-$(INTERNAL)
-
-# Extended help
-
-Checks if the unit cell satisfies the conditions for using the minimum-image
-convention. 
-
-"""
-check_unit_cell(box::Box) = check_unit_cell(box.unit_cell.matrix, box.cutoff)
-
-function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
-    a = @view(unit_cell_matrix[:, 1])
-    b = @view(unit_cell_matrix[:, 2])
-    c = @view(unit_cell_matrix[:, 3])
-    check = true
-
-    if size(unit_cell_matrix) != (3, 3)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (3,3).")
-        check = false
-    end
-
-    if count(el -> el < zero(eltype(unit_cell_matrix)), unit_cell_matrix) != 0
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components be strictly positive.")
-        check = false
-    end
-
-    bc = cross(b, c)
-    bc = bc / norm(bc)
-    aproj = dot(a, bc)
-
-    ab = cross(a, b)
-    ab = ab / norm(ab)
-    cproj = dot(c, ab)
-
-    ca = cross(c, a)
-    ca = ca / norm(ca)
-    bproj = dot(b, ca)
-
-    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff) || (cproj <= 2 * cutoff)
-        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
-        check = false
-    end
-
-    return check
-end
-
-function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
-    a = @view(unit_cell_matrix[:, 1])
-    b = @view(unit_cell_matrix[:, 2])
-    check = true
-
-    if size(unit_cell_matrix) != (2, 2)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimenions (2,2).")
-        check = false
-    end
-
-    if count(el -> el < zero(eltype(unit_cell_matrix)), unit_cell_matrix) != 0
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix components must be strictly positive.")
-        check = false
-    end
-
-    i = a / norm(a)
-    bproj = sqrt(norm_sqr(b) - dot(b, i)^2)
-
-    j = b / norm(b)
-    aproj = sqrt(norm_sqr(a) - dot(a, j)^2)
-
-    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
-        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
-        check = false
-    end
-
-    return check
-end
-
 #
-# Compute the maximum and minimum coordinates of the vectors composing
-# the particle sets
+# Compute the maximum and minimum coordinates of the vectors composing the particle sets
 #
 function _minmax(x::AbstractVector{<:AbstractVector})
-    length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from coordinates without particles."))
+    length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from empty coordinates vector."))
     N = size(x[begin], 1)
     T = eltype(x[begin])
     xmin = fill(typemax(T), MVector{N,T})
@@ -648,6 +326,346 @@ function limits(x::T, y::T) where {T<:AbstractMatrix}
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
     return limits(x_re, y_re)
+end
+
+
+"""
+    align_cell(m::StaticMatrix)
+    align_cell!(m::AbstractMatrix)
+
+$(INTERNAL)
+
+# Extended help
+
+These functions rotate the unit cell matrix such that the largest lattice vector is oriented
+along the x-axis and, for 3D cells, also that the the plane formed by the largest and 
+second largest lattice vectors is oriented perpendicular to the z-axis. 
+
+"""
+function align_cell end
+align_cell(m::AbstractMatrix) = align_cell!(copy(m))
+align_cell(m::SMatrix{2}) = _align_cell2D!(m)
+align_cell(m::SMatrix{3}) = _align_cell3D!(m)
+
+function align_cell!(m::AbstractMatrix)
+    if size(m) == (2, 2)
+        m, R = _align_cell2D!(m)
+    elseif size(m) == (3, 3)
+        m, R = _align_cell3D!(m)
+    else
+        throw(ArgumentError("align_cell! only supports square matrices in 2 or 3 dimensions."))
+    end
+    return m, R
+end
+
+function _align_cell2D!(m::AbstractMatrix{T}) where {T}
+    m = m ./ oneunit(T)
+    x, y = 1, 2
+    a = @view(m[:, 1])
+    b = @view(m[:, 2])
+    if norm(b) > norm(a)
+        a = b
+    end
+    # cell is already properly rotated
+    if a[y] ≈ zero(T)
+        R = one(m)
+    else
+        # rotate first axis to be parallel to x (clockwise)
+        sinθ = -norm(a) / (a[x]^2 / a[y] + a[y])
+        cosθ = -a[x] * sinθ / a[y]
+        #! format: off
+        R = @SMatrix[cosθ -sinθ 
+                     sinθ  cosθ]
+        #! format: on
+        m = R * m
+    end
+    return oneunit(T) .* m, R
+end
+
+function _align_cell3D!(m::AbstractMatrix{T}) where {T}
+    m = inv(oneunit(T)) * m
+    x, y, z = 1, 2, 3
+    # Choose a and b to be the largest lattice vectors, in order
+    n = SVector{3}(norm_sqr(v) for v in eachcol(m))
+    combinations = ((1, 2, 3), (1, 3, 2), (2, 1, 3), (2, 3, 1), (3, 1, 2), (3, 2, 1))
+    local a, b, c, axis_on_x
+    for (i, j, k) in combinations
+        if n[i] >= n[j] >= n[k]
+            a, b, c = (@view(m[:, i]), @view(m[:, j]), @view(m[:, k]))
+            axis_on_x = i
+            break
+        end
+    end
+
+    # Find rotation that aligns a with x
+    a1 = normalize(a)
+    v = SVector(0, a1[z], -a1[y]) # a1 × i 
+    if norm_sqr(v) ≈ 0
+        R1 = one(m)
+    else
+        #! format: off
+        vₛ = @SMatrix[     0  -v[z]    v[y]
+                        v[z]      0   -v[x]
+                       -v[y]   v[x]       0  ]
+        #! format: on
+        R1 = one(m) + vₛ + vₛ^2 * inv(1 + a1[x])
+    end
+    m = R1 * m
+    # Find rotation along x-axis that makes b orthogonal to z
+    x, y, z = @view(m[:, 2])
+    if (y^2 + z^2) ≈ 0
+        R2 = one(m)
+    else
+        a = x
+        b = sqrt(norm_sqr(m[:, 2]) - x^2)
+        sinθ = -z * b / (y^2 + z^2)
+        cosθ = sqrt(1 - sinθ^2)
+        #! format: off
+        R2 = @SMatrix[ 1    0     0
+                       0 cosθ -sinθ
+                       0 sinθ  cosθ ]
+        #! format: on
+    end
+    m = R2 * m
+    return oneunit(T) .* m, R2 * R1
+end
+
+@testitem "align_cell" begin
+    import CellListMap: align_cell
+    using StaticArrays
+
+    l = sqrt(2) / 2
+
+    m = @SMatrix[1.0 0.0; 0.0 1.0]
+    @test align_cell(m) == (one(m), one(m))
+
+    m = @SMatrix[l 0; l 1]
+    mt, R = align_cell(m)
+    @test mt ≈ [1 l; 0 l]
+    @test R ≈ [l l; -l l]
+
+    m = @SMatrix[-l 0; l 1]
+    mt, R = align_cell(m)
+    @test mt ≈ [1 l; 0 -l]
+    @test R ≈ [-l l; -l -l]
+
+    #! format: off
+    m = @SMatrix[ 
+        1  0  0
+        0  1  0 
+        0  0  1
+    ]
+    #! format: on
+    @test align_cell(m) == (one(m), one(m))
+
+    # Functions that define rotations along each axis, given the angle in 3D
+    x_rotation(x) = @SMatrix[1 0 0; 0 cos(x) -sin(x); 0 sin(x) cos(x)]
+    y_rotation(x) = @SMatrix[cos(x) 0 sin(x); 0 1 0; -sin(x) 0 cos(x)]
+    z_rotation(x) = @SMatrix[cos(x) -sin(x) 0; sin(x) cos(x) 0; 0 0 1]
+    random_rotation() = z_rotation(rand()) * y_rotation(rand()) * x_rotation(rand())
+
+    #! format: off
+    m = @SMatrix[ 
+        3  0  0
+        0  2  0 
+        0  0  1
+    ]
+    #! format: on
+    for _ in 1:5
+        R = random_rotation()
+        mr = R * m
+        ma, Ra = align_cell(mr)
+        @test ma ≈ m
+    end
+
+end
+
+"""
+    cell_vertices(m::AbstractMatrix)
+
+$(INTERNAL)
+
+Function that returns the vertices of a unit cell in 2D or 3D, given the unit cell matrix.
+
+"""
+function cell_vertices(m::AbstractMatrix)
+    if size(m) == (2, 2)
+        x = _cell_vertices2D(m)
+    elseif size(m) == (3, 3)
+        x = _cell_vertices3D(m)
+    else
+        throw(ArgumentError("cell_vertices only supports square matrices in 2 or 3 dimensions."))
+    end
+end
+
+@views function _cell_vertices2D(m::AbstractMatrix{T}) where {T}
+    S = SVector{2,T}
+    x = SVector{4,S}(S(zero(T), zero(T)), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
+    return x
+end
+
+@views function _cell_vertices3D(m::AbstractMatrix{T}) where {T}
+    S = SVector{3,T}
+    x = SVector{8,S}(
+        S(zero(T), zero(T), zero(T)),
+        S(m[:, 1]),
+        S(m[:, 1]) + S(m[:, 2]),
+        S(m[:, 2]),
+        S(m[:, 1]) + S(m[:, 3]),
+        S(m[:, 3]),
+        S(m[:, 2]) + S(m[:, 3]),
+        S(m[:, 1]) + S(m[:, 2]) + S(m[:, 3]),
+    )
+    return x
+end
+
+"""
+    draw_cell_vertices(m::AbstractMatrix)
+
+$(INTERNAL)
+
+Function that returns the vertices of a unit cell matrix in 2D or 3D, as a vector
+of static vectors, in a proper order for ploting the cell (the first vertex, in the
+origin, is repeated at the end of the list, to close the figure)
+
+"""
+function draw_cell_vertices(m::AbstractMatrix)
+    if size(m) == (2, 2)
+        x = _draw_cell_vertices2D(m)
+    elseif size(m) == (3, 3)
+        x = _draw_cell_vertices3D(m)
+    else
+        throw(ArgumentError("draw_cell_vertices only supports square matrices in 2 or 3 dimensions."))
+    end
+end
+
+function _draw_cell_vertices2D(m::AbstractMatrix)
+    S = SVector{2,Float64}
+    x = [
+        S(0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 2]),
+        S(m[:, 2]),
+        S(0.0, 0.0)
+    ]
+    return x
+end
+
+function _draw_cell_vertices3D(m::AbstractMatrix)
+    S = SVector{3,Float64}
+    x = [
+        S(0.0, 0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 2]),
+        S(m[:, 2]),
+        S(0.0, 0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 3]),
+        S(m[:, 3]),
+        S(0.0, 0.0, 0.0),
+        S(m[:, 2]),
+        S(m[:, 2] + m[:, 3]),
+        S(m[:, 2]),
+        S(0.0, 0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 2]),
+        S(m[:, 1] + m[:, 2]) + m[:, 3],
+        S(m[:, 1] + m[:, 3]),
+        S(m[:, 3]),
+        S(m[:, 3]) + m[:, 2],
+        S(m[:, 1] + m[:, 2]) + m[:, 3]
+    ]
+    return x
+end
+
+@testitem "draw_cell_vertices" begin
+    using StaticArrays
+    import CellListMap: draw_cell_vertices
+    m = [1 0; 0 1]
+    @test draw_cell_vertices(m) == SVector{2,Float64}[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
+    m = [1 0 0; 0 1 0; 0 0 1]
+    @test draw_cell_vertices(m) == SVector{3,Float64}[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+end
+
+"""
+    cell_limits(m::AbstractMatrix)
+
+$(INTERNAL)
+
+For 2D and 3D matrices, returns the maximum and minimum coordinates of all vertices. 
+
+"""
+function cell_limits(m::AbstractMatrix{T}) where {T}
+    vertices = cell_vertices(m)
+    xmin = MVector(vertices[begin])
+    xmax = MVector(vertices[begin])
+    for v in @view(vertices[begin+1:end])
+        for j in eachindex(v)
+            xmin[j] = min(xmin[j], v[j])
+            xmax[j] = max(xmax[j], v[j])
+        end
+    end
+    return SVector(xmin), SVector(xmax)
+end
+
+@testitem "cell_limts" begin
+    import CellListMap: cell_limits, align_cell
+    m = [1 0; 0 1]
+    @test cell_limits(m) == ([0.0, 0.0], [1.0, 1.0])
+
+    m = [10 5; 5 10]
+    @test cell_limits(m) == ([0.0, 0.0], [15.0, 15.0])
+
+    mr, _ = align_cell(m)
+    @test cell_limits(mr) == ([0.0, 0.0], [20.12461179749811, 6.708203932499369])
+
+    m = [10 5; 0 10]
+    @test cell_limits(m) == ([0.0, 0.0], [15.0, 10.0])
+
+    mr, _ = align_cell(m)
+    @test cell_limits(mr) == ([0.0, -8.94427190999916], [15.652475842498529, 0.0])
+
+    m = [1 0 0; 0 1 0; 0 0 1]
+    @test cell_limits(m) == ([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
+
+    m = [1 0 0; 0 2 0; 0 0 1]
+    @test cell_limits(m) == ([0.0, 0.0, 0.0], [1.0, 2.0, 1.0])
+
+    mr, _ = align_cell(m)
+    @test cell_limits(mr) == ([0.0, -1.0, 0.0], [2.0, 0.0, 1.0])
+
+    m = [1 0 0; 0 2 0; 0 0 3]
+    @test cell_limits(m) == ([0.0, 0.0, 0.0], [1.0, 2.0, 3.0])
+
+    mr, _ = align_cell(m)
+    @test cell_limits(mr) == ([0.0, 0.0, -1.0], [3.0, 2.0, 0.0])
+end
+
+"""
+    draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
+
+$(INTERNAL)
+
+Draw the unit cell in a 2D or 3D plot. Requires `using Plots`.
+
+"""
+function draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
+    plot = Main.plot
+    plot! = Main.plot!
+    vertices = draw_cell_vertices(m)
+    plt = plot(Tuple.(vertices), label=nothing)
+    lims = cell_limits(m)
+    dx = (lims[2][1] - lims[1][1]) / 10
+    dy = (lims[2][2] - lims[1][2]) / 10
+    plot!(plt,
+        xlims=(lims[1][1] - dx, lims[2][1] + dx),
+        ylims=(lims[1][2] - dy, lims[2][2] + dy),
+        aspect_ratio=aspect_ratio,
+        xlabel="x",
+        ylabel="y",
+        zlabel="z",
+    )
+    return plt
 end
 
 

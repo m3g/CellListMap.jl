@@ -170,7 +170,7 @@ julia> using LinearAlgebra: norm_sqr
 julia> sum_sqr = map_pairwise!(
            (xᵢ,xⱼ,i,j,d2,sum_sqr) -> begin
                x1 = x_input[i]
-               x2 = CellListMap.wrap_relative_to(x_input[j],x1,box)
+               x2 = CellListMap.wrap_relative_to(x_input[j],x1,box.input_unit_cell.matrix)
                sum_sqr += norm_sqr(x2-x1)
                return sum_sqr
            end, 

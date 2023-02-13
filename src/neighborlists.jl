@@ -289,25 +289,25 @@ end
     # Non-periodic systems
     x = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, cutoff=0.1)
-    @test diag(system.box.unit_cell.matrix) == nextfloat.(limits(x).limits .+ 0.1)
+    @test diag(system.box.input_unit_cell.matrix) == nextfloat.(limits(x).limits .+ 0.1)
     x = rand(SVector{3,Float64}, 10^3)
     update!(system, x)
     @test system.box.cutoff == 0.1
     update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    @test diag(system.box.unit_cell.matrix) == limits(x).limits .+ 0.05
+    @test diag(system.box.input_unit_cell.matrix) == limits(x).limits .+ 0.05
 
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     system = InPlaceNeighborList(x=x, y=y, cutoff=0.1)
-    @test diag(system.box.unit_cell.matrix) ≈ nextfloat.(limits(x, y).limits .+ 0.1)
+    @test diag(system.box.input_unit_cell.matrix) ≈ nextfloat.(limits(x, y).limits .+ 0.1)
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     update!(system, x, y)
     @test system.box.cutoff == 0.1
     update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    @test diag(system.box.unit_cell.matrix) ≈ nextfloat.(limits(x, y).limits .+ 0.05)
+    @test diag(system.box.input_unit_cell.matrix) ≈ nextfloat.(limits(x, y).limits .+ 0.05)
 
     # Orthorhombic systems
     x = rand(SVector{3,Float64}, 10^3)
@@ -317,7 +317,7 @@ end
     update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
     update!(system, x; cutoff=0.05, unitcell=[2, 2, 2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1, 1, 1])
     update!(system, x, y)
@@ -325,7 +325,7 @@ end
     update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
     update!(system, x, y; cutoff=0.05, unitcell=[2, 2, 2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     # Triclinic systems
     x = rand(SVector{3,Float64}, 10^3)
@@ -335,7 +335,7 @@ end
     update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
     update!(system, x; cutoff=0.05, unitcell=[2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     system = InPlaceNeighborList(x=x, y=y, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1])
     update!(system, x, y)
@@ -343,7 +343,7 @@ end
     update!(system, x, y; cutoff=0.05)
     @test system.box.cutoff == 0.05
     update!(system, x, y; cutoff=0.05, unitcell=[2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
 end
 

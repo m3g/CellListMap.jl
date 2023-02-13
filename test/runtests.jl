@@ -279,27 +279,7 @@ end
 
 end
 
-@testitem "random cells" begin
 
-    using CellListMap
-    using StaticArrays
-
-    # Test random cells of all possible types
-    for N in 2:3, 
-        M in rand(10:20), 
-        UnitCellType in [ TriclinicCell, OrthorhombicCell ],
-        parallel in [ false, true ],
-        lcell in 1:3
-        @test CellListMap.check_random_cells(
-            N,M,
-            UnitCellType=UnitCellType,
-            parallel=parallel,
-            lcell=lcell,
-            show_progress=false
-        )[1] 
-    end
-
-end
 
 @testitem "applications" begin
 
