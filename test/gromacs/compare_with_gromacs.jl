@@ -15,13 +15,14 @@
         traj = redirect_stdout(() -> Chemfiles.Trajectory(file), devnull)
         frame = Chemfiles.read_step(traj, 0)
         unitcell = Chemfiles.matrix(Chemfiles.UnitCell(frame))
+        # The gromacs unitcell is row-major as it comes from Chemfiles
+        unitcell = Matrix(transpose(unitcell))
         Chemfiles.close(traj)
         return unitcell, reinterpret(reshape, SVector{3,Float64}, Chemfiles.positions(frame))
     end
 
     function test_newcl(file, lcell)
         unitcell, coordinates = getcoor(file)
-        unitcell = transpose(unitcell)
         box = Box(unitcell, 8.0, lcell=lcell)
         cl = CellList(coordinates, box)
         u = map_pairwise!((x, y, i, j, d2, u) -> lj_Argon_Gromacs(d2, u), 0.0, box, cl)
@@ -53,7 +54,7 @@
     lcell = 1
 
     # Minimal (2 atom) orthorhombic box
-    correct = -0.358447
+    correct = -3.58447e-01
     @test test_newcl("$dir/argon_minimal/traj_comp.xtc", lcell) ≈ correct atol=1e-6
 
     # Some orthorhombic cells
@@ -61,8 +62,8 @@
     @test test_newcl("$dir/argon_original/traj_comp.xtc", lcell) ≈ correct atol=1e-6
 
     # dodecahedral box
-#    correct = 40774.9
-#    @test test_newcl("$dir/argon/traj_comp.xtc", lcell) ≈ correct atol=1e-6
+    correct = 40774.9
+    @test test_newcl("$dir/argon/traj_comp.xtc", lcell) ≈ correct atol=1e-6
 
 
 end

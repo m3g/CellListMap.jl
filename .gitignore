@@ -39,4 +39,5 @@ test/gromacs/**/mdout*
 test/gromacs/**/*log
 test/gromacs/**/*tpr
 test/gromacs/**/*1
+test/gromacs/**/*mdp
 
