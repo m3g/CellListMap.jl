@@ -278,6 +278,22 @@ function drawbox(box::Box{UnitCellType,3}) where {UnitCellType}
     return x
 end
 
+function get_particles(cl::CellList{N,T}) where {N,T}
+    real = SVector{N,T}[]
+    ghost = SVector{N,T}[]
+    for cell in cl.cells
+        for i in 1:cell.n_particles
+            p = cell.particles[i]
+            if p.real
+                push!(real, p.coordinates)
+            else
+                push!(ghost, p.coordinates)
+            end
+        end
+    end
+    return real, ghost
+end
+
 """
     draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
     draw_computing_cell(cl::CellList,box::Box{UnitCellType,2},x) where UnitCellType
@@ -293,31 +309,38 @@ function draw_computing_cell(x, box::Box{UnitCellType,2};
     yticks=nothing
 ) where {UnitCellType}
     cl = CellList(x, box, parallel=parallel)
-    return draw_computing_cell(cl, box, x, xticks=xticks, yticks=yticks)
+    return draw_computing_cell(cl, box; xticks=xticks, yticks=yticks)
 end
 function draw_computing_cell(
-    cl::CellList, box::Box{UnitCellType,2}, x;
+    cl::CellList, box::Box{UnitCellType,2};
     xticks=nothing,
-    yticks=nothing
+    yticks=nothing,
+    x=nothing
 ) where {UnitCellType}
-    box_points = drawbox(box)
-    p = view_celllist_particles(cl)
+    real, ghost = get_particles(cl)
     plt = Main.plot()
-    Main.plot!(plt, Tuple.(box_points), label=:none)
-    Main.scatter!(plt, Tuple.(p), label=:none, markeralpha=0.3)
-    Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box.aligned_unit_cell.matrix))), label=:none)
-    xmin = minimum(el[1] for el in p) - 3 * box.cell_size[1]
-    xmax = maximum(el[1] for el in p) + 3 * box.cell_size[1]
-    ymin = minimum(el[2] for el in p) - 3 * box.cell_size[2]
-    ymax = maximum(el[2] for el in p) + 3 * box.cell_size[2]
-    isnothing(xticks) && (xticks = (round.(digits=3, xmin:box.cell_size[1]:xmax)))
-    isnothing(yticks) && (yticks = (round.(digits=3, ymin:box.cell_size[2]:ymax)))
+    vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
+    Main.plot!(plt, Tuple.(vertices), label=:none)
+    Main.scatter!(plt, Tuple.(real), label=:none, color=:blue, markeralpha=1)
+    Main.scatter!(plt, Tuple.(ghost), label=:none, color=:blue, markeralpha=0.3)
+    if !isnothing(x)
+        x_wrapped = wrap_to_first.(x, Ref(box.input_unit_cell.matrix))
+        x_rotated = Ref(box.rotation) .* x_wrapped
+        Main.scatter!(plt, Tuple.(wrap_to_first.(x_rotated, Ref(box.aligned_unit_cell.matrix))), color=:red, label=:none)
+    end
+    xmin, xmax = cell_limits(box.aligned_unit_cell.matrix)
+    xmin = xmin .- 3*box.cell_size
+    xmax = xmax .+ 3*box.cell_size
+    isnothing(xticks) && (xticks = (round.(digits=3, xmin[1]:box.cell_size[1]:xmax[1])))
+    isnothing(yticks) && (yticks = (round.(digits=3, xmin[2]:box.cell_size[2]:xmax[2])))
     Main.plot!(plt,
         aspect_ratio=1, framestyle=:box, xrotation=60,
-        xlims=(xmin, xmax),
-        ylims=(ymin, ymax),
+        xlims=(xmin[1], xmax[1]),
+        ylims=(xmin[2], xmax[2]),
         xticks=xticks,
         yticks=yticks,
+        title="cell_sizes = $(box.cell_size)",
+        titlefontsize=8,
     )
     return plt
 end
@@ -332,27 +355,29 @@ This function creates a plot of the computing cell, in three dimensions.
 """
 function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {UnitCellType}
     cl = CellList(x, box, parallel=parallel)
-    box_points = drawbox(box)
+    vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
     p = view_celllist_particles(cl)
     plt = Main.plot()
-    Main.plot!(plt, Tuple.(box_points), label=:none)
+    Main.plot!(plt, Tuple.(vertices), label=:none)
     Main.scatter!(plt, Tuple.(p), label=:none, markeralpha=0.3)
-    Main.scatter!(plt, Tuple.(wrap_to_first.(x, Ref(box.aligned_unit_cell.matrix))), label=:none, markeralpha=0.3)
+    x_rotated = Ref(box.rotation) .* x
+    Main.scatter!(plt, Tuple.(wrap_to_first.(x_rotated, Ref(box.aligned_unit_cell.matrix))), label=:none, markeralpha=0.3)
     lims = Vector{Float64}[]
-    for i in 1:3
-        push!(lims, [-2 * box.cell_size[i], box.nc[i] + 2 * box.cell_size[i]])
-    end
+    xmin, xmax = box.computing_limits
+    xmin = xmin .- box.cell_size
+    xmax = xmax .+ box.cell_size
     Main.plot!(plt,
         aspect_ratio=1, framestyle=:box, xrotation=60, yrotation=-70, zrotation=0,
-        xlims=lims[1],
-        ylims=lims[2],
-        zlims=lims[3],
-        xticks=(round.(digits=3, lims[1][1]:box.cell_size[1]:lims[1][2])),
-        yticks=(round.(digits=3, lims[2][1]:box.cell_size[2]:lims[2][2])),
-        zticks=(round.(digits=3, lims[3][1]:box.cell_size[3]:lims[3][2])),
+        xlims=(xmin[1], xmax[1]),
+        ylims=(xmin[2], xmax[2]),
+        zlims=(xmin[3], xmax[3]),
+        xticks=(round.(digits=3, xmin[1]:box.cell_size[1]:xmax[1])),
+        yticks=(round.(digits=3, xmin[2]:box.cell_size[2]:xmax[2])),
+        zticks=(round.(digits=3, xmin[3]:box.cell_size[3]:xmax[3])),
     )
     return plt
 end
+
 
 function compare_cells(cl1::CellList{N,T}, cl2::CellList) where {N,T}
 
