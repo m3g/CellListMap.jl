@@ -320,9 +320,9 @@ function draw_computing_cell(
     real, ghost = get_particles(cl)
     plt = Main.plot()
     vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
-    Main.plot!(plt, Tuple.(vertices), label=:none)
-    Main.scatter!(plt, Tuple.(real), label=:none, color=:blue, markeralpha=1)
-    Main.scatter!(plt, Tuple.(ghost), label=:none, color=:blue, markeralpha=0.3)
+    Main.scatter!(plt, Tuple.(real), label=:none, color=:green, markeralpha=1)
+    Main.scatter!(plt, Tuple.(ghost), label=:none, color=:brown, markeralpha=0.3)
+    Main.plot!(plt, Tuple.(vertices), color=:blue, linewidth=2, label=:none)
     if !isnothing(x)
         x_wrapped = wrap_to_first.(x, Ref(box.input_unit_cell.matrix))
         x_rotated = Ref(box.rotation) .* x_wrapped

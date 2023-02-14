@@ -106,7 +106,7 @@ end
         unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
         parallel::Bool=true,
         show_progress::Bool=false,
-    ) where {T<:Real}
+    ) where {T}
 
 Function that initializes the `InPlaceNeighborList` structure, to be used for in-place
 computation of neighbor lists.
@@ -188,7 +188,7 @@ function InPlaceNeighborList(;
     show_progress::Bool=false,
     autoswap=true,
     nbatches=(0, 0)
-) where {T<:Real}
+) where {T}
     if isnothing(y)
         if isnothing(unitcell)
             unitcell = limits(x)
@@ -585,6 +585,16 @@ end
     @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == [(1, 2, 1.0)]
     @test neighborlist([[0.0, 0.0], [0.0, 1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) == [(2, 1, 0.9999999999999998)]
+end
+
+@testitem "Neighborlist with units" begin
+    using CellListMap
+    using Unitful
+    using StaticArrays
+    positions = rand(SVector{3,Float64}, 50)u"nm"
+    cutoff = 0.1u"nm"
+    nb = neighborlist(positions, cutoff)
+    @test unit(nb[1][3]) == u"nm"
 end
 
 @testitem "Compare with NearestNeighbors" begin

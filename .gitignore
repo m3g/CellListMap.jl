@@ -27,3 +27,17 @@ Manifest.toml
 simulation.gif
 profile.pb.gz
 src/examples/__pycache__/*
+
+# ignore gromacs test runtime files
+test/gromacs/**/\#* 
+test/gromacs/**/*.gro
+test/gromacs/**/topol.top
+test/gromacs/**/argon_1ns*
+test/gromacs/**/traj*
+test/gromacs/**/ener*
+test/gromacs/**/mdout*
+test/gromacs/**/*tpr
+test/gromacs/**/*1
+#test/gromacs/**/*log
+#test/gromacs/**/*mdp
+
