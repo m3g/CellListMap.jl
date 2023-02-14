@@ -52,7 +52,7 @@ nstcalcenergy            = 1
 nstenergy                = 1
 ; Output frequency and precision for xtc file
 nstxout-compressed       = 1
-compressed-x-precision   = 1000
+compressed-x-precision   = 1000000
 ; This selects the subset of atoms for the xtc file. You can
 ; select multiple groups. By default all atoms will be written.
 xtc-grps                 = 

@@ -21,49 +21,40 @@
         return unitcell, reinterpret(reshape, SVector{3,Float64}, Chemfiles.positions(frame))
     end
 
-    function test_newcl(file, lcell)
+    function test_newcl(file, lcell; cutoff=8.0)
         unitcell, coordinates = getcoor(file)
-        box = Box(unitcell, 8.0, lcell=lcell)
+        box = Box(unitcell, cutoff, lcell=lcell)
         cl = CellList(coordinates, box)
         u = map_pairwise!((x, y, i, j, d2, u) -> lj_Argon_Gromacs(d2, u), 0.0, box, cl)
         return u
     end
 
-    function check_unit_cell(m::AbstractMatrix)
-        x, y, z = 1, 2, 3
-        a = @view(m[:,1])
-        b = @view(m[:,2])
-        c = @view(m[:,3])
-        if a[y] == 0 &&
-           a[z] == 0 &&
-           b[z] == 0 &&
-           a[x] > 0  &&
-           b[y] > 0  &&
-           c[z] > 0  &&
-           abs(b[x]) <= 0.5 * a[x] &&
-           abs(c[x]) <= 0.5 * a[x] &&
-           abs(c[y]) <= 0.5 * b[y] 
-           return true
-        else
-           return false
+    function grep_energy(file)
+        found = false
+        for line in eachline(file)
+            if occursin("LJ (SR)",line)
+                found = true
+                continue
+            end
+            if found
+                data = split(line)
+                return parse(Float64,data[1])
+            end
         end
+        error("Could not find LJ (SR) in $file")
     end
 
-    dir = @__DIR__
+    dir = "$(@__DIR__)/argon"
 
-    lcell = 1
-
-    # Minimal (2 atom) orthorhombic box
-    correct = -3.58447e-01
-    @test test_newcl("$dir/argon_minimal/traj_comp.xtc", lcell) ≈ correct atol=1e-6
-
-    # Some orthorhombic cells
-    correct = -0.439334
-    @test test_newcl("$dir/argon_original/traj_comp.xtc", lcell) ≈ correct atol=1e-6
-
-    # dodecahedral box
-    correct = 40774.9
-    @test test_newcl("$dir/argon/traj_comp.xtc", lcell) ≈ correct atol=1e-6
-
+    minimal = grep_energy("$dir/minimal.log")
+    cubic = grep_energy("$dir/cubic.log")
+    dodecahedral = grep_energy("$dir/dodecahedron.log")
+    octahedral = grep_energy("$dir/octahedron.log")
+    for lcell in [1,2,3]
+        @test test_newcl("$dir/minimal.xtc", lcell) ≈ minimal rtol=1e-5
+        @test test_newcl("$dir/cubic.xtc", lcell) ≈ cubic rtol=1e-5
+        @test test_newcl("$dir/dodecahedron.xtc", lcell) ≈ dodecahedral rtol=1e-5
+        @test test_newcl("$dir/octahedron.xtc", lcell) ≈ octahedral rtol=1e-5
+    end
 
 end

@@ -36,8 +36,8 @@ test/gromacs/**/argon_1ns*
 test/gromacs/**/traj*
 test/gromacs/**/ener*
 test/gromacs/**/mdout*
-test/gromacs/**/*log
 test/gromacs/**/*tpr
 test/gromacs/**/*1
-test/gromacs/**/*mdp
+#test/gromacs/**/*log
+#test/gromacs/**/*mdp
 
