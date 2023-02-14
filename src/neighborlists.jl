@@ -106,7 +106,7 @@ end
         unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
         parallel::Bool=true,
         show_progress::Bool=false,
-    ) where {T<:Real}
+    ) where {T}
 
 Function that initializes the `InPlaceNeighborList` structure, to be used for in-place
 computation of neighbor lists.
@@ -188,7 +188,7 @@ function InPlaceNeighborList(;
     show_progress::Bool=false,
     autoswap=true,
     nbatches=(0, 0)
-) where {T<:Real}
+) where {T}
     if isnothing(y)
         if isnothing(unitcell)
             unitcell = limits(x)
