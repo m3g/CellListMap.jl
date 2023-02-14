@@ -132,7 +132,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
   number of computing cells on each dimension: [10, 7, 12]
   computing cell sizes: [12.5, 14.0, 13.0] (lcell: 1)
   Total number of cells: 840</code></pre><h3 id="Triclinic-periodic-boundary-conditions"><a class="docs-heading-anchor" href="#Triclinic-periodic-boundary-conditions">Triclinic periodic boundary conditions</a><a id="Triclinic-periodic-boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Triclinic-periodic-boundary-conditions" title="Permalink"></a></h3><p>Triclinic periodic boundary conditions of any kind can be used. However, the input has some limitations for the moment. The lattice vectors must have strictly positive coordinates, and the smallest distance within the cell cannot be smaller than twice the size of the cutoff. An error will be produced if the cell does not satisfy these conditions. </p><p>Let us illustrate building a two-dimensional cell, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. </p><p>Here, the lattice vectors are <code>[1,0]</code> and <code>[0.5,1]</code> (and we illustrate with <code>cutoff=0.1</code>): </p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([ 1.0  0.5
-                     0  1.0 ], 0.1);
+                   0.0  1.0 ], 0.1);
 
 julia&gt; x = 10*rand(SVector{2,Float64},1000);</code></pre><p>We have created random coordinates for <code>1000</code> particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:</p><pre><code class="language-julia-repl hljs">julia&gt; using Plots
 
@@ -140,13 +140,15 @@ julia&gt; CellListMap.draw_computing_cell(x,box)</code></pre><img src=https://ra
 CellList{2, Float64}
   109 cells with real particles.
   2041 particles in computing box, including images.
-</code></pre><p>Upon construction of the cell lists, the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (this is an implementation detail only). </p><p>In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:</p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([ 50.  0. 00. 
-                    0. 30. 30.          
-                    0. 00. 50. ],  2.)
+</code></pre><p>Upon construction of the cell lists, the cell is rotated such that the longest axis becomes oriented along the x-axis, and the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (these is an implementation detail only). </p><p>In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:</p><pre><code class="language-julia-repl hljs">julia&gt; unitcell = [ 50.  0. 00. 
+                     0. 30. 30.          
+                     0. 00. 50. ]
+
+julia&gt; box = Box(unitcell,  2.)
 
 julia&gt; x = 100*rand(SVector{3,Float64},10000);
 
-julia&gt; p = [ CellListMap.wrap_to_first(x,box) for x in x ];
+julia&gt; p = [ CellListMap.wrap_to_first(x,unitcell) for x in x ];
 
 julia&gt; using Plots
 
@@ -274,4 +276,4 @@ CellList{3, Float64}
   162 particles in computing box, including images.
 
 julia&gt; map_pairwise!((x,y,i,j,d2,n) -&gt; n += 1, 0, box, cl) # count neighbors
-23</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neighborlists/">« Neighbor lists</a><a class="docs-footer-nextpage" href="../ecosystem/">Ecosystem integration »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Monday 13 February 2023 14:48">Monday 13 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+23</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neighborlists/">« Neighbor lists</a><a class="docs-footer-nextpage" href="../ecosystem/">Ecosystem integration »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 14 February 2023 19:27">Tuesday 14 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
