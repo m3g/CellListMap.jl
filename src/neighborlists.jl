@@ -587,6 +587,16 @@ end
     @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) == [(2, 1, 0.9999999999999998)]
 end
 
+@testitem "Neighborlist with units" begin
+    using CellListMap
+    using Unitful
+    using StaticArrays
+    positions = rand(SVector{3,Float64}, 50)u"nm"
+    cutoff = 0.1u"nm"
+    nb = neighborlist(positions, cutoff)
+    @test unit(nb[1][3]) == u"nm"
+end
+
 @testitem "Compare with NearestNeighbors" begin
 
     using CellListMap
