@@ -134,7 +134,9 @@ julia> x_input = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for 
 The variables within the `CellListMap` functions will be stripped from the uncertainties. We do:
 
 ```julia-repl
-julia> cutoff = 0.1; box = Box([1,1,1],cutoff);
+julia> unitcell = [1,1,1]
+
+julia> cutoff = 0.1; box = Box(unitcell,cutoff);
 
 julia> x_strip = [ getproperty.(v,:val) for v in x_input ]
 1000-element Vector{SVector{3, Float64}}:
@@ -158,7 +160,7 @@ CellList{3, Float64}
 The result is initialized with the proper type,
 
 ```julia-repl
-julia> sum_sqr = measurement(0.,0.)
+julia> result = measurement(0.,0.)
 0.0 ± 0.0
 ```
 
@@ -167,14 +169,14 @@ and the mapping is performed with the stripped coordinates, but passing the valu
 ```julia-repl
 julia> using LinearAlgebra: norm_sqr
 
-julia> sum_sqr = map_pairwise!(
+julia> result = map_pairwise!(
            (xᵢ,xⱼ,i,j,d2,sum_sqr) -> begin
                x1 = x_input[i]
-               x2 = CellListMap.wrap_relative_to(x_input[j],x1,box.input_unit_cell.matrix)
+               x2 = CellListMap.wrap_relative_to(x_input[j],x1,unitcell)
                sum_sqr += norm_sqr(x2-x1)
                return sum_sqr
            end, 
-           sum_sqr, box, cl
+           result, box, cl
        )
 13.14 ± 0.061
 ```

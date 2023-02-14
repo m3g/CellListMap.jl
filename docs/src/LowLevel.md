@@ -247,7 +247,7 @@ Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cut
 
 ```julia-repl
 julia> box = Box([ 1.0  0.5
-                     0  1.0 ], 0.1);
+                   0.0  1.0 ], 0.1);
 
 julia> x = 10*rand(SVector{2,Float64},1000);
 ```
@@ -272,18 +272,20 @@ CellList{2, Float64}
 
 ```
 
-Upon construction of the cell lists, the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (this is an implementation detail only). 
+Upon construction of the cell lists, the cell is rotated such that the longest axis becomes oriented along the x-axis, and the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (these is an implementation detail only). 
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:
 
 ```julia-repl
-julia> box = Box([ 50.  0. 00. 
-                    0. 30. 30.          
-                    0. 00. 50. ],  2.)
+julia> unitcell = [ 50.  0. 00. 
+                     0. 30. 30.          
+                     0. 00. 50. ]
+
+julia> box = Box(unitcell,  2.)
 
 julia> x = 100*rand(SVector{3,Float64},10000);
 
-julia> p = [ CellListMap.wrap_to_first(x,box) for x in x ];
+julia> p = [ CellListMap.wrap_to_first(x,unitcell) for x in x ];
 
 julia> using Plots
 

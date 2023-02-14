@@ -27,8 +27,11 @@ julia> neighborlist(x,0.05)
  (7378, 3450, 0.01748757015908321)
 ```
 
-If the neighbor lists between two sets of points are required, use the following notation:
+If the neighbor lists between two sets of points are required, use the following notation, 
+in this case using coordinates as arrays of static arrays:
 ```julia-repl
+julia> using StaticArrays
+
 julia> x = rand(SVector{3,Float64},10^4);
 
 julia> y = rand(SVector{3,Float64},10^3);
@@ -118,6 +121,8 @@ julia> @time list = neighborlist!(system)
 
 Now, if we modify the coordinates, we can update the system and recompute the neighbor lists:
 ```julia-repl
+julia> x_new = rand(SVector{3,Float64}, 10^4);
+
 julia> @time update!(system, x_new)
   0.003562 seconds
 InPlaceNeighborList with types: 

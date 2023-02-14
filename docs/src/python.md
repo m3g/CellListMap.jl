@@ -105,7 +105,7 @@ Note that the third element of the tuple is the distance between the points.
 The output of `CellListMap.neighborlist` is a Julia `Vector{Tuple{Int,Int,Float64}}` array (or `Float32`, if the coordinates
 and cutoff were given in 32-bit precision). This Julia list can be accessed from within python normally:
 ```python
-In [36]: neighbor_list = jl.neighborlist(x_t, 0.05);
+In [36]: neighbor_list = jl.neighborlist(coords_t, 0.05);
 
 In [37]: neighbor_list[0:2]
 Out[37]: 
@@ -168,7 +168,7 @@ In [14]: def neighborlist_simple(x,cutoff):
     ...:     return nn
     ...:
 
-In [15]: %timeit neighborlist(coords,0.05)
+In [15]: %timeit neighborlist_simple(coords,0.05)
 61.7 ms ± 707 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
 ```
 
@@ -189,10 +189,10 @@ In [31]: %timeit neighborlist_scipy(coords,0.05)
 
 Just to confirm, this is the number of pairs that is being output in this test
 ```python
-In [32]: len(neighborlist_scipy(x,cutoff)) # using Scipy
+In [32]: len(neighborlist_scipy(coords,0.05)) # using Scipy
 Out[32]: 618475
 
-In [20]: len(neighborlist(coords,0.05)) # using CellListMap
+In [20]: len(neighborlist_smple(coords,0.05)) # using CellListMap
 Out[20]: 618475
 ```
 
