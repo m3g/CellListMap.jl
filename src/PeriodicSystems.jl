@@ -752,6 +752,27 @@ end
     @test a == 0
 end
 
+#
+# This interface is needed to generate random particle coordinates in ComplexMixtures.jl
+#
+"""
+    get_computing_box(sys::AbstractPeriodicSystem)
+
+$(INTERNAL)
+
+Retrieves the computing box of the system. The computing box is large enough to
+contain all coordinates of the particles, plus the cutoff.
+
+"""
+get_computing_box(sys::AbstractPeriodicSystem) = sys._box.computing_box
+@testitem "get_computing_box" begin
+    using StaticArrays
+    using CellListMap.PeriodicSystems
+    x = rand(SVector{3,Float64}, 1000)
+    sys = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    @test PeriodicSystems.get_computing_box(sys) == ([-0.1, -0.1, -0.1], [1.1, 1.1, 1.1])
+end
+
 """
     UpdatePeriodicSystem!
 
