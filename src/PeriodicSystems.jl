@@ -249,14 +249,14 @@ unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
 
     # test the construction with pathologically few particles
     for x in [SVector{3,Float64}[], Vector{Float64}[], [rand(SVector{3,Float64})], [rand(3)]]
-        sys = PeriodicSystem(
+        _sys = PeriodicSystem(
             positions=x,
             cutoff=0.1,
             unitcell=[1, 1, 1],
             output=0.0,
             output_name=:test
         )
-        @test PeriodicSystems.map_pairwise((x, y, i, j, d2, out) -> out += d2, sys) == 0.0
+        @test PeriodicSystems.map_pairwise((x, y, i, j, d2, out) -> out += d2, _sys) == 0.0
     end
 
     # unitcell type
