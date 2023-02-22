@@ -33,6 +33,11 @@ struct Limits{N,T}
     limits::SVector{N,T}
 end
 
+# Set cell size from Limits, when no periodic boundary conditions are 
+# used. `nextfloat` is important here to prevent the box to match exactly
+# the condition of 2*cutoff and the unit cell check check fail
+_sides_from_limits(unitcell, cutoff) = nextfloat.(max.(unitcell.limits .+ cutoff, 2 * cutoff))
+
 """
 
 $(TYPEDEF)
@@ -220,29 +225,29 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
     # method of running over computing cells without complications associated to boundaries
     # having fractional cells.
     if UnitCellType <: OrthorhombicCellType
-        _nc = floor.(Int,(xmax .- xmin) / (cutoff/lcell))
+        _nc = floor.(Int, (xmax .- xmin) / (cutoff / lcell))
         cell_size = (xmax .- xmin) ./ _nc
     else
-        _nc = ceil.(Int,(xmax .- xmin) / (cutoff/lcell))
-        cell_size = SVector{N,T}(ntuple(i -> cutoff/lcell, N))
+        _nc = ceil.(Int, (xmax .- xmin) / (cutoff / lcell))
+        cell_size = SVector{N,T}(ntuple(i -> cutoff / lcell, N))
     end
-    nc = _nc .+ 2*lcell .+ 1
+    nc = _nc .+ 2 * lcell .+ 1
     computing_box = (xmin .- lcell * cell_size, xmax .+ lcell * cell_size)
 
     # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
     cutoff_sqr = cutoff^2
 
-    return Box{UnitCellType,N,T,typeof(cutoff_sqr),N * N, eltype(rotation)}(
-        input_unit_cell = input_unit_cell,
-        aligned_unit_cell = aligned_unit_cell,
-        rotation = rotation,
-        inv_rotation = inv(rotation),
-        lcell = lcell,
-        nc = nc,
-        cutoff = cutoff,
-        cutoff_sqr = cutoff_sqr,
-        computing_box = computing_box,
-        cell_size = cell_size
+    return Box{UnitCellType,N,T,typeof(cutoff_sqr),N * N,eltype(rotation)}(
+        input_unit_cell=input_unit_cell,
+        aligned_unit_cell=aligned_unit_cell,
+        rotation=rotation,
+        inv_rotation=inv(rotation),
+        lcell=lcell,
+        nc=nc,
+        cutoff=cutoff,
+        cutoff_sqr=cutoff_sqr,
+        computing_box=computing_box,
+        cell_size=cell_size
     )
 end
 
@@ -361,7 +366,7 @@ Box{NonPeriodicCell, 3}
 
 """
 function Box(unitcell::Limits, cutoff::T; lcell::Int=1) where {T}
-    sides = nextfloat.(max.(unitcell.limits .+ cutoff, 2 * cutoff))
+    sides = _sides_from_limits(unitcell, cutoff)
     return Box(sides, cutoff, lcell, NonPeriodicCell)
 end
 
@@ -400,10 +405,23 @@ function update_box(
     elseif unitcell isa AbstractMatrix
         UnitCell{UnitCellType,N,T,M}(SMatrix{N,N,T,M}(unitcell))
     elseif unitcell isa Limits
-        sides = SVector(max.(unitcell.limits .+ _cutoff, 2 * _cutoff))
+        sides = _sides_from_limits(unitcell, _cutoff)
         UnitCell{UnitCellType,N,T,M}(cell_matrix_from_sides(sides))
     end
     return _construct_box(_unitcell, _lcell, _cutoff)
+end
+
+@testitem "Update box with Limits" begin
+    using CellListMap
+    r = [[1.0, 1.0, 1.0]]
+    system = InPlaceNeighborList(x=r, cutoff=3.0, parallel=false)
+    list = neighborlist!(system)
+    update!(system, r)
+    @test list == Tuple{Int64,Int64,Float64}[]
+    r = [[1.0, 1.0, 1.0], [10.0, 1.0, 1.0], [3.0, 1.0, 1.0]]
+    update!(system, r)
+    list = neighborlist!(system)
+    @test list == [(1, 3, 2.0)]
 end
 
 @testitem "Stable Box update" begin
@@ -530,7 +548,7 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
 @inline function particle_cell(x::SVector{N}, box::Box) where {N}
     CartesianIndex(
         ntuple(N) do i
-            xmin = box.computing_box[1][i] 
+            xmin = box.computing_box[1][i]
             xi = (x[i] - xmin) / box.cell_size[i]
             index = floor(Int, xi) + 1
             return index
@@ -595,7 +613,7 @@ Replicates the particle as many times as necessary to fill the computing box.
 function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
     itr = Iterators.product(ntuple(i -> -1:1, N)...)
     for indices in itr
-        (count(isequal(0), indices ) == N) && continue
+        (count(isequal(0), indices) == N) && continue
         x = translation_image(p, box.aligned_unit_cell.matrix, indices)
         if in_computing_box(x, box)
             cl = add_particle_to_celllist!(ip, x, box, cl; real_particle=false)
