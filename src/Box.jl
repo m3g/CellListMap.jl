@@ -454,7 +454,7 @@ end
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=limits(new_x), cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test diag(new_box.input_unit_cell.matrix) == limits(new_x).limits .+ 0.2
+    @test diag(new_box.input_unit_cell.matrix) == nextfloat.(limits(new_x).limits .+ 0.2)
 
     # Update with SMatrix
     box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)

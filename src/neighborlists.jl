@@ -295,7 +295,7 @@ end
     @test system.box.cutoff == 0.1
     update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) == limits(x).limits .+ 0.05
+    @test diag(system.box.input_unit_cell.matrix) == nextfloat.(limits(x).limits .+ 0.05)
 
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
