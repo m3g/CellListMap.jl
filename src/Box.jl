@@ -34,9 +34,9 @@ struct Limits{N,T}
 end
 
 # Set cell size from Limits, when no periodic boundary conditions are 
-# used. `nextfloat` is important here to prevent the box to match exactly
+# used. Adding a fraction of the cutoff to the result avoids 
 # the condition of 2*cutoff and the unit cell check check fail
-_sides_from_limits(unitcell, cutoff) = nextfloat.(max.(unitcell.limits .+ cutoff, 2 * cutoff))
+_sides_from_limits(unitcell, cutoff) = max.(unitcell.limits .+ cutoff, 2 * cutoff) .+ 1e-5 * cutoff
 
 """
 
@@ -422,6 +422,14 @@ end
     update!(system, r)
     list = neighborlist!(system)
     @test list == [(1, 3, 2.0)]
+    r = [[7,10,10], [18,10,10]]
+    system = InPlaceNeighborList(x=r, cutoff=3.0, parallel=false)
+    list = neighborlist!(system)
+    @test list == Tuple{Int64,Int64,Float64}[]
+    r = [[10.89658911843461, 3.709237933444153, 10.0], [13.894156281793144, 11.054172259416013, 10.0]]
+    update!(system, r)
+    list = neighborlist!(system)
+    @test list == Tuple{Int64,Int64,Float64}[]
 end
 
 @testitem "Stable Box update" begin
@@ -454,7 +462,7 @@ end
     @test a == 0
     new_box = CellListMap.update_box(box; unitcell=limits(new_x), cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test diag(new_box.input_unit_cell.matrix) == nextfloat.(limits(new_x).limits .+ 0.2)
+    @test diag(new_box.input_unit_cell.matrix) == limits(new_x).limits .+ 0.2 .+ 1e-5 * 0.2
 
     # Update with SMatrix
     box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
