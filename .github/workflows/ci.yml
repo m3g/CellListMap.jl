@@ -27,7 +27,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
           include-all-prereleases: true
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         env:
           cache-name: cache-artifacts
         with:
