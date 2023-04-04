@@ -683,6 +683,28 @@ end
 
 end
 
+@testitem "unique" begin
+    using StaticArrays
+
+    l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
+    nl2 = neighborlist(l, 7.0) 
+    @test length(nl2) == length(unique(nl2))
+
+    l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
+    nl2 = neighborlist(l, 7.0) 
+    @test length(nl2) == length(unique(nl2))
+
+    l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
+    nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
+    @test length(nl) == 1
+
+    l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
+    unitcell = [14.01, 14.02]
+    neighborlist(l, 5.0; unitcell=unitcell)
+    @test length(nl) == 1
+
+end
+
 #
 # some auxiliary functions for testing neighbor lists
 #
