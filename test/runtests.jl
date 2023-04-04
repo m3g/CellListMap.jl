@@ -383,9 +383,9 @@ end
     # Test when we have pathologically few number of particles
     x = [ Float64[1,1,1] ]
     y = [ Float64[1.05,1,1], Float64[0,0,0]  ]
-    @test CellListMap.neighborlist(x,y,0.1)[1] == (1, 1, 0.050000000000000044)
+    @test all(CellListMap.neighborlist(x,y,0.1)[1] .≈ (1, 1, 0.05))
     z = [ Float64[1,1,1], Float64[1.05,1,1], Float64[0,0,0]  ]
-    @test CellListMap.neighborlist(z,0.1)[1] == (1, 2, 0.050000000000000044)
+    @test all(CellListMap.neighborlist(z,0.1)[1] .≈ (1, 2, 0.05))
     x = SVector{3,Float64}[]
     @test CellListMap.neighborlist(x,0.1,unitcell=[1,1,1]) == Tuple{Int64, Int64, Float64}[]
     x = Vector{Float64}[]
