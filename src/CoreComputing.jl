@@ -210,6 +210,8 @@ end
 #skip_particle_i(pᵢ, ::Box{<:TriclinicCell}) = !pᵢ.real
 #skip_pair(pᵢ, pⱼ, ::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
 
+# We are not doing the above procedure, which allows for a more efficient
+# mapping in orthorhombic cells beacause of issue 84 (https://github.com/m3g/CellListMap.jl/issues/84)
 inner_loop!(f::F, box::Box, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
     inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
 skip_particle_i(pᵢ, ::Box) = !pᵢ.real
