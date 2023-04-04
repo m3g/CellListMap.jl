@@ -205,10 +205,13 @@ inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibat
     inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
 
 # The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
-skip_particle_i(pᵢ, ::Box{<:OrthorhombicCellType}) = false
-skip_pair(pᵢ, pⱼ, ::Box{<:OrthorhombicCellType}) = false
-skip_particle_i(pᵢ, ::Box{<:TriclinicCell}) = !pᵢ.real
-skip_pair(pᵢ, pⱼ, ::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
+#skip_particle_i(pᵢ, ::Box{<:OrthorhombicCellType}) = false
+#skip_pair(pᵢ, pⱼ, ::Box{<:OrthorhombicCellType}) = false
+#skip_particle_i(pᵢ, ::Box{<:TriclinicCell}) = !pᵢ.real
+#skip_pair(pᵢ, pⱼ, ::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
+
+skip_particle_i(pᵢ, ::Box) = !pᵢ.real
+skip_pair(pᵢ, pⱼ, ::Box) = pᵢ.index > pⱼ.index
 
 function inner_loop!(
     f::Function,
