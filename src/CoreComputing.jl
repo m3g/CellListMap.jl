@@ -199,19 +199,21 @@ end
 # Inner loop for Orthorhombic cells is faster because we can guarantee that
 # there are not repeated computations even if running over half of the cells.
 #
-inner_loop!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
-    inner_loop!(f, neighbor_cells_forward, box, cellᵢ, cl, output, ibatch)
-inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
-    inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
-
+#inner_loop!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
+#    inner_loop!(f, neighbor_cells_forward, box, cellᵢ, cl, output, ibatch)
+#inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
+#    inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
+#
 # The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
 #skip_particle_i(pᵢ, ::Box{<:OrthorhombicCellType}) = false
 #skip_pair(pᵢ, pⱼ, ::Box{<:OrthorhombicCellType}) = false
 #skip_particle_i(pᵢ, ::Box{<:TriclinicCell}) = !pᵢ.real
 #skip_pair(pᵢ, pⱼ, ::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
 
+inner_loop!(f::F, box::Box, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
+    inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
 skip_particle_i(pᵢ, ::Box) = !pᵢ.real
-skip_pair(pᵢ, pⱼ, ::Box) = pᵢ.index > pⱼ.index
+skip_pair(pᵢ, pⱼ, ::Box) = pᵢ.index >= pⱼ.index
 
 function inner_loop!(
     f::Function,
