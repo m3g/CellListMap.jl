@@ -576,6 +576,9 @@ end
 
 @testitem "Neighborlist - pathological" begin
     using CellListMap
+    using CellListMap.TestingNeighborLists
+    using StaticArrays
+
     @test neighborlist([[0.0, 0.0, 1.0], [0.0, 0.0, 10.0], [0.0, 0.0, 7.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0, 1.0], [0.0, 0.0, 10.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 1.0], [0.0, 10.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
@@ -586,6 +589,25 @@ end
     @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) in ([(1, 2, 1.0)],[(2, 1, 1.0)])
     @test neighborlist([[0.0, 0.0], [0.0, 1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) in ([(1, 2, 0.9999999999999998)],[(2, 1, 0.9999999999999998)])
+
+    # Some pathological cases related to bug 84
+    l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
+    nl2 = neighborlist(l, 7.0) 
+    @test is_unique(nl2)
+
+    l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
+    nl2 = neighborlist(l, 7.0) 
+    @test is_unique(nl2)
+
+    l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
+    nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
+    @test length(nl) == 1
+
+    l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
+    unitcell = [14.01, 14.02]
+    neighborlist(l, 5.0; unitcell=unitcell)
+    @test length(nl) == 1
+
 end
 
 @testitem "Neighborlist with units" begin
@@ -614,17 +636,20 @@ end
         #
 
         # With y smaller than x
-        x = [rand(SVector{N,Float64}) for _ in 1:1000]
-        y = [rand(SVector{N,Float64}) for _ in 1:500]
+        x = [rand(SVector{N,Float64}) for _ in 1:500]
+        y = [rand(SVector{N,Float64}) for _ in 1:250]
 
         nb = nl_NN(BallTree, inrange, x, x, r)
         cl = CellListMap.neighborlist(x, r)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=true)
 
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
 
         # with x smaller than y
@@ -632,8 +657,10 @@ end
         y = [rand(SVector{N,Float64}) for _ in 1:1000]
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
 
         # Using matrices as input
@@ -642,12 +669,15 @@ end
 
         nb = nl_NN(BallTree, inrange, x, x, r)
         cl = CellListMap.neighborlist(x, r)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=true)
 
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
 
         # with x smaller than y
@@ -655,8 +685,10 @@ end
         y = rand(N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
 
         # Check random coordinates to test the limits more thoroughly
@@ -666,6 +698,7 @@ end
             y = rand(SVector{N,Float64}, 50)
             nb = nl_NN(BallTree, inrange, x, y, r)
             cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+            @test is_unique(cl)
             check_random_NN = compare_nb_lists(cl, nb, self=false)
         end
         @test check_random_NN
@@ -675,35 +708,16 @@ end
         y = rand(Float32, N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        @test is_unique(cl)
         @test compare_nb_lists(cl, nb, self=false)
 
     end
 
 end
 
-@testitem "unique" begin
-    using StaticArrays
-
-    l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
-    nl2 = neighborlist(l, 7.0) 
-    @test length(nl2) == length(unique(nl2))
-
-    l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
-    nl2 = neighborlist(l, 7.0) 
-    @test length(nl2) == length(unique(nl2))
-
-    l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
-    nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
-    @test length(nl) == 1
-
-    l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
-    unitcell = [14.01, 14.02]
-    neighborlist(l, 5.0; unitcell=unitcell)
-    @test length(nl) == 1
-
-end
 
 #
 # some auxiliary functions for testing neighbor lists
@@ -712,6 +726,7 @@ module TestingNeighborLists
 
 export nl_NN
 export compare_nb_lists
+export is_unique
 
 function nl_NN(BallTree, inrange, x, y, r)
     balltree = BallTree(x)
@@ -749,5 +764,7 @@ function compare_nb_lists(list_CL, list_NN; self=false)
     end
     return true
 end
+
+is_unique(list) = length(list) == length(unique(p -> (p[1],p[2]), list))
 
 end # module TestingNeighborLists
