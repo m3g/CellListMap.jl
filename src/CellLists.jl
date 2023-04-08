@@ -452,7 +452,7 @@ AuxThreaded(cl_pair::CellListPair; particles_per_batch=10_000) =
         nbatches::Tuple{Int,Int}=(0,0)
     ) where {UnitCellType,N,T} 
 
-Function that will initialize a `CellList` structure from scracth, given a vector
+Function that will initialize a `CellList` structure from scratch, given a vector
 or particle coordinates (a vector of vectors, typically of static vectors) 
 and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
 systems, the number of parallel batches is equal to the number of threads, but it can
