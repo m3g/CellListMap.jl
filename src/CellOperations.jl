@@ -433,6 +433,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
 end
 
 @testitem "align_cell" begin
+    using CellListMap.TestingNeighborLists: random_rotation
     import CellListMap: align_cell
     using StaticArrays
     using LinearAlgebra
@@ -460,12 +461,6 @@ end
     ]
     #! format: on
     @test align_cell(m) == (one(m), one(m))
-
-    # Functions that define rotations along each axis, given the angle in 3D
-    x_rotation(x) = @SMatrix[1 0 0; 0 cos(x) -sin(x); 0 sin(x) cos(x)]
-    y_rotation(x) = @SMatrix[cos(x) 0 sin(x); 0 1 0; -sin(x) 0 cos(x)]
-    z_rotation(x) = @SMatrix[cos(x) -sin(x) 0; sin(x) cos(x) 0; 0 0 1]
-    random_rotation() = z_rotation(2π*rand()) * y_rotation(2π*rand()) * x_rotation(2π*rand())
 
     #! format: off
     m = @SMatrix[ 
