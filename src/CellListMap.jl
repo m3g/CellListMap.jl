@@ -33,12 +33,12 @@ include("./CoreComputing.jl")
 
 """
     map_pairwise!(
-    f::Function,
-    output,
-    box::Box,
-    cl::CellList
-    ;parallel::Bool=true,
-    show_progress::Bool=false
+        f::Function,
+        output,
+        box::Box,
+        cl::CellList
+        ;parallel::Bool=true,
+        show_progress::Bool=false
     )
 
 This function will run over every pair of particles which are closer than 
