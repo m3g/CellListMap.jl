@@ -224,10 +224,11 @@ end
 
 # Triclinic cells are aligned such that the largest axis is aligned to x
 _align_cell(::Type{TriclinicCell}, m) = align_cell(m)
-_align_cell(::Type{<:OrthorhombicCellType}, m) = m, identity_smatrix(m)
+_align_cell(::Type{<:OrthorhombicCellType}, m) = m, _identity_smatrix(m)
 
-function identity_smatrix(::SMatrix{N,N,T}) where {N,T}
-    oneT = one(T) * inv(one(T))
+# Creates an identity SMatrix without units
+function _identity_smatrix(::SMatrix{N,N,T}) where {N,T}
+    oneT = one(T) * inv(one(T)) # remove units
     I = zeros(MMatrix{N,N,typeof(oneT),N*N})
     for i in 1:N
         I[i,i] = oneT
