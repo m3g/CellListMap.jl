@@ -548,7 +548,7 @@ end
         autoswap::Bool=true
     ) where {UnitCellType,N,T} 
 
-Function that will initialize a `CellListPair` structure from scracth, given two vectors
+Function that will initialize a `CellListPair` structure from scratch, given two vectors
 of particle coordinates and a `Box`, which contain the size of the system, cutoff, etc.
 By default, the cell list will be constructed for smallest vector, but this is not always
 the optimal choice. Using `autoswap=false` the cell list is constructed for the second (`y`)
