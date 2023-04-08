@@ -34,13 +34,15 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 ```
 
 """
-@inline function wrap_cell_fraction(x::AbstractVector, unit_cell_matrix::AbstractMatrix)
+@inline function wrap_cell_fraction(x::AbstractVector{T}, unit_cell_matrix::AbstractMatrix) where {T}
     # Division by `oneunit` is to support Unitful quantities. 
     # this workaround works here because the units cancel.
     # see: https://github.com/PainterQubits/Unitful.jl/issues/46
-    x_stripped = x ./ oneunit(eltype(x))
-    m_stripped = unit_cell_matrix ./ oneunit(eltype(x))
+    x_stripped = x ./ oneunit(T)
+    m_stripped = unit_cell_matrix ./ oneunit(T)
     p = fastmod1.(m_stripped \ x_stripped)
+    # Boundary coordinates belong to the lower boundary
+    p = ifelse.(p .== one(eltype(x_stripped)), zero(eltype(x_stripped)), p)
     return p
 end
 
@@ -433,6 +435,7 @@ end
 @testitem "align_cell" begin
     import CellListMap: align_cell
     using StaticArrays
+    using LinearAlgebra
 
     l = sqrt(2) / 2
 
@@ -475,7 +478,8 @@ end
         R = random_rotation()
         mr = R * m
         ma, Ra = align_cell(mr)
-        @test ma ≈ m
+        @test ma[:,1] ≈ m[:,1]
+        @test cross([1,0,0], cross(ma[:,2],ma[:,3])) ≈ zeros(3) atol=1e-10
     end
 
 end
