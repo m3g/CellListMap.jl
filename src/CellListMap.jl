@@ -119,7 +119,7 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{V,N,T,Swap};
     output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
-) where {F1,F2,V,N,T,Swap} # F1, F2 Needed for specialization for this function
+) where {F1,F2,V,N,T,Swap} # F1, F2 Needed for specialization for these functions
     if Swap == Swapped
         fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
     else
