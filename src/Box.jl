@@ -222,13 +222,21 @@ function _compute_nc_and_cell_size(::Type{TriclinicCell}, xmin::SVector{N,T}, xm
     return nc, cell_size
 end
 
+# Triclinic cells are aligned such that the largest axis is aligned to x
+_align_cell(::Type{TriclinicCell}, m) = align_cell(m)
+function _align_cell(::Type{<:OrthorhombicCellType}, m) 
+    T = typeof(m[1,1] ./ oneunit(eltype(m)))
+    rotation = Matrix{T}(I, size(m))
+    return m, rotation
+end
+
 #
 # This function construct the box once the concrete type of the unit cell was obtained.
 # This function is useful to perform non-allocating box updates.
 #
 function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cutoff) where {UnitCellType,N,T}
 
-    aligned_unit_cell_matrix, rotation = align_cell(input_unit_cell.matrix)
+    aligned_unit_cell_matrix, rotation = _align_cell(UnitCellType, input_unit_cell.matrix)
     check_unit_cell(aligned_unit_cell_matrix, cutoff) || throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
 
     aligned_unit_cell = UnitCell{UnitCellType,N,T,N * N}(aligned_unit_cell_matrix)
