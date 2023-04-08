@@ -205,6 +205,23 @@ end
 Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int=1, UnitCellType=TriclinicCell) =
     Box(unit_cell_matrix, cutoff, lcell, UnitCellType)
 
+# Number of computing cells: for Orthorhombic cells we adjust the cell size such that
+# the system has dimensions multiple of cell_size, such that we can use the forward-cell
+# method of running over computing cells without complications associated to boundaries
+# having fractional cells.
+function _compute_nc_and_cell_size(::Type{<:OrthorhombicCellType}, xmin, xmax, cutoff, lcell)
+    _nc = floor.(Int, (xmax .- xmin) / (cutoff / lcell))
+    cell_size = (xmax .- xmin) ./ _nc
+    nc = _nc .+ 2 * lcell .+ 1
+    return nc, cell_size
+end
+function _compute_nc_and_cell_size(::Type{TriclinicCell}, xmin::SVector{N,T}, xmax::SVector{N,T}, cutoff, lcell) where {N,T}
+    _nc = ceil.(Int, (xmax .- xmin) / (cutoff / lcell))
+    cell_size = SVector{N,T}(ntuple(_ -> cutoff/lcell, N))
+    nc = _nc .+ 2 * lcell .+ 1
+    return nc, cell_size
+end
+
 #
 # This function construct the box once the concrete type of the unit cell was obtained.
 # This function is useful to perform non-allocating box updates.
@@ -220,18 +237,7 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType,N,T}, lcell, cuto
     # including images away from the primitive cell but within the cutoff
     xmin, xmax = cell_limits(aligned_unit_cell.matrix)
 
-    # Number of computing cells: for Orthorhombic cells we adjust the cell size such that
-    # the system has dimensions multiple of cell_size, such that we can use the forward-cell
-    # method of running over computing cells without complications associated to boundaries
-    # having fractional cells.
-    if UnitCellType <: OrthorhombicCellType
-        _nc = floor.(Int, (xmax .- xmin) / (cutoff / lcell))
-        cell_size = (xmax .- xmin) ./ _nc
-    else
-        _nc = ceil.(Int, (xmax .- xmin) / (cutoff / lcell))
-        cell_size = SVector{N,T}(ntuple(i -> cutoff / lcell, N))
-    end
-    nc = _nc .+ 2 * lcell .+ 1
+    nc, cell_size = _compute_nc_and_cell_size(UnitCellType, xmin, xmax, cutoff, lcell) 
     computing_box = (xmin .- lcell * cell_size, xmax .+ lcell * cell_size)
 
     # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
