@@ -599,14 +599,22 @@ end
     nl2 = neighborlist(l, 7.0) 
     @test is_unique(nl2)
 
+    rotation(x) = @SMatrix[ cos(x) sin(x); -sin(x) cos(x)]
+
     l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
     nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
     @test length(nl) == 1
+    l = Ref(rotation(π/2)) .* l
+    nl3 = neighborlist(l, 7.0) 
+    @test is_unique(nl3)
 
     l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
     unitcell = [14.01, 14.02]
     neighborlist(l, 5.0; unitcell=unitcell)
     @test length(nl) == 1
+    l = Ref(rotation(π/2)) .* l
+    nl3 = neighborlist(l, 7.0) 
+    @test is_unique(nl3)
 
 end
 
