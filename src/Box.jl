@@ -224,10 +224,15 @@ end
 
 # Triclinic cells are aligned such that the largest axis is aligned to x
 _align_cell(::Type{TriclinicCell}, m) = align_cell(m)
-function _align_cell(::Type{<:OrthorhombicCellType}, m) 
-    T = typeof(m[1,1] ./ oneunit(eltype(m)))
-    rotation = Matrix{T}(I, size(m))
-    return m, rotation
+_align_cell(::Type{<:OrthorhombicCellType}, m) = m, identity_smatrix(m)
+
+function identity_smatrix(::SMatrix{N,N,T}) where {N,T}
+    oneT = one(T) * inv(one(T))
+    I = zeros(MMatrix{N,N,typeof(oneT),N*N})
+    for i in 1:N
+        I[i,i] = oneT
+    end
+    return SMatrix(I)
 end
 
 #
