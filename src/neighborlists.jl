@@ -592,29 +592,51 @@ end
 
     # Some pathological cases related to bug 84
     l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
-    nl2 = neighborlist(l, 7.0) 
-    @test is_unique(nl2)
+    nl = neighborlist(l, 7.0) 
+    @test is_unique(nl)
+    lr = Ref(x_rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
+    lr = Ref(y_rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
+    lr = Ref(z_rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
+    lr = Ref(z_rotation(π/2) * y_rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
+    lr = Ref(z_rotation(π/2) * x_rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
+    lr = Ref(y_rotation(π/2) * x_rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
+
+    # in 2D
+    rotation(x) = @SMatrix[ cos(x) sin(x); -sin(x) cos(x)]
 
     l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
-    nl2 = neighborlist(l, 7.0) 
-    @test is_unique(nl2)
-
-    rotation(x) = @SMatrix[ cos(x) sin(x); -sin(x) cos(x)]
+    nl = neighborlist(l, 7.0) 
+    @test is_unique(nl)
+    lr = Ref(rotation(π/2)) .* l
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
 
     l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
     nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
     @test length(nl) == 1
     l = Ref(rotation(π/2)) .* l
-    nl3 = neighborlist(l, 7.0) 
-    @test is_unique(nl3)
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
 
     l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
     unitcell = [14.01, 14.02]
     neighborlist(l, 5.0; unitcell=unitcell)
     @test length(nl) == 1
     l = Ref(rotation(π/2)) .* l
-    nl3 = neighborlist(l, 7.0) 
-    @test is_unique(nl3)
+    nr = neighborlist(l, 7.0) 
+    @test is_unique(nr)
 
 end
 
@@ -740,9 +762,12 @@ end
 #
 module TestingNeighborLists
 
+using StaticArrays
+
 export nl_NN
 export compare_nb_lists
 export is_unique
+export x_rotation, y_rotation, z_rotation, random_rotation
 
 function nl_NN(BallTree, inrange, x, y, r)
     balltree = BallTree(x)
@@ -782,5 +807,11 @@ function compare_nb_lists(list_CL, list_NN; self=false)
 end
 
 is_unique(list) = length(list) == length(unique(p -> (p[1],p[2]), list))
+
+# Functions that define rotations along each axis, given the angle in 3D
+x_rotation(x) = @SMatrix[1 0 0; 0 cos(x) -sin(x); 0 sin(x) cos(x)]
+y_rotation(x) = @SMatrix[cos(x) 0 sin(x); 0 1 0; -sin(x) 0 cos(x)]
+z_rotation(x) = @SMatrix[cos(x) -sin(x) 0; sin(x) cos(x) 0; 0 0 1]
+random_rotation() = z_rotation(2π*rand()) * y_rotation(2π*rand()) * x_rotation(2π*rand())
 
 end # module TestingNeighborLists
