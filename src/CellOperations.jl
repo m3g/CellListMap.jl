@@ -462,7 +462,7 @@ end
     x_rotation(x) = @SMatrix[1 0 0; 0 cos(x) -sin(x); 0 sin(x) cos(x)]
     y_rotation(x) = @SMatrix[cos(x) 0 sin(x); 0 1 0; -sin(x) 0 cos(x)]
     z_rotation(x) = @SMatrix[cos(x) -sin(x) 0; sin(x) cos(x) 0; 0 0 1]
-    random_rotation() = z_rotation(rand()) * y_rotation(rand()) * x_rotation(rand())
+    random_rotation() = z_rotation(2π*rand()) * y_rotation(2π*rand()) * x_rotation(2π*rand())
 
     #! format: off
     m = @SMatrix[ 
