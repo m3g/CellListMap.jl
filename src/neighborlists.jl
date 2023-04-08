@@ -626,6 +626,14 @@ end
     cutoff = 0.1u"nm"
     nb = neighborlist(positions, cutoff)
     @test unit(nb[1][3]) == u"nm"
+
+    # and boundary coordinates
+    l = [SVector(0.0, 0.0)u"nm", SVector(-1, 0.0)u"nm"]
+    unitcell = [14.01, 14.02]u"nm"
+    nl = neighborlist(l, 7.0u"nm")
+    @test length(nl) == 1
+    @test nl[1][3] ≈ 1.0u"nm"
+
 end
 
 @testitem "Compare with NearestNeighbors" begin
