@@ -632,11 +632,29 @@ end
 
     l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
     unitcell = [14.01, 14.02]
-    neighborlist(l, 5.0; unitcell=unitcell)
+    nl = neighborlist(l, 5.0; unitcell=unitcell)
     @test length(nl) == 1
     l = Ref(rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
     @test is_unique(nr)
+
+    unitcell=[1.0,1.0]
+    for x in [nextfloat(0.1),prevfloat(0.9)]
+        l = [[0.0,0.0],[x,0.0]] 
+        nl = neighborlist(l, 0.1; unitcell=unitcell)
+        @test length(nl) == 0
+        lr = Ref(rotation(π/2)) .* l
+        nl = neighborlist(l, 0.1; unitcell=unitcell)
+        @test length(nl) == 0
+    end
+    for x in [0.1,0.9]
+        l = [[0.0,0.0],[x,0.0]] 
+        nl = neighborlist(l, 0.1; unitcell=unitcell)
+        @test length(nl) == 1
+        lr = Ref(rotation(π/2)) .* l
+        nl = neighborlist(l, 0.1; unitcell=unitcell)
+        @test length(nl) == 1
+    end
 
 end
 
