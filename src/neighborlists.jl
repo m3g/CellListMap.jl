@@ -382,34 +382,34 @@ end
     for N in [2, 3]
 
         x = rand(N, 500)
-        cutoff = 0.1
-        nb = nl_NN(BallTree, inrange, x, x, cutoff)
-        system = InPlaceNeighborList(x=x, cutoff=cutoff)
+        r = 0.1
+        nb = nl_NN(BallTree, inrange, x, x, r)
+        system = InPlaceNeighborList(x=x, cutoff=r)
         cl = neighborlist!(system)
-        @test compare_nb_lists(cl, nb, self=true)
+        @test compare_nb_lists(cl, nb, x, r)[1]
         # Test system updating for self-lists
-        cutoff = 0.05
+        r = 0.05
         new_x = rand(N, 450)
-        nb = nl_NN(BallTree, inrange, new_x, new_x, cutoff)
-        update!(system, new_x; cutoff=cutoff)
+        nb = nl_NN(BallTree, inrange, new_x, new_x, r)
+        update!(system, new_x; cutoff=r)
         cl = neighborlist!(system)
-        @test compare_nb_lists(cl, nb, self=true)
+        @test compare_nb_lists(cl, nb, x, r)[1]
 
         # Test system updating for cross-lists
         x = rand(N, 500)
         y = rand(N, 1000)
-        cutoff = 0.1
-        nb = nl_NN(BallTree, inrange, x, y, cutoff)
-        system = InPlaceNeighborList(x=x, y=y, cutoff=cutoff)
+        r = 0.1
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        system = InPlaceNeighborList(x=x, y=y, cutoff=r)
         cl = neighborlist!(system)
-        @test compare_nb_lists(cl, nb, self=false)
-        cutoff = 0.05
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        r = 0.05
         new_x = rand(N, 500)
         new_y = rand(N, 831)
-        nb = nl_NN(BallTree, inrange, new_x, new_y, cutoff)
-        update!(system, new_x, new_y; cutoff=cutoff)
+        nb = nl_NN(BallTree, inrange, new_x, new_y, r)
+        update!(system, new_x, new_y; cutoff=r)
         cl = neighborlist!(system)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
 
     end
 
@@ -593,42 +593,42 @@ end
     # Some pathological cases related to bug 84
     l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
     nl = neighborlist(l, 7.0) 
-    @test is_unique(nl)
+    @test is_unique(nl; self=true)
     lr = Ref(x_rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
     lr = Ref(y_rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
     lr = Ref(z_rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
     lr = Ref(z_rotation(π/2) * y_rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
     lr = Ref(z_rotation(π/2) * x_rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
     lr = Ref(y_rotation(π/2) * x_rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
 
     # in 2D
     rotation(x) = @SMatrix[ cos(x) sin(x); -sin(x) cos(x)]
 
     l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
     nl = neighborlist(l, 7.0) 
-    @test is_unique(nl)
+    @test is_unique(nl; self=true)
     lr = Ref(rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
 
     l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
     nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
     @test length(nl) == 1
     l = Ref(rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
 
     l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
     unitcell = [14.01, 14.02]
@@ -636,7 +636,7 @@ end
     @test length(nl) == 1
     l = Ref(rotation(π/2)) .* l
     nr = neighborlist(l, 7.0) 
-    @test is_unique(nr)
+    @test is_unique(nr; self=true)
 
     unitcell=[1.0,1.0]
     for x in [nextfloat(0.1),prevfloat(0.9)]
@@ -697,27 +697,27 @@ end
 
         nb = nl_NN(BallTree, inrange, x, x, r)
         cl = CellListMap.neighborlist(x, r)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=true)
+        @test is_unique(cl; self=true)
+        @test compare_nb_lists(cl, nb, x, r)[1]
 
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
 
         # with x smaller than y
         x = [rand(SVector{N,Float64}) for _ in 1:500]
         y = [rand(SVector{N,Float64}) for _ in 1:1000]
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
 
         # Using matrices as input
         x = rand(N, 1000)
@@ -725,27 +725,27 @@ end
 
         nb = nl_NN(BallTree, inrange, x, x, r)
         cl = CellListMap.neighborlist(x, r)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=true)
+        @test is_unique(cl; self=true)
+        @test compare_nb_lists(cl, nb, x, r)[1]
 
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
 
         # with x smaller than y
         x = rand(N, 500)
         y = rand(N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
 
         # Check random coordinates to test the limits more thoroughly
         check_random_NN = true
@@ -754,8 +754,8 @@ end
             y = rand(SVector{N,Float64}, 50)
             nb = nl_NN(BallTree, inrange, x, y, r)
             cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-            @test is_unique(cl)
-            check_random_NN = compare_nb_lists(cl, nb, self=false)
+            @test is_unique(cl; self=false)
+            check_random_NN = compare_nb_lists(cl, nb, x, y, r)[1]
         end
         @test check_random_NN
 
@@ -764,11 +764,11 @@ end
         y = rand(Float32, N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
         cl = CellListMap.neighborlist(x, y, r, autoswap=false)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
         cl = CellListMap.neighborlist(x, y, r, autoswap=true)
-        @test is_unique(cl)
-        @test compare_nb_lists(cl, nb, self=false)
+        @test is_unique(cl; self=false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
 
     end
 
@@ -780,6 +780,7 @@ end
 #
 module TestingNeighborLists
 
+using LinearAlgebra: norm
 using StaticArrays
 
 export nl_NN
@@ -788,43 +789,60 @@ export is_unique
 export x_rotation, y_rotation, z_rotation, random_rotation
 
 function nl_NN(BallTree, inrange, x, y, r)
-    balltree = BallTree(x)
-    return inrange(balltree, y, r, true)
+    balltree = BallTree(y)
+    return inrange(balltree, x, r, true)
 end
 
-function compare_nb_lists(list_CL, list_NN; self=false)
-    if self
-        for (i, list_original) in pairs(list_NN)
-            list = filter(!isequal(i), list_original)
-            cl = filter(tup -> (tup[1] == i || tup[2] == i), list_CL)
-            if length(cl) != length(list)
-                @show i
-                @show length(list), list
-                @show length(cl), cl
-                return false
+# for nb lists in a single set
+function compare_nb_lists(list_CL, list_NN, x, r::AbstractFloat)
+    for (i, j_list) in pairs(list_NN)
+        for j in j_list
+            if i == j # inrange will return self-pairs
+                continue
             end
-            for j in list
-                length(findall(tup -> (tup[1] == j || tup[2] == j), cl)) == 1 || return false
+            ij_pairs = findall(p -> ((i,j) == (p[1],p[2])) || ((i,j) == (p[2],p[1])), list_CL)
+            if length(ij_pairs) > 1
+                println("Non-unique pair: ", join((i, j, ij_pairs)," "))
+                return false, x, r
             end
-        end
-    else
-        for (i, list) in pairs(list_NN)
-            cl = filter(tup -> tup[2] == i, list_CL)
-            if length(cl) != length(list)
-                @show i
-                @show length(list), list
-                @show length(cl), cl
-                return false
-            end
-            for j in list
-                length(findall(tup -> tup[1] == j, cl)) == 1 || return false
+            if length(ij_pairs) == 0
+                if !(norm(x[i] - x[j]) / r ≈ 1)
+                    println("Pair not found: ", join((i, j, ij_pairs, norm(x[i]-x[j]))," "))
+                    return false, x, r
+                else
+                    println("Warning: pair not found with d = r: ", join((i, j, norm(x[i]-x[j])), " "))
+                end
             end
         end
     end
-    return true
+    return true, nothing, nothing
 end
 
-is_unique(list) = length(list) == length(unique(p -> (p[1],p[2]), list))
+# for nb lists in a single set
+function compare_nb_lists(list_CL, list_NN, x, y, r::AbstractFloat)
+    for (i, j_list) in pairs(list_NN)
+        for j in j_list
+            ij_pairs = findall(p -> (i,j) == (p[1],p[2]), list_CL)
+            if length(ij_pairs) > 1
+                println("Non-unique pair: ", join((i, j, j_list, list_CL[ij_pairs]), " "))
+                return false, x, y, r
+            end
+            if length(ij_pairs) == 0
+                if !(norm(x[i] - y[j]) / r ≈ 1)
+                    println("Pair not found: ", join((i, j, ij_pairs, norm(x[i]-y[j])), " "))
+                    return false, x, y, r
+                else
+                    println("Warning: pair not found with d = r: ", i, j, norm(x[i]-y[j]))
+                end
+            end
+        end
+    end
+    return true, nothing, nothing, nothing
+end
+            
+is_unique(list; self::Bool) = self ? is_unique_self(list) : is_unique_cross(list)
+is_unique_cross(list) = length(list) == length(unique(p -> (p[1],p[2]), list))
+is_unique_self(list) = length(list) == length(unique(p -> p[1] < p[2] ? (p[1],p[2]) : (p[2],p[1]), list))
 
 # Functions that define rotations along each axis, given the angle in 3D
 x_rotation(x) = @SMatrix[1 0 0; 0 cos(x) -sin(x); 0 sin(x) cos(x)]
