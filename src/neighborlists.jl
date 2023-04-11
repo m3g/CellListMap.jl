@@ -668,12 +668,13 @@ end
     using CellListMap
     using Unitful
     using StaticArrays
-    positions = rand(SVector{3,Float64}, 50)u"nm"
+
+    positions = [SVector(0.1, 0.0, 0.0), SVector(0.11, 0.01, 0.01) ]u"nm"
     cutoff = 0.1u"nm"
     nb = neighborlist(positions, cutoff)
     @test unit(nb[1][3]) == u"nm"
 
-    # and boundary coordinates
+    # and with boundary coordinates (to test the fix for upper boundary shifts)
     l = [SVector(0.0, 0.0)u"nm", SVector(-1, 0.0)u"nm"]
     unitcell = [14.01, 14.02]u"nm"
     nl = neighborlist(l, 7.0u"nm")
