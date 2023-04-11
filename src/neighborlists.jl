@@ -386,6 +386,7 @@ end
         nb = nl_NN(BallTree, inrange, x, x, r)
         system = InPlaceNeighborList(x=x, cutoff=r)
         cl = neighborlist!(system)
+        @test is_unique(cl; self=true)
         @test compare_nb_lists(cl, nb, x, r)[1]
         # Test system updating for self-lists
         r = 0.05
@@ -393,6 +394,7 @@ end
         nb = nl_NN(BallTree, inrange, new_x, new_x, r)
         update!(system, new_x; cutoff=r)
         cl = neighborlist!(system)
+        @test is_unique(cl; self=true)
         @test compare_nb_lists(cl, nb, x, r)[1]
 
         # Test system updating for cross-lists
@@ -402,6 +404,7 @@ end
         nb = nl_NN(BallTree, inrange, x, y, r)
         system = InPlaceNeighborList(x=x, y=y, cutoff=r)
         cl = neighborlist!(system)
+        @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
         r = 0.05
         new_x = rand(N, 500)
@@ -409,6 +412,7 @@ end
         nb = nl_NN(BallTree, inrange, new_x, new_y, r)
         update!(system, new_x, new_y; cutoff=r)
         cl = neighborlist!(system)
+        @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
 
     end
