@@ -644,6 +644,7 @@ end
 
     unitcell=[1.0,1.0]
     for x in [nextfloat(0.1),prevfloat(0.9)]
+        local l, nl, lr
         l = [[0.0,0.0],[x,0.0]] 
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 0
@@ -652,6 +653,7 @@ end
         @test length(nl) == 0
     end
     for x in [-0.1,0.1,0.9]
+        local l, nl, lr
         l = [[0.0,0.0],[x,0.0]] 
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 1

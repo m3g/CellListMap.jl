@@ -470,6 +470,7 @@ end
     ]
     #! format: on
     for _ in 1:5
+        local R
         R = random_rotation()
         mr = R * m
         ma, Ra = align_cell(mr)
