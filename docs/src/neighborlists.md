@@ -8,6 +8,9 @@ and the corresponding distances.
 - [In-place computation of neighbor lists](@ref)
 - [Options](@ref)
 
+!!! note
+    When computing neighbor lists with cell-lists, it is possible for pairs of particles that are at a distance equal to the cutoff to either be included or excluded due to numerical rounding. As a result, these neighbor lists should only be utilized for calculating properties that vanish at the cutoff distance.
+    
 ## Non-periodic systems
 
 Without periodic boundary conditions, just provide the coordinates and the cutoff:
