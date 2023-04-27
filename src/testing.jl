@@ -363,7 +363,7 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {
     x_rotated = Ref(box.rotation) .* x
     Main.scatter!(plt, Tuple.(wrap_to_first.(x_rotated, Ref(box.aligned_unit_cell.matrix))), label=:none, markeralpha=0.3)
     lims = Vector{Float64}[]
-    xmin, xmax = box.computing_limits
+    xmin, xmax = cell_limits(box.aligned_unit_cell.matrix)
     xmin = xmin .- box.cell_size
     xmax = xmax .+ box.cell_size
     Main.plot!(plt,
@@ -374,6 +374,9 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {
         xticks=(round.(digits=3, xmin[1]:box.cell_size[1]:xmax[1])),
         yticks=(round.(digits=3, xmin[2]:box.cell_size[2]:xmax[2])),
         zticks=(round.(digits=3, xmin[3]:box.cell_size[3]:xmax[3])),
+        bgcolor=:black,
+        fgcolor=:wyhite,
+        size=(800,800),
     )
     return plt
 end
