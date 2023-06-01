@@ -312,7 +312,7 @@ Returns the lengths of a orthorhombic box that encompasses all the particles def
 and `y`, to used to set a box without effective periodic boundary conditions.
 
 """
-function limits(x::T, y::T) where {T<:AbstractVector{<:AbstractVector}}
+function limits(x::AbstractVector{<:AbstractVector}, y::AbstractVector{<:AbstractVector})
     xmin, xmax = _minmax(x)
     ymin, ymax = _minmax(y)
     xymin = min.(xmin, ymin)
@@ -320,7 +320,7 @@ function limits(x::T, y::T) where {T<:AbstractVector{<:AbstractVector}}
     return Limits(xymax .- xymin)
 end
 
-function limits(x::T, y::T) where {T<:AbstractMatrix}
+function limits(x::AbstractMatrix, y::AbstractMatrix)
     N = size(x, 1)
     M = size(y, 1)
     N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
