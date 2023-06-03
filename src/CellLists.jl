@@ -271,7 +271,7 @@ function set_number_of_batches!(
     nbatches = NumberOfBatches(n1, n2)
     target = cl.target
     @set! target.nbatches = nbatches
-    return CellListPair{V,N,T,Swap}(cl.ref, cl.target)
+    return CellListPair{V,N,T,Swap}(cl.ref, target)
 end
 
 """
