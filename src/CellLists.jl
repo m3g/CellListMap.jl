@@ -399,8 +399,7 @@ corresponding `AuxThreaded` structure.
 """
 function set_idxs!(idxs, n_particles, nbatches)
     length(idxs) == nbatches || throw(ArgumentError("Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array."))
-    nrem = n_particles % nbatches
-    nperthread = (n_particles - nrem) ÷ nbatches
+    nperthread, nrem = divrem(n_particles, nbatches)
     first = 1
     for ibatch in eachindex(idxs)
         nx = nperthread
