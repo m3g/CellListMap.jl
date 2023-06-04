@@ -194,7 +194,7 @@ abstract type AbstractPeriodicSystem{OutputName} end
 import Base: getproperty, propertynames
 getproperty(sys::AbstractPeriodicSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractPeriodicSystem, s::Val{S}) where {S} = getfield(sys, S)
-# publi properties
+# public properties
 getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
 getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
 getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
@@ -341,11 +341,11 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputNa
     N = size(sys.unitcell, 1)
     println(io, "PeriodicSystem1{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
-    println()
+    println(io)
     show(io_sub, mime, sys._cell_list)
-    println("\n    Parallelization auxiliary data set for: ")
+    println(io, "\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.nbatches)
-    print("\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+    print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2{OutputName}) where {OutputName}
@@ -354,11 +354,11 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2{OutputNa
     N = size(sys.unitcell, 1)
     println(io, "PeriodicSystem2{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
-    println()
+    println(io)
     show(io_sub, mime, sys._cell_list)
-    println("\n    Parallelization auxiliary data set for: ")
+    println(io,"\n    Parallelization auxiliary data set for: ")
     show(io_sub, mime, sys._cell_list.target.nbatches)
-    print("\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+    print(io,"\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
 #
