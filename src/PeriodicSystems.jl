@@ -171,7 +171,7 @@ function PeriodicSystem(;
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
-        # Two sets of positions
+    # Two sets of positions
     elseif !isnothing(xpositions) && !isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches, autoswap=autoswap)
