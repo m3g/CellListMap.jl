@@ -846,7 +846,46 @@ function compare_nb_lists(list_CL, list_NN, x, y, r::AbstractFloat)
     end
     return true, nothing, nothing, nothing
 end
-            
+
+function lists_match(
+    list1::Vector{Tuple{Int,Int,T1}},
+    list2::Vector{Tuple{Int,Int,T2}},
+    cutoff::Real;
+    verbose::Bool=false,
+    atol::Real=1e-10
+) where {T1<:Real,T2<:Real}
+    io = verbose ? stdout : devnull
+    lists_match = true
+    for pair1 in list1
+        index_pair2 = findall(
+            p -> ((p[1],p[2]) == (pair1[1],pair1[2])) | ((p[1],p[2]) == (pair1[2],pair1[1])), list2
+        )
+        # check if pair is unique
+        if length(index_pair2) > 1
+            println(io, "Non-unique pair: ", join((pair1, list2[index_pair2]), " "))
+            lists_match = false
+        end
+        # check if missing pair is at the cutof distance
+        if length(index_pair2) == 0
+            if !(isapprox(pair1[3] - cutoff, 0, atol=atol))
+                println(io, "Pair of list1 not found in list2: ", pair1)
+                lists_match = false
+            else
+                println(io, "Warning: pair of list1 not found in list2 with d ≈ r: ", pair1)
+            end
+        end
+        if length(index_pair2) == 1
+            pair2 = list2[index_pair2[1]]
+            # check if distances match
+            if !isapprox(pair1[3]-pair2[3], 0, atol=atol)
+                println(io, "Warning: distances do not match: ", pair1, pair2)
+                lists_match = false
+            end
+        end
+    end
+    return lists_match
+end
+
 is_unique(list; self::Bool) = self ? is_unique_self(list) : is_unique_cross(list)
 is_unique_cross(list) = length(list) == length(unique(p -> (p[1],p[2]), list))
 is_unique_self(list) = length(list) == length(unique(p -> p[1] < p[2] ? (p[1],p[2]) : (p[2],p[1]), list))
