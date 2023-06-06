@@ -55,6 +55,7 @@ end
 function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborList{T}}) where {T}
     ranges = cumsum(nb.n for nb in list_threaded)
     npairs = ranges[end]
+    # need to resize here for the case where length(list) < npairs
     list = resize!(list, npairs)
     @sync for it in eachindex(list_threaded)
         lt = list_threaded[it]
@@ -370,6 +371,10 @@ function neighborlist!(system::InPlaceNeighborList)
         output_threaded=system.nb_threaded,
         show_progress=system.show_progress
     )
+    # need to resize here to return the correct number of pairs for serial runs
+    # (this resizing is redundant for parallel runs, since it occurs at the reduction function)
+    # before updating
+    !system.parallel && resize!(system.nb, system.nb.n)
     return system.nb.list
 end
 
@@ -781,9 +786,16 @@ end
 
 end
 
-@testitem "lists match" begin
-    import CellListMap
-    @test CellListMap.TestingNeighborLists.test_threaded_lists()
+@testitem "list buffer reduction" begin
+    using CellListMap, StaticArrays
+    x = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.05) ];
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false)
+    list0 = neighborlist!(system) # correct
+    @test length(list0) == 1
+    xnew = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.2) ];
+    update!(system, xnew)
+    list1 = neighborlist!(system)
+    @test length(list1) == 0
 end
 
 #
@@ -962,21 +974,6 @@ function lists_match(
         lists_match = _list_match_unique(lists_match, pair2, index_pair1, list1, cutoff; io, atol, first="second", second="first")
     end
     return lists_match
-end
-
-# Test the successive generation of lists and updates
-function test_threaded_lists()
-    x = rand(SVector{3,Float64}, 10^3);
-    cutoff = 0.1
-    system = InPlaceNeighborList(x=x, cutoff=cutoff, unitcell=[1,1,1], parallel=false)
-    x_new = rand(SVector{3,Float64}, 10^3);
-    for _=1:1000
-        x_new = rand(SVector{3,Float64}, 10^3);
-        update!(system, x_new)
-    end
-    list1 = copy(neighborlist!(system))
-    list2 = copy(neighborlist(x_new, 0.1; unitcell = [1, 1, 1]))
-    return lists_match(list1, list2, cutoff; verbose = true)
 end
 
 end # module TestingNeighborLists
