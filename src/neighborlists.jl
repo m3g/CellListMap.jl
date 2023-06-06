@@ -372,8 +372,8 @@ function neighborlist!(system::InPlaceNeighborList)
         show_progress=system.show_progress
     )
     # need to resize here to return the correct number of pairs for serial runs
-    # (this resizing is redundant for parallel runs, since it occurs at the reduction function)
-    # before updating
+    # (this resizing is redundant for parallel runs, since it occurs at the reduction function
+    # before updating)
     !system.parallel && resize!(system.nb, system.nb.n)
     return system.nb.list
 end
