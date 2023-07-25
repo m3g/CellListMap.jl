@@ -962,6 +962,22 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
     return cl
 end
 
+# Deal with corner cases where a real particle is found in the exact bundary of real box.
+# This cannot happen because then running over the neighboring boxes can cause an 
+# invalid access to an index of a cell.
+function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
+    cidxs = ntuple(i -> cartesian_index[i], N)
+    for i in 1:N
+        if cidxs[i] == box.lcell 
+            @set! cidxs[i] += 1
+        end
+        if cidxs[i] == box.nc[i] - box.lcell + 1
+            @set! cidxs[i] -= 1
+        end
+    end
+    return CartesianIndex{N}(cidxs)
+end
+
 """
     add_particle_to_celllist!(
         ip,
@@ -995,6 +1011,11 @@ function add_particle_to_celllist!(
     @set! cl.n_particles += 1
     # Cell of this particle
     cartesian_index = particle_cell(x, box)
+    if real_particle 
+        cartesian_index = real_particle_border_case(cartesian_index, box)
+    end
+
+    # Linear index of the cell
     linear_index = cell_linear_index(box.nc, cartesian_index)
 
     # Check if this is the first particle of this cell, if it is,
