@@ -1,5 +1,10 @@
 using TestItemRunner
 
+@testitem "Aqua.test_all" begin
+    import Aqua
+    Aqua.test_all(CellListMap)
+end
+
 @testitem "disjoint sets" begin
 
     using CellListMap
