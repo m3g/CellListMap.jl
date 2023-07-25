@@ -26,7 +26,7 @@ Download and install Julia for your platform from [this http url](https://julial
 
 Install it as usual for registered Julia packages:
 
-```julia-repl
+```julia
 julia> import Pkg
 
 julia> Pkg.add("CellListMap")
