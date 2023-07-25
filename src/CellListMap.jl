@@ -18,7 +18,6 @@ export OrthorhombicCell
 export NonPeriodicCell
 export unitcelltype
 export nbatches
-export PeriodicSystem
 
 # Flag for internal function doc entries
 const INTERNAL = "Internal function or structure - interface may change."
