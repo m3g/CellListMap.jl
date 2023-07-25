@@ -14,6 +14,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
+Aqua = "0.6"
 DocStringExtensions = "0.8, 0.9"
 Parameters = "0.12"
 ProgressMeter = "1.6"
@@ -23,6 +24,7 @@ TestItems = "0.1"
 julia = "1.6"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
@@ -34,4 +36,4 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
-test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools"]
+test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua"]
