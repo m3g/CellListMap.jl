@@ -27,7 +27,6 @@ function resize!(x::NeighborList, n::Int)
     return x
 end
 copy(x::NeighborList{T}) where {T} = NeighborList{T}(x.n, copy(x.list))
-copy(x::Tuple{Int,Int,T}) where {T} = (x[1], x[2], x[3])
 
 @testitem "NeighborList operations" begin
     using CellListMap
