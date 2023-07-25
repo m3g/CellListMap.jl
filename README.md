@@ -1,4 +1,8 @@
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://m3g.github.com/m3g/CellListMap.jl/stable)
+[![Tests](https://img.shields.io/badge/build-passing-green)](https://github.com/m3g/CellListMap.jl/actions)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+
 <p align=center>
 <img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/logo.svg>
 </p>
@@ -80,7 +84,5 @@ If you use this software and need to cite it, please use the following reference
 
 L. Martínez, *CellListMap.jl: Efficient and customizable cell list implementation for calculation of pairwise particle properties within a cutoff.* Computer Physics Communications, 279, 108452, 2022. https://doi.org/10.1016/j.cpc.2022.108452
 
-[![Tests](https://img.shields.io/badge/build-passing-green)](https://github.com/m3g/CellListMap.jl/actions)
-[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 
