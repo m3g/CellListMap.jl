@@ -1,6 +1,6 @@
 # CellListMap.jl
 
-This package implements an efficient cell list scheme for the computation of interactions, neighbor lists, or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. 
+[CellListMap.jl](https://github.com/m3g/CellListMap.jl) implements an efficient cell list scheme for the computation of interactions, neighbor lists, or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. 
 
 It maps a generic function to be computed for each pair of particles, using periodic boundary conditions of any type. Parallel and serial implementations can be used. The user defined function will be evaluated only for the pairs closer to each other than the desired cutoff distance.
 
