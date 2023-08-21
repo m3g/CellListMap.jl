@@ -1,7 +1,7 @@
-@setup_workload begin
-    # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
-    # precompile file and potentially make loading faster.
-    if Base.VERSION >= v"1.9"
+if Base.VERSION >= v"1.9"
+    @setup_workload begin
+        # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
+        # precompile file and potentially make loading faster.
         cutoff = 0.05
         x3d = rand(3, 100)
         y3d = rand(3, 100)
