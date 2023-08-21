@@ -1,5 +1,6 @@
 module CellListMap
 
+using PrecompileTools
 using DocStringExtensions
 using TestItems
 using ProgressMeter
@@ -155,6 +156,9 @@ include("./neighborlists.jl")
 #
 include("./examples/examples.jl")
 include("./testing.jl")
+
+# Precompilation tools
+include("precompile.jl")
 
 end # module
 
