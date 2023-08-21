@@ -60,13 +60,22 @@ In [8]: y = np.random.random((50_000,3))
 In [9]: i_inds, j_inds, d = cl.neighborlist_cross(x, y, 0.05, unitcell=np.array([1, 1, 1]))
 ```
 
-To run the code multi-threaded, set the `JULIA_NUM_THREADS` environment variable before launching python.
+!!! note
+    The indexes of the particles the `i_inds` and `j_inds` arrays are 0-based, to conform the numpy array standard. 
+
+!!! tip
+    To run the code multi-threaded, set the `JULIA_NUM_THREADS` environment variable before launching python:
+    ```bash
+    % export JULIA_NUM_THREADS=8
+    ```
+
+## Under the hood: interfacing with the Julia package
 
 !!! note
     The details of the above module are explained below, for a more in depth understanding of the
     interface between Julia and Python through the [`PythonCall.jl`](https://github.com/cjdoris/PythonCall.jl) library.
 
-## Calling `neighborlist` 
+    We highly recommend using the `CellListMap.py` module provided above.
 
 The typical input coordinates, in python, are a `numpy` array with shape `(N,dim)` where `N` is the number of particles and `dim` is the dimension
 of the space (2 or 3 for `CellListMap`). Here, we generate a set of `50,000` particles in three dimensions:
@@ -98,9 +107,7 @@ Out[13]: (1, 37197, 0.047189685889846615)
 ```
 Note that the third element of the tuple is the distance between the points.
 
-
-
-## Converting the list to numpy arrays
+### Converting the list to numpy arrays
 
 The output of `CellListMap.neighborlist` is a Julia `Vector{Tuple{Int,Int,Float64}}` array (or `Float32`, if the coordinates
 and cutoff were given in 32-bit precision). This Julia list can be accessed from within python normally:
@@ -140,6 +147,8 @@ def neighborlist(x, cutoff) :
     j_inds = np.full((len(nb_list),), 0, dtype=np.int64)
     d = np.full((len(nb_list),), 0.0, dtype=np.float64)
     jl.copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    i_inds -= 1 # make indexes 0-based
+    j_inds -= 1 # make indexes 0-based
     return i_inds, j_inds, d
 ```
 
@@ -148,7 +157,7 @@ of the two particles involved in each pair, and their distances:
 ```python
 In [61]: neighborlist(coords,0.05)
 Out[61]: 
-(array([    1,     1,     1, ..., 49802, 49802, 49885]),
+(array([    0,     0,     0, ..., 49802, 49802, 49885]),
  array([ 6717,  7208,  9303, ..., 11542, 27777, 43853]),
  array([0.02005212, 0.03880916, 0.04543936, ..., 0.04671987, 0.02671908,
         0.02772025]))
@@ -217,7 +226,7 @@ julia> @btime CellListMap.neighborlist($x,0.05,parallel=false);
   51.299 ms (17687 allocations: 37.43 MiB)
 ```
 
-## Multi-threading
+### Multi-threading
 
 These examples were run single-threaded. To run multi-threaded, an environment variable for `Julia` needs to be set. For example,
 in `bash`, do:
