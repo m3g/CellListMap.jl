@@ -220,7 +220,7 @@ function set_number_of_batches!(cl::CellList{N,T}, nbatches::Tuple{Int,Int}=(0, 
         nbatches = NumberOfBatches(nbatches)
     else
         if nbatches != (0, 0) && nbatches != (1, 1)
-            @warn "nbatches set to $nbatches, but parallel is set to false, implying nbatches == (1, 1)"
+            println("WARNING: nbatches set to $nbatches, but parallel is set to false, implying nbatches == (1, 1)")
         end
         nbatches = NumberOfBatches((1, 1))
     end
@@ -254,7 +254,7 @@ function set_number_of_batches!(
         nbatches = NumberOfBatches(nbatches)
     else
         if nbatches != (0, 0) && nbatches != (1, 1)
-            @warn "nbatches set to $nbatches, but parallel is set to false, implying nbatches == (1, 1)"
+            println("WARNING: nbatches set to $nbatches, but parallel is set to false, implying nbatches == (1, 1)")
         end
         nbatches = NumberOfBatches((1, 1))
     end
