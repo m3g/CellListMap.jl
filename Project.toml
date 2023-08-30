@@ -15,7 +15,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
-Aqua = "0.6"
+Aqua = "0.6, 0.7"
 DocStringExtensions = "0.8, 0.9"
 Parameters = "0.12"
 PrecompileTools = "1"
