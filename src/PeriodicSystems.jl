@@ -831,6 +831,23 @@ end
     sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
+
+    # Test construction with more general abstract vectors
+    x = @view(x[1:500])
+    sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    @test a == 0
+    y = @view(y[1:500])
+    sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    @test a == 0
+
+    x = rand(3,500)
+    xr = reinterpret(reshape, SVector{3,Float64}, x)
+    sys = PeriodicSystem(xpositions=xr, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    @test a == 0
+
 end
 
 """
