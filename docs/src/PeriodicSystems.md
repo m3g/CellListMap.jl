@@ -265,7 +265,9 @@ If the `map_pairwise!` function will compute energy and/or forces in a iterative
 
 ### Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system. Let us exemplify the interface with the computation of forces:
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system. The `xpositions` array is a `Vector` of `SVector` (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `PeriodicSystem` structure must be updated independently of updates in the original array of coordinates. 
+
+Let us exemplify the interface with the computation of forces:
 
 ```julia-repl
 julia> using CellListMap.PeriodicSystems, StaticArrays
