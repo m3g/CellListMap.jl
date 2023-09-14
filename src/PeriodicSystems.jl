@@ -26,10 +26,10 @@ const SupportedTypes = Union{Number,SVector,FieldVector}
 
 """
     PeriodicSystem( 
-        xpositions::Vector{<:AbstractVector},
+        xpositions::AbstractVector{<:AbstractVector},
         #or
-        xpositions::Vector{<:AbstractVector},
-        ypositions::Vector{<:AbstractVector},
+        xpositions::AbstractVector{<:AbstractVector},
+        ypositions::AbstractVector{<:AbstractVector},
         # and
         unitcell::AbstractVecOrMat,
         cutoff::Number,
@@ -144,9 +144,9 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 
 """
 function PeriodicSystem(;
-    positions::Union{Nothing,Vector{<:AbstractVector}}=nothing,
-    xpositions::Union{Nothing,Vector{<:AbstractVector}}=nothing,
-    ypositions::Union{Nothing,Vector{<:AbstractVector}}=nothing,
+    positions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
+    xpositions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
+    ypositions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
     unitcell::AbstractVecOrMat,
     cutoff::Number,
     output::Any,
@@ -288,7 +288,7 @@ auxiliary function.
 
 """
 mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
-    xpositions::Vector{V}
+    xpositions::V
     output::O
     _box::B
     _cell_list::C
@@ -296,7 +296,7 @@ mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem1{OutputName}(v::Vector{V}, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
+PeriodicSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
     PeriodicSystem1{OutputName,V,O,B,C,A}(v, o, b, c, vo, a, p)
 getproperty(sys::PeriodicSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 
@@ -322,8 +322,8 @@ auxiliary function.
 
 """
 mutable struct PeriodicSystem2{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
-    xpositions::Vector{V}
-    ypositions::Vector{V}
+    xpositions::V
+    ypositions::V
     output::O
     _box::B
     _cell_list::C
@@ -331,7 +331,7 @@ mutable struct PeriodicSystem2{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem2{OutputName}(vx::Vector{V}, vy::Vector{V}, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
+PeriodicSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
     PeriodicSystem2{OutputName,V,O,B,C,A}(vx, vy, o, b, c, vo, a, p)
 
 import Base.show
