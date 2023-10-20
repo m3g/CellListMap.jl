@@ -611,6 +611,14 @@ Most times using `lcell=1` (default) or `lcell=2` will provide the optimal perfo
 dense systems, or systems for which the number of particles within the cutoff is very large,
 larger values of `lcell` may improve the performance. To be tested by the user.
 
+!!! note
+    The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`. 
+    Thus if the `length` of the box is too large relative to the `cutoff`, many cells will be created, and this
+    imposes a perhaps large memory requirement. Usually, it is a good practice to limit the number of cells to
+    be not greater than the number of particles, and for that the cutoff may have to be increased, if there is
+    a memory botleneck. A reasonable choice is to use `cutoff = max(real_cutoff, length/n^(1/D))` where `D` is the 
+    number of particles and `D` is the dimension (2 or 3). With that the number of cells will be close to `n` in the worst case.  
+
 ## Complete example codes
 
 - [Simple energy computation](@ref)
