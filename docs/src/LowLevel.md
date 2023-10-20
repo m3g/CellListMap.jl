@@ -548,7 +548,7 @@ As a rough guide, `lcell > 1` is only worthwhile if the number of particles per 
     Thus if the `length` of the box is too large relative to the `cutoff`, many cells will be created, and this
     imposes a perhaps large memory requirement. Usually, it is a good practice to limit the number of cells to
     be not greater than the number of particles, and for that the cutoff may have to be increased, if there is
-    a memory botleneck. A reasonable choice is to use `cutoff = max(real_cutoff, length/n^(1/D))` where `D` is the 
+    a memory bottleneck. A reasonable choice is to use `cutoff = max(real_cutoff, length/n^(1/D))` where `n` is the 
     number of particles and `D` is the dimension (2 or 3). With that the number of cells will be close to `n` in the worst case.  
 
 ## Output progress 
