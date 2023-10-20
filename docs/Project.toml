@@ -1,3 +1,4 @@
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
