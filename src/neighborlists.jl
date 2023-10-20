@@ -894,7 +894,7 @@ function _list_match_unique(lists_match, pair1, index_pair2, list2, cutoff; io, 
     return lists_match
 end
 
-"""
+#=
     function lists_match(
         list1::Vector{Tuple{Int,Int,T1}},
         list2::Vector{Tuple{Int,Int,T2}},
@@ -939,7 +939,7 @@ Pair of second list not found in first list: (1, 3, 0.04)
 false
 ```
 
-"""
+=#
 function lists_match(
     list1::Vector{Tuple{Int,Int,T1}},
     list2::Vector{Tuple{Int,Int,T2}},
