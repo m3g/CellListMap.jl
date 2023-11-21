@@ -33,7 +33,7 @@ function energy(d2,u)
     return u
 end
 ```
-and the additional parameters required by the interface can be eliminated by the use of an anonymous function, directly on the call to the `map_pairwise!  function:
+and the additional parameters required by the interface can be eliminated by the use of an anonymous function, directly on the call to the `map_pairwise` function:
 ```julia
 u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u), system)
 ```
