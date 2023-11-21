@@ -90,7 +90,6 @@ julia> function sum_sqr(x,sides,cutoff)
            )
            return sum_sqr
        end
-sum_sqr (generic function with 1 method)
 ```
 
 Note that we allow `cutoff`  and `sides`  to be converted to the same type of the input `x`  of the function. For a simple call to the function this is inconsequential:

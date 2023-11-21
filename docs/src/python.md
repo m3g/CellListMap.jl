@@ -61,7 +61,7 @@ In [9]: i_inds, j_inds, d = cl.neighborlist_cross(x, y, 0.05, unitcell=np.array(
 ```
 
 !!! note
-    The indexes of the particles the `i_inds` and `j_inds` arrays are 0-based, to conform the numpy array standard. 
+    The indexes of the particles the `i_inds` and `j_inds` arrays are 0-based, to conform the `numpy` array standard. 
 
 !!! tip
     To run the code multi-threaded, set the `JULIA_NUM_THREADS` environment variable before launching python:

@@ -88,7 +88,7 @@ julia> neighborlist(x, 0.05; unitcell=[1.0 0.5; 0.5 1.0])
 
 ## In-place computation of neighbor lists
 
-If neighbor lists are computed within a interative scenario, it is interesting preallocate all the necessary
+If neighbor lists are computed within a interactive scenario, it is interesting preallocate all the necessary
 data and just update the lists at every iteration. This can be achieved by constructing the `InPlaceNeighborList` 
 object in advance. The performance gain of performing the operations in place might vary and may not be 
 important for single runs, as the allocations do not dominate the computing time. 
@@ -107,7 +107,7 @@ Current list buffer size: 0
 ```
 
 Note that the buffer size has size `0`. The first time the neighbor lists are computed, the list will
-be allocated. We will use the `neighborlist!` (with the bang) function, because it will effectivelly 
+be allocated. We will use the `neighborlist!` (with the bang) function, because it will effectively 
 mutate the `system`, by allocating all necessary data:
 
 ```julia-repl
@@ -143,8 +143,8 @@ julia> @time list = neighborlist!(system);
     - The `cutoff` and `unitcell`  can be modified by providing additional keyword parameters
       to the `update!` function (for example `update!(system, x; cutoff=0.1)`).
     - Allocations can occur if the cutoff, unit cell, or number of particles change such
-      that greater buffers are required. The number of allocations tend to disminish as 
-      the buffers become large enough to accomodate the possible variations of the computation.
+      that greater buffers are required. The number of allocations tend to diminish as 
+      the buffers become large enough to accommodate the possible variations of the computation.
 
 For parallel runs, the allocations are minimal, but some small auxiliary data is required for the
 launching of multiple threads. We illustrate here the convergence of the allocations to the 

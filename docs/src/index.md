@@ -24,7 +24,7 @@ Since version `0.7.22`, a new simpler, higher level interface was introduced, th
 
 ### Cutoff-delimited neighbor lists
 
-The user might be more confortable in using the package to compute the list of neighboring particles. A custom interface for this application is provided though the [Neighbor lists](@ref) interface. 
+The user might be more comfortable in using the package to compute the list of neighboring particles. A custom interface for this application is provided though the [Neighbor lists](@ref) interface. 
 
 Note that, in general, neighbor lists are used to compute other pairwise dependent properties, and these can be, in principle, computed directly with `CellListMap` without the need to compute or store the lists of neighbors. 
 

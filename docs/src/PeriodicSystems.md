@@ -52,7 +52,7 @@ u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 ## Potential energy example
 
 !!! note
-    The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as arrays of forces.  
+    The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as an arrays of forces.  
 
     Additionally, the properties are frequently additive (the energy is the sum of the energy of the particles, or the forces are added by summation). 
 
@@ -265,7 +265,7 @@ If the `map_pairwise!` function will compute energy and/or forces in a iterative
 
 ### Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly acessing the `xpositions` field of the system. The `xpositions` array is a `Vector` of `SVector` (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `PeriodicSystem` structure must be updated independently of updates in the original array of coordinates. 
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` field of the system. The `xpositions` array is a `Vector` of `SVector` (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `PeriodicSystem` structure must be updated independently of updates in the original array of coordinates. 
 
 Let us exemplify the interface with the computation of forces:
 
@@ -539,7 +539,7 @@ The number of batches launched in parallel runs can be tunned by the
 `nbatches` keyword parameter of the `PeriodicSystem` constructor. 
 By default, the number of batches is defined as heuristic function 
 dependent on the number of particles, and possibly returns optimal
-values in most cases. For a detailed dicussion about this parameter, 
+values in most cases. For a detailed discussion about this parameter, 
 see [Number of batches](@ref Number-of-batches).
 
 For example, to set the number of batches for cell list calculation
@@ -791,7 +791,7 @@ function update_forces!(x, y, i, j, d2, forces, cutoff)
     forces[j] -= dudr
     return forces
 end
-# Function that initializes the system: it is preferrable to initialize
+# Function that initializes the system: it is preferable to initialize
 # the system outside the function that performs the simulation, because
 # the system (data)type is defined on initialization. Initializing it outside
 # the simulation function avoids possible type-instabilities. 
