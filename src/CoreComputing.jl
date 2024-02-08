@@ -363,10 +363,4 @@ function inner_loop!(
     return output
 end
 
-@testitem "sphtest" begin
-    using StaticArrays: SVector
-    using CellListMap: neighborlist
-    p2d = SVector{2, Float64}[[0.0, 2.52], [0.02, 2.56], [3.98, 2.96], [4.0, 0.26], [4.0, 2.5]]
-    r = 0.06788225099390856
-    @test length(neighborlist(p2d, r)) == 1
-end
+

@@ -437,6 +437,14 @@ end
             @test d0 ≈ d1
         end
     end
+
+    # sph test (https://github.com/m3g/CellListMap.jl/issues/95)
+    using StaticArrays: SVector
+    using CellListMap: neighborlist
+    p2d = SVector{2, Float64}[[0.0, 2.52], [0.02, 2.56], [3.98, 2.96], [4.0, 0.26], [4.0, 2.5]]
+    r = 0.06788225099390856
+    @test length(neighborlist(p2d, r)) == 1
+
 end
 
 include("$(@__DIR__)/namd/compare_with_namd.jl")
