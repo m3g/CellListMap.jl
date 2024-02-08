@@ -7,7 +7,7 @@ using StaticArrays: SVector, FieldVector
 import ..CellListMap
 using ..CellListMap: INTERNAL
 using ..CellListMap: Box, update_box
-using ..CellListMap: CellListPair, Swapped, NotSwapped
+using ..CellListMap: CellListPair, Swapped, NotSwapped, unitcelltype
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
