@@ -1,13 +1,13 @@
 module PeriodicSystems
 
-using TestItems
-using DocStringExtensions
-using StaticArrays
+using TestItems: @testitem
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
+using StaticArrays: SVector, FieldVector
 
 import ..CellListMap
-import ..CellListMap: INTERNAL
-import ..CellListMap: Box, update_box, unitcelltype
-import ..CellListMap: CellListPair, Swapped, NotSwapped
+using ..CellListMap: INTERNAL
+using ..CellListMap: Box, update_box
+using ..CellListMap: CellListPair, Swapped, NotSwapped
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
@@ -218,7 +218,7 @@ setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :o
 Returns the type of a unitcell from the `PeriodicSystem` structure.
 
 """
-unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
+CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
 
 @testitem "PeriodicSystems properties" begin
 

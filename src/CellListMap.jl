@@ -1,14 +1,13 @@
 module CellListMap
 
-using PrecompileTools
-using DocStringExtensions
-using TestItems
-using ProgressMeter
-using Parameters
-using StaticArrays
-using Setfield
-using Base.Threads
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS 
+using TestItems: @testitem
+using ProgressMeter: Progress, next!
+using Parameters: @unpack, @with_kw
+using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix
+using Setfield: @set!
 using LinearAlgebra: cross, diagm, I
+using Base.Threads: nthreads, @spawn 
 
 export Box
 export CellList, UpdateCellList!

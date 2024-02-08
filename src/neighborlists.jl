@@ -59,7 +59,7 @@ function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborLis
     @sync for it in eachindex(list_threaded)
         lt = list_threaded[it]
         range = ranges[it]-lt.n+1:ranges[it]
-        Threads.@spawn list.list[range] .= @view(lt.list[1:lt.n])
+        @spawn list.list[range] .= @view(lt.list[1:lt.n])
     end
     return list
 end
@@ -786,7 +786,8 @@ end
 end
 
 @testitem "list buffer reduction" begin
-    using CellListMap, StaticArrays
+    using CellListMap
+    using StaticArrays
     x = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.05) ];
     system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false)
     list0 = neighborlist!(system) # correct

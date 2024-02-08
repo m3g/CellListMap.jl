@@ -146,7 +146,7 @@ function map_pairwise_parallel!(
     nbatches = cl.nbatches.map_computation
     p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
     @sync for ibatch in 1:nbatches
-        Threads.@spawn batch($f, $ibatch, $nbatches, $n_cells_with_real_particles, $output_threaded, $box, $cl, $p)
+        @spawn batch($f, $ibatch, $nbatches, $n_cells_with_real_particles, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
 end
@@ -190,7 +190,7 @@ function map_pairwise_parallel!(
     end
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
     @sync for ibatch in 1:nbatches
-        Threads.@spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
+        @spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
 end
