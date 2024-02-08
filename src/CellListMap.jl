@@ -22,6 +22,10 @@ export nbatches
 # Flag for internal function doc entries
 const INTERNAL = "Internal function or structure - interface may change."
 
+# Testing file
+const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
+
+
 include("./linearalgebra.jl")
 include("./show.jl")
 include("./Box.jl")
