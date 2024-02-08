@@ -8,6 +8,7 @@ import ..CellListMap
 using ..CellListMap: INTERNAL
 using ..CellListMap: Box, update_box
 using ..CellListMap: CellListPair, Swapped, NotSwapped, unitcelltype
+using ..CellListMap: argon_pdb_file # for doc tests
 
 export PeriodicSystem
 export map_pairwise!, map_pairwise
@@ -76,72 +77,76 @@ the particles that are within the cutoff:
 
 ## Single set of particles
 
-```jldoctest; filter = r"(\d*)\.(\d{4})\d+" => s""
-julia> using CellListMap.PeriodicSystems, StaticArrays
+```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
+julia> using CellListMap.PeriodicSystems: PeriodicSystem, map_pairwise!, argon_pdb_file
 
-julia> positions = rand(SVector{3,Float64}, 100)
-       unitcell = [1,1,1]
-       cutoff = 0.1
-       output = 0.0;
+julia> using PDBTools: readPDB, coor
 
-julia> sys = PeriodicSystem(xpositions = positions, unitcell= [1.0,1.0,1.0], cutoff = 0.1, output = 0.0)
-PeriodicSystem1 of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.1
-      number of computing cells on each dimension = [12, 12, 12]
-      computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-      Total number of cells = 1728
-    CellListMap.CellList{3, Float64}
+julia> positions = coor(readPDB(argon_pdb_file));
+
+julia> sys = PeriodicSystem(
+           xpositions = positions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+           parallel = false, # use true for parallelization
+        )
+PeriodicSystem1{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
+      cutoff = 8.0
+      number of computing cells on each dimension = [5, 5, 5]
+      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
+      Total number of cells = 125
+    CellList{3, Float64}
       100 real particles.
-      96 cells with real particles.
-      164 particles in computing box, including images.
+      8 cells with real particles.
+      800 particles in computing box, including images.
     Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
-    Type of output variable: Float64
+      Number of batches for cell list construction: 1
+      Number of batches for function mapping: 1
+    Type of output variable (output): Float64
 
 julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
-0.14556244865996287
+43774.54367599999
 ```
 ## Two sets of particles
 
-```jldoctest; filter = r"(\d*)\.(\d{4})\d+" => s""
-julia> using CellListMap.PeriodicSystems, StaticArrays
+```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
+julia> using CellListMap.PeriodicSystems: PeriodicSystem, map_pairwise!, argon_pdb_file
 
-julia> xpositions = rand(SVector{3,Float64}, 100)
-       ypositions = rand(SVector{3,Float64}, 1000)
-       unitcell = [1,1,1]
-       cutoff = 0.1
-       output = 0.0;
+julia> using PDBTools: readPDB, coor
+
+julia> xpositions = coor(readPDB(argon_pdb_file))[1:50];
+
+julia> ypositions = coor(readPDB(argon_pdb_file))[51:100];
 
 julia> sys = PeriodicSystem(
            xpositions = xpositions, 
-           ypositions = ypositions,
-           unitcell=[1,1,1], 
-           cutoff = 0.1, 
-           output = 0.0
-           )
-PeriodicSystem2 of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.1
-      number of computing cells on each dimension = [12, 12, 12]
-      computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-      Total number of cells = 1728
-    CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64, CellListMap.Swapped}
-       1000 particles in the reference vector.
-       97 cells with real particles of target vector.
+           ypositions = ypositions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+           parallel = false, # use true for parallelization
+        )
+PeriodicSystem2{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
+      cutoff = 8.0
+      number of computing cells on each dimension = [5, 5, 5]
+      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
+      Total number of cells = 125
+    CellListMap.CellListPair{Vector{StaticArraysCore.SVector{3, Float64}}, 3, Float64, CellListMap.NotSwapped}
+       50 particles in the reference vector.
+       8 cells with real particles of target vector.
     Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
-    Type of output variable: Float64
+      Number of batches for cell list construction: 1
+      Number of batches for function mapping: 1
+    Type of output variable (output): Float64
 
 julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
-2.3568143238242314
-
+21886.196785000004
 ```
-
 """
 function PeriodicSystem(;
     positions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
