@@ -19,9 +19,9 @@ Aqua = "0.8"
 BenchmarkTools = "1.4"
 Chemfiles = "0.10"
 DocStringExtensions = "0.8, 0.9"
-LinearAlgebra = "1.6"
 Documenter = "1.2.1"
 ForwardDiff = "0.10"
+LinearAlgebra = "1.6"
 Measurements = "2.11"
 NearestNeighbors = "0.4"
 Parameters = "0.12"
@@ -31,8 +31,8 @@ Random = "1.6"
 Setfield = "0.7, 0.8, 0.9, 1"
 StaticArrays = "1"
 Test = "1.6"
-TestItems = "0.1"
 TestItemRunner = "0.2"
+TestItems = "0.1"
 Unitful = "1.19"
 julia = "1.6"
 
@@ -49,4 +49,4 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
-test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua"]
+test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua", "Documenter"]

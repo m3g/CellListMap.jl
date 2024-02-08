@@ -76,7 +76,7 @@ the particles that are within the cutoff:
 
 ## Single set of particles
 
-```julia-repl
+```jldoctest; filter = r"(\d*)\.(\d{4})\d+" => s""
 julia> using CellListMap.PeriodicSystems, StaticArrays
 
 julia> positions = rand(SVector{3,Float64}, 100)
@@ -106,7 +106,7 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 ```
 ## Two sets of particles
 
-```julia-repl
+```jldoctest; filter = r"(\d*)\.(\d{4})\d+" => s""
 julia> using CellListMap.PeriodicSystems, StaticArrays
 
 julia> xpositions = rand(SVector{3,Float64}, 100)
