@@ -1,4 +1,4 @@
-using TestItemRunner: @run_package_tests
+using TestItemRunner: @run_package_tests, @testitem
 
 @testitem "Aqua.test_all" begin
     import Aqua
