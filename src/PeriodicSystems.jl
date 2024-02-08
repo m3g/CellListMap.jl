@@ -264,6 +264,17 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
     @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)) == OrthorhombicCell
     @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1], output=0.0)) == TriclinicCell
 
+    # Argument errors
+    @test_throws ArgumentError PeriodicSystem(
+        positions=rand(SVector{3,Float64}, 1000),
+        xpositions=rand(SVector{3,Float64}, 1000),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws ArgumentError PeriodicSystem(
+        ypositions=rand(SVector{3,Float64}, 1000),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+
 end
 
 """
