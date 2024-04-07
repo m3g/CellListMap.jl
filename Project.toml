@@ -15,7 +15,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
-Aqua = "0.8"
+Aqua = "0.8.5"
 BenchmarkTools = "1.4"
 Chemfiles = "0.10.31"
 DocStringExtensions = "0.9"
