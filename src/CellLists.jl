@@ -776,6 +776,9 @@ function UpdateCellList!(
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
             end
         end
+        # The mergin order is important in the case of Triclinic boxes
+        # This probably has to be rewritten to allow for the locked mergin
+        # of the cell lists, in a parallel way.
         for ibatch in eachindex(aux.lists)
             cl = merge_cell_lists!(cl, aux.lists[ibatch])
         end
