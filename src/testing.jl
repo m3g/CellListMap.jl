@@ -210,15 +210,14 @@ function check_random_cells(
     return true, nothing, nothing
 end
 
-function test_random_cells()
+function test_random_cells(::Type{T}) where {T}
     for N in 2:3, 
         M in rand(10:20), 
-        UnitCellType in [ TriclinicCell, OrthorhombicCell ],
         parallel in [ false, true ],
         lcell in 1:3
         test = CellListMap.check_random_cells(
             N,M,
-            UnitCellType=UnitCellType,
+            UnitCellType=T,
             parallel=parallel,
             lcell=lcell,
             show_progress=false
@@ -230,13 +229,19 @@ function test_random_cells()
     return nothing, nothing, nothing
 end
 
-@testitem "random cells" begin
+@testitem "random cells - Orthorhombic" begin
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    @test CellListMap.test_random_cells() == (nothing, nothing, nothing) 
+    @test CellListMap.test_random_cells(CellListMap.OrthorhombicCell) == (nothing, nothing, nothing) 
 end
 
+@testitem "random cells - Triclinic" begin
+    using CellListMap
+    using StaticArrays
+    # Test random cells of all possible types
+    @test CellListMap.test_random_cells(CellListMap.TriclinicCell) == (nothing, nothing, nothing) 
+end
 function drawbox(box::Box{UnitCellType,2}) where {UnitCellType}
     S = SVector{2,Float64}
     m = box.input_unit_cell.matrix
@@ -567,11 +572,8 @@ function test_pathological(; nmax=1000, npoints=2)
         @SMatrix[-1.2 0.2; 0.2 -1.2],
     ]
 
-    n = 0
-    while n < nmax
+    for n in 0:nmax, matrix in matrices, lcell in 1:5
         x = rand(SVector{2,Float64}, npoints)
-        matrix = rand(matrices)
-        lcell = rand(1:5)
         cutoff = 0.2
         box = Box(matrix, cutoff; lcell=lcell)
         naive = CellListMap.map_naive!((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, x, box)
@@ -580,7 +582,6 @@ function test_pathological(; nmax=1000, npoints=2)
         if naive != clmap
             return x, box
         end
-        n += 1
     end
     return nothing, nothing
 end
