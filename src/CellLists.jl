@@ -768,19 +768,17 @@ function UpdateCellList!(
         cl = reset!(cl, box, 0)
         # Update the aux.idxs ranges, for if the number of particles changed
         set_idxs!(aux.idxs, length(x), nbatches)
+        merge_lock = ReentrantLock()
         @sync for ibatch in eachindex(aux.idxs, aux.lists)
-            @spawn begin
+            @spawn let cl = $cl
                 prange = aux.idxs[ibatch]
                 aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
                 xt = @view(x[prange])
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
+                @lock merge_lock begin
+                    cl = merge_cell_lists!(cl, aux.lists[ibatch])
+                end
             end
-        end
-        # The mergin order is important in the case of Triclinic boxes
-        # This probably has to be rewritten to allow for the locked mergin
-        # of the cell lists, in a parallel way.
-        for ibatch in eachindex(aux.lists)
-            cl = merge_cell_lists!(cl, aux.lists[ibatch])
         end
     end
 
