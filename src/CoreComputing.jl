@@ -252,7 +252,6 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
         pᵢ.real || continue
         for j in 1:cell.n_particles
             @inbounds pⱼ = cell.particles[j]
-            #(pᵢ.index >= pⱼ.index) && (pᵢ.real || pⱼ.real) && continue
             (pᵢ.index >= pⱼ.index) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
