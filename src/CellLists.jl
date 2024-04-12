@@ -351,7 +351,7 @@ julia> aux = CellListMap.AuxThreaded(cl)
 CellListMap.AuxThreaded{3, Float64}
  Auxiliary arrays for nthreads = 8
 
-julia> cl = UpdateCellList!(x,box,cl,aux)
+julia> UpdateCellList!(x,box,cl,aux)
 CellList{3, Float64}
   100000 real particles.
   31190 cells with real particles.
@@ -432,7 +432,7 @@ julia> aux = CellListMap.AuxThreaded(cl)
 CellListMap.AuxThreaded{3, Float64}
  Auxiliary arrays for nthreads = 8
 
-julia> cl = UpdateCellList!(x,box,cl,aux)
+julia> UpdateCellList!(x,box,cl,aux)
 CellList{3, Float64}
   100000 real particles.
   31190 cells with real particles.
@@ -483,7 +483,7 @@ function CellList(
         n_real_particles=length(x),
         number_of_cells=prod(box.nc),
     )
-    cl = set_number_of_batches!(cl, nbatches, parallel=parallel)
+    set_number_of_batches!(cl, nbatches, parallel=parallel)
     return UpdateCellList!(x, box, cl, parallel=parallel)
 end
 
@@ -631,7 +631,7 @@ julia> box = Box([260,260,260],10);
 
 julia> x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
 
-julia> cl = UpdateCellList!(x,box,cl); # update lists
+julia> UpdateCellList!(x,box,cl); # update lists
 
 ```
 
@@ -754,11 +754,11 @@ function UpdateCellList!(
     # Add particles to cell list
     nbatches = cl.nbatches.build_cell_lists
     if !parallel || nbatches == 1
-        cl = reset!(cl, box, length(x))
+        reset!(cl, box, length(x))
         add_particles!(x, box, 0, cl)
     else
         # Reset cell list
-        cl = reset!(cl, box, 0)
+        reset!(cl, box, 0)
         # Update the aux.idxs ranges, for if the number of particles changed
         set_idxs!(aux.idxs, length(x), nbatches)
         merge_lock = ReentrantLock()
@@ -834,8 +834,8 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
         # This converts the coordinates to static arrays, if necessary
         p = SVector{N,T}(ntuple(i -> xp[i], N))
         p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
-        cl = add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
-        cl = replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
+        add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
+        replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
     end
     return cl
 end
@@ -1087,7 +1087,7 @@ julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box);
 
-julia> cl = UpdateCellList!(x,y,box,cl); # update lists
+julia> UpdateCellList!(x,y,box,cl); # update lists
 
 ```
 
@@ -1172,7 +1172,7 @@ julia> x = [ 250*rand(3) for i in 1:50_000 ];
 
 julia> y = [ 250*rand(3) for i in 1:10_000 ];
 
-julia> cl = UpdateCellList!(x,y,box,cl,aux)
+julia> UpdateCellList!(x,y,box,cl,aux)
 CellList{3, Float64}
   10000 real particles.
   7358 cells with real particles.
