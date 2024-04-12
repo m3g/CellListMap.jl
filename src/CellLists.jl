@@ -368,12 +368,14 @@ function AuxThreaded(cl::CellList{N,T}; particles_per_batch=10_000) where {N,T}
     )
     # If the calculation is not parallel, no need to initialize this
     nbatches == 1 && return aux
-    for ibatch in eachindex(aux.lists)
-        cl_batch = CellList{N,T}(
-            n_real_particles=particles_per_batch, # this is reset before filling, in UpdateCellList!
-            number_of_cells=cl.number_of_cells,
-        )
-        aux.lists[ibatch] = cl_batch
+    @sync for ibatch in eachindex(aux.lists)
+        @spawn begin
+            cl_batch = CellList{N,T}(
+                n_real_particles=particles_per_batch, # this is reset before filling, in UpdateCellList!
+                number_of_cells=cl.number_of_cells,
+            )
+            aux.lists[ibatch] = cl_batch
+        end
     end
     # Set indices of the atoms that will be considered by each thread
     # these indices may be updated by an update of cell lists, if the number
