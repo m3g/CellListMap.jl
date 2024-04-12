@@ -135,7 +135,7 @@ $(TYPEDFIELDS)
 Structure that contains the cell lists information.
 
 """
-Base.@kwdef struct CellList{N,T}
+Base.@kwdef mutable struct CellList{N,T}
     " Number of real particles. "
     n_real_particles::Int = 0
     " Number of cells. "
@@ -235,7 +235,7 @@ function set_number_of_batches!(cl::CellList{N,T}, nbatches::Tuple{Int,Int}=(0, 
         n2 = nbatches.map_computation
     end
     nbatches = NumberOfBatches(n1, n2)
-    @set! cl.nbatches = nbatches
+    cl.nbatches = nbatches
     for _ in 1:cl.nbatches.map_computation
         push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, 0))
     end
@@ -268,10 +268,8 @@ function set_number_of_batches!(
     else
         n2 = nbatches.map_computation
     end
-    nbatches = NumberOfBatches(n1, n2)
-    target = cl.target
-    @set! target.nbatches = nbatches
-    return CellListPair{V,N,T,Swap}(cl.ref, target)
+    cl.target.nbatches = NumberOfBatches(n1, n2)
+    return CellListPair{V,N,T,Swap}(cl.ref, cl.target)
 end
 
 """
@@ -776,7 +774,7 @@ function UpdateCellList!(
                 xt = @view(x[prange])
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
                 @lock merge_lock begin
-                    cl = merge_cell_lists!(cl, aux.lists[ibatch])
+                    merge_cell_lists!(cl, aux.lists[ibatch])
                 end
             end
         end
@@ -921,15 +919,15 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
     if cl.number_of_cells != aux.number_of_cells
         error("cell lists must have the same number of cells to be merged.")
     end
-    @set! cl.n_particles += aux.n_particles
-    @set! cl.n_real_particles += aux.n_real_particles
+    cl.n_particles += aux.n_particles
+    cl.n_real_particles += aux.n_real_particles
     for icell in 1:aux.n_cells_with_particles
         aux_cell = aux.cells[icell]
         linear_index = aux_cell.linear_index
         cell_index = cl.cell_indices[linear_index]
         # If cell was yet not initialized in merge, push it to the list
         if cell_index == 0
-            @set! cl.n_cells_with_particles += 1
+            cl.n_cells_with_particles += 1
             cell_index = cl.n_cells_with_particles
             cl.cell_indices[linear_index] = cell_index
             if cell_index > length(cl.cells)
@@ -938,7 +936,7 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
                 cl.cells[cell_index] = copydata!(cl.cells[cell_index], aux_cell)
             end
             if aux_cell.contains_real
-                @set! cl.n_cells_with_real_particles += 1
+                cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real, cell_index)
                 else
@@ -950,7 +948,7 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
             # If the previous cell didn't contain real particles, but the current one
             # does, update the list information 
             if !cl.cells[cell_index].contains_real && aux_cell.contains_real
-                @set! cl.n_cells_with_real_particles += 1
+                cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real, cell_index)
                 else
@@ -1002,14 +1000,9 @@ function add_particle_to_celllist!(
     cl::CellList{N,T};
     real_particle::Bool=true
 ) where {N,T}
-    @unpack n_cells_with_real_particles,
-    n_cells_with_particles,
-    cell_indices,
-    cell_indices_real,
-    cells = cl
 
     # Increase the counter of number of particles of this list
-    @set! cl.n_particles += 1
+    cl.n_particles += 1
     # Cell of this particle
     cartesian_index = particle_cell(x, box)
     if real_particle 
@@ -1021,28 +1014,28 @@ function add_particle_to_celllist!(
 
     # Check if this is the first particle of this cell, if it is,
     # initialize a new cell, or reset a previously allocated one
-    cell_index = cell_indices[linear_index]
+    cell_index = cl.cell_indices[linear_index]
 
     if cell_index == 0
-        n_cells_with_particles += 1
-        cell_index = n_cells_with_particles
-        cell_indices[linear_index] = cell_index
-        if cell_index > length(cells)
+        cl.n_cells_with_particles += 1
+        cell_index = cl.n_cells_with_particles
+        cl.cell_indices[linear_index] = cell_index
+        if cell_index > length(cl.cells)
             particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
-            push!(cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
+            push!(cl.cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
         else
-            cell = cells[cell_index]
+            cell = cl.cells[cell_index]
             @set! cell.linear_index = linear_index
             @set! cell.cartesian_index = cartesian_index
             @set! cell.center = cell_center(cell.cartesian_index, box)
             @set! cell.contains_real = false
             @set! cell.n_particles = 0
-            cells[cell_index] = cell
+            cl.cells[cell_index] = cell
         end
     end
 
     # Increase particle counter for this cell
-    cell = cells[cell_index]
+    cell = cl.cells[cell_index]
     @set! cell.n_particles += 1
 
     #
@@ -1050,11 +1043,11 @@ function add_particle_to_celllist!(
     #
     if real_particle && (!cell.contains_real)
         @set! cell.contains_real = true
-        n_cells_with_real_particles += 1
-        if n_cells_with_real_particles > length(cell_indices_real)
-            push!(cell_indices_real, cell_index)
+        cl.n_cells_with_real_particles += 1
+        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
+            push!(cl.cell_indices_real, cell_index)
         else
-            cell_indices_real[n_cells_with_real_particles] = cell_index
+            cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
         end
     end
 
@@ -1071,9 +1064,7 @@ function add_particle_to_celllist!(
     #
     # Update (imutable) cell in list
     #
-    @set! cl.n_cells_with_particles = n_cells_with_particles
-    @set! cl.n_cells_with_real_particles = n_cells_with_real_particles
-    cells[cell_index] = cell
+    cl.cells[cell_index] = cell
 
     return cl
 end
