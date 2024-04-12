@@ -520,18 +520,11 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     end
     @. cl.cell_indices = 0
     @. cl.cell_indices_real = 0
-    cl = CellList{N,T}(
-        n_real_particles=n_real_particles,
-        n_particles=0,
-        number_of_cells=new_number_of_cells,
-        n_cells_with_real_particles=0,
-        n_cells_with_particles=0,
-        cell_indices=cl.cell_indices,
-        cell_indices_real=cl.cell_indices_real,
-        cells=cl.cells,
-        nbatches=cl.nbatches,
-        projected_particles=cl.projected_particles
-    )
+    cl.n_real_particles = n_real_particles
+    cl.n_particles = 0
+    cl.number_of_cells = new_number_of_cells
+    cl.n_cells_with_real_particles = 0
+    cl.n_cells_with_particles = 0
     return cl
 end
 
@@ -760,7 +753,7 @@ function UpdateCellList!(
     nbatches = cl.nbatches.build_cell_lists
     if !parallel || nbatches == 1
         cl = reset!(cl, box, length(x))
-        cl = add_particles!(x, box, 0, cl)
+        add_particles!(x, box, 0, cl)
     else
         # Reset cell list
         cl = reset!(cl, box, 0)
