@@ -8,6 +8,7 @@ using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix
 using Setfield: @set!
 using LinearAlgebra: cross, diagm, I
 using Base.Threads: nthreads, @spawn 
+using Base: @lock # not exported in 1.6
 
 export Box
 export CellList, UpdateCellList!
