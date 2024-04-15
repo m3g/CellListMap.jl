@@ -135,7 +135,7 @@ $(TYPEDFIELDS)
 Structure that contains the cell lists information.
 
 """
-Base.@kwdef struct CellList{N,T}
+Base.@kwdef mutable struct CellList{N,T}
     " Number of real particles. "
     n_real_particles::Int = 0
     " Number of cells. "
@@ -235,7 +235,7 @@ function set_number_of_batches!(cl::CellList{N,T}, nbatches::Tuple{Int,Int}=(0, 
         n2 = nbatches.map_computation
     end
     nbatches = NumberOfBatches(n1, n2)
-    @set! cl.nbatches = nbatches
+    cl.nbatches = nbatches
     for _ in 1:cl.nbatches.map_computation
         push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, 0))
     end
@@ -268,10 +268,8 @@ function set_number_of_batches!(
     else
         n2 = nbatches.map_computation
     end
-    nbatches = NumberOfBatches(n1, n2)
-    target = cl.target
-    @set! target.nbatches = nbatches
-    return CellListPair{V,N,T,Swap}(cl.ref, target)
+    cl.target.nbatches = NumberOfBatches(n1, n2)
+    return CellListPair{V,N,T,Swap}(cl.ref, cl.target)
 end
 
 """
@@ -353,7 +351,7 @@ julia> aux = CellListMap.AuxThreaded(cl)
 CellListMap.AuxThreaded{3, Float64}
  Auxiliary arrays for nthreads = 8
 
-julia> cl = UpdateCellList!(x,box,cl,aux)
+julia> UpdateCellList!(x,box,cl,aux)
 CellList{3, Float64}
   100000 real particles.
   31190 cells with real particles.
@@ -370,12 +368,14 @@ function AuxThreaded(cl::CellList{N,T}; particles_per_batch=10_000) where {N,T}
     )
     # If the calculation is not parallel, no need to initialize this
     nbatches == 1 && return aux
-    for ibatch in eachindex(aux.lists)
-        cl_batch = CellList{N,T}(
-            n_real_particles=particles_per_batch, # this is reset before filling, in UpdateCellList!
-            number_of_cells=cl.number_of_cells,
-        )
-        aux.lists[ibatch] = cl_batch
+    @sync for ibatch in eachindex(aux.lists)
+        @spawn begin
+            cl_batch = CellList{N,T}(
+                n_real_particles=particles_per_batch, # this is reset before filling, in UpdateCellList!
+                number_of_cells=cl.number_of_cells,
+            )
+            aux.lists[ibatch] = cl_batch
+        end
     end
     # Set indices of the atoms that will be considered by each thread
     # these indices may be updated by an update of cell lists, if the number
@@ -432,7 +432,7 @@ julia> aux = CellListMap.AuxThreaded(cl)
 CellListMap.AuxThreaded{3, Float64}
  Auxiliary arrays for nthreads = 8
 
-julia> cl = UpdateCellList!(x,box,cl,aux)
+julia> UpdateCellList!(x,box,cl,aux)
 CellList{3, Float64}
   100000 real particles.
   31190 cells with real particles.
@@ -483,7 +483,7 @@ function CellList(
         n_real_particles=length(x),
         number_of_cells=prod(box.nc),
     )
-    cl = set_number_of_batches!(cl, nbatches, parallel=parallel)
+    set_number_of_batches!(cl, nbatches, parallel=parallel)
     return UpdateCellList!(x, box, cl, parallel=parallel)
 end
 
@@ -522,18 +522,11 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     end
     @. cl.cell_indices = 0
     @. cl.cell_indices_real = 0
-    cl = CellList{N,T}(
-        n_real_particles=n_real_particles,
-        n_particles=0,
-        number_of_cells=new_number_of_cells,
-        n_cells_with_real_particles=0,
-        n_cells_with_particles=0,
-        cell_indices=cl.cell_indices,
-        cell_indices_real=cl.cell_indices_real,
-        cells=cl.cells,
-        nbatches=cl.nbatches,
-        projected_particles=cl.projected_particles
-    )
+    cl.n_real_particles = n_real_particles
+    cl.n_particles = 0
+    cl.number_of_cells = new_number_of_cells
+    cl.n_cells_with_real_particles = 0
+    cl.n_cells_with_particles = 0
     return cl
 end
 
@@ -638,7 +631,7 @@ julia> box = Box([260,260,260],10);
 
 julia> x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
 
-julia> cl = UpdateCellList!(x,box,cl); # update lists
+julia> UpdateCellList!(x,box,cl); # update lists
 
 ```
 
@@ -761,26 +754,24 @@ function UpdateCellList!(
     # Add particles to cell list
     nbatches = cl.nbatches.build_cell_lists
     if !parallel || nbatches == 1
-        cl = reset!(cl, box, length(x))
-        cl = add_particles!(x, box, 0, cl)
+        reset!(cl, box, length(x))
+        add_particles!(x, box, 0, cl)
     else
         # Reset cell list
-        cl = reset!(cl, box, 0)
+        reset!(cl, box, 0)
         # Update the aux.idxs ranges, for if the number of particles changed
         set_idxs!(aux.idxs, length(x), nbatches)
+        merge_lock = ReentrantLock()
         @sync for ibatch in eachindex(aux.idxs, aux.lists)
-            @spawn begin
+            @spawn let cl = $cl
                 prange = aux.idxs[ibatch]
                 aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
                 xt = @view(x[prange])
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
+                @lock merge_lock begin
+                    merge_cell_lists!(cl, aux.lists[ibatch])
+                end
             end
-        end
-        # The mergin order is important in the case of Triclinic boxes
-        # This probably has to be rewritten to allow for the locked mergin
-        # of the cell lists, in a parallel way.
-        for ibatch in eachindex(aux.lists)
-            cl = merge_cell_lists!(cl, aux.lists[ibatch])
         end
     end
 
@@ -843,8 +834,8 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
         # This converts the coordinates to static arrays, if necessary
         p = SVector{N,T}(ntuple(i -> xp[i], N))
         p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
-        cl = add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
-        cl = replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
+        add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
+        replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
     end
     return cl
 end
@@ -923,15 +914,15 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
     if cl.number_of_cells != aux.number_of_cells
         error("cell lists must have the same number of cells to be merged.")
     end
-    @set! cl.n_particles += aux.n_particles
-    @set! cl.n_real_particles += aux.n_real_particles
+    cl.n_particles += aux.n_particles
+    cl.n_real_particles += aux.n_real_particles
     for icell in 1:aux.n_cells_with_particles
         aux_cell = aux.cells[icell]
         linear_index = aux_cell.linear_index
         cell_index = cl.cell_indices[linear_index]
         # If cell was yet not initialized in merge, push it to the list
         if cell_index == 0
-            @set! cl.n_cells_with_particles += 1
+            cl.n_cells_with_particles += 1
             cell_index = cl.n_cells_with_particles
             cl.cell_indices[linear_index] = cell_index
             if cell_index > length(cl.cells)
@@ -940,7 +931,7 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
                 cl.cells[cell_index] = copydata!(cl.cells[cell_index], aux_cell)
             end
             if aux_cell.contains_real
-                @set! cl.n_cells_with_real_particles += 1
+                cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real, cell_index)
                 else
@@ -952,7 +943,7 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
             # If the previous cell didn't contain real particles, but the current one
             # does, update the list information 
             if !cl.cells[cell_index].contains_real && aux_cell.contains_real
-                @set! cl.n_cells_with_real_particles += 1
+                cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real, cell_index)
                 else
@@ -1004,14 +995,9 @@ function add_particle_to_celllist!(
     cl::CellList{N,T};
     real_particle::Bool=true
 ) where {N,T}
-    @unpack n_cells_with_real_particles,
-    n_cells_with_particles,
-    cell_indices,
-    cell_indices_real,
-    cells = cl
 
     # Increase the counter of number of particles of this list
-    @set! cl.n_particles += 1
+    cl.n_particles += 1
     # Cell of this particle
     cartesian_index = particle_cell(x, box)
     if real_particle 
@@ -1023,28 +1009,28 @@ function add_particle_to_celllist!(
 
     # Check if this is the first particle of this cell, if it is,
     # initialize a new cell, or reset a previously allocated one
-    cell_index = cell_indices[linear_index]
+    cell_index = cl.cell_indices[linear_index]
 
     if cell_index == 0
-        n_cells_with_particles += 1
-        cell_index = n_cells_with_particles
-        cell_indices[linear_index] = cell_index
-        if cell_index > length(cells)
+        cl.n_cells_with_particles += 1
+        cell_index = cl.n_cells_with_particles
+        cl.cell_indices[linear_index] = cell_index
+        if cell_index > length(cl.cells)
             particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
-            push!(cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
+            push!(cl.cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
         else
-            cell = cells[cell_index]
+            cell = cl.cells[cell_index]
             @set! cell.linear_index = linear_index
             @set! cell.cartesian_index = cartesian_index
             @set! cell.center = cell_center(cell.cartesian_index, box)
             @set! cell.contains_real = false
             @set! cell.n_particles = 0
-            cells[cell_index] = cell
+            cl.cells[cell_index] = cell
         end
     end
 
     # Increase particle counter for this cell
-    cell = cells[cell_index]
+    cell = cl.cells[cell_index]
     @set! cell.n_particles += 1
 
     #
@@ -1052,11 +1038,11 @@ function add_particle_to_celllist!(
     #
     if real_particle && (!cell.contains_real)
         @set! cell.contains_real = true
-        n_cells_with_real_particles += 1
-        if n_cells_with_real_particles > length(cell_indices_real)
-            push!(cell_indices_real, cell_index)
+        cl.n_cells_with_real_particles += 1
+        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
+            push!(cl.cell_indices_real, cell_index)
         else
-            cell_indices_real[n_cells_with_real_particles] = cell_index
+            cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
         end
     end
 
@@ -1073,9 +1059,7 @@ function add_particle_to_celllist!(
     #
     # Update (imutable) cell in list
     #
-    @set! cl.n_cells_with_particles = n_cells_with_particles
-    @set! cl.n_cells_with_real_particles = n_cells_with_real_particles
-    cells[cell_index] = cell
+    cl.cells[cell_index] = cell
 
     return cl
 end
@@ -1103,7 +1087,7 @@ julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
 
 julia> cl = CellList(x,y,box);
 
-julia> cl = UpdateCellList!(x,y,box,cl); # update lists
+julia> UpdateCellList!(x,y,box,cl); # update lists
 
 ```
 
@@ -1188,7 +1172,7 @@ julia> x = [ 250*rand(3) for i in 1:50_000 ];
 
 julia> y = [ 250*rand(3) for i in 1:10_000 ];
 
-julia> cl = UpdateCellList!(x,y,box,cl,aux)
+julia> UpdateCellList!(x,y,box,cl,aux)
 CellList{3, Float64}
   10000 real particles.
   7358 cells with real particles.

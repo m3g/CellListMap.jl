@@ -203,39 +203,36 @@ inner_loop!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, cl::CellList, outpu
     inner_loop!(f, neighbor_cells_forward, box, cellᵢ, cl, output, ibatch)
 inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
     inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
-#
-# The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
-skip_particle_i(pᵢ, ::Box{<:OrthorhombicCellType}) = false
-skip_pair(pᵢ, pⱼ, ::Box{<:OrthorhombicCellType}) = false
-skip_particle_i(pᵢ, ::Box{<:TriclinicCell}) = !pᵢ.real
-skip_pair(pᵢ, pⱼ, ::Box{<:TriclinicCell}) = pᵢ.index > pⱼ.index
-
-# We are not doing the above procedure, which allows for a more efficient
-# mapping in orthorhombic cells beacause of issue 84 (https://github.com/m3g/CellListMap.jl/issues/84)
-#inner_loop!(f::F, box::Box, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
-#    inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
-#skip_particle_i(pᵢ, ::Box) = !pᵢ.real
-#skip_pair(pᵢ, pⱼ, ::Box) = pᵢ.index >= pⱼ.index
 
 function inner_loop!(
-    f::Function,
-    _neighbor_cells::F, # depends on cell type
-    box::Box,
+    f::F,
+    _neighbor_cells::NC, # depends on cell type
+    box,
     cellᵢ,
     cl::CellList{N,T},
     output,
     ibatch
-) where {F<:Function,N,T}
+) where {F<:Function,NC<:Function,N,T}
     @unpack cutoff_sqr, inv_rotation, nc = box
+    output = _current_cell_interactions!(box, f, cellᵢ, output)
+    for jcell in _neighbor_cells(box)
+        jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
+        if cl.cell_indices[jc_linear] != 0
+            cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
+            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
+        end
+    end
+    return output
+end
 
-    # loop over list of non-repeated particles of cell ic
-    for i in 1:cellᵢ.n_particles-1
-        @inbounds pᵢ = cellᵢ.particles[i]
-        skip_particle_i(pᵢ, box) && continue
+function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cell, output) where {F<:Function}
+    @unpack cutoff_sqr, inv_rotation = box
+    # loop over list of non-repeated particles of cell ic. All particles are real
+    for i in 1:cell.n_particles-1
+        @inbounds pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
-        for j in i+1:cellᵢ.n_particles
-            @inbounds pⱼ = cellᵢ.particles[j]
-            skip_pair(pᵢ, pⱼ, box) && continue
+        for j in i+1:cell.n_particles
+            @inbounds pⱼ = cell.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
@@ -243,46 +240,60 @@ function inner_loop!(
             end
         end
     end
-
-    for jcell in _neighbor_cells(box)
-        jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
-        if cl.cell_indices[jc_linear] != 0
-            cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
-            output = cell_output!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
-        end
-    end
-
     return output
 end
 
-function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {N,T}
-    @unpack cutoff, cutoff_sqr, inv_rotation = box
+function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output) where {F<:Function}
+    @unpack cutoff_sqr, inv_rotation = box
+    # loop over all pairs, skip when i >= j, skip if neither particle is real
+    for i in 1:cell.n_particles
+        @inbounds pᵢ = cell.particles[i]
+        xpᵢ = pᵢ.coordinates
+        pᵢ.real || continue
+        for j in 1:cell.n_particles
+            @inbounds pⱼ = cell.particles[j]
+            (pᵢ.index >= pⱼ.index) && continue
+            xpⱼ = pⱼ.coordinates
+            d2 = norm_sqr(xpᵢ - xpⱼ)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+            end
+        end
+    end
+    return output
+end
 
+#
+# Compute interactions between vicinal cells
+#
+function _vicinal_cell_interactions!(f::F, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {F<:Function,N,T}
     # project particles in vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center
     Δc_norm = norm(Δc)
     Δc = Δc / Δc_norm
     pp = project_particles!(cl.projected_particles[ibatch], cellⱼ, cellᵢ, Δc, Δc_norm, box)
-    if length(pp) == 0
-        return output
+    if length(pp) > 0
+        output = _vinicial_cells!(f, box, cellᵢ, pp, Δc, output)
     end
+    return output
+end
 
+#
+# The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
+#
+function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output) where {F<:Function}
+    @unpack cutoff, cutoff_sqr, inv_rotation = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
-        skip_particle_i(pᵢ, box) && continue
-
         # project particle in vector connecting cell centers
         xpᵢ = pᵢ.coordinates
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
-
         # Partition pp array according to the current projections
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
-
         # Compute the interactions 
         for j in 1:n
             @inbounds pⱼ = pp[j]
-            skip_pair(pᵢ, pⱼ, box) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
@@ -290,7 +301,31 @@ function cell_output!(f, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, 
             end
         end
     end
+    return output
+end
 
+function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output) where {F<:Function}
+    @unpack cutoff, cutoff_sqr, inv_rotation = box
+    # Loop over particles of cell icell
+    for i in 1:cellᵢ.n_particles
+        @inbounds pᵢ = cellᵢ.particles[i]
+        # project particle in vector connecting cell centers
+        xpᵢ = pᵢ.coordinates
+        xproj = dot(xpᵢ - cellᵢ.center, Δc)
+        # Partition pp array according to the current projections
+        n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
+        # Compute the interactions 
+        pᵢ.real || continue
+        for j in 1:n
+            @inbounds pⱼ = pp[j]
+            pᵢ.index >= pⱼ.index && continue
+            xpⱼ = pⱼ.coordinates
+            d2 = norm_sqr(xpᵢ - xpⱼ)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+            end
+        end
+    end
     return output
 end
 
