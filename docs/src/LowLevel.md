@@ -491,7 +491,7 @@ aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
-    cl = UpdateCellList!(x,box,cl,aux) 
+    UpdateCellList!(x,box,cl,aux) # modifies cl
     map_pairwise!(...)
 end
 ```
@@ -503,7 +503,7 @@ aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
-    cl = UpdateCellList!(x,y,box,cl,aux)
+    UpdateCellList!(x,y,box,cl,aux) # modifies cl
     map_pairwise(...)
 end
 ```
