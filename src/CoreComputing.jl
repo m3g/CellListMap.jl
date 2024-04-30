@@ -50,8 +50,8 @@ function reduce(output::T, output_threaded::Vector{T}) where {T<:AbstractArray}
 end
 function reduce(output, output_threaded)
     T = typeof(output)
-    error("""
-    MethodError: no method matching reduce(::$(typeof(output)),::$(typeof(output_threaded)))
+    throw(ArgumentError("""\n
+    No method matching reduce(::$(typeof(output)),::$(typeof(output_threaded)))
 
     Please provide a method that appropriately reduces a `Vector{$T}`, with
     the signature:
@@ -65,7 +65,7 @@ function reduce(output, output_threaded)
 
     See: https://m3g.github.io/CellListMap.jl/stable/parallelization/#Custom-reduction-functions
 
-    """)
+    """))
 end
 
 """
