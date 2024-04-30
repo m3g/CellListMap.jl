@@ -16,6 +16,18 @@ julia> import Pkg
 julia> Pkg.add("CellListMap")
 ```
 
+## Help!
+
+Please ask for help if having any difficulty using the package. Reach us by:
+
+- Asking a question on the [Julia Discourse forum](https://discourse.julialang.org/). Please
+  mark `@lmiq` on your post, otherwise we may miss it! This may be very effective to get help from 
+  many Julia users on questions not directly related to physical-chemistry.
+- [Opening an issue](https://github.com/m3g/ComplexMixtures.jl/issues/new/choose) if you think you found a problem in the package.
+  Even documentation problems can be reported.
+- Joining us at Zulip-chat in the [m3g stream](https://julialang.zulipchat.com/#narrow/stream/435348-m3g) of the Julia Zulip forum.
+- Sending an e-mail to: [lmartine@unicamp.br](mailto:lmartine@unicamp.br?subject="ComplexMixtures.jl help").
+
 ## Overview
 
 ### High level interface for periodic system
