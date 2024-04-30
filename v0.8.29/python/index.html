@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>From Python · CellListMap.jl</title><meta name="title" content="From Python · CellListMap.jl"/><meta property="og:title" content="From Python · CellListMap.jl"/><meta property="twitter:title" content="From Python · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../PeriodicSystems/">PeriodicSystems interface</a></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li><a class="tocitem" href="../LowLevel/">Low level interface</a></li><li><a class="tocitem" href="../ecosystem/">Ecosystem integration</a></li><li class="is-active"><a class="tocitem" href>From Python</a><ul class="internal"><li><a class="tocitem" href="#Installing"><span>Installing</span></a></li><li><a class="tocitem" href="#A-Python-module"><span>A Python module</span></a></li><li><a class="tocitem" href="#Under-the-hood:-interfacing-with-the-Julia-package"><span>Under the hood: interfacing with the Julia package</span></a></li><li><a class="tocitem" href="#Benchmarking-vs.-Scipy"><span>Benchmarking vs. Scipy</span></a></li><li><a class="tocitem" href="#General-mappings"><span>General mappings</span></a></li></ul></li><li><a class="tocitem" href="../help/">Help entries</a></li><li><a class="tocitem" href="../citation/">Citation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>From Python</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>From Python</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/python.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Calling-from-Python"><a class="docs-heading-anchor" href="#Calling-from-Python">Calling from Python</a><a id="Calling-from-Python-1"></a><a class="docs-heading-anchor-permalink" href="#Calling-from-Python" title="Permalink"></a></h1><p>Callling <code>CellListMap</code> from python can be useful if lists of neighbors or other properties have to be computed many times, making the overhead of initializing Julia negligible. As the example and benchmark below demonstrates, the current implementation of cell lists in this package is faster than common alternatives available in the python ecosystem. </p><h2 id="Installing"><a class="docs-heading-anchor" href="#Installing">Installing</a><a id="Installing-1"></a><a class="docs-heading-anchor-permalink" href="#Installing" title="Permalink"></a></h2><p>First, install <code>juliacall</code> using the <code>pip</code> package manager, with</p><pre><code class="language-bash hljs">% pip install juliacall</code></pre><p>Using <code>ipython3</code> (only Python <span>$\geq$</span> 3 is supported), do:</p><pre><code class="language-python hljs">In [1]: from juliacall import Main as jl</code></pre><p>which, <em>on the first use only</em>, will install the latest stable version of Julia. </p><p>Then, install <code>CellListMap</code>, with:</p><pre><code class="language-python hljs">In [2]: jl.Pkg.add(&quot;CellListMap&quot;)</code></pre><h2 id="A-Python-module"><a class="docs-heading-anchor" href="#A-Python-module">A Python module</a><a id="A-Python-module-1"></a><a class="docs-heading-anchor-permalink" href="#A-Python-module" title="Permalink"></a></h2><p>The <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/CellListMap.py">CellListMap.py</a>  provides a complete small python module that interfaces the <code>neighborlist</code> function of <code>CellListMap</code>  with python, returning <code>numpy</code> arrays of indices and distances: </p><p>By saving the file above in a <code>CellListMap.py</code> file, within python we just need to do:</p><pre><code class="language-python hljs">In [1]: import CellListMap as cl
+
+In [2]: import numpy as np
+
+In [3]: coords = np.random.random((50_000,3))
+
+In [4]: i_inds, j_inds, d = cl.neighborlist(coords, 0.05)</code></pre><p>The output <code>i_inds</code>, <code>j_inds</code> and <code>d</code> variables are <code>numpy</code> arrays with the indexes of the particles and their distances.</p><p>For periodic systems, the <code>unitcell</code> must be provided, as uni-dimensional <code>np.array</code> (for orthorhombic systems) or a <code>np.matrix</code> (for general periodic boundary conditions). For example: </p><pre><code class="language-python hljs">In [5]: i_inds, j_inds, d = cl.neighborlist(coords, 0.05, unitcell=np.array([1, 1, 1]))
+
+In [6]: i_inds, j_inds, d = cl.neighborlist(coords, 0.05, unitcell=np.matrix(&#39;1 0 0; 0 1 0; 0 0 1&#39;))</code></pre><p>The <code>neighborlist_cross</code> function provided above has a similar syntax, but to compute the neighboring particles of two independent sets:</p><pre><code class="language-python hljs">In [7]: x = np.random.random((50_000,3))
+
+In [8]: y = np.random.random((50_000,3))
+
+In [9]: i_inds, j_inds, d = cl.neighborlist_cross(x, y, 0.05, unitcell=np.array([1, 1, 1]))</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The indexes of the particles the <code>i_inds</code> and <code>j_inds</code> arrays are 0-based, to conform the <code>numpy</code> array standard. </p></div></div><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>To run the code multi-threaded, set the <code>JULIA_NUM_THREADS</code> environment variable before launching python:</p><pre><code class="language-bash hljs">% export JULIA_NUM_THREADS=8</code></pre></div></div><h2 id="Under-the-hood:-interfacing-with-the-Julia-package"><a class="docs-heading-anchor" href="#Under-the-hood:-interfacing-with-the-Julia-package">Under the hood: interfacing with the Julia package</a><a id="Under-the-hood:-interfacing-with-the-Julia-package-1"></a><a class="docs-heading-anchor-permalink" href="#Under-the-hood:-interfacing-with-the-Julia-package" title="Permalink"></a></h2><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The details of the above module are explained below, for a more in depth understanding of the interface between Julia and Python through the <a href="https://github.com/cjdoris/PythonCall.jl"><code>PythonCall.jl</code></a> library.</p><p>We highly recommend using the <code>CellListMap.py</code> module provided above.</p></div></div><p>The typical input coordinates, in python, are a <code>numpy</code> array with shape <code>(N,dim)</code> where <code>N</code> is the number of particles and <code>dim</code> is the dimension of the space (2 or 3 for <code>CellListMap</code>). Here, we generate a set of <code>50,000</code> particles in three dimensions:</p><pre><code class="language-python hljs">In [1]: import numpy as np
+
+In [2]: coords = np.random.random((50_000,3))</code></pre><p>Julia is column-major, and python is row-major, thus if we want to use the functions from <code>CellListMap</code> we need to transpose the coordinates:</p><pre><code class="language-python hljs">In [3]: coords_t = coords.transpose()</code></pre><p>These transposed coordinates can be used in the <code>CellListMap.neighborlist</code> function. For example:</p><pre><code class="language-python hljs">In [4]: jl.seval(&quot;using CellListMap&quot;)
+
+In [6]: neighbor_list = jl.neighborlist(coords_t,0.05)</code></pre><p>which will return a list of tuples, containing all pairs of coordinates withing the cutoff (remember that the <em>first</em> call to a Julia function will always take longer than subsequent calls, because the function is JIT compiled):</p><pre><code class="language-python hljs">In [12]: neighbor_list.shape
+Out[12]: (618774,)
+
+In [13]: neighbor_list[1]
+Out[13]: (1, 37197, 0.047189685889846615)</code></pre><p>Note that the third element of the tuple is the distance between the points.</p><h3 id="Converting-the-list-to-numpy-arrays"><a class="docs-heading-anchor" href="#Converting-the-list-to-numpy-arrays">Converting the list to numpy arrays</a><a id="Converting-the-list-to-numpy-arrays-1"></a><a class="docs-heading-anchor-permalink" href="#Converting-the-list-to-numpy-arrays" title="Permalink"></a></h3><p>The output of <code>CellListMap.neighborlist</code> is a Julia <code>Vector{Tuple{Int,Int,Float64}}</code> array (or <code>Float32</code>, if the coordinates and cutoff were given in 32-bit precision). This Julia list can be accessed from within python normally:</p><pre><code class="language-python hljs">In [36]: neighbor_list = jl.neighborlist(coords_t, 0.05);
+
+In [37]: neighbor_list[0:2]
+Out[37]: 
+2-element view(::Vector{Tuple{Int64, Int64, Float64}}, 1:1:2) with eltype Tuple{Int64, Int64, Float64}:
+ (1, 6717, 0.020052121336342873)
+ (1, 7208, 0.03880915662838867)
+
+In [38]: neighbor_list[0][0]
+Out[38]: 1
+
+In [40]: neighbor_list[0][2]
+Out[40]: 0.020052121336342873</code></pre><p>Yet, this list may not be interoperable with many other python packages, particularly with <code>numpy</code> standard  operations. Thus, it may be interesting to convert the list to <code>numpy</code>  arrays. This can be done with a simple helper function, which uses a Julia function to copy the list values to the <code>numpy</code> arrays:</p><pre><code class="language-python hljs">jl.seval(&quot;&quot;&quot;
+function copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    for i in eachindex(nb_list)
+        i_inds[i], j_inds[i], d[i] = nb_list[i]
+    end
+    return nothing
+end
+&quot;&quot;&quot;)
+def neighborlist(x, cutoff) :
+    x_t = x.transpose()
+    nb_list = jl.neighborlist(x_t, cutoff)
+    i_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    j_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    d = np.full((len(nb_list),), 0.0, dtype=np.float64)
+    jl.copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    i_inds -= 1 # make indexes 0-based
+    j_inds -= 1 # make indexes 0-based
+    return i_inds, j_inds, d</code></pre><p>Now, the output of the python <code>neighborlist</code> contains the <code>numpy</code> arrays for the indexes of the two particles involved in each pair, and their distances:</p><pre><code class="language-python hljs">In [61]: neighborlist(coords,0.05)
+Out[61]: 
+(array([    0,     0,     0, ..., 49802, 49802, 49885]),
+ array([ 6717,  7208,  9303, ..., 11542, 27777, 43853]),
+ array([0.02005212, 0.03880916, 0.04543936, ..., 0.04671987, 0.02671908,
+        0.02772025]))</code></pre><p>The overhead of these conversions, array creation and copies is not very large, and the benchmarks below are still valid considering this auxiliary python function.</p><h2 id="Benchmarking-vs.-Scipy"><a class="docs-heading-anchor" href="#Benchmarking-vs.-Scipy">Benchmarking vs. Scipy</a><a id="Benchmarking-vs.-Scipy-1"></a><a class="docs-heading-anchor-permalink" href="#Benchmarking-vs.-Scipy" title="Permalink"></a></h2><p>To properly benchmark the <code>neighborlist</code> function from <code>CellListMap</code>, let us first define a simple wrapper that will include the transposition of the coordinates in the time:</p><pre><code class="language-python hljs">In [14]: def neighborlist_simple(x,cutoff):
+    ...:     y = x.transpose()
+    ...:     nn = jl.CellListMap.neighborlist(y,cutoff)
+    ...:     return nn
+    ...:
+
+In [15]: %timeit neighborlist_simple(coords,0.05)
+61.7 ms ± 707 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)</code></pre><p>Let us compare this with the performance of a <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.cKDTree.query_ball_tree.html">inrange neighborlist algorithm</a> from <code>scipy</code>:</p><pre><code class="language-python hljs">In [29]: from scipy.spatial import cKDTree
+
+In [30]: def neighborlist_scipy(x,cutoff) : 
+    ...:     kd_tree = cKDTree(x)  
+    ...:     pairs = kd_tree.query_pairs(r=0.05)  
+    ...:     return pairs 
+    ...:
+
+In [31]: %timeit neighborlist_scipy(coords,0.05)
+312 ms ± 2.85 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)</code></pre><p>Just to confirm, this is the number of pairs that is being output in this test</p><pre><code class="language-python hljs">In [32]: len(neighborlist_scipy(coords,0.05)) # using Scipy
+Out[32]: 618475
+
+In [20]: len(neighborlist_smple(coords,0.05)) # using CellListMap
+Out[20]: 618475</code></pre><p>If we use the <code>neighborlist</code> function from <a href="#Converting-the-list-to-numpy-arrays">Converting the list to numpy arrays</a>, the result is similar, thus copying the output to numpy arrays does not create a large overhead:</p><pre><code class="language-python hljs">In [30]: %timeit neighborlist(coords, 0.05)
+67.4 ms ± 4.04 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)</code></pre><h3 id="Overhead"><a class="docs-heading-anchor" href="#Overhead">Overhead</a><a id="Overhead-1"></a><a class="docs-heading-anchor-permalink" href="#Overhead" title="Permalink"></a></h3><p>The overhead of calling the function through <code>juliacall</code>  is small. From within Julia, the timings of a similar execution would be:</p><pre><code class="language-julia-repl hljs">julia&gt; using BenchmarkTools
+
+julia&gt; using CellListMap
+
+julia&gt; x = rand(3,50_000);
+
+julia&gt; @btime CellListMap.neighborlist($x,0.05,parallel=false);
+  51.299 ms (17687 allocations: 37.43 MiB)</code></pre><h3 id="Multi-threading"><a class="docs-heading-anchor" href="#Multi-threading">Multi-threading</a><a id="Multi-threading-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-threading" title="Permalink"></a></h3><p>These examples were run single-threaded. To run multi-threaded, an environment variable for <code>Julia</code> needs to be set. For example, in <code>bash</code>, do:</p><pre><code class="language-bash hljs">% export JULIA_NUM_THREADS=12</code></pre><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>There is a conflict between garbage collectors that may cause segmentation faults in multi-threaded runs  (see <a href="https://github.com/cjdoris/PythonCall.jl/issues/201">this issue</a>). The workaround appears to be to  disable the Julia garbage collector during the execution of multi-threaded code. </p><p>Here we provide the necessary syntax as an auxiliary Python function.</p></div></div><p>Consider the following python file, let us call it <code>neighborlist.py</code>, that provides the <code>neighborlist</code> python function with the conversion of the output to <code>numpy</code> arrays:</p><pre><code class="language-python hljs">from juliacall import Main as jl
+jl.seval(&quot;using CellListMap&quot;)
+import numpy as np
+jl.seval(&quot;&quot;&quot;
+function copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    for i in eachindex(nb_list)
+        i_inds[i], j_inds[i], d[i] = nb_list[i]
+    end
+    return nothing
+end
+&quot;&quot;&quot;)
+def neighborlist(x, cutoff) :
+    x_t = x.transpose()
+    jl.GC.enable(False)
+    nb_list = jl.neighborlist(x_t, cutoff)
+    jl.GC.enable(True)
+    i_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    j_inds = np.full((len(nb_list),), 0, dtype=np.int64)
+    d = np.full((len(nb_list),), 0.0, dtype=np.float64)
+    jl.copy_to_numpy_arrays(nb_list, i_inds, j_inds, d)
+    return i_inds, j_inds, d</code></pre><p>Then, in Python, do:</p><pre><code class="language-python hljs">In [1]: import neighborlist as nb
+
+In [2]: import numpy as np
+
+In [3]: coords = np.random.random((50_000,3))
+
+In [4]: i_inds, j_inds, d = nb.neighborlist(coords, 0.05)</code></pre><p>In a notebook with 6 cores (12 threads) this led to the following performance:</p><pre><code class="language-python hljs">In [5]: %timeit i_inds, j_inds, d = nb.neighborlist(coords, 0.05)
+23.7 ms ± 910 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)</code></pre><p>Which, is about 3x faster than the serial execution:</p><pre><code class="language-python hljs">In [4]: %timeit i_inds, j_inds, d = nb.neighborlist(coords, 0.05)
+59.2 ms ± 959 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)</code></pre><p>and thus about 10x faster than <code>scipy.spatial</code>:</p><pre><code class="language-python hljs">In [7]: %timeit neighborlist_scipy(coords,0.05)
+204 ms ± 2.86 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)</code></pre><h2 id="General-mappings"><a class="docs-heading-anchor" href="#General-mappings">General mappings</a><a id="General-mappings-1"></a><a class="docs-heading-anchor-permalink" href="#General-mappings" title="Permalink"></a></h2><p>A greater flexibility on the use of <code>CellListMap</code> from python can be obtained by defining custom Julia functions. This feature must be used with the low level interface of <code>CellListMap</code>, and is somewhat limited in scope.</p><pre><code class="language-python hljs">In [36]: jl.seval(&quot;using CellListMap&quot;)
+
+In [37]: x = np.random.random((50_000,3));
+
+In [38]: x_t = x.transpose()
+
+In [39]: box = jl.Box(np.array([1,1,1]), 0.05)
+
+In [40]: box
+Out[41]: 
+Box{OrthorhombicCell, 3}
+  unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+  cutoff = 0.05
+  number of computing cells on each dimension = [22, 22, 22]
+  computing cell sizes = [0.05, 0.05, 0.05] (lcell: 1)
+  Total number of cells = 10648
+
+In [41]: cl = jl.CellList(x_t,box)
+
+In [42]: cl
+Out[42]: 
+CellList{3, Float64}
+  50000 real particles.
+  7985 cells with real particles.
+  66594 particles in computing box, including images.</code></pre><p>The function to be mapped, however, has to be defined in Julia, using <code>seval</code>. For example, here we define a function that computes the histogram of the distances within the cutoff. </p><pre><code class="language-python hljs">In [43]: jl.seval(&quot;&quot;&quot;  
+    ...: function histogram(x,y,i,j,d2,hist) 
+    ...:     cutoff = 0.05 
+    ...:     dc = sqrt(d2)/cutoff # in [0,1] 
+    ...:     ibin = floor(Int,dc*10) + 1 # in [0,10] 
+    ...:     hist[ibin] += 1 
+    ...:     return hist 
+    ...: end 
+    ...: &quot;&quot;&quot;)
+Out[44]: histogram (generic function with 1 method)</code></pre><p>We can initialize the output variable (the histogram) using a regular <code>numpy</code> array: </p><pre><code class="language-python hljs">In [45]: hist = np.zeros(10)</code></pre><p>and call the <code>map_pairwise</code> function to obtain the histogram of the distances within the <code>cutoff</code>:</p><pre><code class="language-python hljs">In [46]: jl.map_pairwise(jl.histogram, hist, box, cl)
+Out[46]: 
+10-element PythonCall.PyArray{Float64, 1, true, true, Float64}:
+ 153344.0
+      1.151744e6
+      3.066624e6
+      5.787392e6
+      9.220608e6
+      1.3175552e7
+      1.7414912e7
+      2.1817088e7
+      2.6189312e7
+      3.0583808e7</code></pre><p>With this interface, however, it is not possible to pass additional parameters to the mapped function, and thus the additional parameters have to defined inside the called function (as the <code>cutoff</code> in the current example). This is not ideal, for example, for computing accelerations, which depend on the masses of the particles. In this case, currently, either just use Julia from start and closures, or use the <code>neighborlist</code>  function to obtain the list of neighbors to then compute whatever property is desired from the list of pairs, although this is suboptimal in terms of performance.  </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ecosystem/">« Ecosystem integration</a><a class="docs-footer-nextpage" href="../help/">Help entries »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Tuesday 30 April 2024 20:10">Tuesday 30 April 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
