@@ -466,13 +466,14 @@ julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
 MinimumDistance(276, 617, 0.006009804808785543)
 ```
 
-## Additional execution options
+## Additional options
 
 - [Turn parallelization on and off](@ref)
 - [Displaying a progress bar](@ref)
 - [Fine control of the paralellization](@ref)
 - [Avoid cell list updating](@ref)
 - [Control CellList cell size](@ref)
+- [Coordinates as matrices](@ref)
 
 ### Turn parallelization on and off
 
@@ -618,6 +619,45 @@ larger values of `lcell` may improve the performance. To be tested by the user.
     be not greater than the number of particles, and for that the cutoff may have to be increased, if there is
     a memory bottleneck. A reasonable choice is to use `cutoff = max(real_cutoff, length/n^(1/D))` where `n` is the 
     number of particles and `D` is the dimension (2 or 3). With that the number of cells will be close to `n` in the worst case.  
+
+### Coordinates as matrices
+
+!!! compat
+    Support for input coordinates in matrix format in the `PeriodicSystems` interface was introduced
+    in version `0.8.28`.
+
+Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and 
+`N` is the number of particles. For example:
+
+```jldoctest; filter = r"\d+" => "" 
+julia> using CellListMap.PeriodicSystems 
+
+julia> system = PeriodicSystem(
+           xpositions=rand(2,100),
+           ypositions=rand(2,200),
+           cutoff=0.1,
+           unitcell=[1,1],
+           output=0.0,
+       )
+PeriodicSystem2{output} of dimension 2, composed of:
+    Box{CellListMap.OrthorhombicCell, 2}
+      unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [13, 13]
+      computing cell sizes = [0.1, 0.1] (lcell: 1)
+      Total number of cells = 169
+    CellListMap.CellListPair{Vector{StaticArraysCore.SVector{2, Float64}}, 2, Float64, CellListMap.Swapped}
+       200 particles in the reference vector.
+       60 cells with real particles of target vector.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 9
+    Type of output variable (output): Float64
+```
+!!! warning
+    This interface less flexible than when the coordinates are input as vectors of vectors, because
+    *the number of particles* cannot be changed, because matrices cannot be resized. Otherwise, matrices can
+    be used as input.
 
 ## Complete example codes
 

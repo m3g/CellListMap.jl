@@ -28,6 +28,26 @@
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
     system.parallel = true
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
+
+    # Use matrices as input coordinates
+    xmat = zeros(3, N); 
+    ymat = zeros(3, N)
+    for i in 1:N
+        xmat[:, i] .= x[i]
+        ymat[:, i] .= y[i]
+    end
+    system = PeriodicSystem(
+        xpositions=xmat,
+        ypositions=ymat,
+        cutoff=cutoff,
+        unitcell=sides,
+        output=0.0,
+    )
+    naive = CellListMap.map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, Box(sides, cutoff))
+    system.parallel = false
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
+    system.parallel = true
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
     
     # Check different lcell
     system = PeriodicSystem(
@@ -53,6 +73,10 @@
         [[rand(2) for _ in 1:1000], [rand(2) for _ in 1:100]], # with standard vectors
         # standard vectors, length(x) < length(y)
         [[rand(2) for _ in 1:100], [rand(2) for _ in 1:1000]], # with standard vectors
+        # matrices, length(x) > length(y)
+        [rand(2, 1000), rand(2, 100)], 
+        # matrices, length(x) < length(y)
+        [rand(2,100), rand(2,1000)], # with standard vectors
     ]
         local x = arrays[1]
         local y = arrays[2]
@@ -68,17 +92,26 @@
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
         @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
-        x = rand(SVector{2,Float64}, length(x) + 100)
+        if x isa AbstractVector
+            x = rand(SVector{2,Float64}, length(x) + 100)
+            resize!(system.xpositions, length(x))
+        else
+            # Cannot resize the matrices, so this interface is more limited
+            x = rand(2, size(x, 2))
+        end
         cl = UpdateCellList!(x, y, box, cl)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        resize!(system.xpositions, length(x))
         system.xpositions .= x
         @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
     
-        y = rand(SVector{2,Float64}, length(y) + 100)
+        if y isa AbstractVector
+            y = rand(SVector{2,Float64}, length(y) + 100)
+            resize!(system.ypositions, length(y))
+        else
+            y = rand(2, size(y, 2))
+        end
         cl = UpdateCellList!(x, y, box, cl)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        resize!(system.ypositions, length(y))
         system.ypositions .= y
         @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
     

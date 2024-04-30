@@ -149,9 +149,9 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 ```
 """
 function PeriodicSystem(;
-    positions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
-    xpositions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
-    ypositions::Union{Nothing,AbstractVector{<:AbstractVector}}=nothing,
+    positions::Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}=nothing,
+    xpositions::Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}=nothing,
+    ypositions::Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}=nothing,
     unitcell::AbstractVecOrMat,
     cutoff::Number,
     output::Any,
@@ -161,15 +161,37 @@ function PeriodicSystem(;
     lcell=1,
     autoswap::Bool=true
 )
-    if !isnothing(positions) && isnothing(xpositions)
-        xpositions = positions
-    elseif !isnothing(positions) && !isnothing(xpositions)
-        throw(ArgumentError(
-            """Either define `positions` OR `xpositions`, they are aliases one to the other."""
-        ))
+    # Set xpositions if positions was set
+    if (isnothing(positions) && isnothing(xpositions)) || (!isnothing(positions) && !isnothing(xpositions)) 
+        throw(ArgumentError("Either `positions` OR `xpositions` must be defined."))
+    end
+    xpositions = isnothing(positions) ? xpositions : positions
+    # Check for simple input argument errors
+    for input_array in (xpositions, ypositions)
+        isnothing(input_array) && break
+        if input_array isa AbstractMatrix 
+            dim = size(input_array, 1)
+            if !(dim in (2,3))
+                throw(DimensionMismatch("Matrix of coordinates must have 2 or 3 rows, one for each dimension, got size: $(size(input_array))"))
+            end
+            input_array = reinterpret(reshape, SVector{dim, eltype(input_array)}, input_array)
+        end
+        DIM = if eltype(input_array) isa SVector
+            length(eltype(input_array))
+        else
+            if length(input_array) == 0
+                # If the array is empty, we cannot determine the dimension, so we assume it is the same as the unit cell
+                size(unitcell, 1)
+            else
+                length(input_array[1])
+            end
+        end
+        if DIM != size(unitcell, 1)
+            throw(DimensionMismatch("Dimension of the unit cell ($(size(unitcell, 1))) must match the dimension of the coordinates ($(length(eltype(input_array))))"))
+        end
     end
     # Single set of positions
-    if !isnothing(xpositions) && isnothing(ypositions)
+    if isnothing(ypositions)
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, _box; parallel=parallel, nbatches=nbatches)
         _aux = CellListMap.AuxThreaded(_cell_list)
@@ -177,21 +199,16 @@ function PeriodicSystem(;
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     # Two sets of positions
-    elseif !isnothing(xpositions) && !isnothing(ypositions)
+    else
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches, autoswap=autoswap)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
         sys = PeriodicSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
-    else
-        throw(ArgumentError(
-            """Either define `xpositions` OR (`xpositions` AND `ypositions`), to build systems for self- or cross-pair computations, respectively."""
-        ))
     end
     return sys
 end
-
 
 # Abstract type only for cleaner dispatch
 abstract type AbstractPeriodicSystem{OutputName} end
@@ -253,7 +270,14 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
     @test sys.unitcell == @SMatrix [1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]
 
     # test the construction with pathologically few particles
-    for x in [SVector{3,Float64}[], Vector{Float64}[], [rand(SVector{3,Float64})], [rand(3)]]
+    for x in [
+            SVector{3,Float64}[], 
+            Vector{Float64}[], 
+            Matrix{Float64}(undef, 3, 0),
+            [rand(SVector{3,Float64})], 
+            [rand(3)],
+            rand(3,1)
+        ]
         _sys = PeriodicSystem(
             positions=x,
             cutoff=0.1,
@@ -271,13 +295,52 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
 
     # Argument errors
     @test_throws ArgumentError PeriodicSystem(
-        positions=rand(SVector{3,Float64}, 1000),
-        xpositions=rand(SVector{3,Float64}, 1000),
+        positions=rand(SVector{3,Float64}, 100),
+        xpositions=rand(SVector{3,Float64}, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
     @test_throws ArgumentError PeriodicSystem(
-        ypositions=rand(SVector{3,Float64}, 1000),
+        ypositions=rand(SVector{3,Float64}, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        positions=rand(1,100),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        xpositions=rand(1,100),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        xpositions=rand(2,100),
+        ypositions=rand(1,100),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        positions=rand(2,100),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        xpositions=rand(2,100),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        xpositions=rand(2,100),
+        ypositions=rand(2,100),
+        cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        positions=rand(3,100),
+        cutoff=0.1, unitcell=[1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        xpositions=rand(3,100),
+        cutoff=0.1, unitcell=[1, 1], output=0.0,
+    )
+    @test_throws DimensionMismatch PeriodicSystem(
+        xpositions=rand(3,100),
+        ypositions=rand(3,100),
+        cutoff=0.1, unitcell=[1, 1], output=0.0,
     )
 
 end
@@ -858,9 +921,9 @@ end
     a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
+    # Update with matrices
     x = rand(3,500)
-    xr = reinterpret(reshape, SVector{3,Float64}, x)
-    sys = PeriodicSystem(xpositions=xr, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
