@@ -25,12 +25,15 @@ export reducer!, reducer
 # to explicit add methods to copy_output, reset_output!, and reducer functions.
 const SupportedTypes = Union{Number,SVector,FieldVector}
 
+# Supported types for coordinates
+const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}
+
 """
     PeriodicSystem( 
-        xpositions::AbstractVector{<:AbstractVector},
+        xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
         #or
-        xpositions::AbstractVector{<:AbstractVector},
-        ypositions::AbstractVector{<:AbstractVector},
+        xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
+        ypositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
         # and
         unitcell::AbstractVecOrMat,
         cutoff::Number,
@@ -41,11 +44,11 @@ const SupportedTypes = Union{Number,SVector,FieldVector}
         autoswap::Bool = true
     )
 
-Function that sets up the `PeriodicSystem` type given the positions of
-the particles.
+Constructor of the `PeriodicSystem` type given the positions of the particles.
 
 - Positions can be provided as vectors of 2D or 3D vectors 
-  (preferentially static vectors from `StaticArrays`).
+  (preferentially static vectors from `StaticArrays`), or as 
+  (2,N) or (3,N) matrices (v0.8.28 is required for matrices).
 
 - If only the `xpositions` array is provided, a single set of coordinates 
   is considered, and the computation will be mapped for the `N(N-1)` 
@@ -89,23 +92,7 @@ julia> sys = PeriodicSystem(
            unitcell = [21.0, 21.0, 21.0],
            cutoff = 8.0, 
            output = 0.0, 
-           parallel = false, # use true for parallelization
-        )
-PeriodicSystem1{output} of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
-      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
-      cutoff = 8.0
-      number of computing cells on each dimension = [5, 5, 5]
-      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
-      Total number of cells = 125
-    CellListMap.CellList{3, Float64}
-      100 real particles.
-      8 cells with real particles.
-      800 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 1
-      Number of batches for function mapping: 1
-    Type of output variable (output): Float64
+        );
 
 julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 43774.54367600002
@@ -128,30 +115,16 @@ julia> sys = PeriodicSystem(
            cutoff = 8.0, 
            output = 0.0, 
            parallel = false, # use true for parallelization
-        )
-PeriodicSystem2{output} of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
-      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
-      cutoff = 8.0
-      number of computing cells on each dimension = [5, 5, 5]
-      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
-      Total number of cells = 125
-    CellListMap.CellListPair{Vector{StaticArraysCore.SVector{3, Float64}}, 3, Float64, CellListMap.NotSwapped}
-       50 particles in the reference vector.
-       8 cells with real particles of target vector.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 1
-      Number of batches for function mapping: 1
-    Type of output variable (output): Float64
+        );
 
 julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 21886.196785000004
 ```
 """
 function PeriodicSystem(;
-    positions::Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}=nothing,
-    xpositions::Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}=nothing,
-    ypositions::Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}=nothing,
+    positions::SupportedCoordinatesTypes=nothing,
+    xpositions::SupportedCoordinatesTypes=nothing,
+    ypositions::SupportedCoordinatesTypes=nothing,
     unitcell::AbstractVecOrMat,
     cutoff::Number,
     output::Any,
@@ -447,7 +420,7 @@ end
 """
     copy_output(x)
 
-Function that defines how the `output` variable is copied. Identical to `Base.copy(x)`
+Defines how the `output` variable is copied. Identical to `Base.copy(x)`
 and implemented for the types in `$(SupportedTypes)`.
 
 Other custom output types must have their `copy_output` method implemented.
@@ -470,12 +443,14 @@ PeriodicSystems.copy_output(v::Vector{A}) = copy(v)
 
 The user must guarantee that the copy is independent of the original array.
 For many custom types it is possible to define 
-`PeriodicSystems.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)`.
+```
+PeriodicSystems.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)
+```
 
 """
 function copy_output(x)
-    error("""
-        MethodError: no method matching `copy_output($(typeof(x)))`
+    throw(ArgumentError("""\n
+        No method matching `copy_output($(typeof(x)))`
 
         Please implement a method 
        
@@ -483,12 +458,13 @@ function copy_output(x)
 
         with an appropriate way to copy the required output variable. Many times just
         defining `output_copy(x::$(typeof(x))) = deepcopy(x)` is ok. 
-    """)
+    """))
 end
 copy_output(x::T) where {T<:SupportedTypes} = copy(x)
 copy_output(x::AbstractVecOrMat{T}) where {T} = T[copy_output(el) for el in x]
 
 """
+    reset_output(x)
     reset_output!(x)
 
 Function that defines how to reset (or zero) the `output` variable. For `$(SupportedTypes)` it is 
@@ -497,26 +473,37 @@ it is implemented as `fill!(x, zero(eltype(x))`.
 
 Other custom output types must have their `reset_output!` method implemented.
 
-The `reset_output!` function *must* return the `output` variable, being it mutable
-or immutable. `reset_output` is an alias for `reset_output!` that can be used for consistency if the
-`output` variable is immutable.
+If the variable is mutable, the function *must* return the variable itself. If it is immutable,
+a new instante of the variable must be created, with the reset value. 
+
+`reset_output` and `reset_output!` are aliases, and `reset_output!` is preferred, by convention
+for mutating functions.
 
 # Example
 
 In this example, we define a `reset_output` function that will set to `+Inf` the
 minimum distance between particles (not always resetting means zeroing).
 
-```julia
-# Custom data type
-struct MinimumDistance d::Float64 end
-# How to reset the minimum distance
-PeriodicSystems.reset_output!(x::MinimumDistance) = MinimumDistance(+Inf)
+```jldoctest
+julia> using CellListMap.PeriodicSystems
+
+julia> struct MinimumDistance d::Float64 end
+
+julia> PeriodicSystems.reset_output(x::MinimumDistance) = MinimumDistance(+Inf)
+
+julia> x = MinimumDistance(1.0)
+MinimumDistance(1.0)
+
+julia> PeriodicSystems.reset_output(x)
+MinimumDistance(Inf)
 ```
+
+See the `reducer` help entry for a complete example of how to use `reset_output`.
 
 """
 function reset_output!(x)
-    error("""
-        MethodError: no method matching `reset_output!($(typeof(x)))`
+    throw(ArgumentError("""\n
+        No method matching `reset_output!($(typeof(x)))`
 
         Please add a method 
         
@@ -524,9 +511,9 @@ function reset_output!(x)
         
         with the appropriate way to reset (zero) the data of the output variables.
 
-        The `reset_output!` methods **must** return the output variable to
+        The reset_output! methods **must** return the output variable to
         conform with the interface, even if the variable is mutable. 
-    """)
+    """))
 end
 reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
 reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin]))
@@ -549,10 +536,14 @@ function _reset_all_output!(output, output_threaded)
 end
 
 """
+    reducer(x,y)
     reducer!(x,y)
 
-Function that defines how to reduce (combine, or merge) to variables computed in parallel
-to obtain a single instance of the variable with the reduced result.
+Defines how to reduce (combine, or merge) to variables computed in parallel
+to obtain a single instance of the variable with the reduced result. 
+
+`reducer` and `reducer!` are aliases, and `reducer!` is preferred, by convention
+for mutating functions.
 
 The most commont `reducer` is the sum, and this is how it is implemented for
 `$(SupportedTypes)`. For example, when computin energies, or forces,
@@ -579,23 +570,65 @@ complex data types, containing different types of variables, fields, or sizes.
 The appropriate behavior of the reducer should be carefuly inspected by the user
 to avoid spurious results. 
 
+# Example
+
+In this example we show how to obtain the minimum distance among argon atoms
+in a simulation box.
+
+```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
+julia> using CellListMap.PeriodicSystems, PDBTools
+
+julia> positions = coor(readPDB(PeriodicSystems.argon_pdb_file));
+
+julia> struct MinimumDistance d::Float64 end # Custom output type
+
+julia> PeriodicSystems.copy_output(d::MinimumDistance) = MinimumDistance(d.d) # Custom copy function for `Out`
+
+julia> PeriodicSystems.reset_output(d::MinimumDistance) = MinimumDistance(+Inf) # How to reset an array with elements of type `MinimumDistance`
+
+julia> PeriodicSystems.reducer(md1::MinimumDistance, md2::MinimumDistance) = MinimumDistance(min(md1.d, md2.d)) # Custom reduction function
+
+julia> # Construct the system
+       sys = PeriodicSystem(;
+           positions = positions,
+           unitcell = [21,21,21],
+           cutoff = 8.0,
+           output = MinimumDistance(+Inf),
+       );
+
+julia> # Obtain the minimum distance between atoms:
+       map_pairwise!((x,y,i,j,d2,output) -> sqrt(d2) < output.d ? MinimumDistance(sqrt(d2)) : output, sys)
+MinimumDistance(2.1991993997816563)
+```
+
 """
 function reducer!(x, y)
-    error("""
-        MethodError: no method matching `reducer!($(typeof(x)),$(typeof(x)))`
+    throw(ArgumentError("""\n
+        No method matching `reducer!($(typeof(x)),$(typeof(y)))`
 
         Please implement a method 
         
-        PeriodicSystems.reducer(x::$(typeof(x)),y::$(typeof(x)))
+        PeriodicSystems.reducer(x::$(typeof(x)),y::$(typeof(y)))
         
         with the appropriate way to combine two instances of the type (summing, keeping
         the minimum, etc), such that threaded computations can be reduced.
-    """)
+    """))
 end
 reducer!(x::T, y::T) where {T<:SupportedTypes} = +(x, y)
 const reducer = reducer!
 
-"""
+@testitem "reducer method basics and errors" begin
+    using CellListMap.PeriodicSystems
+    @test PeriodicSystems.reducer(1, 2) == 3
+    @test PeriodicSystems.copy_output(1) == 1
+    @test PeriodicSystems.reset_output(1) == 0
+    struct A end
+    @test_throws ArgumentError PeriodicSystems.reset_output(A())
+    @test_throws ArgumentError PeriodicSystems.copy_output(A())
+    @test_throws ArgumentError PeriodicSystems.reducer(A(), A())
+end
+
+#=
     reduce_output!(reducer::Function, output, output_threaded)
 
 $(INTERNAL)
@@ -621,49 +654,9 @@ of output variables, considering:
 `reduce_output` is an alias to `reduce_output!` that can be used for consistency if the `output`
 variable is immutable.
 
-# Example
-
-In this example we show how to obtain the minimum distance between two sets
-of particles. This requires a custom reduction function.
-
-```julia
-using CellListMap.PeriodicSystems, StaticArrays
-# Custom output type
-struct MinimumDistance
-    d::Float64
-end
-# Custom copy function for `Out`
-PeriodicSystems.copy_output(d::MinimumDistance) = MinimumDistance(d.d)
-# How to reset an array with elements of type `MinimumDistance`
-PeriodicSystems.reset_output!(d::MinimumDistance) = MinimumDistance(+Inf)
-# Custom reduction function (keep the minimum distance)
-function PeriodicSystems.reduce_output!(
-    output::MinimumDistance, 
-    output_threaded::Vector{MinimumDistance}
-)
-    output = reset_output!(output)
-    for i in eachindex(output_threaded)
-        if output_threaded[i].d < output.d
-            output = output_threaded[i]
-        end
-    end
-    return output
-end
-# Construct the system
-sys = PeriodicSystem(;
-    xpositions = rand(SVector{3,Float64}, 1000),
-    ypositions = rand(SVector{3,Float64}, 1000),
-    unitcell = [1,1,1],
-    cutoff = 0.1,
-    output = MinimumDistance(+Inf),
-)
-
-# Obtain the minimum distance between the sets
-map_pairwise!((x,y,i,j,d2,output) -> sqrt(d2) < output.d ? MinimumDistance(sqrt(d2)) : output, sys)
-# will output something like: MinimumDistance(0.00956913034767034)
 ```
 
-"""
+=#
 function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}) where {T}
     output = reset_output!(output)
     for ibatch in eachindex(output_threaded)
@@ -689,7 +682,15 @@ end
     resize_output!(sys::AbstractPeriodicSystem, n::Int)
 
 Resizes the output array and the auxiliary output arrays used
-for multithreading, if needed because of the system change.
+for multithreading, if the number of particles of the system changed.
+
+This function must be implemented by the user if the output variable is a 
+vector whose length is dependent on the number of particles. For example,
+if the output is a vector of forces acting on each particle, the output
+vector must be resized if the number of particles changes. 
+
+This function *must* be used in that case, to guarantee that the 
+auxiliary arrays used for multi-threading are resized accordingly. 
 
 """
 function resize_output!(sys::AbstractPeriodicSystem, n::Int)
@@ -718,32 +719,35 @@ where the size of the simulation box changes during the simulation.
 
 # Example
 
-```julia-repl
-julia> using CellListMap.PeriodicSystems, StaticArrays
+```jldoctest; filter = r"batches.*" => ""  
+julia> using CellListMap.PeriodicSystems, StaticArrays, PDBTools
+
+julia> xpositions = coor(readPDB(PeriodicSystems.argon_pdb_file));
 
 julia> sys = PeriodicSystem(
-           xpositions = rand(SVector{3,Float64},1000), 
-           unitcell=[1,1,1], 
-           cutoff = 0.1, 
+           xpositions = xpositions,
+           unitcell=[21,21,21], 
+           cutoff = 8.0, 
            output = 0.0
-           );
+       );
 
-julia> update_unitcell!(sys, [1.2, 1.1, 1.0])
-PeriodicSystem1 of dimension 3, composed of:
+julia> update_unitcell!(sys, [30.0, 30.0, 30.0])
+PeriodicSystem1{output} of dimension 3, composed of:
     Box{CellListMap.OrthorhombicCell, 3}
-      unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.1, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.1
-      number of computing cells on each dimension = [13, 13, 12]
-      computing cell sizes = [0.11, 0.1, 0.1] (lcell: 1)
-      Total number of cells = 2028
+      unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
+      cutoff = 8.0
+      number of computing cells on each dimension = [6, 6, 6]
+      computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+      Total number of cells = 216
     CellListMap.CellList{3, Float64}
-      1000 real particles.
-      633 cells with real particles.
-      1703 particles in computing box, including images.
+      100 real particles.
+      8 cells with real particles.
+      800 particles in computing box, including images.
     Parallelization auxiliary data set for: 
       Number of batches for cell list construction: 8
-      Number of batches for function mapping: 12
-    Type of output variable: Float64
+      Number of batches for function mapping: 8
+    Type of output variable (output): Float64
+
 ```
 
 """
@@ -878,7 +882,7 @@ function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,
     cl.ref .= sys.xpositions
 end
 function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:Swapped}
-    error("update_lists === false requires autoswap == false for 2-set systems.")
+    throw(ArgumentError("update_lists === false requires autoswap == false for 2-set systems."))
 end
 function UpdatePeriodicSystem!(sys::PeriodicSystem2, update_lists::Bool=true)
     if update_lists
