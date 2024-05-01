@@ -1,21 +1,9 @@
-module PeriodicSystems
-
-using TestItems: @testitem
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
-using StaticArrays: SVector, FieldVector
-
-import ..CellListMap
-using ..CellListMap: INTERNAL
-using ..CellListMap: Box, update_box, limits
-using ..CellListMap: CellListPair, Swapped, NotSwapped, unitcelltype
-using ..CellListMap: argon_pdb_file # for doc tests
-using ..CellListMap: OrthorhombicCell, TriclinicCell, NonPeriodicCell
-
 export PeriodicSystem
-export map_pairwise!, map_pairwise
+#export map_pairwise!, map_pairwise
 export update_cutoff!
 export update_unitcell!
-export unitcelltype
+#export unitcelltype
+#export OrthorhombicCell, TriclinicCell, NonPeriodicCell
 
 export copy_output
 export resize_output!
@@ -85,11 +73,11 @@ the particles that are within the cutoff:
 ## Single set of particles
 
 ```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
-julia> using CellListMap.PeriodicSystems: PeriodicSystem, map_pairwise!, argon_pdb_file
+julia> using CellListMap
 
 julia> using PDBTools: readPDB, coor
 
-julia> positions = coor(readPDB(argon_pdb_file));
+julia> positions = coor(readPDB(CellListMap.argon_pdb_file));
 
 julia> sys = PeriodicSystem(
            xpositions = positions, 
@@ -104,7 +92,7 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 ## Two sets of particles
 
 ```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
-julia> using CellListMap.PeriodicSystems: PeriodicSystem, map_pairwise!, argon_pdb_file
+julia> using CellListMap: PeriodicSystem, map_pairwise!, argon_pdb_file
 
 julia> using PDBTools: readPDB, coor
 
@@ -225,7 +213,7 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
 
 @testitem "PeriodicSystems properties" begin
 
-    using CellListMap.PeriodicSystems
+    using CellListMap
     using StaticArrays
     sys = PeriodicSystem(
         positions=rand(SVector{3,Float64}, 1000),
@@ -266,7 +254,7 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
             output=0.0,
             output_name=:test
         )
-        @test PeriodicSystems.map_pairwise((x, y, i, j, d2, out) -> out += d2, _sys) == 0.0
+        @test CellListMap.map_pairwise((x, y, i, j, d2, out) -> out += d2, _sys) == 0.0
     end
 
     # unitcell type
@@ -437,23 +425,23 @@ Other custom output types must have their `copy_output` method implemented.
 # Example
 
 ```julia
-using CellListMap.PeriodicSystems
+using CellListMap
 # Custom data type
 struct A x::Int end
 # Custom output type (array of A)
 output = [ A(0) for _ in 1:100 ]
 # How to copy an array of `A`
-PeriodicSystems.copy_output(v::Vector{A}) = [ x for x in v ]
+CellListMap.copy_output(v::Vector{A}) = [ x for x in v ]
 
 # Alternativelly, in this case, one could have defined:
 Base.copy(a::A) = a
-PeriodicSystems.copy_output(v::Vector{A}) = copy(v)
+CellListMap.copy_output(v::Vector{A}) = copy(v)
 ```
 
 The user must guarantee that the copy is independent of the original array.
 For many custom types it is possible to define 
 ```
-PeriodicSystems.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)
+CellListMap.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)
 ```
 
 """
@@ -463,7 +451,7 @@ function copy_output(x)
 
         Please implement a method 
        
-        PeriodicSystems.copy_output(x::$(typeof(x)))
+        CellListMap.copy_output(x::$(typeof(x)))
 
         with an appropriate way to copy the required output variable. Many times just
         defining `output_copy(x::$(typeof(x))) = deepcopy(x)` is ok. 
@@ -494,16 +482,16 @@ In this example, we define a `reset_output` function that will set to `+Inf` the
 minimum distance between particles (not always resetting means zeroing).
 
 ```jldoctest
-julia> using CellListMap.PeriodicSystems
+julia> using CellListMap
 
 julia> struct MinimumDistance d::Float64 end
 
-julia> PeriodicSystems.reset_output(x::MinimumDistance) = MinimumDistance(+Inf)
+julia> CellListMap.reset_output(x::MinimumDistance) = MinimumDistance(+Inf)
 
 julia> x = MinimumDistance(1.0)
 MinimumDistance(1.0)
 
-julia> PeriodicSystems.reset_output(x)
+julia> CellListMap.reset_output(x)
 MinimumDistance(Inf)
 ```
 
@@ -516,7 +504,7 @@ function reset_output!(x)
 
         Please add a method 
         
-        PeriodicSystems.reset_output!(x::$(typeof(x)))
+        CellListMap.reset_output!(x::$(typeof(x)))
         
         with the appropriate way to reset (zero) the data of the output variables.
 
@@ -585,17 +573,17 @@ In this example we show how to obtain the minimum distance among argon atoms
 in a simulation box.
 
 ```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
-julia> using CellListMap.PeriodicSystems, PDBTools
+julia> using CellListMap, PDBTools
 
-julia> positions = coor(readPDB(PeriodicSystems.argon_pdb_file));
+julia> positions = coor(readPDB(CellListMap.argon_pdb_file));
 
 julia> struct MinimumDistance d::Float64 end # Custom output type
 
-julia> PeriodicSystems.copy_output(d::MinimumDistance) = MinimumDistance(d.d) # Custom copy function for `Out`
+julia> CellListMap.copy_output(d::MinimumDistance) = MinimumDistance(d.d) # Custom copy function for `Out`
 
-julia> PeriodicSystems.reset_output(d::MinimumDistance) = MinimumDistance(+Inf) # How to reset an array with elements of type `MinimumDistance`
+julia> CellListMap.reset_output(d::MinimumDistance) = MinimumDistance(+Inf) # How to reset an array with elements of type `MinimumDistance`
 
-julia> PeriodicSystems.reducer(md1::MinimumDistance, md2::MinimumDistance) = MinimumDistance(min(md1.d, md2.d)) # Custom reduction function
+julia> CellListMap.reducer(md1::MinimumDistance, md2::MinimumDistance) = MinimumDistance(min(md1.d, md2.d)) # Custom reduction function
 
 julia> # Construct the system
        sys = PeriodicSystem(;
@@ -617,7 +605,7 @@ function reducer!(x, y)
 
         Please implement a method 
         
-        PeriodicSystems.reducer(x::$(typeof(x)),y::$(typeof(y)))
+        CellListMap.reducer(x::$(typeof(x)),y::$(typeof(y)))
         
         with the appropriate way to combine two instances of the type (summing, keeping
         the minimum, etc), such that threaded computations can be reduced.
@@ -627,14 +615,14 @@ reducer!(x::T, y::T) where {T<:SupportedTypes} = +(x, y)
 const reducer = reducer!
 
 @testitem "reducer method basics and errors" begin
-    using CellListMap.PeriodicSystems
-    @test PeriodicSystems.reducer(1, 2) == 3
-    @test PeriodicSystems.copy_output(1) == 1
-    @test PeriodicSystems.reset_output(1) == 0
+    using CellListMap
+    @test CellListMap.reducer(1, 2) == 3
+    @test CellListMap.copy_output(1) == 1
+    @test CellListMap.reset_output(1) == 0
     struct A end
-    @test_throws ArgumentError PeriodicSystems.reset_output(A())
-    @test_throws ArgumentError PeriodicSystems.copy_output(A())
-    @test_throws ArgumentError PeriodicSystems.reducer(A(), A())
+    @test_throws ArgumentError CellListMap.reset_output(A())
+    @test_throws ArgumentError CellListMap.copy_output(A())
+    @test_throws ArgumentError CellListMap.reducer(A(), A())
 end
 
 #=
@@ -650,7 +638,7 @@ and vectors or arrays of number of static arrays, as the sum of the values of th
 threaded computations, which is the most common application, found in computing
 forces, energies, etc. 
 
-It may be interesting to implement custom `PeriodicSystems.reduce_output!` function for other types 
+It may be interesting to implement custom `CellListMap.reduce_output!` function for other types 
 of output variables, considering:
 
 - The arguments of the function must be the return `output` value and a vector 
@@ -732,9 +720,9 @@ where the size of the simulation box changes during the simulation.
 # Example
 
 ```jldoctest; filter = r"batches.*" => ""  
-julia> using CellListMap.PeriodicSystems, StaticArrays, PDBTools
+julia> using CellListMap, StaticArrays, PDBTools
 
-julia> xpositions = coor(readPDB(PeriodicSystems.argon_pdb_file));
+julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file));
 
 julia> sys = PeriodicSystem(
            xpositions = xpositions,
@@ -751,7 +739,7 @@ PeriodicSystem1{output} of dimension 3, composed of:
       number of computing cells on each dimension = [6, 6, 6]
       computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
       Total number of cells = 216
-    CellListMap.CellList{3, Float64}
+    CellList{3, Float64}
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
@@ -777,7 +765,7 @@ end
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
-    using CellListMap.PeriodicSystems
+    using CellListMap
     x = rand(SVector{3,Float64}, 1000)
     sys1 = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
@@ -807,7 +795,7 @@ This function can be used to update the system geometry in iterative schemes.
 # Example
 
 ```julia-repl
-julia> using CellListMap.PeriodicSystems, StaticArrays
+julia> using CellListMap, StaticArrays
 
 julia> sys = PeriodicSystem(
            xpositions = rand(SVector{3,Float64},1000), 
@@ -852,7 +840,7 @@ end
 @testitem "update_cutoff!" begin
     using BenchmarkTools
     using StaticArrays
-    using CellListMap.PeriodicSystems
+    using CellListMap
     using PDBTools
     x = rand(SVector{3,Float64}, 1000)
     sys1 = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
@@ -868,7 +856,7 @@ end
     @test a == 0
 
     # Update cutoff of non-periodic systems
-    x = coor(readPDB(PeriodicSystems.argon_pdb_file))
+    x = coor(readPDB(CellListMap.argon_pdb_file))
     sys1 = PeriodicSystem(xpositions=x, cutoff=8.0, output=0.0)
     @test unitcelltype(sys1) == NonPeriodicCell
     @test sys1.unitcell ≈ [ 35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79 ] atol = 1e-2
@@ -900,10 +888,10 @@ contain all coordinates of the particles, plus the cutoff.
 get_computing_box(sys::AbstractPeriodicSystem) = sys._box.computing_box
 @testitem "get_computing_box" begin
     using StaticArrays
-    using CellListMap.PeriodicSystems
+    using CellListMap
     x = rand(SVector{3,Float64}, 1000)
     sys = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
-    @test PeriodicSystems.get_computing_box(sys) == ([-0.1, -0.1, -0.1], [1.1, 1.1, 1.1])
+    @test CellListMap.get_computing_box(sys) == ([-0.1, -0.1, -0.1], [1.1, 1.1, 1.1])
 end
 
 #=
@@ -961,40 +949,40 @@ end
 @testitem "UpdatePeriodicSystem!" begin
     using BenchmarkTools
     using StaticArrays
-    using CellListMap.PeriodicSystems
+    using CellListMap
     x = rand(SVector{3,Float64}, 1000)
     sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
     sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
     # Test construction with more general abstract vectors
     x = @view(x[1:500])
     sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = @view(y[1:500])
     sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
     # Update with matrices
     x = rand(3, 500)
     sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
     # Update non-periodic system
     x = rand(SVector{3,Float64}, 1000)
     sys = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
     sys = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated PeriodicSystems.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
 end
@@ -1064,6 +1052,23 @@ function map_pairwise!(
     )
     return sys.output
 end
-const map_pairwise = map_pairwise!
 
-end # module PeriodicSystems
+# For backward compatibility: will be removed in 1.0
+export PeriodicSystems
+module PeriodicSystems
+    import ..CellListMap
+    using ..CellListMap: PeriodicSystem
+    export PeriodicSystem
+    using ..CellListMap: map_pairwise!, map_pairwise
+    export map_pairwise!, map_pairwise
+    using ..CellListMap: update_cutoff!, update_unitcell!, unitcelltype
+    export update_cutoff!, update_unitcell!, unitcelltype
+    using ..CellListMap: copy_output, resize_output!, reset_output, reset_output!, reducer, reducer!
+    export copy_output, resize_output!, reset_output!, reset_output, reducer!, reducer
+    using ..CellListMap: argon_pdb_file
+    using ..CellListMap: get_computing_box
+    using ..CellListMap: UpdatePeriodicSystem!
+    export UpdatePeriodicSystem!
+    using ..CellListMap: OrthorhombicCell, TriclinicCell, NonPeriodicCell
+    export  OrthorhombicCell, TriclinicCell, NonPeriodicCell
+end

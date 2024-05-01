@@ -1,19 +1,21 @@
-# PeriodicSystems interface
+# PeriodicSystem interface
 
-The `PeriodicSystems` interface facilitates the use of `CellListMap` for the majority of cases. To use it, load the `PeriodicSystems` module directly, with:
-
-```julia
-using CellListMap.PeriodicSystems
-```
+The `PeriodicSystem` interface facilitates the use of `CellListMap` for the majority of cases. 
 
 !!! note
-    - This interface requires `CellListMap.jl` version `0.7.22` or greater.
+    - This interface requires `CellListMap.jl` version `0.8.30` or greater.
     - The complete codes of the examples are at the end of this page, with examples of:
         - [Simple energy computation](@ref)
         - [Force computation](@ref)
         - [Energy and forces](@ref)
         - [Two sets of particles](@ref)
         - [Particle simulation](@ref)
+
+!!! compat
+    The `PeriodicSystem` interface was available until version `0.8.29` by loading
+    the `CellistMap.PeriodicSystems` module. This is still possible, but no longer
+    necessary in version `0.8.30` or greater. The `PeriodicSystems` submodule will be 
+    deprecated in future versions.
 
 ## The mapped function
 
@@ -56,14 +58,14 @@ u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 
     Additionally, the properties are frequently additive (the energy is the sum of the energy of the particles, or the forces are added by summation). 
 
-    For these types of `output` data the usage of `CellListMap.PeriodicSystems` is the simplest, and does not require the implementation of any data-type dependent function. 
+    For these types of `output` data the usage does not require the implementation of any data-type dependent function. 
 
 For example, let us build a system of random particles in a cubic box, and compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
 
 The `PeriodicSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. 
 
 ```julia-repl
-julia> using CellListMap.PeriodicSystems, StaticArrays
+julia> using CellListMap, StaticArrays
 
 julia> system = PeriodicSystem(
            xpositions = rand(SVector{3,Float64},1000), 
@@ -164,7 +166,7 @@ must be defined. It can be followed for the computation of other general propert
     than for the arrays.
 
 ```julia
-using CellListMap.PeriodicSystems, StaticArrays
+using CellListMap, StaticArrays
 ```
 
 The computation of energies and forces in a single call is an interesting example for the definition of a custom `output` type and the required interface functions. 
@@ -181,13 +183,13 @@ the default corresponding functions, for our new output type:
 
 The copy method creates a new instance of the `EnergyAndForces` type, with copied data:
 ```julia
-import CellListMap.PeriodicSystems: copy_output
+import CellListMap: copy_output
 copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
 ```
 
 The reset method will zero both the energy and all forces:
 ```julia
-import CellListMap.PeriodicSystems: reset_output!
+import CellListMap: reset_output!
 function reset_output!(output::EnergyAndForces)
     output.energy = 0.0
     for i in eachindex(output.forces)
@@ -201,7 +203,7 @@ The reduction function defines what it means to combine two output variables obt
 independent threads. In this case, we sum the energies and forces. Different reduction functions
 might be necessary for other custom types (for example if computing minimum distances).
 ```julia
-import CellListMap.PeriodicSystems: reducer
+import CellListMap: reducer
 function reducer(x::EnergyAndForces, y::EnergyAndForces)
     e_tot = x.energy + y.energy
     x.forces .+= y.forces
@@ -273,7 +275,7 @@ The coordinates can be updated (mutated, or the array of coordinates can change 
 Let us exemplify the interface with the computation of forces:
 
 ```julia-repl
-julia> using CellListMap.PeriodicSystems, StaticArrays
+julia> using CellListMap, StaticArrays
 
 julia> positions = rand(SVector{3,Float64}, 1000);
 
@@ -431,7 +433,7 @@ minimum_distance (generic function with 1 method)
 
 We overload copy, reset, and reduce functions, accordingly:
 ```julia-repl
-julia> import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer!
+julia> import CellListMap: copy_output, reset_output!, reducer!
 
 julia> copy_output(md::MinimumDistance) = md
 copy_output (generic function with 5 methods)
@@ -571,7 +573,7 @@ threads.
 To compute different properties without recomputing cell lists, use `update_lists=false` in 
 the call of `map_pairwise` methods, for example,
 ```julia
-using CellListMap.PeriodicSystems, StaticArrays
+using CellListMap, StaticArrays
 system = PeriodicSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
 # First call, will compute the cell lists
 map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
@@ -586,7 +588,7 @@ For systems with two sets of particles, the
 coordinates of the `xpositions` set can be updated, preserving the cell lists computed for the `ypositions`, but this requires
 setting `autoswap=false` in the construction of the `PeriodicSystem`: 
 ```julia
-using CellListMap.PeriodicSystems, StaticArrays
+using CellListMap, StaticArrays
 system = PeriodicSystem(
     xpositions=rand(SVector{3,Float64},1000), 
     ypositions=rand(SVector{3,Float64},2000),
@@ -627,14 +629,14 @@ larger values of `lcell` may improve the performance. To be tested by the user.
 ### Coordinates as matrices
 
 !!! compat
-    Support for input coordinates in matrix format in the `PeriodicSystems` interface was introduced
+    Support for input coordinates in matrix format in the `PeriodicSystem` interface was introduced
     in version `0.8.28`.
 
 Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and 
 `N` is the number of particles. For example:
 
 ```jldoctest; filter = r"\d+" => "" 
-julia> using CellListMap.PeriodicSystems 
+julia> using CellListMap
 
 julia> system = PeriodicSystem(
            xpositions=rand(2,100),
@@ -677,7 +679,7 @@ In this example, a simple potential energy defined as the sum of the
 inverse of the distance between the particles is computed.
 
 ```julia
-using CellListMap.PeriodicSystems
+using CellListMap
 using StaticArrays
 system = PeriodicSystem(
     xpositions = rand(SVector{3,Float64},1000), 
@@ -695,7 +697,7 @@ Here we compute the force vector associated to the potential energy
 function of the previous example.
 
 ```julia
-using CellListMap.PeriodicSystems
+using CellListMap
 using StaticArrays
 positions = rand(SVector{3,Float64},1000) 
 system = PeriodicSystem(
@@ -721,7 +723,7 @@ In this example, the potential energy and the forces are computed in a single
 run, and a custom data structure is defined to store both values.
 
 ```julia
-using CellListMap.PeriodicSystems
+using CellListMap
 using StaticArrays
 # Define custom type
 mutable struct EnergyAndForces
@@ -729,7 +731,7 @@ mutable struct EnergyAndForces
     forces::Vector{SVector{3,Float64}}
 end
 # Custom copy, reset and reducer functions
-import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer
+import CellListMap: copy_output, reset_output!, reducer
 copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
 function reset_output!(output::EnergyAndForces)
     output.energy = 0.0
@@ -771,7 +773,7 @@ In this example we illustrate the interface for the computation of properties
 of two sets of particles, by computing the minimum distance between the two sets.
 
 ```julia
-using CellListMap.PeriodicSystems
+using CellListMap
 using StaticArrays
 # Custom structure to store the minimum distance pair
 struct MinimumDistance
@@ -788,7 +790,7 @@ function minimum_distance(i, j, d2, md)
     return md
 end
 # Define appropriate methods for copy, reset and reduce 
-import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer!
+import CellListMap: copy_output, reset_output!, reducer!
 copy_output(md::MinimumDistance) = md
 reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
@@ -824,7 +826,7 @@ One important characteristic of this example is that the `system` is built outsi
 
 ```julia
 using StaticArrays
-using CellListMap.PeriodicSystems
+using CellListMap
 import CellListMap.wrap_relative_to
 # Function that updates the forces, for potential of the form:
 # if d < cutoff k*(d^2-cutoff^2)^2 else 0.0 with k = 10^6

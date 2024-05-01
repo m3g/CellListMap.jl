@@ -4,7 +4,7 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using TestItems: @testitem
 using ProgressMeter: Progress, next!
 using Parameters: @unpack, @with_kw
-using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix
+using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector
 using Setfield: @set!
 using LinearAlgebra: cross, diagm, I
 using Base.Threads: nthreads, @spawn 
@@ -26,6 +26,18 @@ const INTERNAL = "Internal function or structure - interface may change."
 # Testing file
 const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
 
+# name holder  
+function map_pairwise! end
+
+"""
+    map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
+
+is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the funciton is immutable, it may be 
+clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the 
+bang as a valid character. 
+
+"""
+const map_pairwise = map_pairwise!
 
 include("./linearalgebra.jl")
 include("./show.jl")
@@ -141,16 +153,6 @@ function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{V,N,T,Swap};
     end
     return output
 end
-
-"""
-    map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
-
-is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the funciton is immutable, it may be 
-clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the 
-bang as a valid character. 
-
-"""
-const map_pairwise = map_pairwise!
 
 # Utils
 include("./neighborlists.jl")

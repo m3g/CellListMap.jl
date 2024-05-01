@@ -1,5 +1,5 @@
 using StaticArrays
-using CellListMap.PeriodicSystems
+using CellListMap
 import CellListMap.wrap_relative_to
 # Function that updates the forces, for potential of the form:
 # if d < cutoff k*(d^2-cutoff^2)^2 else 0.0 with k = 10^6

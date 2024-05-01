@@ -28,7 +28,7 @@ We start illustrating the support for unit propagation. We need to define all in
 The only requirement is to attach proper units to all quantities (positions, cutoff, unitcell, and output variables).
 Here we compute the square of the distances of the particles within the cutoff:
 ```julia-repl
-julia> using CellListMap.PeriodicSystems, Unitful, StaticArrays
+julia> using CellListMap, Unitful, StaticArrays
 
 julia> system = PeriodicSystem(
            positions = rand(SVector{3,Float64}, 1000)u"nm",

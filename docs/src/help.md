@@ -8,5 +8,5 @@ help?> function_name
 ```
 
 ```@autodocs
-Modules=[CellListMap, CellListMap.PeriodicSystems]
+Modules=[CellListMap]
 ```

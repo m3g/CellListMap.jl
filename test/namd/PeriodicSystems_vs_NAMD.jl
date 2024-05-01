@@ -6,7 +6,7 @@
 
     using Test
     import Chemfiles
-    using CellListMap.PeriodicSystems
+    using CellListMap
     using StaticArrays
     
     ε = 0.0441795
@@ -42,7 +42,7 @@
             output=0.0,
             lcell=lcell,
         )
-        u = PeriodicSystems.map_pairwise(
+        u = map_pairwise(
             (x, y, i, j, d2, u) -> lj_NE(d2, u),
             system,
         )
@@ -116,7 +116,7 @@
         cutoff=10.0,
         output=0.0,
     )
-    u = PeriodicSystems.map_pairwise!(
+    u = map_pairwise!(
         (x, y, i, j, d2, u) -> lj_NE(d2, u),
         system,
     )
@@ -130,7 +130,7 @@
     # Update coordinates and unit cell of PeriodicSystem
     system.xpositions .= copy_to_svector(coordinates)
     update_unitcell!(system, unit_cell)
-    u = PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
+    u = map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
     @test u ≈ correct
     
     # Same thing with a different lcell
@@ -201,7 +201,7 @@
         output=0.0,
         lcell=lcell,
     )
-    u = PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
+    u = map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
     @test u ≈ correct
     
     coordinates = getcoor("$dir/o2.dcd")
@@ -209,7 +209,7 @@
     correct = 1093.7225407797744
     system.xpositions .= copy_to_svector(coordinates)
     update_unitcell!(system, unit_cell)
-    u = PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
+    u = map_pairwise!((x, y, i, j, d2, u) -> lj_NE(d2, u), system)
     @test u ≈ correct
 
 end
