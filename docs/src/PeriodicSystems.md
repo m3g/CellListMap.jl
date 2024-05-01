@@ -90,7 +90,10 @@ because the `output_name` field was provided. If it is not provided, you can acc
 
 !!! note
     - Systems can be 2 or 3-dimensional. 
-    - The `unitcell` parameter may be either a vector, as in the example, or a unit cell matrix, for general boundary conditions.
+    - The `unitcell` parameter may be:
+        - a vector, in which case the system periodic boundaries are Orthorhombic, this is faster.
+        - a matrix, in which case the system periodic boundaries are Triclinic (general).
+        - `nothing`, in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters. 
 
 ## Computing forces
@@ -337,7 +340,7 @@ The unit cell can be updated to new dimensions at any moment, with the `update_u
 ```julia-repl
 julia> update_unitcell!(system, SVector(1.2, 1.2, 1.2))
 PeriodicSystem1 of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
+    Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.2, 0.0; 0.0, 0.0, 1.2 ]
       cutoff = 0.1
       number of computing cells on each dimension = [13, 13, 13]
@@ -357,6 +360,7 @@ PeriodicSystem1 of dimension 3, composed of:
     - The unit cell can be set initially using a vector or a unit cell matrix. If a vector is provided
       the system is considered Orthorhombic, if a matrix is provided, a Triclinic system is built. 
       Unit cells updates must preserve the system type. 
+    - The unit cell of non-periodic systems (initialized with `nothing`) cannot be updated manually.
 
     - It is recommended (but not mandatory) to use static arrays (or Tuples) to update the unitcell, 
       as in this case the update will be non-allocating. 
@@ -369,7 +373,7 @@ The cutoff can also be updated, using the `update_cutoff!` function:
 ```julia-repl
 julia> update_cutoff!(system, 0.2)
 PeriodicSystem1 of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
+    Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
       cutoff = 0.2
       number of computing cells on each dimension = [7, 7, 7]
@@ -587,7 +591,7 @@ system = PeriodicSystem(
     xpositions=rand(SVector{3,Float64},1000), 
     ypositions=rand(SVector{3,Float64},2000),
     output=0.0, cutoff=0.1, unitcell=[1,1,1],
-    autoswap=false # Cell lists are constructred for ypositions
+    autoswap=false # Cell lists are constructed for ypositions
 )
 map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
 # Second run: preserve the cell lists but compute a different property
@@ -640,7 +644,7 @@ julia> system = PeriodicSystem(
            output=0.0,
        )
 PeriodicSystem2{output} of dimension 2, composed of:
-    Box{CellListMap.OrthorhombicCell, 2}
+    Box{OrthorhombicCell, 2}
       unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
       cutoff = 0.1
       number of computing cells on each dimension = [13, 13]
