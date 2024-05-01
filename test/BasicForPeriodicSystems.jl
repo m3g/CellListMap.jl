@@ -29,6 +29,19 @@
     system.parallel = true
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
 
+    # Same but for non-periodic systems
+    system = PeriodicSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        output=0.0,
+    )
+    naive = CellListMap.map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, Box(limits(x,y), cutoff))
+    system.parallel = false
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
+    system.parallel = true
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
+
     # Use matrices as input coordinates
     xmat = zeros(3, N)
     ymat = zeros(3, N)
@@ -77,7 +90,7 @@
         [rand(2, 1000), rand(2, 100)],
         # matrices, length(x) < length(y)
         [rand(2, 100), rand(2, 1000)], # with standard vectors
-    ]
+    ], unitcell in [[1,1], nothing]
         local x = arrays[1]
         local y = arrays[2]
         local system
@@ -86,9 +99,10 @@
             ypositions=y,
             cutoff=0.1,
             output=0.0,
-            unitcell=[1, 1],
+            unitcell=unitcell,
         )
-        box = Box([1, 1], 0.1)
+        uc = isnothing(unitcell) ? limits(x,y) : [1, 1]
+        box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
         @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
@@ -124,76 +138,81 @@ end
     using CellListMap
     using CellListMap.PeriodicSystems
 
-    #
-    # one set systems
-    #
-    x = rand(SVector{3,Float64}, 100)
-    box = Box([1, 1, 1], 0.1)
-    cl = CellList(x, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    system = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0, unitcell=[1, 1, 1])
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), 0.0, box, cl)
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), system; update_lists=false)
-
-    #
-    # two-set systems
-    #
-
-    #
-    # x is smaller
-    #
-    x = rand(SVector{3,Float64}, 100)
-    y = rand(SVector{3,Float64}, 1000)
-
-    box = Box([1, 1, 1], 0.1)
-    cl = CellList(x, y, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    system = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=[1, 1, 1], autoswap=false)
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
-
-    # change x coordinates
-    x = rand(SVector{3,Float64}, 100)
-    cl = CellList(x, y, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-
-    # increase x size
-    x = rand(SVector{3,Float64}, 200)
-    cl = CellList(x, y, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    resize!(system.xpositions, length(x))
-    system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-
-    #
-    # x is greater
-    #
-    x = rand(SVector{3,Float64}, 1000)
-    y = rand(SVector{3,Float64}, 100)
-
-    box = Box([1, 1, 1], 0.1)
-    cl = CellList(x, y, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    system = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=[1, 1, 1], autoswap=false)
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
-
-    # change x coordinates
-    x = rand(SVector{3,Float64}, 1000)
-    cl = CellList(x, y, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-
-    # increase x size
-    x = rand(SVector{3,Float64}, 1100)
-    cl = CellList(x, y, box)
-    r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-    resize!(system.xpositions, length(x))
-    system.xpositions .= x
-    @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-
+    for unitcell in [[1,1,1], nothing]
+        #
+        # one set systems
+        #
+        x = rand(SVector{3,Float64}, 100)
+        uc = isnothing(unitcell) ? limits(x) : unitcell
+        box = Box(uc, 0.1)
+        cl = CellList(x, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        system = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0, unitcell=unitcell)
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), 0.0, box, cl)
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), system; update_lists=false)
+    
+        #
+        # two-set systems
+        #
+    
+        #
+        # x is smaller
+        #
+        x = rand(SVector{3,Float64}, 100)
+        y = rand(SVector{3,Float64}, 1000)
+    
+        uc = isnothing(unitcell) ? limits(x,y) : unitcell
+        box = Box(uc, 0.1)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        system = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
+    
+        # change x coordinates
+        x = rand(SVector{3,Float64}, 100)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        system.xpositions .= x
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
+    
+        # increase x size
+        x = rand(SVector{3,Float64}, 200)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        resize!(system.xpositions, length(x))
+        system.xpositions .= x
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
+    
+        #
+        # x is greater
+        #
+        x = rand(SVector{3,Float64}, 1000)
+        y = rand(SVector{3,Float64}, 100)
+    
+        uc = isnothing(unitcell) ? limits(x,y) : unitcell
+        box = Box(uc, 0.1)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        system = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
+    
+        # change x coordinates
+        x = rand(SVector{3,Float64}, 1000)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        system.xpositions .= x
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
+    
+        # increase x size
+        x = rand(SVector{3,Float64}, 1100)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        resize!(system.xpositions, length(x))
+        system.xpositions .= x
+        @test r ≈ PeriodicSystems.map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
+    
+    end
 end
 
 
@@ -239,6 +258,18 @@ end
     system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(13, 17))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
     system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(4, 16))
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
+
+    # non-periodic system
+    box = Box(limits(x), cutoff)
+    naive = CellListMap.map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=1)
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=3)
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(3, 5))
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
+    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(1, 1))
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
 
 end
@@ -333,6 +364,35 @@ end
     system.parallel = true
     @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val
 
+    #
+    # Non-periodic system
+    #
+    new_box = Box(limits(new_x), cutoff)
+    new_cl = UpdateCellList!(new_x, new_box, new_cl)
+    new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl, parallel=true)
+    system = PeriodicSystem(
+        xpositions=system.xpositions,
+        cutoff=cutoff,
+        output=0.0,
+    )
+    system.parallel = false
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val
+    system.parallel = true
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val
+
+    # If the number of particles and box change
+    cutoff = cutoff + rand()
+    new_x, new_box = CellListMap.xatomic(10^4)
+    new_box = Box(limits(new_x), cutoff)
+    new_cl = UpdateCellList!(new_x, new_box, new_cl)
+    new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl)
+    resize!(system.xpositions, length(new_x))
+    system.xpositions .= new_x
+    update_cutoff!(system, cutoff)
+    system.parallel = false
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val
+    system.parallel = true
+    @test PeriodicSystems.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val
 end
 
 @testitem "ParticleSystems applications" begin

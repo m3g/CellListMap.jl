@@ -31,8 +31,8 @@ include("./linearalgebra.jl")
 include("./show.jl")
 include("./Box.jl")
 include("./CellLists.jl")
-include("./PeriodicSystems.jl")
 include("./CellOperations.jl")
+include("./PeriodicSystems.jl")
 include("./CoreComputing.jl")
 
 """
