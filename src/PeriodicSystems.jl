@@ -731,7 +731,7 @@ where the size of the simulation box changes during the simulation.
 
 # Example
 
-```jldoctest filter = r"batches.*" => ""  
+```jldoctest; filter = r"batches.*" => ""  
 julia> using CellListMap.PeriodicSystems, StaticArrays, PDBTools
 
 julia> xpositions = coor(readPDB(PeriodicSystems.argon_pdb_file));
@@ -745,7 +745,7 @@ julia> sys = PeriodicSystem(
 
 julia> update_unitcell!(sys, [30.0, 30.0, 30.0])
 PeriodicSystem1{output} of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
+    Box{OrthorhombicCell, 3}
       unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
       cutoff = 8.0
       number of computing cells on each dimension = [6, 6, 6]
@@ -818,7 +818,7 @@ julia> sys = PeriodicSystem(
 
 julia> update_cutoff!(sys, 0.2)
 PeriodicSystem1 of dimension 3, composed of:
-    Box{CellListMap.OrthorhombicCell, 3}
+    Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
       cutoff = 0.2
       number of computing cells on each dimension = [7, 7, 7]
