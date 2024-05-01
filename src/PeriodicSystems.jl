@@ -92,13 +92,11 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 ## Two sets of particles
 
 ```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
-julia> using CellListMap: PeriodicSystem, map_pairwise!, argon_pdb_file
+julia> using CellListMap, PDBTools
 
-julia> using PDBTools: readPDB, coor
+julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file))[1:50];
 
-julia> xpositions = coor(readPDB(argon_pdb_file))[1:50];
-
-julia> ypositions = coor(readPDB(argon_pdb_file))[51:100];
+julia> ypositions = coor(readPDB(CellListMap.argon_pdb_file))[51:100];
 
 julia> sys = PeriodicSystem(
            xpositions = xpositions, 

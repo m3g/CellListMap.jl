@@ -1,6 +1,6 @@
-# PeriodicSystem interface
+# PeriodicSystems interface
 
-The `PeriodicSystem` interface facilitates the use of `CellListMap` for the majority of cases. 
+The `PeriodicSystems` interface facilitates the use of `CellListMap` for the majority of cases. 
 
 !!! note
     - This interface requires `CellListMap.jl` version `0.8.30` or greater.
@@ -12,7 +12,7 @@ The `PeriodicSystem` interface facilitates the use of `CellListMap` for the majo
         - [Particle simulation](@ref)
 
 !!! compat
-    The `PeriodicSystem` interface was available until version `0.8.29` by loading
+    The `PeriodicSystems` interface was available until version `0.8.29` by loading
     the `CellistMap.PeriodicSystems` module. This is still possible, but no longer
     necessary in version `0.8.30` or greater. The `PeriodicSystems` submodule will be 
     deprecated in future versions.

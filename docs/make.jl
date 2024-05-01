@@ -1,6 +1,6 @@
 import Pkg; Pkg.add("Documenter")
 using Documenter
-import CellListMap
+using CellListMap
 #DocMeta.setdocmeta!(CellListMap, :DocTestSetup, :(using CellListMap); recursive=true)
 makedocs(
     modules=[CellListMap],
