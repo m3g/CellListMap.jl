@@ -7,7 +7,7 @@
 
 ## Agents.jl
 
-[Agents.jl](https://juliadynamics.github.io/Agents.jl) provides a comprehensive framework for simulation, analysis and visualization of agent-based systems. `CellListMap` can be used to accelerate these simulations, and the integration of the packages is rather simple, particularly using the `PeriodicSystems` interface. A [complete integration example](https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap/) can be obtained in the `Agents` documentation (currently at the development branch). 
+[Agents.jl](https://juliadynamics.github.io/Agents.jl) provides a comprehensive framework for simulation, analysis and visualization of agent-based systems. `CellListMap` can be used to accelerate these simulations, and the integration of the packages is rather simple, particularly using the `ParticleSystem` interface. A [complete integration example](https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap/) can be obtained in the `Agents` documentation (currently at the development branch). 
 
 The example will produce the following animation:
 
@@ -23,14 +23,14 @@ The functions of CellListMap.jl support the propagation of generic (isbits) type
 
 We start illustrating the support for unit propagation. We need to define all involved quantities in the same units:
 
-### Using the PeriodicSystems interface
+### Using the ParticleSystem interface
 
 The only requirement is to attach proper units to all quantities (positions, cutoff, unitcell, and output variables).
 Here we compute the square of the distances of the particles within the cutoff:
 ```julia-repl
 julia> using CellListMap, Unitful, StaticArrays
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            positions = rand(SVector{3,Float64}, 1000)u"nm",
            cutoff = 0.1u"nm",
            unitcell = [1.0,1.0,1.0]u"nm",

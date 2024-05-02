@@ -1,6 +1,6 @@
 # Low level interface
 
-Since version `0.7.22` we strongly encourage the use of the `PeriodicSystems` interface. Yet, 
+Since version `0.8.30` we strongly encourage the use of the `ParticleSystem` interface. Yet, 
 the low level interface is still available. To use it, load the package as usual:
 ```julia
 using CellListMap

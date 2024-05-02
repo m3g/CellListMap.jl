@@ -1,6 +1,6 @@
-# PeriodicSystems interface
+# ParticleSystem interface
 
-The `PeriodicSystems` interface facilitates the use of `CellListMap` for the majority of cases. 
+The `ParticleSystem` interface facilitates the use of `CellListMap` for the majority of cases. 
 
 !!! note
     - This interface requires `CellListMap.jl` version `0.8.30` or greater.
@@ -15,7 +15,7 @@ The `PeriodicSystems` interface facilitates the use of `CellListMap` for the maj
     The `PeriodicSystems` interface was available until version `0.8.29` by loading
     the `CellistMap.PeriodicSystems` module. This is still possible, but no longer
     necessary in version `0.8.30` or greater. The `PeriodicSystems` submodule will be 
-    deprecated in future versions.
+    deprecated in future versions in favor of the `ParticleSystem` interface..
 
 ## The mapped function
 
@@ -62,12 +62,12 @@ u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 
 For example, let us build a system of random particles in a cubic box, and compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
 
-The `PeriodicSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. 
+The `ParticleSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. 
 
 ```julia-repl
 julia> using CellListMap, StaticArrays
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1.0,1.0,1.0], 
            cutoff = 0.1, 
@@ -119,7 +119,7 @@ Now, let us setup the system with the new type of output variable, which will be
 ```julia-repl
 julia> positions = rand(SVector{3,Float64},1000);
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions = positions,
            unitcell=[1,1,1], 
            cutoff = 0.1, 
@@ -236,7 +236,7 @@ To finally define the system and compute the properties:
 ```julia-repl
 positions = rand(SVector{3,Float64},1000);
 
-system = PeriodicSystem(
+system = ParticleSystem(
     xpositions = positions,
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
@@ -270,7 +270,7 @@ If the `map_pairwise!` function will compute energy and/or forces in a iterative
 
 ### Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` field of the system. The `xpositions` array is a `Vector` of `SVector` (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `PeriodicSystem` structure must be updated independently of updates in the original array of coordinates. 
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` field of the system. The `xpositions` array is a `Vector` of `SVector` (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `ParticleSystem` structure must be updated independently of updates in the original array of coordinates. 
 
 Let us exemplify the interface with the computation of forces:
 
@@ -279,7 +279,7 @@ julia> using CellListMap, StaticArrays
 
 julia> positions = rand(SVector{3,Float64}, 1000);
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions = positions,
            unitcell=[1,1,1], 
            cutoff = 0.1, 
@@ -341,7 +341,7 @@ The unit cell can be updated to new dimensions at any moment, with the `update_u
 
 ```julia-repl
 julia> update_unitcell!(system, SVector(1.2, 1.2, 1.2))
-PeriodicSystem1 of dimension 3, composed of:
+ParticleSystem1 of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.2, 0.0; 0.0, 0.0, 1.2 ]
       cutoff = 0.1
@@ -374,7 +374,7 @@ The cutoff can also be updated, using the `update_cutoff!` function:
 
 ```julia-repl
 julia> update_cutoff!(system, 0.2)
-PeriodicSystem1 of dimension 3, composed of:
+ParticleSystem1 of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
       cutoff = 0.2
@@ -403,7 +403,7 @@ julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), s
 
 If the computation involves two sets of particle, a similar interface is available. 
 The only difference is that the coordinates of the two sets must be provided to
-the `PeriodicSystem` constructor as the `xpositions` and `ypositions` arrays.
+the `ParticleSystem` constructor as the `xpositions` and `ypositions` arrays.
 
 We will illustrate this interface by computing the minimum distance between two
 sets of particles, which allows us to showcase further the definition of custom
@@ -455,7 +455,7 @@ julia> xpositions = rand(SVector{3,Float64},1000);
 
 julia> ypositions = rand(SVector{3,Float64},1000);
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions = xpositions,
            ypositions = ypositions, 
            unitcell=[1.0,1.0,1.0], 
@@ -522,7 +522,7 @@ julia> xpositions = rand(SVector{3,Float64},10^6);
 
 julia> ypositions = rand(SVector{3,Float64},10^6);
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
                   xpositions = xpositions,
                   ypositions = ypositions, 
                   unitcell=[1.0,1.0,1.0], 
@@ -543,7 +543,7 @@ By activating the `show_progress` flag, a nice progress bar is shown.
 ### Fine control of the paralellization
 
 The number of batches launched in parallel runs can be tunned by the 
-`nbatches` keyword parameter of the `PeriodicSystem` constructor. 
+`nbatches` keyword parameter of the `ParticleSystem` constructor. 
 By default, the number of batches is defined as heuristic function 
 dependent on the number of particles, and possibly returns optimal
 values in most cases. For a detailed discussion about this parameter, 
@@ -553,7 +553,7 @@ For example, to set the number of batches for cell list calculation
 to 4 and the number of batches for mapping to 8, we can do:
 
 ```julia-repl
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
@@ -574,7 +574,7 @@ To compute different properties without recomputing cell lists, use `update_list
 the call of `map_pairwise` methods, for example,
 ```julia
 using CellListMap, StaticArrays
-system = PeriodicSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
+system = ParticleSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
 # First call, will compute the cell lists
 map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
 # Second run: do not update the cell lists but compute a different property
@@ -586,10 +586,10 @@ option if the cutoff, unitcell, or any other property of the system changed.
 
 For systems with two sets of particles, the 
 coordinates of the `xpositions` set can be updated, preserving the cell lists computed for the `ypositions`, but this requires
-setting `autoswap=false` in the construction of the `PeriodicSystem`: 
+setting `autoswap=false` in the construction of the `ParticleSystem`: 
 ```julia
 using CellListMap, StaticArrays
-system = PeriodicSystem(
+system = ParticleSystem(
     xpositions=rand(SVector{3,Float64},1000), 
     ypositions=rand(SVector{3,Float64},2000),
     output=0.0, cutoff=0.1, unitcell=[1,1,1],
@@ -603,9 +603,9 @@ map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
 ### Control CellList cell size
 
 The cell sizes of the construction of the cell lists can be controled with the keyword `lcell`
-of the `PeriodicSystem` constructor. For example:
+of the `ParticleSystem` constructor. For example:
 ```julia-repl
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
@@ -629,23 +629,21 @@ larger values of `lcell` may improve the performance. To be tested by the user.
 ### Coordinates as matrices
 
 !!! compat
-    Support for input coordinates in matrix format in the `PeriodicSystem` interface was introduced
-    in version `0.8.28`.
+    Support for input coordinates in matrix format in the `PeriodicSystem` interface was introduced in version `0.8.28`.
 
-Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and 
-`N` is the number of particles. For example:
+Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and `N` is the number of particles. For example:
 
 ```jldoctest; filter = r"\d+" => "" 
 julia> using CellListMap
 
-julia> system = PeriodicSystem(
+julia> system = ParticleSystem(
            xpositions=rand(2,100),
            ypositions=rand(2,200),
            cutoff=0.1,
            unitcell=[1,1],
            output=0.0,
        )
-PeriodicSystem2{output} of dimension 2, composed of:
+ParticleSystem2{output} of dimension 2, composed of:
     Box{OrthorhombicCell, 2}
       unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
       cutoff = 0.1
@@ -681,7 +679,7 @@ inverse of the distance between the particles is computed.
 ```julia
 using CellListMap
 using StaticArrays
-system = PeriodicSystem(
+system = ParticleSystem(
     xpositions = rand(SVector{3,Float64},1000), 
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
@@ -700,7 +698,7 @@ function of the previous example.
 using CellListMap
 using StaticArrays
 positions = rand(SVector{3,Float64},1000) 
-system = PeriodicSystem(
+system = ParticleSystem(
     xpositions = positions, 
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
@@ -756,7 +754,7 @@ function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
 end
 # Initialize system
 positions = rand(SVector{3,Float64},1000);
-system = PeriodicSystem(
+system = ParticleSystem(
     xpositions = positions,
     unitcell=[1.0,1.0,1.0], 
     cutoff = 0.1, 
@@ -797,7 +795,7 @@ reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
 # Build system 
 xpositions = rand(SVector{3,Float64},1000);
 ypositions = rand(SVector{3,Float64},1000);
-system = PeriodicSystem(
+system = ParticleSystem(
        xpositions = xpositions,
        ypositions = ypositions, 
        unitcell=[1.0,1.0,1.0], 
@@ -846,7 +844,7 @@ function init_system(;N::Int=200)
     positions = rand(Vec2D, N)
     unitcell = [1.0, 1.0]
     cutoff = 0.1
-    system = PeriodicSystem(
+    system = ParticleSystem(
         positions=positions,
         cutoff=cutoff,
         unitcell=unitcell,

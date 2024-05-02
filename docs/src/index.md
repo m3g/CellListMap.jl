@@ -4,9 +4,55 @@
 
 It maps a generic function to be computed for each pair of particles, using periodic boundary conditions of any type. Parallel and serial implementations can be used. The user defined function will be evaluated only for the pairs closer to each other than the desired cutoff distance.
 
+## Overview
+
+`CellListMap` is a package that implements a fast scheme for computing properties of systems of particles in 2 or 3 dimensions, within a cutoff. In brief, it is designed to replace double loops running over the pairs of particles of a system. Naively, a loop over all pair of particles is written as:
+```julia
+for i in 1:N
+    for j in i+1:N
+        # compute distance, possibly considering periodic boundary conditions
+        d = distance(particle[i],particle[j]) 
+        if d <= cutoff 
+            # compute property dependent on d
+        end
+    end
+end
+```
+where `N` is the number of particles. Alternatively, if the interaction is between two disjoint sets of particles, the loop is
+```julia
+for i in 1:N 
+    for j in 1:M
+        # compute distance, possibly considering periodic boundary conditions
+        d = distance(first_set[i], second_set[j])
+        if d <= cutoff
+            # compute property dependent on d
+        end
+    end
+end
+```
+where `N` and `M` are the numbers of particles of each set. If the cutoff is significantly smaller than the dimension of the system,
+these loops are very expensive, and it is possible to avoid looping over particles that are farther from each other than the cutoff.
+
+CellListMap implements an efficient cell-list scheme, with optimizations, to substitute such double-loops while taking into account
+periodic boundary conditions. 
+
+### High level interface for periodic system
+
+Since version `0.8.30`, a simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. See the [ParticleSystem interface](@ref) menu for details. 
+
+### Cutoff-delimited neighbor lists
+
+The user might be more comfortable in using the package to compute the list of neighboring particles. A custom interface for this application is provided though the [Neighbor lists](@ref) interface. 
+
+Note that, in general, neighbor lists are used to compute other pairwise dependent properties, and these can be, in principle, computed directly with `CellListMap` without the need to explicitly compute or store the lists of neighbors. 
+
+### Lower level interface
+
+The [Low level interface](@ref) allows the customization and optimization of very demanding calculations (although the ParticleSystem interface does not have any performance limitation and is easier to use).
+
 ## Installation
 
-This is a [Julia](http://julialang.org) package. Install `Julia` first following the instructions in the [download page](https://julialang.org/downloads/), or using [juliaup](https://github.com/JuliaLang/juliaup).
+This is a [Julia](http://julialang.org) package. Install `Julia` first following the instructions in the [download page](https://julialang.org/downloads/).
 
 Once Julia is installed, install the `CellListMap` package from the Julia REPL with:
 
@@ -27,20 +73,4 @@ Please ask for help if having any difficulty using the package. Reach us by:
   Even documentation problems can be reported.
 - Joining us at Zulip-chat in the [m3g stream](https://julialang.zulipchat.com/#narrow/stream/435348-m3g) of the Julia Zulip forum.
 - Sending an e-mail to: [lmartine@unicamp.br](mailto:lmartine@unicamp.br?subject="ComplexMixtures.jl help").
-
-## Overview
-
-### High level interface for periodic system
-
-Since version `0.7.22`, a new simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. It may become the default interface in the future. See the [PeriodicSystems interface](@ref) menu for details. 
-
-### Cutoff-delimited neighbor lists
-
-The user might be more comfortable in using the package to compute the list of neighboring particles. A custom interface for this application is provided though the [Neighbor lists](@ref) interface. 
-
-Note that, in general, neighbor lists are used to compute other pairwise dependent properties, and these can be, in principle, computed directly with `CellListMap` without the need to compute or store the lists of neighbors. 
-
-### Lower level interface
-
-The [Low level interface](@ref) allows the customization and optimization of very demanding calculations (although the PeriodicSystems interface does not have any performance limitation and is easier to use).
 

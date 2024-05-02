@@ -7,7 +7,7 @@ makedocs(
     sitename="CellListMap.jl",
     pages = [
         "Overview" => "index.md",
-        "PeriodicSystems interface" => "PeriodicSystems.md",
+        "ParticleSystem interface" => "ParticleSystem.md",
         "Neighbor lists" => "neighborlists.md",
         "Low level interface" => "LowLevel.md",
         "Ecosystem integration" => "ecosystem.md",

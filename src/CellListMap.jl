@@ -46,7 +46,7 @@ include("./show.jl")
 include("./Box.jl")
 include("./CellLists.jl")
 include("./CellOperations.jl")
-include("./PeriodicSystems.jl")
+include("./ParticleSystem.jl")
 include("./CoreComputing.jl")
 
 """

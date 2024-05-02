@@ -1,4 +1,4 @@
-@testitem "BasicForPeriodicSystems" begin
+@testitem "BasicForParticleSystem" begin
 
     using StaticArrays
     using CellListMap
@@ -15,7 +15,7 @@
     end
 
     # Some simple disjoint set properties
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=x,
         ypositions=y,
         cutoff=cutoff,
@@ -29,7 +29,7 @@
     @test map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
 
     # Same but for non-periodic systems
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=x,
         ypositions=y,
         cutoff=cutoff,
@@ -48,7 +48,7 @@
         xmat[:, i] .= x[i]
         ymat[:, i] .= y[i]
     end
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=xmat,
         ypositions=ymat,
         cutoff=cutoff,
@@ -62,7 +62,7 @@
     @test map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
 
     # Check different lcell
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=x,
         ypositions=y,
         cutoff=cutoff,
@@ -93,7 +93,7 @@
         local x = arrays[1]
         local y = arrays[2]
         local system
-        system = PeriodicSystem(
+        system = ParticleSystem(
             xpositions=x,
             ypositions=y,
             cutoff=0.1,
@@ -132,7 +132,7 @@
 
 end
 
-@testitem "PeriodicSystems - update_lists" begin
+@testitem "ParticleSystem - update_lists" begin
     using StaticArrays
     using CellListMap
 
@@ -145,7 +145,7 @@ end
         box = Box(uc, 0.1)
         cl = CellList(x, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0, unitcell=unitcell)
+        system = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0, unitcell=unitcell)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), 0.0, box, cl)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), system; update_lists=false)
@@ -164,7 +164,7 @@ end
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
+        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
     
         # change x coordinates
@@ -192,7 +192,7 @@ end
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
+        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
     
         # change x coordinates
@@ -214,7 +214,7 @@ end
 end
 
 
-@testitem "PeriodicSystems parallelization" begin
+@testitem "ParticleSystem parallelization" begin
 
     using Test
     using StaticArrays
@@ -237,42 +237,42 @@ end
     naive = CellListMap.map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
 
     # Check if changing lcell breaks something
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=1)
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=1)
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=3)
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=3)
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=5)
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=5)
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(3, 5))
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(3, 5))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 1))
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 1))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 7))
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 7))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(7, 1))
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(7, 1))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(13, 17))
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(13, 17))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(4, 16))
+    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(4, 16))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
 
     # non-periodic system
     box = Box(limits(x), cutoff)
     naive = CellListMap.map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=1)
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=1)
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=3)
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=3)
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(3, 5))
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(3, 5))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(1, 1))
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(1, 1))
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ naive
 
 end
 
-@testitem "PeriodicSystems updating lists" begin
+@testitem "ParticleSystem updating lists" begin
 
     using Test
     using StaticArrays
@@ -283,7 +283,7 @@ end
     box = Box(sides, cutoff)
 
     # Initialize auxiliary linked lists
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=x,
         cutoff=cutoff,
         unitcell=sides,
@@ -334,7 +334,7 @@ end
     new_box = Box(unitcell, cutoff)
     new_cl = UpdateCellList!(new_x, new_box, new_cl)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl, parallel=true)
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=system.xpositions,
         unitcell=unitcell,
         cutoff=cutoff,
@@ -367,7 +367,7 @@ end
     new_box = Box(limits(new_x), cutoff)
     new_cl = UpdateCellList!(new_x, new_box, new_cl)
     new_val = CellListMap.map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_box, new_cl, parallel=true)
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=system.xpositions,
         cutoff=cutoff,
         output=0.0,
@@ -392,7 +392,7 @@ end
     @test map_pairwise!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), system) ≈ new_val
 end
 
-@testitem "ParticleSystems applications" begin
+@testitem "ParticleSystem applications" begin
 
     using Test
     using StaticArrays
@@ -412,7 +412,7 @@ end
         return hist
     end
     naive = CellListMap.map_naive!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), zeros(Int, 10), x, box)
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=zeros(Int, 10))
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=zeros(Int, 10))
     @test naive == map_pairwise!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), system)
 
     # Function to be evalulated for each pair: gravitational potential
@@ -423,7 +423,7 @@ end
     end
     mass = rand(N)
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, box, cl)
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=0.0)
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=0.0)
     @test map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
 
     # Check the functionality of computing a different function from the same coordinates (new_coordinates=false)
@@ -441,7 +441,7 @@ end
     end
     forces = [zeros(SVector{3,Float64}) for i in 1:N]
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces), copy(forces), box, cl)
-    system = PeriodicSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=forces)
+    system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=forces)
     @test map_pairwise!((x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces), system) ≈ naive
 
 end

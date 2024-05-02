@@ -1,9 +1,6 @@
-export PeriodicSystem
-#export map_pairwise!, map_pairwise
+export ParticleSystem
 export update_cutoff!
 export update_unitcell!
-#export unitcelltype
-#export OrthorhombicCell, TriclinicCell, NonPeriodicCell
 
 export copy_output
 export resize_output!
@@ -18,7 +15,7 @@ const SupportedTypes = Union{Number,SVector,FieldVector}
 const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}
 
 """
-    PeriodicSystem(;
+    ParticleSystem(;
         xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
         #or
         xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
@@ -33,7 +30,7 @@ const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector}
         autoswap::Bool = true
     )
 
-Constructor of the `PeriodicSystem` type given the positions of the particles.
+Constructor of the `ParticleSystem` type given the positions of the particles.
 
 - Positions can be provided as vectors of 2D or 3D vectors 
   (preferentially static vectors from `StaticArrays`), or as 
@@ -79,7 +76,7 @@ julia> using PDBTools: readPDB, coor
 
 julia> positions = coor(readPDB(CellListMap.argon_pdb_file));
 
-julia> sys = PeriodicSystem(
+julia> sys = ParticleSystem(
            xpositions = positions, 
            unitcell = [21.0, 21.0, 21.0],
            cutoff = 8.0, 
@@ -98,7 +95,7 @@ julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file))[1:50];
 
 julia> ypositions = coor(readPDB(CellListMap.argon_pdb_file))[51:100];
 
-julia> sys = PeriodicSystem(
+julia> sys = ParticleSystem(
            xpositions = xpositions, 
            ypositions = ypositions, 
            unitcell = [21.0, 21.0, 21.0],
@@ -111,7 +108,7 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 21886.196785000004
 ```
 """
-function PeriodicSystem(;
+function ParticleSystem(;
     positions::SupportedCoordinatesTypes=nothing,
     xpositions::SupportedCoordinatesTypes=nothing,
     ypositions::SupportedCoordinatesTypes=nothing,
@@ -163,7 +160,7 @@ function PeriodicSystem(;
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
+        sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
         # Two sets of positions
     else
         unitcell = isnothing(unitcell) ? limits(xpositions, ypositions) : unitcell
@@ -172,48 +169,48 @@ function PeriodicSystem(;
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = PeriodicSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
+        sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
     end
     return sys
 end
 
 # Abstract type only for cleaner dispatch
-abstract type AbstractPeriodicSystem{OutputName} end
+abstract type AbstractParticleSystem{OutputName} end
 
 import Base: getproperty, propertynames
-getproperty(sys::AbstractPeriodicSystem, s::Symbol) = getproperty(sys, Val(s))
-getproperty(sys::AbstractPeriodicSystem, s::Val{S}) where {S} = getfield(sys, S)
+getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
+getproperty(sys::AbstractParticleSystem, s::Val{S}) where {S} = getfield(sys, S)
 # public properties
-getproperty(sys::AbstractPeriodicSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
-getproperty(sys::AbstractPeriodicSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
-getproperty(sys::AbstractPeriodicSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
-propertynames(sys::AbstractPeriodicSystem{OutputName}) where {OutputName} =
+getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
+getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
+getproperty(sys::AbstractParticleSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
+propertynames(sys::AbstractParticleSystem{OutputName}) where {OutputName} =
     (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, OutputName)
 
 import Base: setproperty!
 # public properties
-setproperty!(sys::AbstractPeriodicSystem, s::Symbol, x) = setproperty!(sys, Val(s), x)
-setproperty!(sys::AbstractPeriodicSystem, ::Val{:unitcell}, x) = update_unitcell!(sys, x)
-setproperty!(sys::AbstractPeriodicSystem, ::Val{:cutoff}, x) = update_cutoff!(sys, x)
-setproperty!(sys::AbstractPeriodicSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
+setproperty!(sys::AbstractParticleSystem, s::Symbol, x) = setproperty!(sys, Val(s), x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:unitcell}, x) = update_unitcell!(sys, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:cutoff}, x) = update_cutoff!(sys, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
 # private properties
-setproperty!(sys::AbstractPeriodicSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
-setproperty!(sys::AbstractPeriodicSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
-setproperty!(sys::AbstractPeriodicSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
 
 """
-    unitcelltype(sys::AbstractPeriodicSystem)
+    unitcelltype(sys::AbstractParticleSystem)
 
-Returns the type of a unitcell from the `PeriodicSystem` structure.
+Returns the type of a unitcell from the `ParticleSystem` structure.
 
 """
-CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
+CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
 
-@testitem "PeriodicSystems properties" begin
+@testitem "ParticleSystem properties" begin
 
     using CellListMap
     using StaticArrays
-    sys = PeriodicSystem(
+    sys = ParticleSystem(
         positions=rand(SVector{3,Float64}, 1000),
         cutoff=0.1,
         unitcell=[1, 1, 1],
@@ -245,7 +242,7 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
         [rand(3)],
         rand(3, 1)
     ]
-        _sys = PeriodicSystem(
+        _sys = ParticleSystem(
             positions=x,
             cutoff=0.1,
             unitcell=[1, 1, 1],
@@ -257,55 +254,55 @@ CellListMap.unitcelltype(sys::AbstractPeriodicSystem) = unitcelltype(sys._box)
 
     # unitcell type
     x = rand(SVector{3,Float64}, 100)
-    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)) == OrthorhombicCell
-    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1], output=0.0)) == TriclinicCell
-    @test unitcelltype(PeriodicSystem(positions=x, cutoff=0.1, output=0.0)) == NonPeriodicCell
+    @test unitcelltype(ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)) == OrthorhombicCell
+    @test unitcelltype(ParticleSystem(positions=x, cutoff=0.1, unitcell=[1 0 0; 0 1 0; 0 0 1], output=0.0)) == TriclinicCell
+    @test unitcelltype(ParticleSystem(positions=x, cutoff=0.1, output=0.0)) == NonPeriodicCell
 
     # Argument errors
-    @test_throws ArgumentError PeriodicSystem(
+    @test_throws ArgumentError ParticleSystem(
         positions=rand(SVector{3,Float64}, 100),
         xpositions=rand(SVector{3,Float64}, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws ArgumentError PeriodicSystem(
+    @test_throws ArgumentError ParticleSystem(
         ypositions=rand(SVector{3,Float64}, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         positions=rand(1, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         xpositions=rand(1, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         xpositions=rand(2, 100),
         ypositions=rand(1, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         positions=rand(2, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         xpositions=rand(2, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         xpositions=rand(2, 100),
         ypositions=rand(2, 100),
         cutoff=0.1, unitcell=[1, 1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         positions=rand(3, 100),
         cutoff=0.1, unitcell=[1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         xpositions=rand(3, 100),
         cutoff=0.1, unitcell=[1, 1], output=0.0,
     )
-    @test_throws DimensionMismatch PeriodicSystem(
+    @test_throws DimensionMismatch ParticleSystem(
         xpositions=rand(3, 100),
         ypositions=rand(3, 100),
         cutoff=0.1, unitcell=[1, 1], output=0.0,
@@ -329,12 +326,12 @@ and set the computation to use or not parallelization by directly accessing thes
 elements.
 
 The other fileds of the structure (starting with `_`) are internal and must not 
-be modified or accessed directly. The construction of the `PeriodicSystem1` structure
-is done through the `PeriodicSystem(;xpositions, unitcell, cutoff, output)` 
+be modified or accessed directly. The construction of the `ParticleSystem1` structure
+is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)` 
 auxiliary function.
 
 """
-mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
+mutable struct ParticleSystem1{OutputName,V,O,B,C,A} <: AbstractParticleSystem{OutputName}
     xpositions::V
     output::O
     _box::B
@@ -343,9 +340,9 @@ mutable struct PeriodicSystem1{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
-    PeriodicSystem1{OutputName,V,O,B,C,A}(v, o, b, c, vo, a, p)
-getproperty(sys::PeriodicSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
+ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
+    ParticleSystem1{OutputName,V,O,B,C,A}(v, o, b, c, vo, a, p)
+getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 
 """
 
@@ -363,12 +360,12 @@ and set the computation to use or not parallelization by directly accessing thes
 elements.
 
 The other fileds of the structure (starting with `_`) are internal and must not 
-be modified or accessed directly. The construction of the `PeriodicSystem1` structure
-is done through the `PeriodicSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
+be modified or accessed directly. The construction of the `ParticleSystem1` structure
+is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
 auxiliary function.
 
 """
-mutable struct PeriodicSystem2{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{OutputName}
+mutable struct ParticleSystem2{OutputName,V,O,B,C,A} <: AbstractParticleSystem{OutputName}
     xpositions::V
     ypositions::V
     output::O
@@ -378,15 +375,15 @@ mutable struct PeriodicSystem2{OutputName,V,O,B,C,A} <: AbstractPeriodicSystem{O
     _aux::A
     parallel::Bool
 end
-PeriodicSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
-    PeriodicSystem2{OutputName,V,O,B,C,A}(vx, vy, o, b, c, vo, a, p)
+ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
+    ParticleSystem2{OutputName,V,O,B,C,A}(vx, vy, o, b, c, vo, a, p)
 
 import Base.show
-function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputName}) where {OutputName}
+function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
     N = size(sys.unitcell, 1)
-    println(io, "PeriodicSystem1{$OutputName} of dimension $N, composed of:")
+    println(io, "ParticleSystem1{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println(io)
     show(io_sub, mime, sys._cell_list)
@@ -395,11 +392,11 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem1{OutputNa
     print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", sys::PeriodicSystem2{OutputName}) where {OutputName}
+function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
     N = size(sys.unitcell, 1)
-    println(io, "PeriodicSystem2{$OutputName} of dimension $N, composed of:")
+    println(io, "ParticleSystem2{$OutputName} of dimension $N, composed of:")
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println(io)
     show(io_sub, mime, sys._cell_list)
@@ -584,7 +581,7 @@ julia> CellListMap.reset_output(d::MinimumDistance) = MinimumDistance(+Inf) # Ho
 julia> CellListMap.reducer(md1::MinimumDistance, md2::MinimumDistance) = MinimumDistance(min(md1.d, md2.d)) # Custom reduction function
 
 julia> # Construct the system
-       sys = PeriodicSystem(;
+       sys = ParticleSystem(;
            positions = positions,
            unitcell = [21,21,21],
            cutoff = 8.0,
@@ -674,7 +671,7 @@ function reduce_output!(
 end
 
 """
-    resize_output!(sys::AbstractPeriodicSystem, n::Int)
+    resize_output!(sys::AbstractParticleSystem, n::Int)
 
 Resizes the output array and the auxiliary output arrays used
 for multithreading, if the number of particles of the system changed.
@@ -688,7 +685,7 @@ This function *must* be used in that case, to guarantee that the
 auxiliary arrays used for multi-threading are resized accordingly. 
 
 """
-function resize_output!(sys::AbstractPeriodicSystem, n::Int)
+function resize_output!(sys::AbstractParticleSystem, n::Int)
     resize!(sys.output, n)
     for i in eachindex(sys._output_threaded)
         resize!(sys._output_threaded[i], n)
@@ -722,7 +719,7 @@ julia> using CellListMap, StaticArrays, PDBTools
 
 julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file));
 
-julia> sys = PeriodicSystem(
+julia> sys = ParticleSystem(
            xpositions = xpositions,
            unitcell=[21,21,21], 
            cutoff = 8.0, 
@@ -730,7 +727,7 @@ julia> sys = PeriodicSystem(
        );
 
 julia> update_unitcell!(sys, [30.0, 30.0, 30.0])
-PeriodicSystem1{output} of dimension 3, composed of:
+ParticleSystem1{output} of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
       unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
       cutoff = 8.0
@@ -765,21 +762,21 @@ end
     using StaticArrays
     using CellListMap
     x = rand(SVector{3,Float64}, 1000)
-    sys1 = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
     a = @ballocated update_unitcell!($sys1, SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    sys2 = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys2, SVector(2, 2, 2))
     @test diag(sys2.unitcell) == [2, 2, 2]
     a = @ballocated update_unitcell!($sys2, SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == 0
     # Test throwing error on updating non-periodic unit cells
-    sys = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0)
+    sys = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0)
     @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
-    sys = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0)
+    sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0)
     @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
 end
 
@@ -795,7 +792,7 @@ This function can be used to update the system geometry in iterative schemes.
 ```julia-repl
 julia> using CellListMap, StaticArrays
 
-julia> sys = PeriodicSystem(
+julia> sys = ParticleSystem(
            xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
@@ -803,7 +800,7 @@ julia> sys = PeriodicSystem(
            );
 
 julia> update_cutoff!(sys, 0.2)
-PeriodicSystem1 of dimension 3, composed of:
+ParticleSystem1 of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
       cutoff = 0.2
@@ -820,14 +817,14 @@ PeriodicSystem1 of dimension 3, composed of:
     Type of output variable: Float64
 ```
 """
-function update_cutoff!(sys::PeriodicSystem1, cutoff)
+function update_cutoff!(sys::ParticleSystem1, cutoff)
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions), cutoff)
     end
     sys._box = update_box(sys._box; cutoff=cutoff)
     return sys
 end
-function update_cutoff!(sys::PeriodicSystem2, cutoff)
+function update_cutoff!(sys::ParticleSystem2, cutoff)
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
     end
@@ -841,13 +838,13 @@ end
     using CellListMap
     using PDBTools
     x = rand(SVector{3,Float64}, 1000)
-    sys1 = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys1, 0.2)
     @test sys1.cutoff == 0.2
     a = @ballocated update_cutoff!($sys1, 0.1) evals = 1 samples = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys2 = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    sys2 = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys2, 0.2)
     @test sys2.cutoff == 0.2
     a = @ballocated update_cutoff!($sys2, 0.1) evals = 1 samples = 1
@@ -855,14 +852,14 @@ end
 
     # Update cutoff of non-periodic systems
     x = coor(readPDB(CellListMap.argon_pdb_file))
-    sys1 = PeriodicSystem(xpositions=x, cutoff=8.0, output=0.0)
+    sys1 = ParticleSystem(xpositions=x, cutoff=8.0, output=0.0)
     @test unitcelltype(sys1) == NonPeriodicCell
     @test sys1.unitcell ≈ [ 35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79 ] atol = 1e-2
     update_cutoff!(sys1, 10.0)
     @test sys1.unitcell ≈ [ 39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99 ] atol = 1e-2
     a = @ballocated update_cutoff!($sys1, 8.0) evals = 1 samples = 1
     @test a == 0
-    sys2 = PeriodicSystem(xpositions=x[1:50], ypositions=x[51:100], cutoff=8.0, output=0.0)
+    sys2 = ParticleSystem(xpositions=x[1:50], ypositions=x[51:100], cutoff=8.0, output=0.0)
     @test unitcelltype(sys2) == NonPeriodicCell
     @test sys2.unitcell ≈ [ 35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79 ] atol = 1e-2
     update_cutoff!(sys2, 10.0)
@@ -875,7 +872,7 @@ end
 # This interface is needed to generate random particle coordinates in ComplexMixtures.jl
 #
 #=
-    get_computing_box(sys::AbstractPeriodicSystem)
+    get_computing_box(sys::AbstractParticleSystem)
 
 $(INTERNAL)
 
@@ -883,24 +880,24 @@ Retrieves the computing box of the system. The computing box is large enough to
 contain all coordinates of the particles, plus the cutoff.
 
 =#
-get_computing_box(sys::AbstractPeriodicSystem) = sys._box.computing_box
+get_computing_box(sys::AbstractParticleSystem) = sys._box.computing_box
 @testitem "get_computing_box" begin
     using StaticArrays
     using CellListMap
     x = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    sys = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     @test CellListMap.get_computing_box(sys) == ([-0.1, -0.1, -0.1], [1.1, 1.1, 1.1])
 end
 
 #=
-    UpdatePeriodicSystem!
+    UpdateParticleSystem!
 
 $(INTERNAL)
 
 Updates the cell lists for periodic systems.
 
 =#
-function UpdatePeriodicSystem!(sys::PeriodicSystem1, update_lists::Bool=true)
+function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
     if update_lists
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
@@ -923,7 +920,7 @@ end
 function _update_ref_positions!(::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:Swapped}
     throw(ArgumentError("update_lists === false requires autoswap == false for 2-set systems."))
 end
-function UpdatePeriodicSystem!(sys::PeriodicSystem2, update_lists::Bool=true)
+function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
     if update_lists
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
@@ -944,43 +941,43 @@ function UpdatePeriodicSystem!(sys::PeriodicSystem2, update_lists::Bool=true)
 end
 
 # this updates must be non-allocating in the serial case
-@testitem "UpdatePeriodicSystem!" begin
+@testitem "UpdateParticleSystem!" begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
     x = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
     # Test construction with more general abstract vectors
     x = @view(x[1:500])
-    sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = @view(y[1:500])
-    sys = PeriodicSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
     # Update with matrices
     x = rand(3, 500)
-    sys = PeriodicSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
     # Update non-periodic system
     x = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions=x, cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
     y = rand(SVector{3,Float64}, 1000)
-    sys = PeriodicSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, parallel=false)
-    a = @ballocated CellListMap.UpdatePeriodicSystem!($sys) samples = 1 evals = 1
+    sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, parallel=false)
+    a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
 
 end
@@ -1021,7 +1018,7 @@ In this example we compute the sum of `1/(1+d)` where `d` is the
 distance between particles of a set, for `d < cutoff`. 
 
 ```julia-repl
-julia> sys = PeriodicSystem(
+julia> sys = ParticleSystem(
            xpositions = rand(SVector{3,Float64},1000), 
            unitcell=[1,1,1], 
            cutoff = 0.1, 
@@ -1035,12 +1032,12 @@ julia> map_pairwise((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), sys)
 """
 function map_pairwise!(
     f::F,
-    sys::AbstractPeriodicSystem;
+    sys::AbstractParticleSystem;
     update_lists::Bool=true,
     show_progress::Bool=false
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
-    UpdatePeriodicSystem!(sys, update_lists)
+    UpdateParticleSystem!(sys, update_lists)
     sys.output = CellListMap.map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
@@ -1051,22 +1048,35 @@ function map_pairwise!(
     return sys.output
 end
 
+#
 # For backward compatibility: will be removed in 1.0
+#
 export PeriodicSystems
 module PeriodicSystems
     function __init__()
         @warn begin """\n
-        Loading the `PeriodicSystems` submodule is no longer necessary in v0.8.30. Use only
+        
+        Interface changes in v0.8.30, for `PeriodicSystems` submodule of CellListMap.
 
-        using CellListMap
+        From v0.8.30 on, the `PeriodicSystems` submodule is deprecated and will be removed in future versions.
+        (code that works in v0.8.XX series will work in v0.8.30 through compatibility functions).
 
-        to access the structures and functions previously defined in `PeriodicSystems`.
-        The `PeriodicSystems` submodule will be completely removed in future breaking versions.
+        The same functionality can be achieved by using directly the `CellListMap` module and the 
+        `ParticleSystem` data structure. 
+
+        To migrate to the new interface, replace the code:
+
+        using CellListMap.PeriodicSystems  => using CellListMap
+        system = PeriodicSystem(...)       => system = ParticleSystem(...)
+        UpdatePeriodicSystem!(system)      => UpdateParticleSystem!(system)
+
+        The new `ParticleSystem` interface supports non-periodic systems, by
+        not setting the `unitcell` field in the system (or set `unitcell = nothing`).
 
         """ end _file=nothing _line=nothing
     end
     import ..CellListMap
-    using ..CellListMap: PeriodicSystem
+    const PeriodicSystem = CellListMap.ParticleSystem
     export PeriodicSystem
     using ..CellListMap: map_pairwise!, map_pairwise
     export map_pairwise!, map_pairwise
@@ -1076,7 +1086,7 @@ module PeriodicSystems
     export copy_output, resize_output!, reset_output!, reset_output, reducer!, reducer
     using ..CellListMap: argon_pdb_file
     using ..CellListMap: get_computing_box
-    using ..CellListMap: UpdatePeriodicSystem!
+    const UpdatePeriodicSystem! = CellListMap.UpdateParticleSystem!
     export UpdatePeriodicSystem!
     using ..CellListMap: OrthorhombicCell, TriclinicCell, NonPeriodicCell
     export  OrthorhombicCell, TriclinicCell, NonPeriodicCell
