@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Low level interface · CellListMap.jl</title><meta name="title" content="Low level interface · CellListMap.jl"/><meta property="og:title" content="Low level interface · CellListMap.jl"/><meta property="twitter:title" content="Low level interface · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../ParticleSystem/">ParticleSystem interface</a></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li class="is-active"><a class="tocitem" href>Low level interface</a><ul class="internal"><li><a class="tocitem" href="#Examples"><span>Examples</span></a></li><li><a class="tocitem" href="#Periodic-boundary-conditions"><span>Periodic boundary conditions</span></a></li><li><a class="tocitem" href="#Parallelization-splitting-and-reduction"><span>Parallelization splitting and reduction</span></a></li><li><a class="tocitem" href="#Performance-tunning-and-additional-options"><span>Performance tunning and additional options</span></a></li><li><a class="tocitem" href="#Output-progress"><span>Output progress</span></a></li><li><a class="tocitem" href="#Some-benchmarks"><span>Some benchmarks</span></a></li><li><a class="tocitem" href="#Additional-options"><span>Additional options</span></a></li></ul></li><li><a class="tocitem" href="../ecosystem/">Ecosystem integration</a></li><li><a class="tocitem" href="../python/">From Python</a></li><li><a class="tocitem" href="../help/">Help entries</a></li><li><a class="tocitem" href="../citation/">Citation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Low level interface</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Low level interface</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/LowLevel.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Low-level-interface"><a class="docs-heading-anchor" href="#Low-level-interface">Low level interface</a><a id="Low-level-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Low-level-interface" title="Permalink"></a></h1><p>Since version <code>0.8.30</code> we strongly encourage the use of the <code>ParticleSystem</code> interface. Yet,  the low level interface is still available. To use it, load the package as usual:</p><pre><code class="language-julia hljs">using CellListMap</code></pre><h2 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h2><p>The full code of the examples described here is available at the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/">examples</a> directory. </p><ul><li><a href="#Mean-difference-of-coordinates">Mean difference of coordinates</a></li><li><a href="#Histogram-of-distances">Histogram of distances</a></li><li><a href="#Gravitational-potential">Gravitational potential</a></li><li><a href="#Gravitational-force">Gravitational force</a></li><li><a href="#Nearest-neighbor">Nearest neighbor</a></li><li><a href="#Implementing-Neighbor-lists">Implementing Neighbor lists</a></li></ul><h3 id="Mean-difference-of-coordinates"><a class="docs-heading-anchor" href="#Mean-difference-of-coordinates">Mean difference of coordinates</a><a id="Mean-difference-of-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Mean-difference-of-coordinates" title="Permalink"></a></h3><p>Computing the mean difference in <code>x</code> position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.</p><pre><code class="language-julia hljs">using CellListMap
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Low level interface · CellListMap.jl</title><meta name="title" content="Low level interface · CellListMap.jl"/><meta property="og:title" content="Low level interface · CellListMap.jl"/><meta property="twitter:title" content="Low level interface · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../ParticleSystem/">ParticleSystem interface</a></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li class="is-active"><a class="tocitem" href>Low level interface</a><ul class="internal"><li><a class="tocitem" href="#Examples"><span>Examples</span></a></li><li><a class="tocitem" href="#Periodic-boundary-conditions"><span>Periodic boundary conditions</span></a></li><li><a class="tocitem" href="#Parallelization-splitting-and-reduction"><span>Parallelization splitting and reduction</span></a></li><li><a class="tocitem" href="#Performance-tunning-and-additional-options"><span>Performance tunning and additional options</span></a></li><li><a class="tocitem" href="#Output-progress"><span>Output progress</span></a></li><li><a class="tocitem" href="#Some-benchmarks"><span>Some benchmarks</span></a></li><li><a class="tocitem" href="#Additional-options"><span>Additional options</span></a></li><li><a class="tocitem" href="#Docstrings"><span>Docstrings</span></a></li></ul></li><li><a class="tocitem" href="../ecosystem/">Ecosystem integration</a></li><li><a class="tocitem" href="../python/">From Python</a></li><li><a class="tocitem" href="../citation/">Citation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Low level interface</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Low level interface</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/LowLevel.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Low-level-interface"><a class="docs-heading-anchor" href="#Low-level-interface">Low level interface</a><a id="Low-level-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Low-level-interface" title="Permalink"></a></h1><p>Since version <code>0.8.30</code> we strongly encourage the use of the <code>ParticleSystem</code> interface. Yet,  the low level interface is still available. To use it, load the package as usual:</p><pre><code class="language-julia hljs">using CellListMap</code></pre><h2 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h2><p>The full code of the examples described here is available at the <a href="https://github.com/m3g/CellListMap.jl/blob/main/src/examples/">examples</a> directory. </p><ul><li><a href="#Mean-difference-of-coordinates">Mean difference of coordinates</a></li><li><a href="#Histogram-of-distances">Histogram of distances</a></li><li><a href="#Gravitational-potential">Gravitational potential</a></li><li><a href="#Gravitational-force">Gravitational force</a></li><li><a href="#Nearest-neighbor">Nearest neighbor</a></li><li><a href="#Implementing-Neighbor-lists">Implementing Neighbor lists</a></li></ul><h3 id="Mean-difference-of-coordinates"><a class="docs-heading-anchor" href="#Mean-difference-of-coordinates">Mean difference of coordinates</a><a id="Mean-difference-of-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Mean-difference-of-coordinates" title="Permalink"></a></h3><p>Computing the mean difference in <code>x</code> position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.</p><pre><code class="language-julia hljs">using CellListMap
 
 # System properties
 N = 100_000
@@ -276,4 +276,260 @@ CellList{3, Float64}
   162 particles in computing box, including images.
 
 julia&gt; map_pairwise!((x,y,i,j,d2,n) -&gt; n += 1, 0, box, cl) # count neighbors
-23</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neighborlists/">« Neighbor lists</a><a class="docs-footer-nextpage" href="../ecosystem/">Ecosystem integration »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Thursday 2 May 2024 17:12">Thursday 2 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+23</code></pre><h2 id="Docstrings"><a class="docs-heading-anchor" href="#Docstrings">Docstrings</a><a id="Docstrings-1"></a><a class="docs-heading-anchor-permalink" href="#Docstrings" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.Box-Union{Tuple{T}, Tuple{CellListMap.Limits, T}} where T" href="#CellListMap.Box-Union{Tuple{T}, Tuple{CellListMap.Limits, T}} where T"><code>CellListMap.Box</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">Box(unitcell::Limits, cutoff; lcell::Int=1)</code></pre><p>This constructor receives the output of <code>limits(x)</code> or <code>limits(x,y)</code> where <code>x</code> and <code>y</code> are the coordinates of the particles involved, and constructs a <code>Box</code> with size larger than the maximum coordinates ranges of all particles plus twice the cutoff. This is used to  emulate pairwise interactions in non-periodic boxes. The output box is an <code>NonPeriodicCell</code> box type, which internally is treated as Orthorhombic with boundaries that guarantee that particles do not see images of each other. </p><p><strong>Examples</strong></p><pre><code class="language-julia-repl hljs">julia&gt; x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
+
+julia&gt; box = Box(limits(x),10)
+Box{NonPeriodicCell, 3}
+  unit cell matrix = [ 110.0, 0.0, 0.0; 0.0, 110.0, 0.0; 0.0, 0.0, 110.0 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [12, 12, 12]
+  computing cell sizes = [11.0, 11.0, 11.0] (lcell: 1)
+  Total number of cells = 1728
+
+julia&gt; y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
+
+julia&gt; box = Box(limits(x,y),10)
+Box{NonPeriodicCell, 3}
+  unit cell matrix = [ 160.0, 0.0, 0.0; 0.0, 160.0, 0.0; 0.0, 0.0, 110.0 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [17, 17, 12]
+  computing cell sizes = [10.67, 10.67, 11.0] (lcell: 1)
+  Total number of cells = 3468</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/Box.jl#L345-L379">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.Box-Union{Tuple{UnitCellType}, Tuple{AbstractMatrix, Any, Int64, Type{UnitCellType}}} where UnitCellType" href="#CellListMap.Box-Union{Tuple{UnitCellType}, Tuple{AbstractMatrix, Any, Int64, Type{UnitCellType}}} where UnitCellType"><code>CellListMap.Box</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)</code></pre><p>Construct box structure given the cell matrix of lattice vectors. This  constructor will always return a <code>TriclinicCell</code> box type, unless the <code>UnitCellType</code> parameter is set manually to <code>OrthorhombicCell</code></p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; unit_cell = [ 100   50    0 
+                       0  120    0
+                       0    0  130 ];
+
+julia&gt; box = Box(unit_cell,10)
+Box{TriclinicCell, 3, Float64, 9}
+  unit cell matrix: [100.0 50.0 0.0; 0.0 120.0 0.0; 0.0 0.0 130.0]
+  cutoff: 10.0
+  number of computing cells on each dimension: [17, 14, 15]
+  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells: 3570
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/Box.jl#L158-L182">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.Box-Union{Tuple{UnitCellType}, Tuple{AbstractVector, Any, Int64, Type{UnitCellType}}} where UnitCellType" href="#CellListMap.Box-Union{Tuple{UnitCellType}, Tuple{AbstractVector, Any, Int64, Type{UnitCellType}}} where UnitCellType"><code>CellListMap.Box</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=OrthorhombicCell)</code></pre><p>For orthorhombic unit cells, <code>Box</code> can be initialized with a vector of the length of each side. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([120,150,100],10)
+Box{OrthorhombicCell, 3, Float64, 9}
+  unit cell matrix: [120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0]
+  cutoff: 10.0
+  number of computing cells on each dimension: [14, 17, 12]
+  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells: 2856
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/Box.jl#L320-L337">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.unitcelltype-Union{Tuple{Box{T}}, Tuple{T}} where T" href="#CellListMap.unitcelltype-Union{Tuple{Box{T}}, Tuple{T}} where T"><code>CellListMap.unitcelltype</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">unitcelltype(::Box{T}) where T = T</code></pre><p>Returns the type of a unitcell from the <code>Box</code> structure.</p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([1,1,1], 0.1)
+
+julia&gt; unitcelltype(box)
+OrthorhombicCell
+
+julia&gt; box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
+
+julia&gt; unitcelltype(box)
+TriclinicCell</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/Box.jl#L96-L115">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.map_pairwise" href="#CellListMap.map_pairwise"><code>CellListMap.map_pairwise</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)</code></pre><p>is an alias for <code>map_pairwise!</code> which is defined for two reasons: first, if the output of the funciton is immutable, it may be  clearer to call this version, from a coding perspective. Second, the python interface through <code>juliacall</code> does not accept the  bang as a valid character. </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellListMap.jl#L31-L38">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.map_pairwise!-Union{Tuple{F}, Tuple{F, Any, Box, CellList}} where F" href="#CellListMap.map_pairwise!-Union{Tuple{F}, Tuple{F, Any, Box, CellList}} where F"><code>CellListMap.map_pairwise!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">map_pairwise!(
+    f::Function,
+    output,
+    box::Box,
+    cl::CellList
+    ;parallel::Bool=true,
+    show_progress::Bool=false
+)</code></pre><p>This function will run over every pair of particles which are closer than  <code>box.cutoff</code> and compute the Euclidean distance between the particles,  considering the periodic boundary conditions given in the <code>Box</code> structure.  If the distance is smaller than the cutoff, a function <code>f</code> of the  coordinates of the two particles will be computed. </p><p>The function <code>f</code> receives six arguments as input: </p><pre><code class="nohighlight hljs">f(x,y,i,j,d2,output)</code></pre><p>Which are the coordinates of one particle, the coordinates of the  second particle, the index of the first particle, the index of the second  particle, the squared distance between them, and the <code>output</code> variable.  It has also to return the same <code>output</code> variable. Thus, <code>f</code> may or not  mutate <code>output</code>, but in either case it must return it. With that, it is  possible to compute an average property of the distance of the particles  or, for example, build a histogram. The squared distance <code>d2</code> is computed  internally for comparison with the  <code>cutoff</code>, and is passed to the <code>f</code> because many times it is used for the  desired computation. </p><p><strong>Example</strong></p><p>Computing the mean absolute difference in <code>x</code> position between random particles,  remembering the number of pairs of <code>n</code> particles is <code>n(n-1)/2</code>. The function does  not use the indices or the distance, such that we remove them from the parameters  by using a closure.</p><pre><code class="language-julia-repl hljs">julia&gt; n = 100_000;
+
+julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:n ];
+
+julia&gt; cl = CellList(x,box);
+
+julia&gt; f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
+
+julia&gt; normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
+
+julia&gt; avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -&gt; f(x,y,sum_dx), 0.0, box, cl)
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellListMap.jl#L49-L104">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.map_pairwise!-Union{Tuple{Swap}, Tuple{T}, Tuple{N}, Tuple{V}, Tuple{F2}, Tuple{F1}, Tuple{F1, Any, Box, CellListMap.CellListPair{V, N, T, Swap}}} where {F1, F2, V, N, T, Swap}" href="#CellListMap.map_pairwise!-Union{Tuple{Swap}, Tuple{T}, Tuple{N}, Tuple{V}, Tuple{F2}, Tuple{F1}, Tuple{F1, Any, Box, CellListMap.CellListPair{V, N, T, Swap}}} where {F1, F2, V, N, T, Swap}"><code>CellListMap.map_pairwise!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">map_pairwise!(f::Function,output,box::Box,cl::CellListPair)</code></pre><p>The same but to evaluate some function between pairs of the particles of the vectors.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellListMap.jl#L125-L130">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.AuxThreaded-Tuple{CellListMap.CellListPair}" href="#CellListMap.AuxThreaded-Tuple{CellListMap.CellListPair}"><code>CellListMap.AuxThreaded</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">AuxThreaded(cl::CellListPair{N,T}) where {N,T}</code></pre><p>Constructor for the <code>AuxThreaded</code> type for lists of disjoint particle sets,  to be passed to <code>UpdateCellList!</code> for in-place update of cell lists. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(3) for i in 1:50_000 ];
+
+julia&gt; y = [ 250*rand(3) for i in 1:10_000 ];
+
+julia&gt; cl = CellList(x,y,box);
+
+julia&gt; aux = CellListMap.AuxThreaded(cl)
+CellListMap.AuxThreaded{3, Float64}
+ Auxiliary arrays for nthreads = 8
+
+julia&gt; UpdateCellList!(x,box,cl,aux)
+CellList{3, Float64}
+  100000 real particles.
+  31190 cells with real particles.
+  1134378 particles in computing box, including images.
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L395-L422">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.AuxThreaded-Union{Tuple{CellList{N, T}}, Tuple{T}, Tuple{N}} where {N, T}" href="#CellListMap.AuxThreaded-Union{Tuple{CellList{N, T}}, Tuple{T}, Tuple{N}} where {N, T}"><code>CellListMap.AuxThreaded</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">AuxThreaded(cl::CellList{N,T}) where {N,T}</code></pre><p>Constructor for the <code>AuxThreaded</code> type, to be passed to <code>UpdateCellList!</code> for in-place  update of cell lists. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(3) for _ in 1:100_000 ];
+
+julia&gt; cl = CellList(x,box);
+
+julia&gt; aux = CellListMap.AuxThreaded(cl)
+CellListMap.AuxThreaded{3, Float64}
+ Auxiliary arrays for nthreads = 8
+
+julia&gt; UpdateCellList!(x,box,cl,aux)
+CellList{3, Float64}
+  100000 real particles.
+  31190 cells with real particles.
+  1134378 particles in computing box, including images.
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L318-L343">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.CellList-Union{Tuple{T}, Tuple{N}, Tuple{UnitCellType}, Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}, Box{UnitCellType, N, T}}} where {UnitCellType, N, T}" href="#CellListMap.CellList-Union{Tuple{T}, Tuple{N}, Tuple{UnitCellType}, Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}, Box{UnitCellType, N, T}}} where {UnitCellType, N, T}"><code>CellListMap.CellList</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">CellList(
+    x::AbstractVector{&lt;:AbstractVector},
+    y::AbstractVector{&lt;:AbstractVector},
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0,0),
+    autoswap::Bool=true
+) where {UnitCellType,N,T}</code></pre><p>Function that will initialize a <code>CellListPair</code> structure from scratch, given two vectors of particle coordinates and a <code>Box</code>, which contain the size of the system, cutoff, etc. By default, the cell list will be constructed for smallest vector, but this is not always the optimal choice. Using <code>autoswap=false</code> the cell list is constructed for the second (<code>y</code>)</p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia&gt; y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
+
+julia&gt; cl = CellList(x,y,box)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   10000 particles in the reference vector.
+   961 cells with real particles of target vector.
+
+julia&gt; cl = CellList(x,y,box,autoswap=false)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   1000 particles in the reference vector.
+   7389 cells with real particles of target vector.
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L511-L547">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.CellList-Union{Tuple{T}, Tuple{N}, Tuple{UnitCellType}, Tuple{AbstractVector{&lt;:AbstractVector}, Box{UnitCellType, N, T}}} where {UnitCellType, N, T}" href="#CellListMap.CellList-Union{Tuple{T}, Tuple{N}, Tuple{UnitCellType}, Tuple{AbstractVector{&lt;:AbstractVector}, Box{UnitCellType, N, T}}} where {UnitCellType, N, T}"><code>CellListMap.CellList</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">CellList(
+    x::AbstractVector{AbstractVector},
+    box::Box{UnitCellType,N,T};
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0,0)
+) where {UnitCellType,N,T}</code></pre><p>Function that will initialize a <code>CellList</code> structure from scratch, given a vector or particle coordinates (a vector of vectors, typically of static vectors)  and a <code>Box</code>, which contain the size ofthe system, cutoff, etc. Except for small systems, the number of parallel batches is equal to the number of threads, but it can be tunned for optimal performance in some cases.</p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
+
+julia&gt; cl = CellList(x,box)
+CellList{3, Float64}
+  100000 real particles.
+  15600 cells with real particles.
+  126276 particles in computing box, including images.
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L426-L455">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.UpdateCellList!-Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}, Box, CellListMap.CellListPair}" href="#CellListMap.UpdateCellList!-Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}, Box, CellListMap.CellListPair}"><code>CellListMap.UpdateCellList!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">UpdateCellList!(
+    x::AbstractVector{&lt;:AbstractVector},
+    y::AbstractVector{&lt;:AbstractVector},
+    box::Box,
+    cl:CellListPair,
+    parallel=true
+)</code></pre><p>Function that will update a previously allocated <code>CellListPair</code> structure, given  new updated particle positions, for example. This method will allocate new  <code>aux</code> threaded auxiliary arrays. For a non-allocating version, see the  <code>UpdateCellList!(x,y,box,cl,aux)</code> method.</p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia&gt; y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
+
+julia&gt; cl = CellList(x,y,box);
+
+julia&gt; UpdateCellList!(x,y,box,cl); # update lists
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L1035-L1062">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.UpdateCellList!-Tuple{AbstractVector{&lt;:AbstractVector}, Box, CellList}" href="#CellListMap.UpdateCellList!-Tuple{AbstractVector{&lt;:AbstractVector}, Box, CellList}"><code>CellListMap.UpdateCellList!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">UpdateCellList!(
+    x::AbstractVector{&lt;:AbstractVector},
+    box::Box,
+    cl:CellList,
+    parallel=true
+)</code></pre><p>Function that will update a previously allocated <code>CellList</code> structure, given new  updated particle positions. This function will allocate new threaded auxiliary arrays in parallel calculations. To preallocate these auxiliary arrays, use the <code>UpdateCellList!(x,box,cl,aux)</code> method instead. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia&gt; cl = CellList(x,box);
+
+julia&gt; box = Box([260,260,260],10);
+
+julia&gt; x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
+
+julia&gt; UpdateCellList!(x,box,cl); # update lists
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L586-L616">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.UpdateCellList!-Union{Tuple{Swap}, Tuple{T}, Tuple{N}, Tuple{V}, Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}, Box, CellListMap.CellListPair{V, N, T, Swap}, Union{Nothing, CellListMap.AuxThreaded}}} where {V, N, T, Swap&lt;:CellListMap.NotSwapped}" href="#CellListMap.UpdateCellList!-Union{Tuple{Swap}, Tuple{T}, Tuple{N}, Tuple{V}, Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}, Box, CellListMap.CellListPair{V, N, T, Swap}, Union{Nothing, CellListMap.AuxThreaded}}} where {V, N, T, Swap&lt;:CellListMap.NotSwapped}"><code>CellListMap.UpdateCellList!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">UpdateCellList!(
+    x::AbstractVector{&lt;:AbstractVector},
+    y::AbstractVector{&lt;:AbstractVector},
+    box::Box,
+    cl_pair::CellListPair,
+    aux::Union{Nothing,AuxThreaded};
+    parallel::Bool=true
+)</code></pre><p>This function will update the <code>cl_pair</code> structure that contains the cell lists for disjoint sets of particles. It receives the preallocated <code>aux</code> structure to avoid reallocating auxiliary arrays necessary for the threaded construct of the lists. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(3) for i in 1:50_000 ];
+
+julia&gt; y = [ 250*rand(3) for i in 1:10_000 ];
+
+julia&gt; cl = CellList(x,y,box)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   50000 particles in the reference vector.
+   7381 cells with real particles of target vector.
+
+julia&gt; aux = CellListMap.AuxThreaded(cl)
+CellListMap.AuxThreaded{3, Float64}
+ Auxiliary arrays for nthreads = 8
+
+julia&gt; x = [ 250*rand(3) for i in 1:50_000 ];
+
+julia&gt; y = [ 250*rand(3) for i in 1:10_000 ];
+
+julia&gt; UpdateCellList!(x,y,box,cl,aux)
+CellList{3, Float64}
+  10000 real particles.
+  7358 cells with real particles.
+  12591 particles in computing box, including images.
+</code></pre><p>To illustrate the expected ammount of allocations, which are a consequence of thread spawning only:</p><pre><code class="language-julia-repl hljs">julia&gt; using BenchmarkTools
+
+julia&gt; @btime UpdateCellList!($x,$y,$box,$cl,$aux)
+  715.661 μs (41 allocations: 3.88 KiB)
+CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+   50000 particles in the reference vector.
+   7414 cells with real particles of target vector.
+   
+julia&gt; @btime UpdateCellList!($x,$y,$box,$cl,$aux,parallel=false)
+   13.042 ms (0 allocations: 0 bytes)
+ CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
+    50000 particles in the reference vector.
+    15031 cells with real particles of target vector.
+ </code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L1106-L1170">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.UpdateCellList!-Union{Tuple{T}, Tuple{N}, Tuple{AbstractVector{&lt;:AbstractVector}, Box, CellList{N, T}, Union{Nothing, CellListMap.AuxThreaded{N, T}}}} where {N, T}" href="#CellListMap.UpdateCellList!-Union{Tuple{T}, Tuple{N}, Tuple{AbstractVector{&lt;:AbstractVector}, Box, CellList{N, T}, Union{Nothing, CellListMap.AuxThreaded{N, T}}}} where {N, T}"><code>CellListMap.UpdateCellList!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">UpdateCellList!(
+    x::AbstractVector{&lt;:AbstractVector},
+    box::Box,
+    cl::CellList{N,T},
+    aux::Union{Nothing,AuxThreaded{N,T}};
+    parallel::Bool=true
+) where {N,T}</code></pre><p>Function that updates the cell list <code>cl</code> new coordinates <code>x</code> and possibly a new box <code>box</code>, and receives a preallocated <code>aux</code> structure of auxiliary vectors for threaded cell list construction. Given a preallocated <code>aux</code> vector, allocations in this function should be minimal, only associated with the spawning threads, or to expansion of the cell lists if the number of cells or number of particles  increased. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; box = Box([250,250,250],10);
+
+julia&gt; x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
+
+julia&gt; cl = CellList(x,box);
+
+julia&gt; aux = CellListMap.AuxThreaded(cl)
+CellListMap.AuxThreaded{3, Float64}
+ Auxiliary arrays for nthreads = 8
+
+julia&gt; x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
+
+julia&gt; UpdateCellList!(x,box,cl,aux)
+CellList{3, Float64}
+  100000 real particles.
+  15599 cells with real particles.
+  125699 particles in computing box, including images.
+</code></pre><p>To illustrate the expected ammount of allocations, which are a consequence of thread spawning only:</p><pre><code class="language-julia-repl hljs">julia&gt; using BenchmarkTools
+
+julia&gt; @btime UpdateCellList!($x,$box,$cl,$aux)
+  16.384 ms (41 allocations: 3.88 KiB)
+CellList{3, Float64}
+  100000 real particles.
+  15599 cells with real particles.
+  125699 particles in computing box, including images.
+
+julia&gt; @btime UpdateCellList!($x,$box,$cl,$aux,parallel=false)
+  20.882 ms (0 allocations: 0 bytes)
+CellList{3, Float64}
+  100000 real particles.
+  15603 cells with real particles.
+  125896 particles in computing box, including images.
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L655-L716">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.nbatches-Tuple{CellList}" href="#CellListMap.nbatches-Tuple{CellList}"><code>CellListMap.nbatches</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">nbatches(cl)</code></pre><p>Returns the number of batches for parallel processing that will be used in the pairwise function mappings associated to cell list <code>cl</code>.  It returns the <code>cl.nbatches.map_computation</code> value. This function is important because it must be used to set the number of copies of custom preallocated output arrays.</p><p>A second argument can be provided, which may be <code>:map</code> or <code>:build</code>, in which case the function returns either the number of batches used  for pairwise mapping or for the construction of the cell lists. Since this second value is internal and does not affect the interface,  it can be usually ignored. </p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(3,1000); box = Box([1,1,1],0.1);
+
+julia&gt; cl = CellList(x,box,nbatches=(2,16));
+
+julia&gt; nbatches(cl)
+16
+
+julia&gt; nbatches(cl,:map)
+16
+
+julia&gt; nbatches(cl,:build)
+2</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellLists.jl#L259-L287">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.limits-Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}}" href="#CellListMap.limits-Tuple{AbstractVector{&lt;:AbstractVector}, AbstractVector{&lt;:AbstractVector}}"><code>CellListMap.limits</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">limits(x,y)</code></pre><p>Returns the lengths of a orthorhombic box that encompasses all the particles defined in <code>x</code> and <code>y</code>, to used to set a box without effective periodic boundary conditions.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellOperations.jl#L290-L296">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.limits-Tuple{AbstractVector{&lt;:AbstractVector}}" href="#CellListMap.limits-Tuple{AbstractVector{&lt;:AbstractVector}}"><code>CellListMap.limits</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">limits(x)</code></pre><p>Returns the lengths of a orthorhombic box that encompasses all the particles defined in <code>x</code>,  to be used to set a box without effective periodic boundary conditions.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/4668c47f37c5c9a5bd964c31c770b1a50a7cc4fa/src/CellOperations.jl#L271-L277">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neighborlists/">« Neighbor lists</a><a class="docs-footer-nextpage" href="../ecosystem/">Ecosystem integration »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Thursday 2 May 2024 17:22">Thursday 2 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
