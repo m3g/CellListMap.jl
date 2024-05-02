@@ -3,7 +3,7 @@
 #
 splitter(first, nbatches, n) = first:nbatches:n
 
-"""
+#=
     reduce(output, output_threaded)
 
 Most common reduction function, which sums the elements of the output. 
@@ -40,7 +40,7 @@ julia> output
  3
 ```
 
-"""
+=#
 reduce(output::T, output_threaded::Vector{T}) where {T} = sum(output_threaded)
 function reduce(output::T, output_threaded::Vector{T}) where {T<:AbstractArray}
     for ibatch in eachindex(output_threaded)
@@ -57,7 +57,7 @@ function reduce(output, output_threaded)
     the signature:
 
     ```
-    CellListMap.reduce(output::$T, output_threaded::Vector{$T})
+    custom_reduce(output::$T, output_threaded::Vector{$T})
     ```
 
     The reduction function **must** return the `output` variable, even 

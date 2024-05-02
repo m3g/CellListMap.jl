@@ -975,7 +975,10 @@ end
 end
 
 """
-    map_pairwise!(f::Function, system; show_progress = true, update_lists = true)
+    map_pairwise!(
+        f::Function, system::AbstractParticleSystem; 
+        show_progress = true, update_lists = true
+    )
 
 Function that maps the `f` function into all pairs of particles of
 `system` that are found to be within the `cutoff`. 

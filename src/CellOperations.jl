@@ -126,7 +126,7 @@ provided.
 @inline translation_image(x::SVector{N,T}, unit_cell_matrix, indices) where {N,T} =
     x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], N))
 
-"""
+#=
     translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
 
 Translates a complete set of coordinates given a set of indexes of unit-cells. Returns a new
@@ -149,7 +149,7 @@ julia> CellListMap.translation_image(x,box.unit_cell.matrix,(1,1))
  [1.4066300885242247, 1.2907398318754952]
 ```
 
-"""
+=#
 function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix, indices)
     x_new = similar(x)
     for i in eachindex(x)

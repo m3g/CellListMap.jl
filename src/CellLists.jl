@@ -467,14 +467,14 @@ function CellList(
     return UpdateCellList!(x, box, cl, parallel=parallel)
 end
 
-"""
+#=
     CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
 equivalent function with the reinterprted input. The first dimension of the 
 matrix must be the dimension of the points (`2` or `3`).
 
-"""
+=#
 function CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
@@ -567,14 +567,14 @@ function CellList(
     return cl_pair
 end
 
-"""
+#=
     CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
 equivalent function with the reinterprted input. The first dimension of the 
 matrices must be the dimension of the points (`2` or `3`).
 
-"""
+=#
 function CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     size(y, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
@@ -628,7 +628,7 @@ function UpdateCellList!(
     end
 end
 
-"""
+#=
     function UpdateCellList!(
         x::AbstractMatrix,
         box::Box,
@@ -640,7 +640,7 @@ Reinterprets the matrix `x` as vectors of static vectors and calls the
 equivalent function with the reinterprted input. The first dimension of the 
 matrix must be the dimension of the points (`2` or `3`).
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractMatrix,
     box::Box,
@@ -767,7 +767,7 @@ function UpdateCellList!(
     return cl
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractMatrix,
         box::Box,
@@ -780,7 +780,7 @@ Reinterprets the matrix `x` as vectors of static vectors and calls the
 equivalent function with the reinterprted input. The first dimension of the 
 matrix must be the dimension of the points (`2` or `3`).
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractMatrix,
     box::Box,
@@ -1075,7 +1075,7 @@ function UpdateCellList!(
     end
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractMatrix,
         y::AbstractMatrix,
@@ -1088,7 +1088,7 @@ Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
 equivalent function with the reinterprted input. The first dimension of the 
 matrices must be the dimension of the points (`2` or `3`).
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
@@ -1210,7 +1210,7 @@ function _update_CellListPair!(ref, target, cl_pair::CellListPair{V,N,T,Swap}) w
     return cl_pair
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractMatrix,
         y::AbstractMatrix,
@@ -1224,7 +1224,7 @@ Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
 equivalent function with the reinterprted input. The first dimension of the 
 matrices must be the dimension of the points (`2` or `3`).
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractMatrix,
     y::AbstractMatrix,
