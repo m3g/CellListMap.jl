@@ -1,11 +1,8 @@
 export ParticleSystem
 export update_cutoff!
 export update_unitcell!
-
-export copy_output
 export resize_output!
-export reset_output!, reset_output
-export reducer!, reducer
+@compat public copy_output, reset_output!, reset_output, reducer, reducer!
 
 # Types of variables that have support for multi-threading without having 
 # to explicit add methods to copy_output, reset_output!, and reducer functions.

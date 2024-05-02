@@ -20,7 +20,6 @@ export OrthorhombicCell
 export NonPeriodicCell
 export unitcelltype
 export nbatches
-@compat public copy_output, reset_output!, reducer 
 
 # Testing file
 const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
