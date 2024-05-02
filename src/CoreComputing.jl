@@ -68,10 +68,8 @@ function reduce(output, output_threaded)
     """))
 end
 
-"""
+#=
     partition!(by, x::AbstractVector)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -79,7 +77,7 @@ Function that reorders `x` vector by putting in the first positions the
 elements with values satisfying `by(el)`. Returns the number of elements
 that satisfy the condition.
 
-"""
+=#
 function partition!(by, x::AbstractVector)
     iswap = 1
     @inbounds for i in eachindex(x)
@@ -329,10 +327,8 @@ function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, out
     return output
 end
 
-"""
+#=
     project_particles!(projected_particles,cellⱼ,cellᵢ,Δc,Δc_norm,box)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -342,7 +338,7 @@ returns a view of `projected particles, where only the particles for which
 the projection on the direction of the cell centers still allows the particle
 to be within the cutoff distance of any point of the other cell.
 
-"""
+=#
 function project_particles!(
     projected_particles, cellⱼ, cellᵢ,
     Δc, Δc_norm, box::Box{UnitCellType,N}

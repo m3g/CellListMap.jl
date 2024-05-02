@@ -3,11 +3,9 @@
 # the CellList and CellListPair structures.
 #
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -17,7 +15,7 @@ Copies particle coordinates and associated index, to build contiguous particle l
 in memory when building the cell lists. This strategy duplicates the particle coordinates
 data, but is probably worth the effort. 
 
-"""
+=#
 struct ParticleWithIndex{N,T}
     index::Int
     real::Bool
@@ -26,11 +24,9 @@ end
 Base.zero(::Type{ParticleWithIndex{N,T}}) where {N,T} =
     ParticleWithIndex{N,T}(0, false, zeros(SVector{N,T}))
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -44,7 +40,7 @@ step of the calculation (cell list construction and mapping of interactions). Th
 of the cell lists require a larger number of particles for threading to be effective, Thus
 by default the system size that allows multi-threading is greater for this part of the calculation.  
 
-"""
+=#
 struct NumberOfBatches
     build_cell_lists::Int
     map_computation::Int
@@ -57,11 +53,9 @@ function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
     _print(io, "  Number of batches for function mapping: $(nbatches.map_computation)")
 end
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -71,7 +65,7 @@ This structure contains the cell linear index and the information
 about if this cell is in the border of the box (such that its 
 neighboring cells need to be wrapped) 
 
-"""
+=#
 Base.@kwdef struct Cell{N,T}
     linear_index::Int = 0
     cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, N))
@@ -101,11 +95,9 @@ function copy_cell(cell::Cell{N,T}) where {N,T}
 end
 
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -115,18 +107,16 @@ Auxiliary structure to contain projected particles. Types of
 scalars are chosen such that with a `SVector{3,Float64}` the
 complete struct has 32bytes.
 
-"""
+=#
 Base.@kwdef struct ProjectedParticle{N,T}
     index::Int
     xproj::T
     coordinates::SVector{N,T}
 end
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -134,7 +124,7 @@ $(TYPEDFIELDS)
 
 Structure that contains the cell lists information.
 
-"""
+=#
 Base.@kwdef mutable struct CellList{N,T}
     " Number of real particles. "
     n_real_particles::Int = 0
@@ -165,21 +155,17 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellList)
     _print(io, "  $(cl.n_particles) particles in computing box, including images.")
 end
 
-"""
-
-$(INTERNAL)
+#=
 
 Structures to control dispatch on swapped vs. not swapped cell list pairs.
 
-"""
+=#
 struct Swapped end
 struct NotSwapped end
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -188,7 +174,7 @@ $(TYPEDFIELDS)
 Structure that will cointain the cell lists of two independent sets of
 particles for cross-computation of interactions
 
-"""
+=#
 struct CellListPair{V,N,T,Swap}
     ref::V
     target::CellList{N,T}
@@ -202,10 +188,8 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
     _print(io, "   $(cl.target.n_cells_with_real_particles) cells with real particles of target vector.")
 end
 
-"""
+#=
     set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0);parallel=true)  
-
-$(INTERNAL)
 
 # Extended help
 
@@ -214,7 +198,7 @@ and mapping computations. This is of course heuristic, and may not be the best c
 every problem. See the parameter `nbatches` of the construction of the cell lists for 
 tunning this.
 
-"""
+=#
 function set_number_of_batches!(cl::CellList{N,T}, nbatches::Tuple{Int,Int}=(0, 0); parallel=true) where {N,T}
     if parallel
         nbatches = NumberOfBatches(nbatches)
@@ -309,11 +293,9 @@ end
 nbatches(cl::CellListPair) = nbatches(cl.target)
 nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.target, s)
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -322,7 +304,7 @@ $(TYPEDFIELDS)
 Auxiliary structure to carry threaded lists and ranges of particles to 
 be considered by each thread on parallel construction. 
 
-"""
+=#
 @with_kw struct AuxThreaded{N,T}
     particles_per_batch::Int
     idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef, 0)
@@ -385,10 +367,8 @@ function AuxThreaded(cl::CellList{N,T}; particles_per_batch=10_000) where {N,T}
 end
 
 
-"""
+#=
     set_idxs!(idxs, n_particles, nbatches)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -396,7 +376,7 @@ Sets the indexes of the particles that will be considered for each batch in para
 Modifies the `idxs` array of ranges, which is usually the `aux.idxs` array of the the 
 corresponding `AuxThreaded` structure.
 
-"""
+=#
 function set_idxs!(idxs, n_particles, nbatches)
     length(idxs) == nbatches || throw(ArgumentError("Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array."))
     nperthread, nrem = divrem(n_particles, nbatches)
@@ -501,17 +481,15 @@ function CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where
     return CellList(x_re, box; kargs...)
 end
 
-"""
+#=
     reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
-
-$(INTERNAL)
 
 # Extended help
 
 Resets a cell list, by setting everything to zero, but retaining
 the allocated `particles` and `projected_particles` vectors.
 
-"""
+=#
 function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     new_number_of_cells = prod(box.nc)
     if new_number_of_cells > cl.number_of_cells
@@ -815,10 +793,8 @@ function UpdateCellList!(
     return UpdateCellList!(x_re, box, cl, aux, parallel=parallel)
 end
 
-"""
+#=
     add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
-
-$(INTERNAL)
 
 # Extended help
 
@@ -827,7 +803,7 @@ index, meaning that particle `i` of vector `x` corresponds to the particle with 
 index `i+ishift`. The shift is used to construct cell lists from fractions of the original
 set of particles in parallel list construction.  
 
-"""
+=#
 function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
     for ip in eachindex(x)
         xp = x[ip]
@@ -843,10 +819,8 @@ end
 # define method for the ParticleWithIndex type
 out_of_computing_box(p::ParticleWithIndex, box::Box) = out_of_computing_box(p.coordinates, box)
 
-"""
+#=
     copydata!(cell1::Cell,cell2::Cell)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -854,7 +828,7 @@ Copies the data from `cell2` to `cell1`, meaning that particles are
 copied element-wise from `cell2` to `cell1`, with the `particles` array
 of `cell1` being resized (increased) if necessary.
 
-"""
+=#
 function copydata!(cell1::Cell, cell2::Cell)
     @set! cell1.linear_index = cell2.linear_index
     @set! cell1.cartesian_index = cell2.cartesian_index
@@ -872,17 +846,15 @@ function copydata!(cell1::Cell, cell2::Cell)
     return cell1
 end
 
-"""
+#=
     append_particles!(cell1::Cell,cell2::Cell)
-
-$(INTERNAL)
 
 # Extended help
 
 Add the particles of `cell2` to `cell1`, updating the cell data and, if necessary,
 resizing (increasing) the `particles` array of `cell1`
 
-"""
+=#
 function append_particles!(cell1::Cell, cell2::Cell)
     if cell2.contains_real
         @set! cell1.contains_real = true
@@ -898,17 +870,15 @@ function append_particles!(cell1::Cell, cell2::Cell)
     return cell1
 end
 
-"""
+#=
     merge_cell_lists!(cl::CellList,aux::CellList)
-
-$(INTERNAL)
 
 # Extended help
 
 Merges an auxiliary `aux` cell list to `cl`, and returns the modified `cl`. Used to
 merge cell lists computed in parallel threads.
 
-"""
+=#
 function merge_cell_lists!(cl::CellList, aux::CellList)
     # One should never get here if the lists do not share the same # computing box
     if cl.number_of_cells != aux.number_of_cells
@@ -972,7 +942,7 @@ function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) wher
     return CartesianIndex{N}(cidxs)
 end
 
-"""
+#=
     add_particle_to_celllist!(
         ip,
         x::SVector{N,T},
@@ -981,13 +951,11 @@ end
         real_particle::Bool=true
     ) where {N,T}
 
-$(INTERNAL)
-
 # Extended help
 
 Adds one particle to the cell lists, updating all necessary arrays.
 
-"""
+=#
 function add_particle_to_celllist!(
     ip,
     x::SVector{N,T},
@@ -1272,14 +1240,12 @@ function UpdateCellList!(
     return UpdateCellList!(x_re, y_re, box, cl_pair, aux, parallel=parallel)
 end
 
-"""
+#=
     particles_per_cell(cl)
-
-$(INTERNAL)
 
 Returns the average number of real particles per computing cell.
 
-"""
+=#
 particles_per_cell(cl::CellList) = cl.n_real_particles / cl.number_of_cells
 particles_per_cell(cl::CellListPair) = particles_per_cell(cl.target)
 

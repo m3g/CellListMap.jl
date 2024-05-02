@@ -514,8 +514,6 @@ const reset_output = reset_output!
 #=
     _reset_all_output!(output, output_threaded)
 
-$(INTERNAL)
-
 Function that resets the output variable and the threaded copies of it.
 
 =#
@@ -622,8 +620,6 @@ end
 
 #=
     reduce_output!(reducer::Function, output, output_threaded)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -874,8 +870,6 @@ end
 #=
     get_computing_box(sys::AbstractParticleSystem)
 
-$(INTERNAL)
-
 Retrieves the computing box of the system. The computing box is large enough to
 contain all coordinates of the particles, plus the cutoff.
 
@@ -891,8 +885,6 @@ end
 
 #=
     UpdateParticleSystem!
-
-$(INTERNAL)
 
 Updates the cell lists for periodic systems.
 

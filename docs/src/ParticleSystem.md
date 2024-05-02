@@ -12,10 +12,8 @@ The `ParticleSystem` interface facilitates the use of `CellListMap` for the majo
         - [Particle simulation](@ref)
 
 !!! compat
-    The `PeriodicSystems` interface was available until version `0.8.29` by loading
-    the `CellistMap.PeriodicSystems` module. This is still possible, but no longer
-    necessary in version `0.8.30` or greater. The `PeriodicSystems` submodule will be 
-    deprecated in future versions in favor of the `ParticleSystem` interface..
+    The `ParticleSystem` interface is available since version `0.9.0` of CellListMap.jl.
+    It replaces the `PeriodicSystems` interface available in previous versions.
 
 ## The mapped function
 
@@ -95,7 +93,7 @@ because the `output_name` field was provided. If it is not provided, you can acc
     - The `unitcell` parameter may be:
         - a vector, in which case the system periodic boundaries are Orthorhombic, this is faster.
         - a matrix, in which case the system periodic boundaries are Triclinic (general).
-        - `nothing`, in which case no periodic boundary conditions will be used.
+        - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters. 
 
 ## Computing forces
@@ -627,9 +625,6 @@ larger values of `lcell` may improve the performance. To be tested by the user.
     number of particles and `D` is the dimension (2 or 3). With that the number of cells will be close to `n` in the worst case.  
 
 ### Coordinates as matrices
-
-!!! compat
-    Support for input coordinates in matrix format in the `PeriodicSystem` interface was introduced in version `0.8.28`.
 
 Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and `N` is the number of particles. For example:
 

@@ -22,9 +22,6 @@ export unitcelltype
 export nbatches
 @compat public copy_output, reset_output!, reducer 
 
-# Flag for internal function doc entries
-const INTERNAL = "Internal function or structure - interface may change."
-
 # Testing file
 const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
 

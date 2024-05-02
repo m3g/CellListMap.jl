@@ -75,11 +75,9 @@ end
     @test nb1.list == [(0, 0, 0.0), (1, 1, 1.0), (3, 3, 3.0), (4, 4, 4.0)]
 end
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 Structure that containst the system information for neighborlist computations. All fields are internal.
 
@@ -87,7 +85,7 @@ Structure that containst the system information for neighborlist computations. A
 
 $(TYPEDFIELDS)
 
-"""
+=#
 mutable struct InPlaceNeighborList{B,C,A,NB<:NeighborList}
     box::B
     cl::C
@@ -903,8 +901,6 @@ end
         verbose::Bool=false,
         atol::Real=1e-10
     ) where {T1 <: Real, T2 <: Real}
-
-$(CellListMap.INTERNAL)
 
 # Extended help
 

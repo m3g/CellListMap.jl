@@ -1,3 +1,8 @@
+
+```@meta
+CollapsedDocStrings = true
+```
+
 # Help entries
 
 These entries can be viewed at the `Julia` REPL `Julia` using 

@@ -1,17 +1,13 @@
-"""
+#=
     fastmod1(x)
-
-$(INTERNAL)
 
 Computes `mod(x,1)`, quickly, using `x - floor(x)`. Maybe irrelevant.
 
-"""
+=#
 @inline fastmod1(x) = x - floor(x)
 
-"""
+#=
     wrap_cell_fraction(x,unit_cell_matrix)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -33,7 +29,7 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
  0.3
 ```
 
-"""
+=#
 @inline function wrap_cell_fraction(x::AbstractVector{T}, unit_cell_matrix::AbstractMatrix) where {T}
     # Division by `oneunit` is to support Unitful quantities. 
     # this workaround works here because the units cancel.
@@ -46,10 +42,8 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
     return p
 end
 
-"""
+#=
     wrap_to_first(x,unit_cell_matrix)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -70,22 +64,20 @@ julia> wrap_to_first(x,unit_cell_matrix)
  3.0000000000000004
 ```
 
-"""
+=#
 @inline function wrap_to_first(x, unit_cell_matrix)
     p = wrap_cell_fraction(x, unit_cell_matrix)
     return unit_cell_matrix * p
 end
 
-"""
+#=
     wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-
-$(INTERNAL)
 
 # Extended help
 
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`. 
 
-"""
+=#
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
     invu = inv(oneunit(T))
     unit_cell_matrix = invu * unit_cell_matrix
@@ -95,17 +87,15 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
     return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
 
-"""
+#=
     wrap_relative_to(x,xref,sides::AbstractVector)
-
-$(INTERNAL)
 
 # Extended help
 
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
 for an Orthorhombic cell of which only the side lengths are provided.
 
-"""
+=#
 @inline function wrap_relative_to(x, xref, sides::AbstractVector)
     xw = mod.(x - xref, sides)
     xw = _wrap_single_coordinate.(xw, sides)
@@ -124,17 +114,15 @@ end
     return x
 end
 
-"""
+#=
     translation_image(x::SVector{N,T},unit_cell_matrix,indices) where {N,T}
-
-$(INTERNAL)
 
 # Extended help
 
 Translate vector `x` according to the `unit_cell_matrix` lattice vectors and the `indices`
 provided.
 
-"""
+=#
 @inline translation_image(x::SVector{N,T}, unit_cell_matrix, indices) where {N,T} =
     x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], N))
 
@@ -170,14 +158,12 @@ function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix
     return x_new
 end
 
-"""
+#=
     replicate_system!(
         x::AbstractVector{SVector{N,T}},
         unit_cell_matrix::AbstractMatrix,
         ranges::Tuple
     ) where {N,T}
-
-$(INTERNAL)
 
 # Extended help
 
@@ -203,7 +189,7 @@ julia> CellListMap.replicate_system!(x,box,(0:0,-1:1))
  [0.6094126258851252, 1.2328989485215263]
 ```
 
-"""
+=#
 function replicate_system!(
     x::AbstractVector{SVector{N,T}},
     unit_cell_matrix::AbstractMatrix,
@@ -231,30 +217,26 @@ function replicate_system!(x::AbstractMatrix{T}, cell, ranges) where {T}
 end
 
 
-"""
+#=
     cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N}
-
-$(INTERNAL)
 
 # Extended help
 
 Given the linear index of the cell in the cell list, returns the cartesian indices 
 of the cell (for arbitrary dimension N).
 
-"""
+=#
 @inline cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} =
     CartesianIndices(ntuple(i -> nc[i], N))[i1D]
 
-"""
+#=
     cell_linear_index(nc::SVector{N,Int}, indices) where N
-
-$(INTERNAL)
 
 # Extended help
 
 Returns the index of the cell, in the 1D representation, from its cartesian coordinates. 
 
-"""
+=#
 @inline cell_linear_index(nc::SVector{N,Int}, indices) where {N} =
     LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
 
@@ -331,11 +313,9 @@ function limits(x::AbstractMatrix, y::AbstractMatrix)
 end
 
 
-"""
+#=
     align_cell(m::StaticMatrix)
     align_cell!(m::AbstractMatrix)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -343,7 +323,7 @@ These functions rotate the unit cell matrix such that the largest lattice vector
 along the x-axis and, for 3D cells, also that the the plane formed by the largest and 
 second largest lattice vectors is oriented perpendicular to the z-axis. 
 
-"""
+=#
 function align_cell end
 align_cell(m::AbstractMatrix) = align_cell!(copy(m))
 align_cell(m::SMatrix{2}) = _align_cell2D!(m)
@@ -480,14 +460,12 @@ end
 
 end
 
-"""
+#=
     cell_vertices(m::AbstractMatrix)
-
-$(INTERNAL)
 
 Function that returns the vertices of a unit cell in 2D or 3D, given the unit cell matrix.
 
-"""
+=#
 function cell_vertices(m::AbstractMatrix)
     if size(m) == (2, 2)
         x = _cell_vertices2D(m)
@@ -519,16 +497,14 @@ end
     return x
 end
 
-"""
+#=
     draw_cell_vertices(m::AbstractMatrix)
-
-$(INTERNAL)
 
 Function that returns the vertices of a unit cell matrix in 2D or 3D, as a vector
 of static vectors, in a proper order for ploting the cell (the first vertex, in the
 origin, is repeated at the end of the list, to close the figure)
 
-"""
+=#
 function draw_cell_vertices(m::AbstractMatrix)
     if size(m) == (2, 2)
         x = _draw_cell_vertices2D(m)
@@ -587,14 +563,12 @@ end
     @test draw_cell_vertices(m) == SVector{3,Float64}[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
 end
 
-"""
+#=
     cell_limits(m::AbstractMatrix)
-
-$(INTERNAL)
 
 For 2D and 3D matrices, returns the maximum and minimum coordinates of all vertices. 
 
-"""
+=#
 function cell_limits(m::AbstractMatrix{T}) where {T}
     vertices = cell_vertices(m)
     xmin = MVector(vertices[begin])
@@ -645,14 +619,12 @@ end
     @test cell_limits(mr) == ([0.0, 0.0, -1.0], [3.0, 2.0, 0.0])
 end
 
-"""
+#=
     draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
-
-$(INTERNAL)
 
 Draw the unit cell in a 2D or 3D plot. Requires `using Plots`.
 
-"""
+=#
 function draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
     plot = Main.plot
     plot! = Main.plot!

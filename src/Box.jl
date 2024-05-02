@@ -14,11 +14,9 @@ struct UnitCell{UnitCellType,N,T,M}
     matrix::SMatrix{N,N,T,M}
 end
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -28,7 +26,7 @@ Structure that contains the maximum lengths on each direction,
 to dispatch on the construction of boxes without periodic boundary
 conditions.
 
-"""
+=#
 struct Limits{N,T}
     limits::SVector{N,T}
 end
@@ -38,11 +36,9 @@ end
 # the condition of 2*cutoff and the unit cell check check fail
 _sides_from_limits(unitcell, cutoff) = unitcell.limits .+ (2.1 * cutoff)
 
-"""
+#=
 
 $(TYPEDEF)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -83,7 +79,7 @@ Total number of cells: 2448
 
 ```
 
-"""
+=#
 Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M,TR}
     input_unit_cell::UnitCell{UnitCellType,N,T,M}
     aligned_unit_cell::UnitCell{UnitCellType,N,T,M}
@@ -127,16 +123,14 @@ unitcelltype(::Box{T}) where {T} = T
     @test unitcelltype(Box(limits(x), 0.1)) == NonPeriodicCell
 end
 
-"""
+#=
     _promote_types(cell,cutoff)
-
-$(INTERNAL)
 
 # Extended help
 
 Promotes the types of the unit cell matrix (or sides) and cutoff to floats if one or both were input as integers. 
 
-"""
+=#
 function _promote_types(cell, cutoff)
     input_type = promote_type(eltype(cell), typeof(cutoff))
     float_type = input_type == Int ? Float64 : input_type
@@ -287,10 +281,8 @@ function Base.show(io::IO, ::MIME"text/plain", box::Box{UnitCellType,N}) where {
     _print(io, "  Total number of cells = ", prod(box.nc))
 end
 
-"""
+#=
     cell_matrix_from_sides(sides::AbstractVector)
-
-$(INTERNAL)
 
 # Extended help
 
@@ -307,7 +299,7 @@ julia> CellListMap.cell_matrix_from_sides([1,1,1])
  0  0  1
 ```
 
-"""
+=#
 cell_matrix_from_sides(sides::AbstractVector) = oneunit(eltype(sides)) * diagm(sides ./ oneunit(eltype(sides)))
 cell_matrix_from_sides(sides::Tuple) = cell_matrix_from_sides(SVector(sides))
 
@@ -394,7 +386,7 @@ end
 # the unitcell matrix. 
 const InputUnitCellTypes = Union{Nothing,AbstractVector,AbstractMatrix,Limits,Tuple}
 
-"""
+#=
     update_box(
         box::Box{UnitCellType,N,T,TSQ,M};
         unitcell::Union{Nothing,AbstractVector{T},AbstractMatrix{T},Limits,Tuple}=nothing,
@@ -402,12 +394,10 @@ const InputUnitCellTypes = Union{Nothing,AbstractVector,AbstractMatrix,Limits,Tu
         lcell::Union{Nothing,Int}=nothing
     )
 
-$(INTERNAL)
-
 Function that returns an updated system box in a type-stable manner, given possible 
 variations in the `unitcell`, `cutoff`, or `lcell` parameters. 
 
-"""
+=#
 function update_box(
     box::Box{UnitCellType,N,T,TSQ,M};
     unitcell::InputUnitCellTypes=nothing,
@@ -495,10 +485,8 @@ end
 
 end
 
-"""
+#=
     neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
-
-$(INTERNAL)
 
 # Extended help
 
@@ -507,7 +495,7 @@ evaluated (forward, i. e. to avoid repeated interactions)
 if the cells have sides of length `box.cell_size`. `N` can be
 `2` or `3`, for two- or three-dimensional systems.
 
-"""
+=#
 function neighbor_cells_forward(box::Box{UnitCellType,3}) where {UnitCellType}
     @unpack lcell = box
     nb = Iterators.flatten((
@@ -527,17 +515,15 @@ function neighbor_cells_forward(box::Box{UnitCellType,2}) where {UnitCellType}
     return nb
 end
 
-"""
+#=
     neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-
-$(INTERNAL)
 
 # Extended help
 
 Function that returns the iterator of the cartesian indices of all neighboring
 cells of a cell where the computing cell index is `box.lcell`.
 
-"""
+=#
 function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
     @unpack lcell = box
     return Iterators.filter(
@@ -546,25 +532,21 @@ function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
     )
 end
 
-"""
+#=
     current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-
-$(INTERNAL)
 
 # Extended help
 
 Returns an iterator over all neighbor cells, including the center one.
 
-"""
+=#
 function current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
     @unpack lcell = box
     return CartesianIndices(ntuple(i -> -lcell:lcell, N))
 end
 
-"""
+#=
     particle_cell(x::SVector{N,T}, box::Box) where {N,T}
-
-$(INTERNAL)
 
 # Extended help
 
@@ -572,7 +554,7 @@ Returns the coordinates of the *computing cell* to which a particle belongs, giv
 and the `cell_size` vector. The computing box is always Orthorhombic, and the first
 computing box with positive coordinates has indexes `Box.lcell + 1`.
 
-"""
+=#
 @inline function particle_cell(x::SVector{N}, box::Box) where {N}
     CartesianIndex(
         ntuple(N) do i
@@ -584,17 +566,13 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
     )
 end
 
-"""
+#=
     cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-
-$(INTERNAL)
-
-# Extended help
 
 Computes the geometric center of a computing cell, to be used in the projection
 of points. Returns a `SVector{N,T}`
 
-"""
+=#
 @inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
     SVector{N,T}(
         ntuple(N) do i
@@ -605,17 +583,15 @@ of points. Returns a `SVector{N,T}`
     )
 end
 
-"""
+#=
     in_computing_box(x::SVector{N},box::Box) where N
-
-$(INTERNAL)
 
 # Extended help
 
 Function that evaluates if a particle is inside the computing bounding box,
 defined by the maximum and minimum unit aligned cell coordinates.
 
-"""
+=#
 function in_computing_box(x::SVector{N}, box::Box) where {N}
     min = box.computing_box[1]
     max = box.computing_box[2]
@@ -628,16 +604,14 @@ function in_computing_box(x::SVector{N}, box::Box) where {N}
     return inbox
 end
 
-"""
+#=
     replicate_particle!(ip,p::SVector{N},box,cl) where N
-
-$(INTERNAL)
 
 # Extended help
 
 Replicates the particle as many times as necessary to fill the computing box.
 
-"""
+=#
 function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
     itr = Iterators.product(ntuple(i -> -1:1, N)...)
     for indices in itr
@@ -650,17 +624,15 @@ function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
     return cl
 end
 
-"""
+#=
     check_unit_cell(box::Box)
-
-$(INTERNAL)
 
 # Extended help
 
 Checks if the unit cell satisfies the conditions for using the minimum-image
 convention. 
 
-"""
+=#
 check_unit_cell(box::Box) = check_unit_cell(box.aligned_unit_cell.matrix, box.cutoff)
 
 function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)

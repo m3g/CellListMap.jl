@@ -2,7 +2,8 @@
 
 [CellListMap.jl](https://github.com/m3g/CellListMap.jl) implements an efficient cell list scheme for the computation of interactions, neighbor lists, or any other property dependent on the distances between pairs of two- or three-dimensional particles, within a cutoff. 
 
-It maps a generic function to be computed for each pair of particles, using periodic boundary conditions of any type. Parallel and serial implementations can be used. The user defined function will be evaluated only for the pairs closer to each other than the desired cutoff distance.
+The package provides an interface to compute a generic function for each pair of particles closer 
+than a cutoff, using general periodic boundary conditions. Parallel and serial implementations can be used. 
 
 ## Overview
 
@@ -18,7 +19,9 @@ for i in 1:N
     end
 end
 ```
-where `N` is the number of particles. Alternatively, if the interaction is between two disjoint sets of particles, the loop is
+where `N` is the number of particles. 
+
+Alternatively, if the interaction is between two disjoint sets of particles, the naive loop is
 ```julia
 for i in 1:N 
     for j in 1:M
@@ -33,10 +36,12 @@ end
 where `N` and `M` are the numbers of particles of each set. If the cutoff is significantly smaller than the dimension of the system,
 these loops are very expensive, and it is possible to avoid looping over particles that are farther from each other than the cutoff.
 
-CellListMap implements an efficient cell-list scheme, with optimizations, to substitute such double-loops while taking into account
-periodic boundary conditions. 
+CellListMap implements an efficient and parallel cell-list method, with optimizations, to substitute such double-loops while taking into account
+periodic boundary conditions. Cell lists are an alternative to distance trees and are particularly effective when the distribution
+of the particles is roughly homogeneous. For highly heterogeneous systems distance trees like those implemented in 
+[NearestNeighbors.jl](https://github.com/KristofferC/NearestNeighbors.jl) might be more performant. 
 
-### High level interface for periodic system
+### High level interface for particle systems
 
 Since version `0.8.30`, a simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. See the [ParticleSystem interface](@ref) menu for details. 
 

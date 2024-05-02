@@ -1,14 +1,12 @@
-"""
+#=
     pathological_coordinates(N)
-
-$(INTERNAL)
 
 # Extended help
 
 Function to generate some coordinates with pathological properties, for testing.
 Returns `x`, `y`, `sides` and `cutoff`.
 
-"""
+=#
 function pathological_coordinates(N)
 
     # Number of particles, sides and cutoff
@@ -34,17 +32,15 @@ function pathological_coordinates(N)
     return x, y, sides, cutoff
 end
 
-"""
+#=
     map_naive!(f::Function, output, x::AbstractVector, box::Box)
     map_naive!(f::Function, output, x::AbstractVector, y::AbstractVector, box::Box)
-
-$(INTERNAL)
 
 # Extended help
 
 Function that uses the naive pairwise mapping algorithm, for testing.
 
-"""
+=#
 function map_naive!(f::Function, output, x::AbstractVector, box::Box)
     @unpack input_unit_cell, cutoff_sqr = box
     for i in 1:length(x)-1
@@ -75,17 +71,15 @@ function map_naive!(f::Function, output, x::AbstractVector, y::AbstractVector, b
     return output
 end
 
-"""
+#=
     view_celllist_particles(cl::CellList)
-
-$(INTERNAL)
 
 # Extended help
 
 Auxiliary function to view the particles of a computing box, including images created
 for computing purposes.
 
-"""
+=#
 function view_celllist_particles(cl::CellList{N,T}) where {N,T}
     x = SVector{N,T}[]
     for icell in 1:cl.n_cells_with_particles
@@ -299,15 +293,13 @@ function get_particles(cl::CellList{N,T}) where {N,T}
     return real, ghost
 end
 
-"""
+#=
     draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
     draw_computing_cell(cl::CellList,box::Box{UnitCellType,2},x) where UnitCellType
 
-$(INTERNAL)
-
 This function creates a plot of the computing cell, in two dimensions.
 
-"""
+=#
 function draw_computing_cell(x, box::Box{UnitCellType,2};
     parallel=true,
     xticks=nothing,
@@ -350,14 +342,12 @@ function draw_computing_cell(
     return plt
 end
 
-"""
+#=
     draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
-
-$(INTERNAL)
 
 This function creates a plot of the computing cell, in three dimensions.
 
-"""
+=#
 function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {UnitCellType}
     cl = CellList(x, box, parallel=parallel)
     vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
