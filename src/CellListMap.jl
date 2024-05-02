@@ -2,6 +2,7 @@ module CellListMap
 
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS 
 using TestItems: @testitem
+using Compat: @compat
 using ProgressMeter: Progress, next!
 using Parameters: @unpack, @with_kw
 using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector
@@ -19,6 +20,7 @@ export OrthorhombicCell
 export NonPeriodicCell
 export unitcelltype
 export nbatches
+@compat public copy_output, reset_output!, reducer 
 
 # Flag for internal function doc entries
 const INTERNAL = "Internal function or structure - interface may change."
