@@ -12,7 +12,6 @@ makedocs(
         "Low level interface" => "LowLevel.md",
         "Ecosystem integration" => "ecosystem.md",
         "From Python" => "python.md",
-        "Help entries" => "help.md",
         "Citation" => "citation.md",
     ]
 )

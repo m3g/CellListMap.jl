@@ -895,3 +895,15 @@ function animate(trajectory)
 end
 ```
 
+## Docstrings
+
+```@meta
+CollapsedDocStrings = true
+```
+
+```@autodocs
+Modules = [CellListMap]
+Pages = ["ParticleSystem.jl"]
+Order = [:function, :type]
+```
+

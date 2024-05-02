@@ -602,6 +602,20 @@ julia> map_pairwise!((x,y,i,j,d2,n) -> n += 1, 0, box, cl) # count neighbors
 23
 ```
 
+## Docstrings
+
+```@meta
+CollapsedDocStrings = true
+```
+
+```@autodocs
+Modules = [CellListMap]
+Pages = ["Box.jl", "CellListMap.jl", "CellLists.jl", "CellOperations.jl", "CoreComputing.jl"]
+Order = [:type, :function]
+```
+
+
+
 
 
 

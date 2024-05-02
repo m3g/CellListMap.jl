@@ -197,5 +197,17 @@ Additional optional parameters can be used in a `neighborlist` call:
 | `autoswap` | `Bool` | `true` |  (advanced) automatically choose set to construct the cell lists |
 
 
+## Docstrings
+
+```@meta
+CollapsedDocStrings = true
+```
+
+```@autodocs
+Modules = [CellListMap]
+Pages = ["neighborlists.jl"]
+Order = [:function, :type]
+```
+
 
 
