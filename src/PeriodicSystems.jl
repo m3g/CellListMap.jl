@@ -1054,6 +1054,17 @@ end
 # For backward compatibility: will be removed in 1.0
 export PeriodicSystems
 module PeriodicSystems
+    function __init__()
+        @warn begin """\n
+        Loading the `PeriodicSystems` submodule is no longer necessary in v0.8.30. Use only
+
+        using CellListMap
+
+        to access the structures and functions previously defined in `PeriodicSystems`.
+        The `PeriodicSystems` submodule will be completely removed in future breaking versions.
+
+        """ end _file=nothing _line=nothing
+    end
     import ..CellListMap
     using ..CellListMap: PeriodicSystem
     export PeriodicSystem
