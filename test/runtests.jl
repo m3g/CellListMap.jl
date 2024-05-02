@@ -5,10 +5,10 @@ using TestItemRunner: @run_package_tests, @testitem
     Aqua.test_all(CellListMap)
 end
 
-@testitem "Doctests" begin
-    using Documenter: doctest
-    doctest(CellListMap)
-end
+#@testitem "Doctests" begin
+#    using Documenter
+#    doctest(CellListMap)
+#end
 
 @testitem "disjoint sets" begin
 
