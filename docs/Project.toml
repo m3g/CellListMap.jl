@@ -1,7 +1,9 @@
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
+Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 PDBTools = "e29189f1-7114-4dbd-93d0-c5673a921a58"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"

@@ -85,7 +85,7 @@ julia> neighborlist(positions, cutoff)
 
 Allowing automatic differentiation follows the same principles, meaning that we only need to allow the propagation of dual types through the computation by proper initialization of the input data. However, it is easier to work with the low level interface, which accepts matrices as the input for positions and a more fine control of the types of the variables. Matrices are easier input types for auto diff packages.
 
-The variables are each component of each vector, thus the easiest way to represent the points such that automatic differentiation packages understand is by creating a matrix:
+The variables are each component of each vector, thus the easiest way to represent the points to interface with differentiation packages is providing the coordinates as a matrix:
 
 ```julia-repl
 julia> x = rand(3,1000)
@@ -98,21 +98,18 @@ julia> x = rand(3,1000)
 The key here is allow all the types of the parameters to follow the type propagation of the elements of `x` inside the differentiation routine. The function we define to compute the derivative is, then:
 
 ```julia-repl
-julia> function sum_sqr(x,sides,cutoff)
-           cutoff = eltype(x)(cutoff)
-           sides = eltype(x).(sides)
-           box = Box(sides,cutoff)
-           cl = CellList(x,box)
-           sum_sqr = zero(eltype(x))
-           sum_sqr = map_pairwise!(
-               (x,y,i,j,d2,sum_sqr) -> sum_sqr += d2,
-               sum_sqr, box, cl
+julia> function sum_sqr(x, sides, cutoff)
+           sys = ParticleSystem(
+               positions=x,
+               unitcell=eltype(x).(sides),
+               cutoff=eltype(x).(cutoff),
+               output=zero(eltype(x))
            )
-           return sum_sqr
+           return  map_pairwise((_, _, _, _, d2, sum_sqr) -> sum_sqr += d2, sys)
        end
 ```
 
-Note that we allow `cutoff`  and `sides`  to be converted to the same type of the input `x`  of the function. For a simple call to the function this is inconsequential:
+Note that we convert `cutoff` and `sides`  to the same type of the input `x`  of the function, and set the type of the `output` variable accordingly. For a simple call to the function this is inconsequential:
 
 ```julia-repl
 julia> cutoff = 0.1; sides = [1,1,1];
