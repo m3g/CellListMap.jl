@@ -100,13 +100,15 @@ Returns the type of a unitcell from the `Box` structure.
 
 ## Example
 
-```julia-repl
-julia> box = Box([1,1,1], 0.1)
+```jldoctest
+julia> using CellListMap
+
+julia> box = Box([1,1,1], 0.1);
 
 julia> unitcelltype(box)
 OrthorhombicCell
 
-julia> box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
+julia> box = Box([1 0 0; 0 1 0; 0 0 1], 0.1);
 
 julia> unitcelltype(box)
 TriclinicCell
@@ -162,20 +164,41 @@ Construct box structure given the cell matrix of lattice vectors. This
 constructor will always return a `TriclinicCell` box type, unless the
 `UnitCellType` parameter is set manually to `OrthorhombicCell`
 
-## Example
+## Examples
 
-```julia-repl
+Building a box with a triclinic unit cell matrix:
+
+```jldoctest
+julia> using CellListMap 
+
 julia> unit_cell = [ 100   50    0 
                        0  120    0
                        0    0  130 ];
 
-julia> box = Box(unit_cell,10)
-Box{TriclinicCell, 3, Float64, 9}
-  unit cell matrix: [100.0 50.0 0.0; 0.0 120.0 0.0; 0.0 0.0 130.0]
-  cutoff: 10.0
-  number of computing cells on each dimension: [17, 14, 15]
-  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
-  Total number of cells: 3570
+julia> box = Box(unit_cell, 10.0)
+Box{TriclinicCell, 3}
+  unit cell matrix = [ 100.0 0.0 0.0; 50.0 120.0 0.0; 0.0 0.0 130.0 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [20, 13, 16]
+  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells = 4160
+
+```
+
+Building a box with a orthorhombic unit cell matrix, from a square matrix:
+
+```jldoctest
+julia> using CellListMap
+
+julia> unit_cell = [ 100 0 0; 0 120 0; 0 0 150 ]; # cell is orthorhombic
+
+julia> box = Box(unit_cell, 10.0, UnitCellType=OrthorhombicCell) # forcing OrthorhombicCell
+Box{OrthorhombicCell, 3}
+  unit cell matrix = [ 100.0 0.0 0.0; 0.0 120.0 0.0; 0.0 0.0 150.0 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [13, 15, 18]
+  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells = 3510
 
 ```
 
@@ -323,15 +346,16 @@ end
 For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side. 
 
 ## Example
-```julia-repl
-julia> box = Box([120,150,100],10)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0]
-  cutoff: 10.0
-  number of computing cells on each dimension: [14, 17, 12]
-  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
-  Total number of cells: 2856
+```jldoctest
+julia> using CellListMap
 
+julia> box = Box([120,150,100],10)
+Box{OrthorhombicCell, 3}
+  unit cell matrix = [ 120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [15, 18, 13]
+  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells = 3510
 ```
 
 """
@@ -354,26 +378,28 @@ particles do not see images of each other.
 
 ## Examples
 
-```julia-repl
+```jldoctest; filter = r"\\d+" => ""
+julia> using CellListMap
+
 julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),10)
 Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 110.0, 0.0, 0.0; 0.0, 110.0, 0.0; 0.0, 0.0, 110.0 ]
+  unit cell matrix = [ 121.0 0.0 0.0; 0.0 120.99 0.0; 0.0 0.0 121.0 ]
   cutoff = 10.0
-  number of computing cells on each dimension = [12, 12, 12]
-  computing cell sizes = [11.0, 11.0, 11.0] (lcell: 1)
-  Total number of cells = 1728
+  number of computing cells on each dimension = [15, 15, 15]
+  computing cell sizes = [10.08, 10.08, 10.08] (lcell: 1)
+  Total number of cells = 3375
 
 julia> y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x,y),10)
 Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 160.0, 0.0, 0.0; 0.0, 160.0, 0.0; 0.0, 0.0, 110.0 ]
+  unit cell matrix = [ 171.0 0.0 0.0; 0.0 171.0 0.0; 0.0 0.0 121.0 ]
   cutoff = 10.0
-  number of computing cells on each dimension = [17, 17, 12]
-  computing cell sizes = [10.67, 10.67, 11.0] (lcell: 1)
-  Total number of cells = 3468
+  number of computing cells on each dimension = [20, 20, 15]
+  computing cell sizes = [10.06, 10.06, 10.08] (lcell: 1)
+  Total number of cells = 6000
 ```
 
 """
