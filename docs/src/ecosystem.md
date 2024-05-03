@@ -29,7 +29,7 @@ The only requirement is to attach proper units to all quantities (positions, cut
 Here we compute the square of the distances of the particles within the cutoff, where the particle coordinates
 are in Angstroms, while the box size and cutoff are defined in nanometers:
 
-```jldoctest; filter = r"\\d*.d+" => s""
+```jldoctest ;filter = r"\d+" => ""
 julia> using CellListMap, Unitful, PDBTools
 
 julia> positions = coor(readPDB(CellListMap.argon_pdb_file))u"Å";
@@ -43,14 +43,14 @@ julia> system = ParticleSystem(
        );
 
 julia> map_pairwise((x,y,i,j,d2,out) -> out += d2, system)
-437.74543675999996 nm^2
+437.74543675999995 nm^2
 ```
 
 ### Units in neighbor lists
 
 `CellListMap.neighborlist` also propagates units correctly:
 
-```jldoctest; filter = r"\\d*.d+" => s""
+```jldoctest ;filter = r"\d+" => s""
 julia> using CellListMap, Unitful, PDBTools
 
 julia> positions = coor(readPDB(CellListMap.argon_pdb_file))u"Å";
@@ -59,7 +59,7 @@ julia> cutoff = 0.8u"nm";
 
 julia> neighborlist(positions, cutoff)
 857-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
- (1, 20, 0.3163779543520693 nm)
+ (1, 20, 0.3163779543520692 nm)
  (1, 61, 0.408865185605231 nm)
  (1, 67, 0.5939772807102979 nm)
  (1, 80, 0.24572289270639777 nm)
