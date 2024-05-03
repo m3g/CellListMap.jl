@@ -498,7 +498,7 @@ matrix, periodic boundary conditions are considered).
 Compute the neighborlist between within a set Argon atoms, considering the system
 non-periodic (do not provide a `unitcell`):
 
-```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(readPDB(CellListMap.argon_pdb_file));
@@ -529,7 +529,7 @@ julia> neighborlist(x, 8.0; parallel=false)
 
 And now, considering the system periodic:
 
-```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(readPDB(CellListMap.argon_pdb_file));
@@ -600,7 +600,7 @@ the cost of the construction of the cell list.
 Compute the neighborlist between two sets of Argon atoms, considering the system
 non-periodic (do not provide a `unitcell`):
 
-```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
@@ -633,7 +633,7 @@ julia> CellListMap.neighborlist(x, y, 8.0; parallel=false)
 
 Now, considering the system periodic:
 
-```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
