@@ -1,0 +1,5 @@
+# sample regex patterns
+ignore:
+    - "test/"
+    - "src/testing.jl"
+  
