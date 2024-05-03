@@ -647,10 +647,10 @@ ParticleSystem2{output} of dimension 2, composed of:
       Total number of cells = 169
     CellListMap.CellListPair{Vector{StaticArraysCore.SVector{2, Float64}}, 2, Float64, CellListMap.Swapped}
        200 particles in the reference vector.
-       60 cells with real particles of target vector.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 9
+       61 cells with real particles of target vector.
+    Parallelization auxiliary data set for:
+      Number of batches for cell list construction: 1
+      Number of batches for function mapping: 1
     Type of output variable (output): Float64
 ```
 !!! warning

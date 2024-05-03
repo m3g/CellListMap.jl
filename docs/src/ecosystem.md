@@ -26,39 +26,59 @@ We start illustrating the support for unit propagation. We need to define all in
 ### Using the ParticleSystem interface
 
 The only requirement is to attach proper units to all quantities (positions, cutoff, unitcell, and output variables).
-Here we compute the square of the distances of the particles within the cutoff:
-```julia-repl
-julia> using CellListMap, Unitful, StaticArrays
+Here we compute the square of the distances of the particles within the cutoff, where the particle coordinates
+are in Angstroms, while the box size and cutoff are defined in nanometers:
+
+```jldoctest ;filter = r"\d+" => ""
+julia> using CellListMap, Unitful, PDBTools
+
+julia> positions = coor(readPDB(CellListMap.argon_pdb_file))u"Å";
 
 julia> system = ParticleSystem(
-           positions = rand(SVector{3,Float64}, 1000)u"nm",
-           cutoff = 0.1u"nm",
-           unitcell = [1.0,1.0,1.0]u"nm",
+           positions = positions,
+           cutoff = 0.8u"nm",
+           unitcell = [2.1,2.1,2.1]u"nm",
            output = 0.0u"nm^2",
            output_name = :sum_sqr
        );
 
 julia> map_pairwise((x,y,i,j,d2,out) -> out += d2, system)
-12.467455105066907 nm^2
+437.74543675999995 nm^2
 ```
 
 ### Units in neighbor lists
 
-`CellListMap.neighborlist` propagates units correctly:
+`CellListMap.neighborlist` also propagates units correctly:
 
-```julia-repl
-julia> import CellListMap
+```jldoctest ;filter = r"\d+" => s""
+julia> using CellListMap, Unitful, PDBTools
 
-julia> positions = rand(SVector{3,Float64}, 1000)u"nm";
+julia> positions = coor(readPDB(CellListMap.argon_pdb_file))u"Å";
 
-julia> cutoff = 0.1u"nm";
+julia> cutoff = 0.8u"nm";
 
-julia> CellListMap.neighborlist(positions, cutoff)
-1842-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
- (1, 89, 0.09181950064928723 nm)
- (1, 820, 0.0862244300739942 nm)
+julia> neighborlist(positions, cutoff)
+857-element Vector{Tuple{Int64, Int64, Quantity{Float64, 𝐋, Unitful.FreeUnits{(nm,), 𝐋, nothing}}}}:
+ (1, 20, 0.3163779543520692 nm)
+ (1, 61, 0.408865185605231 nm)
+ (1, 67, 0.5939772807102979 nm)
+ (1, 80, 0.24572289270639777 nm)
+ (1, 94, 0.5394713986857874 nm)
+ (13, 15, 0.2678764267344179 nm)
+ (13, 41, 0.4408015539900013 nm)
+ (13, 44, 0.6960112211739119 nm)
+ (13, 61, 0.5939197673086826 nm)
+ (13, 64, 0.45607558584076857 nm)
  ⋮
- (998, 782, 0.07772327062692863 nm)
+ (46, 18, 0.6114385414741209 nm)
+ (46, 51, 0.799947279512844 nm)
+ (51, 68, 0.22003574709578452 nm)
+ (51, 22, 0.663802094000915 nm)
+ (54, 45, 0.44233083772217385 nm)
+ (73, 78, 0.2853611220891873 nm)
+ (73, 88, 0.6078711047582371 nm)
+ (78, 88, 0.7006116541993859 nm)
+ (88, 54, 0.7933654076149276 nm)
 ```
 
 ## Automatic differentiation

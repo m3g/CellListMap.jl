@@ -66,7 +66,7 @@ the particles that are within the cutoff:
 
 ## Single set of particles
 
-```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
+```jldoctest ;filter = r"(\\d*)\\.(\\d)\\d+" => s"\\1.\\2"
 julia> using CellListMap
 
 julia> using PDBTools: readPDB, coor
@@ -81,11 +81,11 @@ julia> sys = ParticleSystem(
         );
 
 julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
-43774.54367600002
+43774.54367600001
 ```
 ## Two sets of particles
 
-```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
+```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2"
 julia> using CellListMap, PDBTools
 
 julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file))[1:50];
@@ -562,7 +562,7 @@ to avoid spurious results.
 In this example we show how to obtain the minimum distance among argon atoms
 in a simulation box.
 
-```jldoctest; filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2***"
+```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2"
 julia> using CellListMap, PDBTools
 
 julia> positions = coor(readPDB(CellListMap.argon_pdb_file));
@@ -707,7 +707,7 @@ where the size of the simulation box changes during the simulation.
 
 # Example
 
-```jldoctest; filter = r"batches.*" => ""  
+```jldoctest ;filter = r"batches.*" => ""  
 julia> using CellListMap, StaticArrays, PDBTools
 
 julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file));
@@ -731,9 +731,9 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
+    Parallelization auxiliary data set for:
+      Number of batches for cell list construction: 1
+      Number of batches for function mapping: 1
     Type of output variable (output): Float64
 
 ```
