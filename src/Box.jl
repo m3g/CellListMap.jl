@@ -378,28 +378,28 @@ particles do not see images of each other.
 
 ## Examples
 
-```jldoctest; filter = r"\\d+" => ""
-julia> using CellListMap
+```jldoctest filter = r"\\d+" => ""
+julia> using CellListMap, PDBTools
 
-julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
+julia> x = coor(readPDB(CellListMap.argon_pdb_file));
 
-julia> box = Box(limits(x),10)
+julia> box = Box(limits(x), 10.0)
 Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 121.0 0.0 0.0; 0.0 120.99 0.0; 0.0 0.0 121.0 ]
+  unit cell matrix = [ 39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99 ]
   cutoff = 10.0
-  number of computing cells on each dimension = [15, 15, 15]
-  computing cell sizes = [10.08, 10.08, 10.08] (lcell: 1)
-  Total number of cells = 3375
+  number of computing cells on each dimension = [6, 6, 6]
+  computing cell sizes = [13.28, 13.32, 13.33] (lcell: 1)
+  Total number of cells = 216
 
-julia> y = [ [150,150,50] .* rand(3) for i in 1:100_000 ];
+julia> y = 1.2 .* x;
 
 julia> box = Box(limits(x,y),10)
 Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 171.0 0.0 0.0; 0.0 171.0 0.0; 0.0 0.0 121.0 ]
+  unit cell matrix = [ 43.6 0.0 0.0; 0.0 43.76 0.0; 0.0 0.0 43.79 ]
   cutoff = 10.0
-  number of computing cells on each dimension = [20, 20, 15]
-  computing cell sizes = [10.06, 10.06, 10.08] (lcell: 1)
-  Total number of cells = 6000
+  number of computing cells on each dimension = [7, 7, 7]
+  computing cell sizes = [10.9, 10.94, 10.95] (lcell: 1)
+  Total number of cells = 343
 ```
 
 """

@@ -494,20 +494,73 @@ If the keyword parameter `unitcell` is provided (as a vector of sides or a gener
 matrix, periodic boundary conditions are considered). 
 
 ## Example
-```julia-repl
-julia> using CellListMap
 
-julia> x = [ rand(3) for i in 1:10_000 ];
+Compute the neighborlist between within a set Argon atoms, considering the system
+non-periodic (do not provide a `unitcell`):
 
-julia> neighborlist(x,0.05)
-24848-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 1055, 0.022977369806392412)
- (1, 5086, 0.026650609138167428)
+```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+julia> using CellListMap, PDBTools
+
+julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia> neighborlist(x, 8.0; parallel=false)
+857-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 20, 3.163779543520692)
+ (1, 61, 4.0886518560523095)
+ (1, 67, 5.939772807102978)
+ (1, 80, 2.457228927063981)
+ (1, 94, 5.394713986857875)
+ (13, 15, 2.678764267344178)
+ (13, 41, 4.408015539900014)
+ (13, 44, 6.960112211739117)
+ (13, 61, 5.939197673086828)
+ (13, 64, 4.560755858407684)
  ⋮
- (9989, 3379, 0.0467653507446483)
- (9989, 5935, 0.02432728985151653)
-
+ (46, 18, 6.114385414741209)
+ (46, 51, 7.999472795128439)
+ (51, 68, 2.200357470957844)
+ (51, 22, 6.638020940009152)
+ (54, 45, 4.423308377221737)
+ (73, 78, 2.853611220891874)
+ (73, 88, 6.078711047582372)
+ (78, 88, 7.006116541993863)
+ (88, 54, 7.933654076149277)
 ```
+
+And now, considering the system periodic:
+
+```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+julia> using CellListMap, PDBTools
+
+julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+1143-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 7, 3.36387559222989)
+ (1, 20, 3.163779543520693)
+ (1, 47, 6.243868272153088)
+ (1, 63, 7.017762962654125)
+ (1, 74, 7.976895636774997)
+ (1, 79, 3.177028328485598)
+ (1, 94, 5.394713986857875)
+ (1, 95, 5.4248765884580274)
+ (7, 20, 3.3995637955478935)
+ (7, 26, 7.96292025578556)
+ ⋮
+ (57, 34, 6.536566147450816)
+ (57, 84, 7.225401442134547)
+ (57, 88, 7.971591246420004)
+ (68, 14, 5.2021891545771375)
+ (68, 34, 3.955899012866733)
+ (68, 84, 5.650943284089833)
+ (68, 88, 7.254140403934848)
+ (68, 38, 7.4092885623384905)
+ (68, 90, 7.875801229081395)
+```
+
+!!! note
+    We set `parallel=false` in these examples to preserve the order of the pairs 
+    in the list. Parallel executions will not guarantee the order of the pairs.
 
 """
 function neighborlist(
@@ -542,21 +595,78 @@ Computes the list of pairs of particles of `x` which are closer than `r` to
 the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
 the cost of the construction of the cell list. 
 
-## Example
-```julia-repl
-julia> x = [ rand(3) for i in 1:10_000 ];
+## Examples
 
-julia> y = [ rand(3) for i in 1:1_000 ];
+Compute the neighborlist between two sets of Argon atoms, considering the system
+non-periodic (do not provide a `unitcell`):
 
-julia> CellListMap.neighborlist(x,y,0.05)
-5006-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 269, 0.04770884036497686)
- (25, 892, 0.03850515231540869)
+```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+julia> using CellListMap, PDBTools
+
+julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
+
+julia> y = coor(readPDB(CellListMap.argon_pdb_file, "index > 50"));
+
+julia> CellListMap.neighborlist(x, y, 8.0; parallel=false)
+439-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 13, 7.0177629626541265)
+ (1, 24, 7.976895636774999)
+ (1, 29, 3.1770283284856)
+ (1, 11, 4.0886518560523095)
+ (1, 17, 5.939772807102978)
+ (1, 30, 2.457228927063981)
+ (1, 44, 5.394713986857875)
+ (1, 45, 5.424876588458028)
+ (2, 2, 3.9973374888793174)
+ (2, 6, 5.355242104704511)
  ⋮
- (9952, 749, 0.048875643578313456)
- (9984, 620, 0.04101242499363183)
-
+ (50, 27, 6.257296620746054)
+ (50, 32, 3.109966559305742)
+ (50, 33, 2.9192916949150525)
+ (50, 35, 5.043227240567294)
+ (50, 10, 3.9736202636890208)
+ (50, 20, 6.995405134800989)
+ (50, 39, 3.9001540995196584)
+ (50, 37, 7.5464903100713)
+ (50, 3, 7.232267901564487)
 ```
+
+Now, considering the system periodic:
+
+```jldoctest filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
+julia> using CellListMap, PDBTools
+
+julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
+
+julia> y = coor(readPDB(CellListMap.argon_pdb_file, "index > 50"));
+
+julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+584-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 12, 7.360804915224965)
+ (1, 13, 7.017762962654125)
+ (1, 24, 7.976895636774997)
+ (1, 29, 3.177028328485598)
+ (1, 44, 5.394713986857875)
+ (1, 45, 5.4248765884580274)
+ (1, 11, 4.088651856052312)
+ (1, 17, 5.93977280710298)
+ (1, 30, 2.457228927063981)
+ (1, 28, 6.853834401267658)
+ ⋮
+ (50, 3, 7.232267901564487)
+ (50, 10, 3.9736202636890203)
+ (50, 27, 6.257296620746054)
+ (50, 32, 3.1099665593057426)
+ (50, 33, 2.919291694915052)
+ (50, 35, 5.043227240567294)
+ (50, 20, 6.995405134800987)
+ (50, 37, 7.546490310071297)
+ (50, 39, 3.900154099519657)
+```
+
+!!! note
+    We set `parallel=false` in these examples to preserve the order of the pairs 
+    in the list. Parallel executions will not guarantee the order of the pairs.
 
 """
 function neighborlist(

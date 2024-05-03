@@ -1,7 +1,10 @@
 import Pkg; Pkg.add("Documenter")
 using Documenter
 using CellListMap
-#DocMeta.setdocmeta!(CellListMap, :DocTestSetup, :(using CellListMap); recursive=true)
+#DocMeta.setdocmeta!(CellListMap, :DocTestSetup, :(
+#    #using CellListMap
+#    Base.active_repl.options.iocontext[:displaysize] = (9, 80)
+#); recursive=true)
 makedocs(
     modules=[CellListMap],
     sitename="CellListMap.jl",
