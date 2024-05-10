@@ -3,4 +3,5 @@ ignore:
     - "test/"
     - "src/testing.jl"
     - "src/precompile.jl"
+    - "src/examples/"
   
