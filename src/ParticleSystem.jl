@@ -907,7 +907,7 @@ function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,
     cl.ref .= sys.xpositions
 end
 function _update_ref_positions!(::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:Swapped}
-    throw(ArgumentError("update_lists === false requires autoswap == false for 2-set systems."))
+    throw(ArgumentError("update_lists == false requires autoswap == false for 2-set systems."))
 end
 function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
     if update_lists
@@ -968,6 +968,17 @@ end
     sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == 0
+
+    # Throw error when trying to *not* update lists with autoswap on:
+    sys = ParticleSystem(
+        xpositions = rand(SVector{2,Float64}, 100),
+        ypositions = rand(SVector{2,Float64}, 200),
+        unitcell = [1,1],
+        cutoff = 0.1,
+        output=0.0,
+        autoswap=true,
+    )
+    @test_throws ArgumentError map_pairwise!((_, _, _, _, d2, u) -> u += d2, sys, update_lists=false)
 
 end
 
