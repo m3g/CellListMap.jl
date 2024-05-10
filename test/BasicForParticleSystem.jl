@@ -152,6 +152,41 @@
 
 end
 
+@testitem "ParticleSystem - resize output" begin
+    using StaticArrays
+    using CellListMap
+    function force(x, y, i, j, d2, f) 
+        fxy = (x - y) / d2 
+        f[i] -= fxy
+        f[j] += fxy
+        return f
+    end
+    x = rand(SVector{3,Float64}, 100)
+    sides = [1,1,1]
+    cutoff = 0.1
+    sys = ParticleSystem(
+        positions=x,
+        unitcell=sides,
+        cutoff=cutoff,
+        output=zero(x),
+        output_name = :force
+    )
+    naive = CellListMap.map_naive!(force, zero(x), x, Box(sides, cutoff))
+    map_pairwise!(force, sys)
+    @test sys.force ≈ naive
+    resize!(x, 120)
+    x[101:end] .= rand(SVector{3,Float64}, 20)
+    naive = CellListMap.map_naive!(force, zero(x), x, Box(sides, cutoff))
+    resize_output!(sys, 120)
+    map_pairwise!(force, sys)
+    @test sys.force ≈ naive
+    resize!(x, 90)
+    naive = CellListMap.map_naive!(force, zero(x), x, Box(sides, cutoff))
+    resize_output!(sys, 90)
+    map_pairwise!(force, sys)
+    @test sys.force ≈ naive
+end
+
 @testitem "ParticleSystem - update_lists" begin
     using StaticArrays
     using CellListMap
