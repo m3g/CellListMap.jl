@@ -180,13 +180,14 @@ julia> @time neighborlist!(system);
 function InPlaceNeighborList(;
     x::AbstractVecOrMat,
     y::Union{AbstractVecOrMat,Nothing}=nothing,
-    cutoff::T,
+    cutoff,
     unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
     parallel::Bool=true,
     show_progress::Bool=false,
     autoswap=true,
     nbatches=(0, 0)
-) where {T}
+)
+    T = cutoff isa Integer ? Float64 : eltype(cutoff)
     if isnothing(y)
         if isnothing(unitcell)
             unitcell = limits(x)
@@ -773,6 +774,12 @@ end
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 1
     end
+
+    # allow cutoff as an integer, promoting it to Float64
+    x = [[1,2], [3,4]]
+    nb = neighborlist(x, 3)
+    @test length(nb) == 1
+    @test nb isa Vector{Tuple{Int64, Int64, Float64}}
 
 end
 
