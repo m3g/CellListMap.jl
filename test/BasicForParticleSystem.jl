@@ -21,12 +21,15 @@
         cutoff=cutoff,
         unitcell=sides,
         output=0.0,
+        output_name=:gravitational_potential
     )
     naive = CellListMap.map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, Box(sides, cutoff))
     system.parallel = false
     @test map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
     system.parallel = true
     @test map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
+    # Test fetching by output name
+    @test system.gravitational_potential ≈ naive
 
     # Same but for non-periodic systems
     system = ParticleSystem(
