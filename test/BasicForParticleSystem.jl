@@ -35,7 +35,7 @@
         cutoff=cutoff,
         output=0.0,
     )
-    naive = CellListMap.map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, Box(limits(x,y), cutoff))
+    naive = CellListMap.map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, Box(limits(x, y), cutoff))
     system.parallel = false
     @test map_pairwise!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), system) ≈ naive
     system.parallel = true
@@ -77,19 +77,19 @@
 
     # Test updating of the data on disjoint sets works fine
     for arrays in [
-        # static vectors, length(x) > length(y)
-        [rand(SVector{2,Float64}, 1000), rand(SVector{2,Float64}, 100)],
-        # static vectors, length(x) < length(y)
-        [rand(SVector{2,Float64}, 100), rand(SVector{2,Float64}, 1000)],
-        # standard vectors, length(x) > length(y)
-        [[rand(2) for _ in 1:1000], [rand(2) for _ in 1:100]], # with standard vectors
-        # standard vectors, length(x) < length(y)
-        [[rand(2) for _ in 1:100], [rand(2) for _ in 1:1000]], # with standard vectors
-        # matrices, length(x) > length(y)
-        [rand(2, 1000), rand(2, 100)],
-        # matrices, length(x) < length(y)
-        [rand(2, 100), rand(2, 1000)], # with standard vectors
-    ], unitcell in [[1,1], nothing]
+            # static vectors, length(x) > length(y)
+            [rand(SVector{2,Float64}, 1000), rand(SVector{2,Float64}, 100)],
+            # static vectors, length(x) < length(y)
+            [rand(SVector{2,Float64}, 100), rand(SVector{2,Float64}, 1000)],
+            # standard vectors, length(x) > length(y)
+            [[rand(2) for _ in 1:1000], [rand(2) for _ in 1:100]], # with standard vectors
+            # standard vectors, length(x) < length(y)
+            [[rand(2) for _ in 1:100], [rand(2) for _ in 1:1000]], # with standard vectors
+            # matrices, length(x) > length(y)
+            [rand(2, 1000), rand(2, 100)],
+            # matrices, length(x) < length(y)
+            [rand(2, 100), rand(2, 1000)], # with standard vectors
+        ], unitcell in [[1, 1], nothing]
         local x = arrays[1]
         local y = arrays[2]
         local system
@@ -100,7 +100,7 @@
             output=0.0,
             unitcell=unitcell,
         )
-        uc = isnothing(unitcell) ? limits(x,y) : [1, 1]
+        uc = isnothing(unitcell) ? limits(x, y) : [1, 1]
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
@@ -130,13 +130,30 @@
 
     end
 
+    # Check if the dimension of the input array is properly errored
+    # when the dimension of the unitcell does not match that of SVectors
+    # of the input array
+    @test_throws DimensionMismatch ParticleSystem(
+        positions=rand(SVector{3,Float64}, 100),
+        unitcell=[1, 1],
+        cutoff=0.1,
+        output=0.0,
+    )
+    sys = ParticleSystem(
+        positions=rand(SVector{3,Float64}, 100),
+        unitcell=[1, 1, 1],
+        cutoff=0.1,
+        output=0.0,
+    )
+    @test size(sys.unitcell) == (3, 3)
+
 end
 
 @testitem "ParticleSystem - update_lists" begin
     using StaticArrays
     using CellListMap
 
-    for unitcell in [[1,1,1], nothing]
+    for unitcell in [[1, 1, 1], nothing]
         #
         # one set systems
         #
@@ -149,31 +166,31 @@ end
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), 0.0, box, cl)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += sqrt(d2), system; update_lists=false)
-    
+
         #
         # two-set systems
         #
-    
+
         #
         # x is smaller
         #
         x = rand(SVector{3,Float64}, 100)
         y = rand(SVector{3,Float64}, 1000)
-    
-        uc = isnothing(unitcell) ? limits(x,y) : unitcell
+
+        uc = isnothing(unitcell) ? limits(x, y) : unitcell
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
         system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
-    
+
         # change x coordinates
         x = rand(SVector{3,Float64}, 100)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
         system.xpositions .= x
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-    
+
         # increase x size
         x = rand(SVector{3,Float64}, 200)
         cl = CellList(x, y, box)
@@ -181,27 +198,27 @@ end
         resize!(system.xpositions, length(x))
         system.xpositions .= x
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-    
+
         #
         # x is greater
         #
         x = rand(SVector{3,Float64}, 1000)
         y = rand(SVector{3,Float64}, 100)
-    
-        uc = isnothing(unitcell) ? limits(x,y) : unitcell
+
+        uc = isnothing(unitcell) ? limits(x, y) : unitcell
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
         system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
-    
+
         # change x coordinates
         x = rand(SVector{3,Float64}, 1000)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
         system.xpositions .= x
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-    
+
         # increase x size
         x = rand(SVector{3,Float64}, 1100)
         cl = CellList(x, y, box)
@@ -209,7 +226,7 @@ end
         resize!(system.xpositions, length(x))
         system.xpositions .= x
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=false)
-    
+
     end
 end
 

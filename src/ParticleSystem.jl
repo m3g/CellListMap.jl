@@ -134,13 +134,13 @@ function ParticleSystem(;
             input_array = reinterpret(reshape, SVector{dim,eltype(input_array)}, input_array)
         end
         if !isnothing(unitcell)
-            DIM = if eltype(input_array) isa SVector
+            DIM = if eltype(input_array) <: SVector
                 length(eltype(input_array))
             else
                 if length(input_array) == 0
                     # If the array is empty, we cannot determine the dimension, so we assume it is the same as the unit cell
                     size(unitcell, 1)
-            else
+                else
                     length(input_array[1])
                 end
             end
