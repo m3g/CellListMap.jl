@@ -17,7 +17,10 @@ The `ParticleSystem` interface facilitates the use of `CellListMap` for the majo
 
 ## The mapped function
 
-The function to be mapped for every pair of particles within the cutoff follows the same interface as the standard interface. It must be of the form
+The purpose of CellListMap is to compute a pairwise-dependent function for all pairs of particles that are closer to
+each other than a defined cutoff. This pairwise function must be implemented by the user and adhere to the following 
+interface:  
+
 ```julia
 function f(x, y, i, j, d2, output)
     # update output variable
@@ -25,6 +28,34 @@ function f(x, y, i, j, d2, output)
 end
 ```
 where `x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, and `output` is the variable to be computed. 
+
+!!! info
+    #### Details of the mapped function interface
+
+    The input parameters `x`, `y`, `i`, `j`, and `d2` must not be modified by the user. They are the
+    the input data that the user may use to update the `output` variable.  
+
+    |  Input Parameter |  Type   |  Meaning   |
+    |:----------------:|:-------:|:-----------|
+    | `x`              |  `SVector`   |  The coordinates of particle `i` of the pair.  |
+    | `y`              |  `SVector`   |  The coordinates of particle `j` of the pair (minimum-image relative to `x`).  |
+    | `i`              |  `Int`       |  Index of first particle in the original array of coordinates. |
+    | `j`              |  `Int`       |  Index of second particle in the original array of coordinates. |
+    | `d2`             |  `<:Real`    |  Squared distance between the particles. |
+    | `output`         |  user defined   |  the value to be updated  |
+
+    **Notes:** `x` and `y` may be 2D or 3D vectors, depending on the dimension of the system. The type of 
+    the coordinates of `x`, `y`, and of `d2` are dependent on the input arrays and cutoff, and can be `Float64`,
+    `Float32`, unitful quantities, etc. 
+
+    |  Return value |  Type   |  Meaning   |
+    |:----------------:|:-------:|:-----------|
+    | `output`         |  user defined   |  the updated value of output.  |
+
+    The `output` variable **must** be returned by the function, being it mutable or immutable. 
+
+
+### Basic examples
 
 For example, computing the energy, as the sum of the inverse of the distance between particles, can be done with a function like:
 ```julia
@@ -35,9 +66,14 @@ end
 ```
 and the additional parameters required by the interface can be eliminated by the use of an anonymous function, directly on the call to the `map_pairwise` function:
 ```julia
-u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u), system)
+u = map_pairwise(
+    (x,y,i,j,d2,u) -> energy(d2,u), 
+    system
+)
 ```
-(what `system` is will be explained in the examples below).
+(what `system` is will be explained in the examples below). Note that the `energy` function does not use the `x`, `y`, `i`, and `j` input parameters, such 
+that the anonymous function managing the interface could also be written as `(_, _, _, _, d2, u) -> energy(d2, u)`, making explicit the dummy character of
+these variables in the example.
 
 Alternatively, the function might require additional parameters, such as the masses of the particles. In this case, we can use a closure to provide such data:
 ```julia
@@ -49,7 +85,8 @@ const masses = # ... some masses
 u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 ```
 
-## Potential energy example
+Here we reinforce the fact that the `energy` functions defined above compute the contribution to the energy of the interaction of *a single* pair
+of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `map_pairwise` call. 
 
 !!! note
     The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as an arrays of forces.  
@@ -58,35 +95,28 @@ u = map_pairwise((x,y,i,j,d2,u) -> energy(d2,u,masses), system)
 
     For these types of `output` data the usage does not require the implementation of any data-type dependent function. 
 
-For example, let us build a system of random particles in a cubic box, and compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
+## The ParticleSystem constructor
+
+## Potential energy example
+
+For example, here we read the coordinates of Argon atoms from a PDB file. The coordinates are given as 
+vector of `SVector`s. We then compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
 
 The `ParticleSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. 
 
 ```julia-repl
-julia> using CellListMap, StaticArrays
+julia> using CellListMap, PDBTools
+
+julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
-           xpositions = rand(SVector{3,Float64},1000), 
-           unitcell=[1.0,1.0,1.0], 
-           cutoff = 0.1, 
+           xpositions=argon_coordinates,
+           unitcell=[21.0,21.0,21.0], 
+           cutoff = 8.0, 
            output = 0.0,
            output_name = :energy
        );
 ```
-
-Now, directly, let us compute a putative energy of the particles, assuming a simple formula which depends on the inverse of the distance between pairs:
-
-```julia-repl
-julia> map_pairwise!((x,y,i,j,d2,energy) -> energy += 1 / sqrt(d2), system)
-30679.386366872823
-```
-
-The `system.energy` field accesses the resulting value of the computation:
-```julia-repl
-julia> system.energy
-30679.386366872823
-```
-because the `output_name` field was provided. If it is not provided, you can access the output value from the `system.output` field.
 
 !!! note
     - Systems can be 2 or 3-dimensional. 
@@ -95,6 +125,27 @@ because the `output_name` field was provided. If it is not provided, you can acc
         - a matrix, in which case the system periodic boundaries are Triclinic (general).
         - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters. 
+
+Now, let us compute the energy of the particles, assuming a simple formula which depends on the inverse of the distance between pairs:
+
+```julia-repl
+julia> function energy(x, y, i, j, d2, energy)
+           energy += 1 / sqrt(d2)
+           return energy
+       end
+
+julia> map_pairwise!(energy, system)
+207.37593043370865
+```
+Note that the first four parameters of `energy` are not used here but are needed to adhere to the interface. The function 
+input could be written as `(_, _, _, _, d2, energy)` to make that explicit. 
+
+The `system.energy` field accesses the resulting value of the computation:
+```julia-repl
+julia> system.energy
+207.37593043370865
+```
+because the `output_name` field was provided. If it is not provided, you can access the output value from the `system.energy` field.
 
 ## Computing forces
 
@@ -115,13 +166,15 @@ Importantly, the function *must* return the `forces` array to follow the API.
 Now, let us setup the system with the new type of output variable, which will be now an array of forces with the same type as the positions:
 
 ```julia-repl
-julia> positions = rand(SVector{3,Float64},1000);
+julia> using CellListMap, PDBTools
+
+julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
-           xpositions = positions,
-           unitcell=[1,1,1], 
-           cutoff = 0.1, 
-           output = similar(positions),
+           xpositions=argon_coordinates,
+           unitcell=[21.0, 21.0, 21.0], 
+           cutoff = 8.0, 
+           output = similar(argon_coordinates),
            output_name = :forces
        );
 ```
@@ -139,11 +192,12 @@ julia> system.forces
 A call to `map_pairwise!` with the appropriate function definition will update the forces:
 ```julia-repl
 julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
-1000-element Vector{SVector{3, Float64}}:
- [-151.19529230407284, 159.33819000196905, -261.3055111242796]
- [-173.02442398784672, -178.782819965489, 4.570607952876692]
+100-element Vector{SVector{3, Float64}}:
+ [0.026493833307357332, 0.18454277989323772, -0.012253902366284965]
+ [0.07782602581235695, 0.2791082233740261, 0.21926615329195248]
  ⋮
- [-722.5400961501635, 182.65287417718935, 380.0394926753039]
+ [0.11307234751448932, 0.006353545239676281, -0.05955687310348302]
+ [-0.03101200918307673, 0.03543655648545697, 0.031849121630976335]
 ```
 
 ## Computing both energy and forces
@@ -164,7 +218,7 @@ must be defined. It can be followed for the computation of other general propert
     than for the arrays.
 
 ```julia
-using CellListMap, StaticArrays
+using CellListMap, StaticArrays, PDBTools
 ```
 
 The computation of energies and forces in a single call is an interesting example for the definition of a custom `output` type and the required interface functions. 
@@ -181,14 +235,14 @@ the default corresponding functions, for our new output type:
 
 The copy method creates a new instance of the `EnergyAndForces` type, with copied data:
 ```julia
-import CellListMap: copy_output
-copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
+function CellListMap.copy_output(x::EnergyAndForces) 
+    return EnergyAndForces(copy(x.energy), copy(x.forces))
+end
 ```
 
 The reset method will zero both the energy and all forces:
 ```julia
-import CellListMap: reset_output!
-function reset_output!(output::EnergyAndForces)
+function CellListMap.reset_output!(output::EnergyAndForces)
     output.energy = 0.0
     for i in eachindex(output.forces)
         output.forces[i] = SVector(0.0, 0.0, 0.0)
@@ -197,12 +251,11 @@ function reset_output!(output::EnergyAndForces)
 end
 ```
 
-The reduction function defines what it means to combine two output variables obtained on
+The reducer function defines what it means to combine two output variables obtained on
 independent threads. In this case, we sum the energies and forces. Different reduction functions
 might be necessary for other custom types (for example if computing minimum distances).
 ```julia
-import CellListMap: reducer
-function reducer(x::EnergyAndForces, y::EnergyAndForces)
+function CellListMap.reducer(x::EnergyAndForces, y::EnergyAndForces)
     e_tot = x.energy + y.energy
     x.forces .+= y.forces
     return EnergyAndForces(e_tot, x.forces)
@@ -231,14 +284,14 @@ end
 
 To finally define the system and compute the properties:
 
-```julia-repl
-positions = rand(SVector{3,Float64},1000);
+```julia
+argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
 
 system = ParticleSystem(
-    xpositions = positions,
-    unitcell=[1.0,1.0,1.0], 
-    cutoff = 0.1, 
-    output = EnergyAndForces(0.0, similar(positions)),
+    xpositions = argon_coordinates,
+    unitcell = [21.0, 21.0, 21.0], 
+    cutoff = 8.0, 
+    output = EnergyAndForces(0.0, similar(argon_coordinates)),
     output_name = :energy_and_forces
 );
 
@@ -248,14 +301,15 @@ map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), syste
 The output can be seen with the aliases of the `system.output` variable:
 ```julia-repl
 julia> system.energy_and_forces.energy
-31696.94766439311
+207.37593043370862
 
 julia> system.energy_and_forces.forces
-1000-element Vector{SVector{3, Float64}}:
- [-338.1909601911842, 7.7663690656924445, 202.25889647151405]
- [33.67299655756128, 282.7581453168999, -79.09639223837306]
+100-element Vector{SVector{3, Float64}}:
+ [0.02649383330735732, 0.18454277989323772, -0.012253902366284958]
+ [0.07782602581235692, 0.27910822337402613, 0.21926615329195248]
  ⋮
- [38.83014327604529, -204.45236278342745, 249.307871211616]
+ [0.11307234751448932, 0.006353545239676281, -0.05955687310348303]
+ [-0.031012009183076745, 0.03543655648545698, 0.03184912163097636]
 ```
 
 ## Updating coordinates, unit cell, and cutoff
