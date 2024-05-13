@@ -782,32 +782,37 @@ This function can be used to update the system geometry in iterative schemes.
 
 # Example
 
-```julia-repl
-julia> using CellListMap, StaticArrays
+Here we initialize a particle system with a cutoff of `8.0` and then update
+the cutoff to `10.0`. 
+
+```jldoctest ; filter = r"batches.*" => ""
+julia> using CellListMap, PDBTools
+
+julia> x = coor(readPDB(CellListMap.argon_pdb_file));
 
 julia> sys = ParticleSystem(
-           xpositions = rand(SVector{3,Float64},1000), 
-           unitcell=[1,1,1], 
-           cutoff = 0.1, 
+           xpositions = x, 
+           unitcell=[21.0,21.0,21.0], 
+           cutoff = 8.0, 
            output = 0.0
-           );
+       );
 
-julia> update_cutoff!(sys, 0.2)
-ParticleSystem1 of dimension 3, composed of:
+julia> update_cutoff!(sys, 10.0)
+ParticleSystem1{output} of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.2
-      number of computing cells on each dimension = [7, 7, 7]
-      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
-      Total number of cells = 343
-    CellListMap.CellList{3, Float64}
-      1000 real particles.
-      620 cells with real particles.
-      1746 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
+      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
+      cutoff = 10.0
+      number of computing cells on each dimension = [5, 5, 5]
+      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
+      Total number of cells = 125
+    CellList{3, Float64}
+      100 real particles.
+      8 cells with real particles.
+      800 particles in computing box, including images.
+    Parallelization auxiliary data set for:
       Number of batches for cell list construction: 8
-      Number of batches for function mapping: 12
-    Type of output variable: Float64
+      Number of batches for function mapping: 8
+    Type of output variable (output): Float64
 ```
 """
 function update_cutoff!(sys::ParticleSystem1, cutoff)
