@@ -38,6 +38,7 @@ copy(x::NeighborList{T}) where {T} = NeighborList{T}(x.n, copy(x.list))
     @test (nb.n, length(nb.list)) == (0, 1)
     resize!(nb, 5)
     @test (nb.n, length(nb.list), nb.n) == (5, 5, 5)
+    nb.list = [(i, i, Float64(i)) for i in 1:5]
     nb2 = copy(nb)
     @test (nb.n, nb.list) == (nb2.n, nb2.list)
 end
