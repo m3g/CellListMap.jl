@@ -70,6 +70,12 @@ julia> wrap_to_first(x,unit_cell_matrix)
     return unit_cell_matrix * p
 end
 
+@testitem "wrap_to_first" begin
+    x = [15.0, 13.0]
+    unit_cell_matrix = [10.0 0.0; 0.0 10.0]
+    @test CellListMap.wrap_to_first(x, unit_cell_matrix) ≈ [5.0, 3.0]
+end
+
 #=
     wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
 
@@ -100,6 +106,23 @@ for an Orthorhombic cell of which only the side lengths are provided.
     xw = mod.(x - xref, sides)
     xw = _wrap_single_coordinate.(xw, sides)
     return xw + xref
+end
+
+@testitem "wrap_relative_to" begin
+    using StaticArrays
+    using Unitful
+    x = [15.0, 13.0]
+    y = [4.0, 2.0]
+    unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)
+    @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]
+    unit_cell_matrix = [10.0, 10.0] 
+    @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]
+    x = [15.0, 13.0]u"nm"
+    y = [4.0, 2.0]u"nm"
+    unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)u"nm"
+    @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]u"nm"
+    unit_cell_matrix = [10.0, 10.0]u"nm"
+    @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]u"nm"
 end
 
 #
@@ -156,6 +179,17 @@ function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix
         x_new[i] = translation_image(x[i], unit_cell_matrix, indices)
     end
     return x_new
+end
+
+@testitem "translation image" begin
+    using StaticArrays
+    x = SVector{2}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    unitcell = [10.0  0.0 ; 0.0 10.0]
+    @test CellListMap.translation_image(x, unitcell, [0, 0]) ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    @test CellListMap.translation_image(x, unitcell, [1, 1]) ≈ [ [11.0, 11.0], [12.0, 12.0], [13.0, 13.0] ]
+    @test CellListMap.translation_image(x, unitcell, [1, 2]) ≈ [ [11.0, 21.0], [12.0, 22.0], [13.0, 23.0] ]
+    @test CellListMap.translation_image(x, unitcell, [2, 1]) ≈ [ [21.0, 11.0], [22.0, 12.0], [23.0, 13.0] ]
+    @test CellListMap.translation_image(x, unitcell, [-1, -1]) ≈ [ [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0] ]
 end
 
 #=
