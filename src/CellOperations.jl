@@ -277,6 +277,18 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 @inline cell_linear_index(nc::SVector{N,Int}, indices) where {N} =
     LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
 
+@testitem "cell cartesian/linear indices" begin
+    using CellListMap: cell_cartesian_indices, cell_linear_index
+    @test cell_cartesian_indices(SVector(3, 3), 1) == CartesianIndex(1, 1)
+    @test cell_cartesian_indices(SVector(3, 3), 2) == CartesianIndex(2, 1)
+    @test cell_cartesian_indices(SVector(3, 3), 4) == CartesianIndex(1, 2)
+    @test cell_cartesian_indices(SVector(3, 3), 9) == CartesianIndex(3, 3)
+    @test cell_linear_index(SVector(3, 3), CartesianIndex(1, 1)) == 1
+    @test cell_linear_index(SVector(3, 3), CartesianIndex(2, 1)) == 2
+    @test cell_linear_index(SVector(3, 3), CartesianIndex(1, 2)) == 4
+    @test cell_linear_index(SVector(3, 3), CartesianIndex(3, 3)) == 9
+end
+
 #
 # Compute the maximum and minimum coordinates of the vectors composing the particle sets
 #
@@ -495,6 +507,9 @@ end
         @test cross([1,0,0], cross(ma[:,2],ma[:,3])) ≈ zeros(3) atol=1e-10
     end
 
+    # throw error if not 2D or 3D
+    @test_throws ArgumentError align_cell(rand(4, 4))
+
 end
 
 #=
@@ -626,6 +641,8 @@ end
           [1.5, 1.0, 1.0] ],
         atol=1e-6)
     )
+    # throw error if not 2D or 3D
+    @test_throws ArgumentError cell_vertices(rand(4, 4))
 end
 
 # Obs: auxiliary functions to draw unit cells are available in the 
