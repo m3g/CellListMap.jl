@@ -245,12 +245,39 @@ function replicate_system!(
     return x
 end
 
-function replicate_system!(x::AbstractMatrix{T}, cell, ranges) where {T}
+# Warning: this function is non-mutating, because the matrices cannot be
+# resized in-place.
+function replicate_system(x::AbstractMatrix{T}, cell, ranges) where {T}
     N = size(x, 1)
     x_re = [SVector{N,T}(ntuple(i -> x[i, j], N)) for j in axes(x, 2)]
     replicate_system!(x_re, cell, ranges)
     x = Matrix(reinterpret(reshape, Float64, x_re))
     return x
+end
+
+@testitem "replicate system" begin
+    using StaticArrays
+    using CellListMap: replicate_system!, replicate_system
+    unitcell = [ 10.0 0.0; 0.0 10.0 ]
+    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    replicate_system!(x, unitcell, (1,0))
+    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 1.0], [12.0, 2.0], [13.0, 3.0] ]
+    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    replicate_system!(x, unitcell, (1,1))
+    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0] ]
+    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    replicate_system!(x, unitcell, (0,1))
+    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [1.0, 11.0], [2.0, 12.0], [3.0, 13.0] ]
+    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    replicate_system!(x, unitcell, (-1,-1))
+    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0] ]
+    # with a matrix input
+    x = [1.0 2.0 3.0; 1.0 2.0 3.0]
+    y = replicate_system(x, unitcell, (1,0))
+    @test y ≈ [1.0 2.0 3.0 11.0 12.0 13.0; 1.0 2.0 3.0 1.0 2.0 3.0]
+    # throw error if dimensions do not match
+    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
+    @test_throws DimensionMismatch replicate_system!(x, unitcell, (1,0,1))
 end
 
 
@@ -278,6 +305,7 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
     LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
 
 @testitem "cell cartesian/linear indices" begin
+    using StaticArrays
     using CellListMap: cell_cartesian_indices, cell_linear_index
     @test cell_cartesian_indices(SVector(3, 3), 1) == CartesianIndex(1, 1)
     @test cell_cartesian_indices(SVector(3, 3), 2) == CartesianIndex(2, 1)
