@@ -96,45 +96,48 @@ end
 #=
     wrap_relative_to(x,xref,sides::AbstractVector)
 
-# Extended help
-
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
-for an Orthorhombic cell of which only the side lengths are provided.
+for an Orthorhombic cell of which only the sides are provided.
 
 =#
 @inline function wrap_relative_to(x, xref, sides::AbstractVector)
-    xw = mod.(x - xref, sides)
-    xw = _wrap_single_coordinate.(xw, sides)
+    lengths = abs.(sides)
+    xw = mod.(x - xref, lengths)
+    # Wrap a single coordinate: there is no need for the x <= -s/2 case because
+    # the mod function already takes care of it, with positive lengths.
+    xw = @. ifelse(xw >= lengths / 2, xw - lengths, xw)
     return xw + xref
 end
 
 @testitem "wrap_relative_to" begin
     using StaticArrays
     using Unitful
-    x = [15.0, 13.0]
-    y = [4.0, 2.0]
-    unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)
-    @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]
-    unit_cell_matrix = [10.0, 10.0] 
-    @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]
+    for (x, y, xy, yx) in [
+        ([15.0, 13.0], [4.0, 2.0], [5.0, 3.0], [14.0, 12.0]), 
+        ([-7.0, -6.0], [1.0, 2.0], [3.0, 4.0], [-9.0, -8.0]),
+    ]
+        # triclinic cells: unitcell is a matrix
+        unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)
+        @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy 
+        @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx        
+        unit_cell_matrix = SMatrix{2,2}(-10.0, 0.0, 0.0, -10.0)
+        @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy
+        @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx
+        # orthorhombic cells: sides is a vector
+        sides = [10.0, 10.0] 
+        @test CellListMap.wrap_relative_to(x, y, sides) ≈ xy
+        @test CellListMap.wrap_relative_to(y, x, sides) ≈ yx
+        sides = [-10.0, -10.0] 
+        @test CellListMap.wrap_relative_to(x, y, sides) ≈ xy
+        @test CellListMap.wrap_relative_to(y, x, sides) ≈ yx
+    end
+    # test unit propagations
     x = [15.0, 13.0]u"nm"
     y = [4.0, 2.0]u"nm"
     unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)u"nm"
     @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]u"nm"
     unit_cell_matrix = [10.0, 10.0]u"nm"
     @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]u"nm"
-end
-
-#
-# Wrap a single coordinate
-#
-@inline function _wrap_single_coordinate(x, s)
-    if x >= s / 2
-        x = x - s
-    elseif x < -s / 2
-        x = x + s
-    end
-    return x
 end
 
 #=
@@ -495,109 +498,6 @@ end
 end
 
 #=
-    cell_vertices(m::AbstractMatrix)
-
-Function that returns the vertices of a unit cell in 2D or 3D, given the unit cell matrix.
-
-=#
-function cell_vertices(m::AbstractMatrix)
-    if size(m) == (2, 2)
-        x = _cell_vertices2D(m)
-    elseif size(m) == (3, 3)
-        x = _cell_vertices3D(m)
-    else
-        throw(ArgumentError("cell_vertices only supports square matrices in 2 or 3 dimensions."))
-    end
-end
-
-@views function _cell_vertices2D(m::AbstractMatrix{T}) where {T}
-    S = SVector{2,T}
-    x = SVector{4,S}(S(zero(T), zero(T)), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
-    return x
-end
-
-@views function _cell_vertices3D(m::AbstractMatrix{T}) where {T}
-    S = SVector{3,T}
-    x = SVector{8,S}(
-        S(zero(T), zero(T), zero(T)),
-        S(m[:, 1]),
-        S(m[:, 1]) + S(m[:, 2]),
-        S(m[:, 2]),
-        S(m[:, 1]) + S(m[:, 3]),
-        S(m[:, 3]),
-        S(m[:, 2]) + S(m[:, 3]),
-        S(m[:, 1]) + S(m[:, 2]) + S(m[:, 3]),
-    )
-    return x
-end
-
-#=
-    draw_cell_vertices(m::AbstractMatrix)
-
-Function that returns the vertices of a unit cell matrix in 2D or 3D, as a vector
-of static vectors, in a proper order for ploting the cell (the first vertex, in the
-origin, is repeated at the end of the list, to close the figure)
-
-=#
-function draw_cell_vertices(m::AbstractMatrix)
-    if size(m) == (2, 2)
-        x = _draw_cell_vertices2D(m)
-    elseif size(m) == (3, 3)
-        x = _draw_cell_vertices3D(m)
-    else
-        throw(ArgumentError("draw_cell_vertices only supports square matrices in 2 or 3 dimensions."))
-    end
-end
-
-function _draw_cell_vertices2D(m::AbstractMatrix)
-    S = SVector{2,Float64}
-    x = [
-        S(0.0, 0.0),
-        S(m[:, 1]),
-        S(m[:, 1] + m[:, 2]),
-        S(m[:, 2]),
-        S(0.0, 0.0)
-    ]
-    return x
-end
-
-function _draw_cell_vertices3D(m::AbstractMatrix)
-    S = SVector{3,Float64}
-    x = [
-        S(0.0, 0.0, 0.0),
-        S(m[:, 1]),
-        S(m[:, 1] + m[:, 2]),
-        S(m[:, 2]),
-        S(0.0, 0.0, 0.0),
-        S(m[:, 1]),
-        S(m[:, 1] + m[:, 3]),
-        S(m[:, 3]),
-        S(0.0, 0.0, 0.0),
-        S(m[:, 2]),
-        S(m[:, 2] + m[:, 3]),
-        S(m[:, 2]),
-        S(0.0, 0.0, 0.0),
-        S(m[:, 1]),
-        S(m[:, 1] + m[:, 2]),
-        S(m[:, 1] + m[:, 2]) + m[:, 3],
-        S(m[:, 1] + m[:, 3]),
-        S(m[:, 3]),
-        S(m[:, 3]) + m[:, 2],
-        S(m[:, 1] + m[:, 2]) + m[:, 3]
-    ]
-    return x
-end
-
-@testitem "draw_cell_vertices" begin
-    using StaticArrays
-    import CellListMap: draw_cell_vertices
-    m = [1 0; 0 1]
-    @test draw_cell_vertices(m) == SVector{2,Float64}[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
-    m = [1 0 0; 0 1 0; 0 0 1]
-    @test draw_cell_vertices(m) == SVector{3,Float64}[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
-end
-
-#=
     cell_limits(m::AbstractMatrix)
 
 For 2D and 3D matrices, returns the maximum and minimum coordinates of all vertices. 
@@ -654,29 +554,79 @@ end
 end
 
 #=
-    draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
+    cell_vertices(m::AbstractMatrix)
 
-Draw the unit cell in a 2D or 3D plot. Requires `using Plots`.
+Function that returns the vertices of a unit cell in 2D or 3D, given the unit cell matrix.
 
 =#
-function draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
-    plot = Main.plot
-    plot! = Main.plot!
-    vertices = draw_cell_vertices(m)
-    plt = plot(Tuple.(vertices), label=nothing)
-    lims = cell_limits(m)
-    dx = (lims[2][1] - lims[1][1]) / 10
-    dy = (lims[2][2] - lims[1][2]) / 10
-    plot!(plt,
-        xlims=(lims[1][1] - dx, lims[2][1] + dx),
-        ylims=(lims[1][2] - dy, lims[2][2] + dy),
-        aspect_ratio=aspect_ratio,
-        xlabel="x",
-        ylabel="y",
-        zlabel="z",
-    )
-    return plt
+function cell_vertices(m::AbstractMatrix)
+    if size(m) == (2, 2)
+        x = _cell_vertices2D(m)
+    elseif size(m) == (3, 3)
+        x = _cell_vertices3D(m)
+    else
+        throw(ArgumentError("cell_vertices only supports square matrices in 2 or 3 dimensions."))
+    end
 end
 
+@views function _cell_vertices2D(m::AbstractMatrix{T}) where {T}
+    S = SVector{2,T}
+    x = SVector{4,S}(S(zero(T), zero(T)), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
+    return x
+end
 
+@views function _cell_vertices3D(m::AbstractMatrix{T}) where {T}
+    S = SVector{3,T}
+    x = SVector{8,S}(
+        S(zero(T), zero(T), zero(T)),
+        S(m[:, 1]),
+        S(m[:, 1]) + S(m[:, 2]),
+        S(m[:, 2]),
+        S(m[:, 1]) + S(m[:, 3]),
+        S(m[:, 3]),
+        S(m[:, 2]) + S(m[:, 3]),
+        S(m[:, 1]) + S(m[:, 2]) + S(m[:, 3]),
+    )
+    return x
+end
 
+@testitem "cell vertices" begin
+    import CellListMap: cell_vertices
+    m = [1 0; 0 1]
+    @test all(
+        isapprox.(cell_vertices(m), [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]], atol=1e-6)
+    )
+    m = [1 0.5; 0 1]
+    @test all(
+        isapprox.(cell_vertices(m), [[0.0, 0.0], [1.0, 0.0], [1.5, 1.0], [0.5, 1.0]], atol=1e-6)
+    )
+    m = [1 0 0; 0 1 0; 0 0 1]
+    @test all(
+        isapprox.(cell_vertices(m), 
+        [ [0, 0, 0],
+          [1, 0, 0],
+          [1, 1, 0],
+          [0, 1, 0],
+          [1, 0, 1],
+          [0, 0, 1],
+          [0, 1, 1],
+          [1, 1, 1] ],
+        atol = 1e-6)
+    )
+    m = [1 0.5 0; 0 1 0; 0 0 1]
+    @test all(
+        isapprox.(cell_vertices(m), 
+        [ [0.0, 0.0, 0.0],
+          [1.0, 0.0, 0.0],
+          [1.5, 1.0, 0.0],
+          [0.5, 1.0, 0.0],
+          [1.0, 0.0, 1.0],
+          [0.0, 0.0, 1.0],
+          [0.5, 1.0, 1.0],
+          [1.5, 1.0, 1.0] ],
+        atol=1e-6)
+    )
+end
+
+# Obs: auxiliary functions to draw unit cells are available in the 
+# testing.jl file.

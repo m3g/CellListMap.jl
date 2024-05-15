@@ -580,5 +580,89 @@ end
     @test CellListMap.test_pathological() == (nothing, nothing)
 end
 
+#
+# Functions for drawing unitcells, for testing
+#
+#=
+    draw_cell_vertices(m::AbstractMatrix)
+
+Function that returns the vertices of a unit cell matrix in 2D or 3D, as a vector
+of static vectors, in a proper order for ploting the cell (the first vertex, in the
+origin, is repeated at the end of the list, to close the figure)
+
+=#
+function draw_cell_vertices(m::AbstractMatrix)
+    if size(m) == (2, 2)
+        x = _draw_cell_vertices2D(m)
+    elseif size(m) == (3, 3)
+        x = _draw_cell_vertices3D(m)
+    else
+        throw(ArgumentError("draw_cell_vertices only supports square matrices in 2 or 3 dimensions."))
+    end
+end
+
+function _draw_cell_vertices2D(m::AbstractMatrix)
+    S = SVector{2,Float64}
+    x = [
+        S(0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 2]),
+        S(m[:, 2]),
+        S(0.0, 0.0)
+    ]
+    return x
+end
+
+function _draw_cell_vertices3D(m::AbstractMatrix)
+    S = SVector{3,Float64}
+    x = [
+        S(0.0, 0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 2]),
+        S(m[:, 2]),
+        S(0.0, 0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 3]),
+        S(m[:, 3]),
+        S(0.0, 0.0, 0.0),
+        S(m[:, 2]),
+        S(m[:, 2] + m[:, 3]),
+        S(m[:, 2]),
+        S(0.0, 0.0, 0.0),
+        S(m[:, 1]),
+        S(m[:, 1] + m[:, 2]),
+        S(m[:, 1] + m[:, 2]) + m[:, 3],
+        S(m[:, 1] + m[:, 3]),
+        S(m[:, 3]),
+        S(m[:, 3]) + m[:, 2],
+        S(m[:, 1] + m[:, 2]) + m[:, 3]
+    ]
+    return x
+end
+
+#=
+    draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
+
+Draw the unit cell in a 2D or 3D plot. Requires `using Plots`.
+
+=#
+function draw_cell(m::AbstractMatrix; aspect_ratio=:auto)
+    plot = Main.plot
+    plot! = Main.plot!
+    vertices = draw_cell_vertices(m)
+    plt = plot(Tuple.(vertices), label=nothing)
+    lims = cell_limits(m)
+    dx = (lims[2][1] - lims[1][1]) / 10
+    dy = (lims[2][2] - lims[1][2]) / 10
+    plot!(plt,
+        xlims=(lims[1][1] - dx, lims[2][1] + dx),
+        ylims=(lims[1][2] - dy, lims[2][2] + dy),
+        aspect_ratio=aspect_ratio,
+        xlabel="x",
+        ylabel="y",
+        zlabel="z",
+    )
+    return plt
+end
 
 
