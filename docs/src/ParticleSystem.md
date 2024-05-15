@@ -140,12 +140,12 @@ julia> map_pairwise!(energy, system)
 Note that the first four parameters of `energy` are not used here but are needed to adhere to the interface. The function 
 input could be written as `(_, _, _, _, d2, energy)` to make that explicit. 
 
-The `system.energy` field accesses the resulting value of the computation:
+Because `output_name` was set to `:energy`, the `system.energy` field accesses the resulting value of the computation:
 ```julia-repl
 julia> system.energy
 207.37593043370865
 ```
-because the `output_name` field was provided. If it is not provided, you can access the output value from the `system.energy` field.
+If the `output_name` field is not provided, the output value from the `system.output` field.
 
 ## Computing forces
 
