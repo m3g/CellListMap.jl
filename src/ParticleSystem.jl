@@ -1054,6 +1054,11 @@ end
 export PeriodicSystems
 module PeriodicSystems
     function __init__()
+        if haskey(ENV, "CELLLISTMAP_8.3_WARNING")
+            if ENV["CELLLISTMAP_8.3_WARNING"] == "false"
+                return
+            end
+        end
         @warn begin """\n
         
         Interface changes in v0.8.30, for `PeriodicSystems` submodule of CellListMap.
@@ -1072,7 +1077,7 @@ module PeriodicSystems
         The new `ParticleSystem` interface supports non-periodic systems, by
         not setting the `unitcell` field in the system (or set `unitcell = nothing`).
 
-        
+        Suppress this warning by setting: ENV["CELLLISTMAP_8.3_WARNING"] = "false"
 
         """ end _file=nothing _line=nothing
     end
