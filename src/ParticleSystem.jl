@@ -1059,7 +1059,7 @@ module PeriodicSystems
         Interface changes in v0.8.30, for `PeriodicSystems` submodule of CellListMap.
 
         From v0.8.30 on, the `PeriodicSystems` submodule is deprecated and will be removed in future versions.
-        (code that works in v0.8.XX series will work in v0.8.30 through compatibility functions).
+        (code that works in v0.8.XX series will work in v0.8.3X through compatibility functions).
 
         The same functionality can be achieved by using directly the `CellListMap` module and the 
         `ParticleSystem` data structure. 
@@ -1068,16 +1068,19 @@ module PeriodicSystems
 
         using CellListMap.PeriodicSystems  => using CellListMap
         system = PeriodicSystem(...)       => system = ParticleSystem(...)
-        UpdatePeriodicSystem!(system)      => UpdateParticleSystem!(system)
 
         The new `ParticleSystem` interface supports non-periodic systems, by
         not setting the `unitcell` field in the system (or set `unitcell = nothing`).
+
+        
 
         """ end _file=nothing _line=nothing
     end
     import ..CellListMap
     const PeriodicSystem = CellListMap.ParticleSystem
+    const AbstractPeriodicSystem = CellListMap.AbstractParticleSystem
     export PeriodicSystem
+    export AbstractPeriodicSystem
     using ..CellListMap: map_pairwise!, map_pairwise
     export map_pairwise!, map_pairwise
     using ..CellListMap: update_cutoff!, update_unitcell!, unitcelltype
