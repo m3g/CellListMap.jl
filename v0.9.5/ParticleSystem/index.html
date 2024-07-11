@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>ParticleSystem interface · CellListMap.jl</title><meta name="title" content="ParticleSystem interface · CellListMap.jl"/><meta property="og:title" content="ParticleSystem interface · CellListMap.jl"/><meta property="twitter:title" content="ParticleSystem interface · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li class="is-active"><a class="tocitem" href>ParticleSystem interface</a><ul class="internal"><li><a class="tocitem" href="#The-mapped-function"><span>The mapped function</span></a></li><li><a class="tocitem" href="#The-ParticleSystem-constructor"><span>The ParticleSystem constructor</span></a></li><li><a class="tocitem" href="#Potential-energy-example"><span>Potential energy example</span></a></li><li><a class="tocitem" href="#Computing-forces"><span>Computing forces</span></a></li><li><a class="tocitem" href="#Computing-both-energy-and-forces"><span>Computing both energy and forces</span></a></li><li><a class="tocitem" href="#Updating-coordinates,-unit-cell,-and-cutoff"><span>Updating coordinates, unit cell, and cutoff</span></a></li><li><a class="tocitem" href="#Computations-for-two-sets-of-particles"><span>Computations for two sets of particles</span></a></li><li><a class="tocitem" href="#Additional-options"><span>Additional options</span></a></li><li><a class="tocitem" href="#Complete-example-codes"><span>Complete example codes</span></a></li><li><a class="tocitem" href="#Docstrings"><span>Docstrings</span></a></li></ul></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li><a class="tocitem" href="../LowLevel/">Low level interface</a></li><li><a class="tocitem" href="../ecosystem/">Ecosystem integration</a></li><li><a class="tocitem" href="../python/">From Python</a></li><li><a class="tocitem" href="../citation/">Citation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>ParticleSystem interface</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>ParticleSystem interface</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/ParticleSystem.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="ParticleSystem-interface"><a class="docs-heading-anchor" href="#ParticleSystem-interface">ParticleSystem interface</a><a id="ParticleSystem-interface-1"></a><a class="docs-heading-anchor-permalink" href="#ParticleSystem-interface" title="Permalink"></a></h1><p>The <code>ParticleSystem</code> interface facilitates the use of <code>CellListMap</code> for the majority of cases. </p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><ul><li>This interface requires <code>CellListMap.jl</code> version <code>0.8.30</code> or greater.</li><li>The complete codes of the examples are at the end of this page, with examples of:<ul><li><a href="#Simple-energy-computation">Simple energy computation</a></li><li><a href="#Force-computation">Force computation</a></li><li><a href="#Energy-and-forces">Energy and forces</a></li><li><a href="#Two-sets-of-particles">Two sets of particles</a></li><li><a href="#Particle-simulation">Particle simulation</a></li></ul></li></ul></div></div><div class="admonition is-compat"><header class="admonition-header">Compat</header><div class="admonition-body"><p>The <code>ParticleSystem</code> interface is available since version <code>0.9.0</code> of CellListMap.jl. It replaces the <code>PeriodicSystems</code> interface available in previous versions.</p></div></div><h2 id="The-mapped-function"><a class="docs-heading-anchor" href="#The-mapped-function">The mapped function</a><a id="The-mapped-function-1"></a><a class="docs-heading-anchor-permalink" href="#The-mapped-function" title="Permalink"></a></h2><p>The purpose of CellListMap is to compute a pairwise-dependent function for all pairs of particles that are closer to each other than a defined cutoff. This pairwise function must be implemented by the user and adhere to the following  interface:  </p><pre><code class="language-julia hljs">function f(x, y, i, j, d2, output)
+    # update output variable
+    return output
+end</code></pre><p>where <code>x</code> and <code>y</code> are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), <code>i</code> and <code>j</code> are the indexes of the particles in the arrays of coordinates, <code>d2</code> is the squared distance between the particles, and <code>output</code> is the variable to be computed. </p><div class="admonition is-info"><header class="admonition-header">Info</header><div class="admonition-body"><h4>Details of the mapped function interface</h4><p>The input parameters <code>x</code>, <code>y</code>, <code>i</code>, <code>j</code>, and <code>d2</code> must not be modified by the user. They are the the input data that the user may use to update the <code>output</code> variable.  </p><table><tr><th style="text-align: center">Input Parameter</th><th style="text-align: center">Type</th><th style="text-align: left">Meaning</th></tr><tr><td style="text-align: center"><code>x</code></td><td style="text-align: center"><code>SVector</code></td><td style="text-align: left">The coordinates of particle <code>i</code> of the pair.</td></tr><tr><td style="text-align: center"><code>y</code></td><td style="text-align: center"><code>SVector</code></td><td style="text-align: left">The coordinates of particle <code>j</code> of the pair (minimum-image relative to <code>x</code>).</td></tr><tr><td style="text-align: center"><code>i</code></td><td style="text-align: center"><code>Int</code></td><td style="text-align: left">Index of first particle in the original array of coordinates.</td></tr><tr><td style="text-align: center"><code>j</code></td><td style="text-align: center"><code>Int</code></td><td style="text-align: left">Index of second particle in the original array of coordinates.</td></tr><tr><td style="text-align: center"><code>d2</code></td><td style="text-align: center"><code>&lt;:Real</code></td><td style="text-align: left">Squared distance between the particles.</td></tr><tr><td style="text-align: center"><code>output</code></td><td style="text-align: center">user defined</td><td style="text-align: left">the value to be updated</td></tr></table><p><strong>Notes:</strong> <code>x</code> and <code>y</code> may be 2D or 3D vectors, depending on the dimension of the system. The type of  the coordinates of <code>x</code>, <code>y</code>, and of <code>d2</code> are dependent on the input arrays and cutoff, and can be <code>Float64</code>, <code>Float32</code>, unitful quantities, etc. </p><table><tr><th style="text-align: center">Return value</th><th style="text-align: center">Type</th><th style="text-align: left">Meaning</th></tr><tr><td style="text-align: center"><code>output</code></td><td style="text-align: center">user defined</td><td style="text-align: left">the updated value of output.</td></tr></table><p>The <code>output</code> variable <strong>must</strong> be returned by the function, being it mutable or immutable. </p></div></div><h3 id="Basic-examples"><a class="docs-heading-anchor" href="#Basic-examples">Basic examples</a><a id="Basic-examples-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-examples" title="Permalink"></a></h3><p>For example, computing the energy, as the sum of the inverse of the distance between particles, can be done with a function like:</p><pre><code class="language-julia hljs">function energy(d2,u)
+    u += 1 / sqrt(d2)
+    return u
+end</code></pre><p>and the additional parameters required by the interface can be eliminated by the use of an anonymous function, directly on the call to the <code>map_pairwise</code> function:</p><pre><code class="language-julia hljs">u = map_pairwise(
+    (x,y,i,j,d2,u) -&gt; energy(d2,u), 
+    system
+)</code></pre><p>(what <code>system</code> is will be explained in the examples below). Note that the <code>energy</code> function does not use the <code>x</code>, <code>y</code>, <code>i</code>, and <code>j</code> input parameters, such  that the anonymous function managing the interface could also be written as <code>(_, _, _, _, d2, u) -&gt; energy(d2, u)</code>, making explicit the dummy character of these variables in the example.</p><p>Alternatively, the function might require additional parameters, such as the masses of the particles. In this case, we can use a closure to provide such data:</p><pre><code class="language-julia hljs">function energy(i,j,d2,u,masses)
+    u += masses[i]*masses[j] / sqrt(d2)
+    return u
+end
+const masses = # ... some masses
+u = map_pairwise((x,y,i,j,d2,u) -&gt; energy(d2,u,masses), system)</code></pre><p>Here we reinforce the fact that the <code>energy</code> functions defined above compute the contribution to the energy of the interaction of <em>a single</em> pair of particles. This function will be called for every pair of particles within the cutoff, automatically, in the <code>map_pairwise</code> call. </p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The <code>output</code> of the <code>CellListMap</code> computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (<code>SVectors</code> in particular), such as an arrays of forces.  </p><p>Additionally, the properties are frequently additive (the energy is the sum of the energy of the particles, or the forces are added by summation). </p><p>For these types of <code>output</code> data the usage does not require the implementation of any data-type dependent function. </p></div></div><h2 id="The-ParticleSystem-constructor"><a class="docs-heading-anchor" href="#The-ParticleSystem-constructor">The ParticleSystem constructor</a><a id="The-ParticleSystem-constructor-1"></a><a class="docs-heading-anchor-permalink" href="#The-ParticleSystem-constructor" title="Permalink"></a></h2><h2 id="Potential-energy-example"><a class="docs-heading-anchor" href="#Potential-energy-example">Potential energy example</a><a id="Potential-energy-example-1"></a><a class="docs-heading-anchor-permalink" href="#Potential-energy-example" title="Permalink"></a></h2><p>For example, here we read the coordinates of Argon atoms from a PDB file. The coordinates are given as  vector of <code>SVector</code>s. We then compute an &quot;energy&quot;, which in this case is simply the sum of <code>1/d</code> over all pair of particles, within a cutoff.</p><p>The <code>ParticleSystem</code> constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary. </p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+
+julia&gt; system = ParticleSystem(
+           xpositions=argon_coordinates,
+           unitcell=[21.0,21.0,21.0], 
+           cutoff = 8.0, 
+           output = 0.0,
+           output_name = :energy
+       );</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><ul><li>Systems can be 2 or 3-dimensional. </li><li>The <code>unitcell</code> parameter may be:<ul><li>a vector, in which case the system periodic boundaries are Orthorhombic, this is faster.</li><li>a matrix, in which case the system periodic boundaries are Triclinic (general).</li><li><code>nothing</code> (by default), in which case no periodic boundary conditions will be used.</li></ul></li><li><code>Unitful</code> quantities can be provided, given appropriate types for all input parameters. </li></ul></div></div><p>Now, let us compute the energy of the particles, assuming a simple formula which depends on the inverse of the distance between pairs:</p><pre><code class="language-julia-repl hljs">julia&gt; function energy(x, y, i, j, d2, energy)
+           energy += 1 / sqrt(d2)
+           return energy
+       end
+
+julia&gt; map_pairwise!(energy, system)
+207.37593043370865</code></pre><p>Note that the first four parameters of <code>energy</code> are not used here but are needed to adhere to the interface. The function  input could be written as <code>(_, _, _, _, d2, energy)</code> to make that explicit. </p><p>Because <code>output_name</code> was set to <code>:energy</code>, the <code>system.energy</code> field accesses the resulting value of the computation:</p><pre><code class="language-julia-repl hljs">julia&gt; system.energy
+207.37593043370865</code></pre><p>If the <code>output_name</code> field is not provided, the output value from the <code>system.output</code> field.</p><h2 id="Computing-forces"><a class="docs-heading-anchor" href="#Computing-forces">Computing forces</a><a id="Computing-forces-1"></a><a class="docs-heading-anchor-permalink" href="#Computing-forces" title="Permalink"></a></h2><p>Following the example above, let us compute the forces between the particles. We have to define the function that computes the force between a pair of particles and updates the array of forces:</p><pre><code class="language-julia hljs">function update_forces!(x,y,i,j,d2,forces)
+    d = sqrt(d2)
+    df = (1/d2)*(1/d)*(y - x)
+    forces[i] += df
+    forces[j] -= df
+    return forces
+end</code></pre><p>Importantly, the function <em>must</em> return the <code>forces</code> array to follow the API. </p><p>Now, let us setup the system with the new type of output variable, which will be now an array of forces with the same type as the positions:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+
+julia&gt; system = ParticleSystem(
+           xpositions=argon_coordinates,
+           unitcell=[21.0, 21.0, 21.0], 
+           cutoff = 8.0, 
+           output = similar(argon_coordinates),
+           output_name = :forces
+       );</code></pre><p>Let us note that the <code>forces</code> where reset upon the construction of the system:</p><pre><code class="language-julia-repl hljs">julia&gt; system.forces
+1000-element Vector{SVector{3, Float64}}:
+ [0.0, 0.0, 0.0]
+ [0.0, 0.0, 0.0]
+ ⋮
+ [0.0, 0.0, 0.0]</code></pre><p>A call to <code>map_pairwise!</code> with the appropriate function definition will update the forces:</p><pre><code class="language-julia-repl hljs">julia&gt; map_pairwise!((x,y,i,j,d2,forces) -&gt; update_forces!(x,y,i,j,d2,forces), system)
+100-element Vector{SVector{3, Float64}}:
+ [0.026493833307357332, 0.18454277989323772, -0.012253902366284965]
+ [0.07782602581235695, 0.2791082233740261, 0.21926615329195248]
+ ⋮
+ [0.11307234751448932, 0.006353545239676281, -0.05955687310348302]
+ [-0.03101200918307673, 0.03543655648545697, 0.031849121630976335]</code></pre><h2 id="Computing-both-energy-and-forces"><a class="docs-heading-anchor" href="#Computing-both-energy-and-forces">Computing both energy and forces</a><a id="Computing-both-energy-and-forces-1"></a><a class="docs-heading-anchor-permalink" href="#Computing-both-energy-and-forces" title="Permalink"></a></h2><p>In this example we define a general type of <code>output</code> variable, for which custom copy, reset, and reduction functions must be defined. It can be followed for the computation of other general properties from the particle positions.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Interface to be implemented:</p><table><tr><th style="text-align: left">Method</th><th style="text-align: center">Return</th><th style="text-align: left">What it does</th></tr><tr><td style="text-align: left"><code>copy_output(x::T)</code></td><td style="text-align: center">new instance of type <code>T</code></td><td style="text-align: left">Copies an element of the output type <code>T</code>.</td></tr><tr><td style="text-align: left"><code>reset_output!(x::T)</code></td><td style="text-align: center">mutated <code>x</code></td><td style="text-align: left">Resets (usually zero) the value of x to the initial value it must assume before mapping.  If <code>x</code> is immutable, the function can return a new instance of <code>T</code>.</td></tr><tr><td style="text-align: left"><code>reducer(x::T,y::T)</code></td><td style="text-align: center"><code>mutated x</code></td><td style="text-align: left">Reduces <code>x</code> and <code>y</code> into <code>x</code> (for example <code>x = x + y</code>). If <code>x</code> is immutable, returns a new instance of type <code>T</code>.</td></tr></table><p><strong>Remark:</strong> if the output is an array of an immutable type <code>T</code>, the methods above can be defined for single <em>instances</em> of <code>T</code>, which is simpler than for the arrays.</p></div></div><pre><code class="language-julia hljs">using CellListMap, StaticArrays, PDBTools</code></pre><p>The computation of energies and forces in a single call is an interesting example for the definition of a custom <code>output</code> type and the required interface functions.  Let us first define an output variable containing both quantities:</p><pre><code class="language-julia hljs">mutable struct EnergyAndForces
+    energy::Float64
+    forces::Vector{SVector{3,Float64}}
+end</code></pre><p>Now we need to define what it means to copy, reset, and reduce this new type of output. We overload the default corresponding functions, for our new output type:</p><p>The copy method creates a new instance of the <code>EnergyAndForces</code> type, with copied data:</p><pre><code class="language-julia hljs">function CellListMap.copy_output(x::EnergyAndForces) 
+    return EnergyAndForces(copy(x.energy), copy(x.forces))
+end</code></pre><p>The reset method will zero both the energy and all forces:</p><pre><code class="language-julia hljs">function CellListMap.reset_output!(output::EnergyAndForces)
+    output.energy = 0.0
+    for i in eachindex(output.forces)
+        output.forces[i] = SVector(0.0, 0.0, 0.0)
+    end
+    return output
+end</code></pre><p>The reducer function defines what it means to combine two output variables obtained on independent threads. In this case, we sum the energies and forces. Different reduction functions might be necessary for other custom types (for example if computing minimum distances).</p><pre><code class="language-julia hljs">function CellListMap.reducer(x::EnergyAndForces, y::EnergyAndForces)
+    e_tot = x.energy + y.energy
+    x.forces .+= y.forces
+    return EnergyAndForces(e_tot, x.forces)
+end</code></pre><p>Note that in the above example, we reuse the <code>x.forces</code> array in the return instance of <code>EnergyAndForces</code>. You must always reduce from right to left, and reuse the possible buffers of the first argument of the reducer (in this case, <code>x</code>).</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><ul><li>All these functions <strong>must</strong> return the modified <code>output</code> variable, to adhere to the interface.</li><li>The proper definition of a reduction function is crucial for correctness. Please verify your results if using the default reducer function, which sums the elements.</li></ul></div></div><p>Now we can proceed as before, defining a function that updates the output variable appropriately:</p><pre><code class="language-julia hljs">function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
+    d = sqrt(d2)
+    output.energy += 1/d
+    df = (1/d2)*(1/d)*(y - x)
+    output.forces[i] += df
+    output.forces[j] -= df
+    return output
+end</code></pre><p>To finally define the system and compute the properties:</p><pre><code class="language-julia hljs">argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+
+system = ParticleSystem(
+    xpositions = argon_coordinates,
+    unitcell = [21.0, 21.0, 21.0], 
+    cutoff = 8.0, 
+    output = EnergyAndForces(0.0, similar(argon_coordinates)),
+    output_name = :energy_and_forces
+);
+
+map_pairwise((x,y,i,j,d2,output) -&gt; energy_and_forces!(x,y,i,j,d2,output), system);</code></pre><p>The output can be seen with the aliases of the <code>system.output</code> variable:</p><pre><code class="language-julia-repl hljs">julia&gt; system.energy_and_forces.energy
+207.37593043370862
+
+julia&gt; system.energy_and_forces.forces
+100-element Vector{SVector{3, Float64}}:
+ [0.02649383330735732, 0.18454277989323772, -0.012253902366284958]
+ [0.07782602581235692, 0.27910822337402613, 0.21926615329195248]
+ ⋮
+ [0.11307234751448932, 0.006353545239676281, -0.05955687310348303]
+ [-0.031012009183076745, 0.03543655648545698, 0.03184912163097636]</code></pre><h2 id="Updating-coordinates,-unit-cell,-and-cutoff"><a class="docs-heading-anchor" href="#Updating-coordinates,-unit-cell,-and-cutoff">Updating coordinates, unit cell, and cutoff</a><a id="Updating-coordinates,-unit-cell,-and-cutoff-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates,-unit-cell,-and-cutoff" title="Permalink"></a></h2><p>If the <code>map_pairwise!</code> function will compute energy and/or forces in a iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.</p><ul><li><a href="#Updating-coordinates">Updating coordinates</a></li><li><a href="#Updating-the-unit-cell">Updating the unit cell</a></li><li><a href="#Updating-the-cutoff">Updating the cutoff</a></li></ul><h3 id="Updating-coordinates"><a class="docs-heading-anchor" href="#Updating-coordinates">Updating coordinates</a><a id="Updating-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates" title="Permalink"></a></h3><p>The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the <code>xpositions</code> field of the system. The <code>xpositions</code> array is a <code>Vector</code> of <code>SVector</code> (from <code>StaticArrays</code>), with coordinates copied from the input array provided. Thus, the coordinates in the <code>ParticleSystem</code> structure must be updated independently of updates in the original array of coordinates. </p><p>Let us exemplify the interface with the computation of forces:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; positions = rand(SVector{3,Float64}, 1000);
+
+julia&gt; system = ParticleSystem(
+           xpositions = positions,
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = similar(positions),
+           output_name = :forces
+       );
+
+julia&gt; system.xpositions[1]
+3-element SVector{3, Float64} with indices SOneTo(3):
+ 0.6391290709055079
+ 0.43679325975360894
+ 0.8231829019768698
+
+julia&gt; system.xpositions[1] = zeros(SVector{3,Float64})
+3-element SVector{3, Float64} with indices SOneTo(3):
+ 0.0
+ 0.0
+ 0.0
+
+julia&gt; push!(system.xpositions, SVector(0.5, 0.5, 0.5))
+1001-element Vector{SVector{3, Float64}}:
+ [0.0, 0.0, 0.0]
+ [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
+ ⋮
+ [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
+ [0.5, 0.5, 0.5]</code></pre><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>The <code>output</code> variable may have to be resized accordingly, depending on the calculation being performed. Use the <code>resize_output!</code> function  (do <strong>not</strong> use <code>Base.resize!</code> on your output array directly).</p></div></div><p>If the <code>output</code> array has to be resized, that has to be done with the  <code>resize_output!</code> function, which will keep the consistency of the auxiliary multi-threading buffers. This is, for instance, the case  in the example of computation of forces, as the <code>forces</code> array must be of the same length as the array of positions:</p><pre><code class="language-julia-repl hljs">julia&gt; resize_output!(system, length(system.xpositions));
+
+julia&gt; map_pairwise!((x,y,i,j,d2,forces) -&gt; update_forces!(x,y,i,j,d2,forces), system)
+1001-element Vector{SVector{3, Float64}}:
+ [756.2076075886971, -335.1637545330828, 541.8627090466914]
+ [-173.02442398784672, -178.782819965489, 4.570607952876692]
+ ⋮
+ [-722.5400961501635, 182.65287417718935, 380.0394926753039]
+ [20.27985502389337, -193.77607810950286, -155.28968519541544]</code></pre><p>In this case, if the <code>output</code> is not resized, a <code>BoundsError:</code> is be obtained, because updates of forces at unavailable positions will be attempted. </p><h3 id="Updating-the-unit-cell"><a class="docs-heading-anchor" href="#Updating-the-unit-cell">Updating the unit cell</a><a id="Updating-the-unit-cell-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-the-unit-cell" title="Permalink"></a></h3><p>The unit cell can be updated to new dimensions at any moment, with the <code>update_unitcell!</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; update_unitcell!(system, SVector(1.2, 1.2, 1.2))
+ParticleSystem1 of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.2, 0.0; 0.0, 0.0, 1.2 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [13, 13, 13]
+      computing cell sizes = [0.11, 0.11, 0.11] (lcell: 1)
+      Total number of cells = 2197
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      623 cells with real particles.
+      1719 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 12
+    Type of output variable (forces): Vector{SVector{3, Float64}}</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><ul><li><p>The unit cell can be set initially using a vector or a unit cell matrix. If a vector is provided the system is considered Orthorhombic, if a matrix is provided, a Triclinic system is built.  Unit cells updates must preserve the system type. </p></li><li><p>The unit cell of non-periodic systems (initialized with <code>nothing</code>) cannot be updated manually.</p></li><li><p>It is recommended (but not mandatory) to use static arrays (or Tuples) to update the unitcell,  as in this case the update will be non-allocating. </p></li></ul></div></div><h3 id="Updating-the-cutoff"><a class="docs-heading-anchor" href="#Updating-the-cutoff">Updating the cutoff</a><a id="Updating-the-cutoff-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-the-cutoff" title="Permalink"></a></h3><p>The cutoff can also be updated, using the <code>update_cutoff!</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; update_cutoff!(system, 0.2)
+ParticleSystem1 of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
+      cutoff = 0.2
+      number of computing cells on each dimension = [7, 7, 7]
+      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
+      Total number of cells = 343
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      125 cells with real particles.
+      2792 particles in computing box, including images.
+    Parallelization auxiliary data set for: 
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 8
+    Type of output variable (forces): Vector{SVector{3, Float64}}
+
+julia&gt; map_pairwise!((x,y,i,j,d2,forces) -&gt; update_forces!(x,y,i,j,d2,forces), system)
+1000-element Vector{SVector{3, Float64}}:
+ [306.9612911344924, -618.7375562535321, -607.1449767066479]
+ [224.0803003775478, -241.05319348787023, 67.53780411933884]
+ ⋮
+ [2114.4873184508524, -3186.265279868732, -6777.748445712408]
+ [-25.306486853608945, 119.69319481834582, 104.1501577339471]</code></pre><h2 id="Computations-for-two-sets-of-particles"><a class="docs-heading-anchor" href="#Computations-for-two-sets-of-particles">Computations for two sets of particles</a><a id="Computations-for-two-sets-of-particles-1"></a><a class="docs-heading-anchor-permalink" href="#Computations-for-two-sets-of-particles" title="Permalink"></a></h2><p>If the computation involves two sets of particle, a similar interface is available.  The only difference is that the coordinates of the two sets must be provided to the <code>ParticleSystem</code> constructor as the <code>xpositions</code> and <code>ypositions</code> arrays.</p><p>We will illustrate this interface by computing the minimum distance between two sets of particles, which allows us to showcase further the definition of custom type interfaces:</p><p>First, we define a variable type that will carry the indexes and  the distance of the closest pair of particles:</p><pre><code class="language-julia-repl hljs">julia&gt; struct MinimumDistance
+           i::Int
+           j::Int
+           d::Float64
+       end</code></pre><p>The function that, given two particles, retains the minimum distance, is:</p><pre><code class="language-julia-repl hljs">julia&gt; function minimum_distance(i, j, d2, md)
+           d = sqrt(d2)
+           if d &lt; md.d
+               md = MinimumDistance(i, j, d)
+           end
+           return md
+       end
+minimum_distance (generic function with 1 method)</code></pre><p>We overload copy, reset, and reduce functions, accordingly:</p><pre><code class="language-julia-repl hljs">julia&gt; import CellListMap: copy_output, reset_output!, reducer!
+
+julia&gt; copy_output(md::MinimumDistance) = md
+copy_output (generic function with 5 methods)
+
+julia&gt; reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
+reset_output! (generic function with 5 methods)
+
+julia&gt; reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d &lt; md2.d ? md1 : md2
+reducer! (generic function with 2 methods)</code></pre><p>Note that since <code>MinimumDistance</code> is immutable, copying it is the same as returning the value.  Also, resetting the minimum distance consists of setting its <code>d</code> field to <code>+Inf</code>. And, finally, reducing the threaded distances consists of keeping the pair with the shortest distance. </p><p>Next, we build the system</p><pre><code class="language-julia-repl hljs">julia&gt; xpositions = rand(SVector{3,Float64},1000);
+
+julia&gt; ypositions = rand(SVector{3,Float64},1000);
+
+julia&gt; system = ParticleSystem(
+           xpositions = xpositions,
+           ypositions = ypositions, 
+           unitcell=[1.0,1.0,1.0], 
+           cutoff = 0.1, 
+           output = MinimumDistance(0,0,+Inf),
+           output_name = :minimum_distance,
+        )</code></pre><p>And finally we can obtain the minimum distance between the sets: </p><pre><code class="language-julia-repl hljs">julia&gt; map_pairwise((x,y,i,j,d2,md) -&gt; minimum_distance(i,j,d2,md), system)
+MinimumDistance(276, 617, 0.006009804808785543)</code></pre><h2 id="Additional-options"><a class="docs-heading-anchor" href="#Additional-options">Additional options</a><a id="Additional-options-1"></a><a class="docs-heading-anchor-permalink" href="#Additional-options" title="Permalink"></a></h2><ul><li><a href="#Turn-parallelization-on-and-off">Turn parallelization on and off</a></li><li><a href="#Displaying-a-progress-bar">Displaying a progress bar</a></li><li><a href="#Fine-control-of-the-paralellization">Fine control of the paralellization</a></li><li><a href="#Avoid-cell-list-updating">Avoid cell list updating</a></li><li><a href="#Control-CellList-cell-size">Control CellList cell size</a></li><li><a href="#Coordinates-as-matrices">Coordinates as matrices</a></li></ul><h3 id="Turn-parallelization-on-and-off"><a class="docs-heading-anchor" href="#Turn-parallelization-on-and-off">Turn parallelization on and off</a><a id="Turn-parallelization-on-and-off-1"></a><a class="docs-heading-anchor-permalink" href="#Turn-parallelization-on-and-off" title="Permalink"></a></h3><p>The use of parallel computations can be tunned on and of by the <code>system.parallel</code> boolean flag. For example, using 6 cores (12 threads) for the calculation of the minimum-distance example: </p><pre><code class="language-julia-repl hljs">julia&gt; f(system) = map_pairwise((x,y,i,j,d2,md) -&gt; minimum_distance(i,j,d2,md), system)
+f (generic function with 1 method)
+
+julia&gt; Threads.nthreads()
+8
+
+julia&gt; system.parallel = true
+true
+
+julia&gt; @btime f($system)
+  268.265 μs (144 allocations: 16.91 KiB)
+MinimumDistance(783, 497, 0.007213710914619913)
+
+julia&gt; system.parallel = false
+false
+
+julia&gt; @btime f($system)
+  720.304 μs (0 allocations: 0 bytes)
+MinimumDistance(783, 497, 0.007213710914619913)</code></pre><h3 id="Displaying-a-progress-bar"><a class="docs-heading-anchor" href="#Displaying-a-progress-bar">Displaying a progress bar</a><a id="Displaying-a-progress-bar-1"></a><a class="docs-heading-anchor-permalink" href="#Displaying-a-progress-bar" title="Permalink"></a></h3><p>Displaying a progress bar: for very long runs, the user might want to see the progress of the computation. Use the <code>show_progress</code> keyword parameter of the <code>map_pairwise!</code>  function for that.</p><p>For example, we execute the computation above, but with much more particles:</p><pre><code class="language-julia-repl hljs">julia&gt; xpositions = rand(SVector{3,Float64},10^6);
+
+julia&gt; ypositions = rand(SVector{3,Float64},10^6);
+
+julia&gt; system = ParticleSystem(
+                  xpositions = xpositions,
+                  ypositions = ypositions, 
+                  unitcell=[1.0,1.0,1.0], 
+                  cutoff = 0.1, 
+                  output = MinimumDistance(0,0,+Inf),
+                  output_name = :minimum_distance,
+               );
+
+julia&gt; map_pairwise(
+           (x,y,i,j,d2,md) -&gt; minimum_distance(i,j,d2,md), system; 
+           show_progress = true
+       )
+Progress:  24%|██████████▏                               |  ETA: 0:00:29</code></pre><p>By activating the <code>show_progress</code> flag, a nice progress bar is shown. </p><h3 id="Fine-control-of-the-paralellization"><a class="docs-heading-anchor" href="#Fine-control-of-the-paralellization">Fine control of the paralellization</a><a id="Fine-control-of-the-paralellization-1"></a><a class="docs-heading-anchor-permalink" href="#Fine-control-of-the-paralellization" title="Permalink"></a></h3><p>The number of batches launched in parallel runs can be tunned by the  <code>nbatches</code> keyword parameter of the <code>ParticleSystem</code> constructor.  By default, the number of batches is defined as heuristic function  dependent on the number of particles, and possibly returns optimal values in most cases. For a detailed discussion about this parameter,  see <a href="../LowLevel/#Number-of-batches">Number of batches</a>.</p><p>For example, to set the number of batches for cell list calculation to 4 and the number of batches for mapping to 8, we can do:</p><pre><code class="language-julia-repl hljs">julia&gt; system = ParticleSystem(
+           xpositions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0,
+           output_name = :energy,
+           nbatches=(4,8), # use this keyword 
+       );</code></pre><p>Most times it is expected that the default parameters are optimal. But particularly for  inhomogeneous systems increasing the number of batches of the mapping phase (second parameter of the tuple) may improve the performance by reducing the idle time of  threads.</p><h3 id="Avoid-cell-list-updating"><a class="docs-heading-anchor" href="#Avoid-cell-list-updating">Avoid cell list updating</a><a id="Avoid-cell-list-updating-1"></a><a class="docs-heading-anchor-permalink" href="#Avoid-cell-list-updating" title="Permalink"></a></h3><p>To compute different properties without recomputing cell lists, use <code>update_lists=false</code> in  the call of <code>map_pairwise</code> methods, for example,</p><pre><code class="language-julia hljs">using CellListMap, StaticArrays
+system = ParticleSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
+# First call, will compute the cell lists
+map_pairwise((x,y,i,j,d2,u) -&gt; u += d2, system)
+# Second run: do not update the cell lists but compute a different property
+map_pairwise((x,y,i,j,d2,u) -&gt; u += sqrt(d2), system; update_lists = false)</code></pre><p>in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example (requires version 0.8.9). Specifically, this will skip the updating of the cell lists, thus be careful to not use this option if the cutoff, unitcell, or any other property of the system changed. </p><p>For systems with two sets of particles, the  coordinates of the <code>xpositions</code> set can be updated, preserving the cell lists computed for the <code>ypositions</code>, but this requires setting <code>autoswap=false</code> in the construction of the <code>ParticleSystem</code>: </p><pre><code class="language-julia hljs">using CellListMap, StaticArrays
+system = ParticleSystem(
+    xpositions=rand(SVector{3,Float64},1000), 
+    ypositions=rand(SVector{3,Float64},2000),
+    output=0.0, cutoff=0.1, unitcell=[1,1,1],
+    autoswap=false # Cell lists are constructed for ypositions
+)
+map_pairwise((x,y,i,j,d2,u) -&gt; u += d2, system)
+# Second run: preserve the cell lists but compute a different property
+map_pairwise((x,y,i,j,d2,u) -&gt; u += sqrt(d2), system; update_lists = false)</code></pre><h3 id="Control-CellList-cell-size"><a class="docs-heading-anchor" href="#Control-CellList-cell-size">Control CellList cell size</a><a id="Control-CellList-cell-size-1"></a><a class="docs-heading-anchor-permalink" href="#Control-CellList-cell-size" title="Permalink"></a></h3><p>The cell sizes of the construction of the cell lists can be controled with the keyword <code>lcell</code> of the <code>ParticleSystem</code> constructor. For example:</p><pre><code class="language-julia-repl hljs">julia&gt; system = ParticleSystem(
+           xpositions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0,
+           output_name = :energy,
+           lcell=2,
+       );</code></pre><p>Most times using <code>lcell=1</code> (default) or <code>lcell=2</code> will provide the optimal performance. For very dense systems, or systems for which the number of particles within the cutoff is very large, larger values of <code>lcell</code> may improve the performance. To be tested by the user.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The number of cells in which the particles will be classified is, for each dimension <code>lcell*length/cutoff</code>.  Thus if the <code>length</code> of the box is too large relative to the <code>cutoff</code>, many cells will be created, and this imposes a perhaps large memory requirement. Usually, it is a good practice to limit the number of cells to be not greater than the number of particles, and for that the cutoff may have to be increased, if there is a memory bottleneck. A reasonable choice is to use <code>cutoff = max(real_cutoff, length/n^(1/D))</code> where <code>n</code> is the  number of particles and <code>D</code> is the dimension (2 or 3). With that the number of cells will be close to <code>n</code> in the worst case.  </p></div></div><h3 id="Coordinates-as-matrices"><a class="docs-heading-anchor" href="#Coordinates-as-matrices">Coordinates as matrices</a><a id="Coordinates-as-matrices-1"></a><a class="docs-heading-anchor-permalink" href="#Coordinates-as-matrices" title="Permalink"></a></h3><p>Coordinates can also be provided as matrices of size <code>(D,N)</code> where <code>D</code> is the dimension (2 or 3) and <code>N</code> is the number of particles. For example:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap
+
+julia&gt; system = ParticleSystem(
+           xpositions=rand(2,100),
+           ypositions=rand(2,200),
+           cutoff=0.1,
+           unitcell=[1,1],
+           output=0.0,
+       )
+ParticleSystem2{output} of dimension 2, composed of:
+    Box{OrthorhombicCell, 2}
+      unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [13, 13]
+      computing cell sizes = [0.1, 0.1] (lcell: 1)
+      Total number of cells = 169
+    CellListMap.CellListPair{Vector{StaticArraysCore.SVector{2, Float64}}, 2, Float64, CellListMap.Swapped}
+       200 particles in the reference vector.
+       61 cells with real particles of target vector.
+    Parallelization auxiliary data set for:
+      Number of batches for cell list construction: 1
+      Number of batches for function mapping: 1
+    Type of output variable (output): Float64</code></pre><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>This interface less flexible than when the coordinates are input as vectors of vectors, because <em>the number of particles</em> cannot be changed, because matrices cannot be resized. Otherwise, matrices can be used as input.</p></div></div><h2 id="Complete-example-codes"><a class="docs-heading-anchor" href="#Complete-example-codes">Complete example codes</a><a id="Complete-example-codes-1"></a><a class="docs-heading-anchor-permalink" href="#Complete-example-codes" title="Permalink"></a></h2><ul><li><a href="#Simple-energy-computation">Simple energy computation</a></li><li><a href="#Force-computation">Force computation</a></li><li><a href="#Energy-and-forces">Energy and forces</a></li><li><a href="#Two-sets-of-particles">Two sets of particles</a></li><li><a href="#Particle-simulation">Particle simulation</a></li></ul><h3 id="Simple-energy-computation"><a class="docs-heading-anchor" href="#Simple-energy-computation">Simple energy computation</a><a id="Simple-energy-computation-1"></a><a class="docs-heading-anchor-permalink" href="#Simple-energy-computation" title="Permalink"></a></h3><p>In this example, a simple potential energy defined as the sum of the  inverse of the distance between the particles is computed.</p><pre><code class="language-julia hljs">using CellListMap
+using StaticArrays
+system = ParticleSystem(
+    xpositions = rand(SVector{3,Float64},1000), 
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = 0.0,
+    output_name = :energy
+)
+map_pairwise!((x,y,i,j,d2,energy) -&gt; energy += 1 / sqrt(d2), system)</code></pre><h3 id="Force-computation"><a class="docs-heading-anchor" href="#Force-computation">Force computation</a><a id="Force-computation-1"></a><a class="docs-heading-anchor-permalink" href="#Force-computation" title="Permalink"></a></h3><p>Here we compute the force vector associated to the potential energy function of the previous example.</p><pre><code class="language-julia hljs">using CellListMap
+using StaticArrays
+positions = rand(SVector{3,Float64},1000) 
+system = ParticleSystem(
+    xpositions = positions, 
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = similar(positions),
+    output_name = :forces
+)
+function update_forces!(x,y,i,j,d2,forces)
+    d = sqrt(d2)
+    df = (1/d2)*(1/d)*(y - x)
+    forces[i] += df
+    forces[j] -= df
+    return forces
+end
+map_pairwise!((x,y,i,j,d2,forces) -&gt; update_forces!(x,y,i,j,d2,forces), system)</code></pre><h3 id="Energy-and-forces"><a class="docs-heading-anchor" href="#Energy-and-forces">Energy and forces</a><a id="Energy-and-forces-1"></a><a class="docs-heading-anchor-permalink" href="#Energy-and-forces" title="Permalink"></a></h3><p>In this example, the potential energy and the forces are computed in a single run, and a custom data structure is defined to store both values.</p><pre><code class="language-julia hljs">using CellListMap
+using StaticArrays
+# Define custom type
+mutable struct EnergyAndForces
+    energy::Float64
+    forces::Vector{SVector{3,Float64}}
+end
+# Custom copy, reset and reducer functions
+import CellListMap: copy_output, reset_output!, reducer
+copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
+function reset_output!(output::EnergyAndForces)
+    output.energy = 0.0
+    for i in eachindex(output.forces)
+        output.forces[i] = SVector(0.0, 0.0, 0.0)
+    end
+    return output
+end
+function reducer(x::EnergyAndForces, y::EnergyAndForces)
+    e_tot = x.energy + y.energy
+    x.forces .+= y.forces
+    return EnergyAndForces(e_tot, x.forces)
+end
+# Function that updates energy and forces for each pair
+function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
+    d = sqrt(d2)
+    output.energy += 1/d
+    df = (1/d2)*(1/d)*(y - x)
+    output.forces[i] += df
+    output.forces[j] -= df
+    return output
+end
+# Initialize system
+positions = rand(SVector{3,Float64},1000);
+system = ParticleSystem(
+    xpositions = positions,
+    unitcell=[1.0,1.0,1.0], 
+    cutoff = 0.1, 
+    output = EnergyAndForces(0.0, similar(positions)),
+    output_name = :energy_and_forces
+)
+# Compute energy and forces
+map_pairwise((x,y,i,j,d2,output) -&gt; energy_and_forces!(x,y,i,j,d2,output), system)</code></pre><h3 id="Two-sets-of-particles"><a class="docs-heading-anchor" href="#Two-sets-of-particles">Two sets of particles</a><a id="Two-sets-of-particles-1"></a><a class="docs-heading-anchor-permalink" href="#Two-sets-of-particles" title="Permalink"></a></h3><p>In this example we illustrate the interface for the computation of properties of two sets of particles, by computing the minimum distance between the two sets.</p><pre><code class="language-julia hljs">using CellListMap
+using StaticArrays
+# Custom structure to store the minimum distance pair
+struct MinimumDistance
+    i::Int
+    j::Int
+    d::Float64
+end
+# Function that updates the minimum distance found
+function minimum_distance(i, j, d2, md)
+    d = sqrt(d2)
+    if d &lt; md.d
+        md = MinimumDistance(i, j, d)
+    end
+    return md
+end
+# Define appropriate methods for copy, reset and reduce 
+import CellListMap: copy_output, reset_output!, reducer!
+copy_output(md::MinimumDistance) = md
+reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
+reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d &lt; md2.d ? md1 : md2
+# Build system 
+xpositions = rand(SVector{3,Float64},1000);
+ypositions = rand(SVector{3,Float64},1000);
+system = ParticleSystem(
+       xpositions = xpositions,
+       ypositions = ypositions, 
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+# Compute the minimum distance
+map_pairwise((x,y,i,j,d2,md) -&gt; minimum_distance(i,j,d2,md), system)</code></pre><h3 id="Particle-simulation"><a class="docs-heading-anchor" href="#Particle-simulation">Particle simulation</a><a id="Particle-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Particle-simulation" title="Permalink"></a></h3><p>In this example, a complete particle simulation is illustrated, with a simple potential.  This example can illustrate how particle positions and forces can be updated. Run this simulation with:</p><pre><code class="language-julia-repl hljs">julia&gt; system = init_system(N=200); # number of particles
+
+julia&gt; trajectory = simulate(system);
+
+julia&gt; animate(trajectory)</code></pre><p>One important characteristic of this example is that the <code>system</code> is built outside the function that performs the simulation. This is done because the construction of the system is type-unstable (it is dimension, geometry and output-type dependent). Adding a function barrier avoids type-instabilities to propagate to the simulation causing possible performance problems. </p><pre><code class="language-julia hljs">using StaticArrays
+using CellListMap
+import CellListMap.wrap_relative_to
+# Function that updates the forces, for potential of the form:
+# if d &lt; cutoff k*(d^2-cutoff^2)^2 else 0.0 with k = 10^6
+function update_forces!(x, y, i, j, d2, forces, cutoff)
+    r = y - x
+    dudr = 10^6 * 4 * r * (d2 - cutoff^2)
+    forces[i] += dudr
+    forces[j] -= dudr
+    return forces
+end
+# Function that initializes the system: it is preferable to initialize
+# the system outside the function that performs the simulation, because
+# the system (data)type is defined on initialization. Initializing it outside
+# the simulation function avoids possible type-instabilities. 
+function init_system(;N::Int=200)
+    Vec2D = SVector{2,Float64}
+    positions = rand(Vec2D, N)
+    unitcell = [1.0, 1.0]
+    cutoff = 0.1
+    system = ParticleSystem(
+        positions=positions,
+        cutoff=cutoff,
+        unitcell=unitcell,
+        output=similar(positions),
+        output_name=:forces,
+    )
+    return system
+end
+function simulate(system=init_system(); nsteps::Int=100, isave=1)
+    # initial velocities
+    velocities = [ randn(eltype(system.positions)) for _ in 1:length(system.positions) ]
+    dt = 1e-3
+    trajectory = typeof(system.positions)[]
+    for step in 1:nsteps
+        # compute forces at this step
+        map_pairwise!(
+            (x,y,i,j,d2,forces) -&gt; update_forces!(x,y,i,j,d2,forces,system.cutoff),
+            system
+        )
+        # Update positions and velocities
+        for i in eachindex(system.positions, system.forces)
+            f = system.forces[i]
+            x = system.positions[i]
+            v = velocities[i]
+            x = x + v * dt + (f / 2) * dt^2
+            v = v + f * dt
+            # wrapping to origin for obtaining a pretty animation
+            x = wrap_relative_to(x, SVector(0.0, 0.0), system.unitcell)
+            # !!! IMPORTANT: Update arrays of positions and velocities
+            system.positions[i] = x
+            velocities[i] = v
+        end
+        # Save step for printing
+        if step % isave == 0
+            push!(trajectory, copy(system.positions))
+        end
+    end
+    return trajectory
+end
+
+using Plots
+function animate(trajectory)
+    anim = @animate for step in trajectory
+        scatter(
+            Tuple.(step),
+            label=nothing,
+            lims=(-0.5, 0.5),
+            aspect_ratio=1,
+            framestyle=:box,
+        )
+    end
+    gif(anim, &quot;simulation.gif&quot;, fps=10)
+end</code></pre><h2 id="Docstrings"><a class="docs-heading-anchor" href="#Docstrings">Docstrings</a><a id="Docstrings-1"></a><a class="docs-heading-anchor-permalink" href="#Docstrings" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.ParticleSystem-Tuple{}" href="#CellListMap.ParticleSystem-Tuple{}"><code>CellListMap.ParticleSystem</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">ParticleSystem(;
+    xpositions::Union{AbstractVector{&lt;:AbstractVector},AbstractMatrix},
+    #or
+    xpositions::Union{AbstractVector{&lt;:AbstractVector},AbstractMatrix},
+    ypositions::Union{AbstractVector{&lt;:AbstractVector},AbstractMatrix},
+    # and
+    unitcell::Union{Nothing,AbstractVecOrMat} = nothing,
+    cutoff::Number,
+    output::Any;
+    output_name::Symbol,
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0, 0),
+    autoswap::Bool = true
+)</code></pre><p>Constructor of the <code>ParticleSystem</code> type given the positions of the particles.</p><ul><li><p>Positions can be provided as vectors of 2D or 3D vectors  (preferentially static vectors from <code>StaticArrays</code>), or as  (2,N) or (3,N) matrices (v0.8.28 is required for matrices).</p></li><li><p>If only the <code>xpositions</code> array is provided, a single set of coordinates  is considered, and the computation will be mapped for the <code>N(N-1)</code>  pairs of this set. </p></li><li><p>If the <code>xpositions</code> and <code>ypositions</code> arrays of coordinates are provided,  the computation will be mapped to the <code>N×M</code> pairs of particles,  being <code>N</code> and <code>M</code> the number of particles of each set of coordinates.</p></li></ul><p>The unit cell (either a vector for <code>Orthorhombic</code> cells or a  full unit cell matrix for <code>Triclinic</code> cells), the cutoff used for the construction of the cell lists and the output variable of the calculations. If unitcell == nothing, the system is considered not-periodic, in which case artificial periodic boundaries will be built such that images  are farther from each other than the cutoff.</p><p><code>output_name</code> can be set to a symbol that best identifies the output variable. For instance, if <code>output_name=:forces</code>, the forces can be retrieved from the structure using the <code>system.forces</code> notation.</p><p>The <code>parallel</code> and <code>nbatches</code> flags control the parallelization scheme of computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)). By default the parallelization is turned on and <code>nbatches</code> is set with heuristics that may provide good efficiency in most cases. <code>autoswap = false</code> will guarantee that the cell lists will be buitl for the <code>ypositions</code> (by default they are constructed for the smallest set, which is faster).</p><p><strong>Example</strong></p><p>In these examples, we compute the sum of the squared distances between the particles that are within the cutoff:</p><p><strong>Single set of particles</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap
+
+julia&gt; using PDBTools: readPDB, coor
+
+julia&gt; positions = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia&gt; sys = ParticleSystem(
+           xpositions = positions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+        );
+
+julia&gt; map_pairwise!((x,y,i,j,d2,output) -&gt; output += d2, sys)
+43774.54367600001</code></pre><p><strong>Two sets of particles</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; xpositions = coor(readPDB(CellListMap.argon_pdb_file))[1:50];
+
+julia&gt; ypositions = coor(readPDB(CellListMap.argon_pdb_file))[51:100];
+
+julia&gt; sys = ParticleSystem(
+           xpositions = xpositions, 
+           ypositions = ypositions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+           parallel = false, # use true for parallelization
+        );
+
+julia&gt; map_pairwise!((x,y,i,j,d2,output) -&gt; output += d2, sys)
+21886.196785000004</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L14-L107">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.copy_output-Tuple{Any}" href="#CellListMap.copy_output-Tuple{Any}"><code>CellListMap.copy_output</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">copy_output(x)</code></pre><p>Defines how the <code>output</code> variable is copied. Identical to <code>Base.copy(x)</code> and implemented for the types in <code>Union{Number, StaticArraysCore.FieldVector, StaticArraysCore.SVector}</code>.</p><p>Other custom output types must have their <code>copy_output</code> method implemented.</p><p><strong>Example</strong></p><pre><code class="language-julia hljs">using CellListMap
+# Custom data type
+struct A x::Int end
+# Custom output type (array of A)
+output = [ A(0) for _ in 1:100 ]
+# How to copy an array of `A`
+CellListMap.copy_output(v::Vector{A}) = [ x for x in v ]
+
+# Alternativelly, in this case, one could have defined:
+Base.copy(a::A) = a
+CellListMap.copy_output(v::Vector{A}) = copy(v)</code></pre><p>The user must guarantee that the copy is independent of the original array. For many custom types it is possible to define </p><pre><code class="nohighlight hljs">CellListMap.copy_output(v::Vector{T}) where {T&lt;:CustomType} = deepcopy(v)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L409-L439">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.map_pairwise!-Union{Tuple{F}, Tuple{F, CellListMap.AbstractParticleSystem}} where F&lt;:Function" href="#CellListMap.map_pairwise!-Union{Tuple{F}, Tuple{F, CellListMap.AbstractParticleSystem}} where F&lt;:Function"><code>CellListMap.map_pairwise!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">map_pairwise!(
+    f::Function, system::AbstractParticleSystem; 
+    show_progress = true, update_lists = true
+)</code></pre><p>Function that maps the <code>f</code> function into all pairs of particles of <code>system</code> that are found to be within the <code>cutoff</code>. </p><p>The function <code>f</code> must be of the general form:</p><pre><code class="nohighlight hljs">function f(x,y,i,j,d2,output)
+    # operate on particle coordinates, distance and indexes
+    # update output
+    return output
+end</code></pre><p>where <code>x</code> and <code>y</code> are the coordinates (adjusted for the minimum image) of the two particles involved, <code>i</code> and <code>j</code> their indices in the original arrays of positions, <code>d2</code> their squared Euclidean distance, and <code>output</code> the current value of the <code>output</code> variable. The <code>output</code> variable must be updated within this function with the contribution of the two particles involved. </p><p>Thread-safety is taken care automatically in parallel executions.</p><p><code>map_pairwise</code> is an alias to <code>map_pairwise!</code> for syntax consistency when the <code>output</code> variable is immutable.</p><p>If <code>update_lists</code> is <code>false</code>, the cell lists will not be recomputed, this may be useful for computing a different function from the same coordinates.</p><p><strong>Example</strong></p><p>In this example we compute the sum of <code>1/(1+d)</code> where <code>d</code> is the distance between particles of a set, for <code>d &lt; cutoff</code>. </p><pre><code class="language-julia-repl hljs">julia&gt; sys = ParticleSystem(
+           xpositions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0
+           );
+
+julia&gt; map_pairwise((x,y,i,j,d2,output) -&gt; output += 1 / (1 + sqrt(d2)), sys)
+1870.0274887950268</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L990-L1040">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.reducer!-Tuple{Any, Any}" href="#CellListMap.reducer!-Tuple{Any, Any}"><code>CellListMap.reducer!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">reducer(x,y)
+reducer!(x,y)</code></pre><p>Defines how to reduce (combine, or merge) to variables computed in parallel to obtain a single instance of the variable with the reduced result. </p><p><code>reducer</code> and <code>reducer!</code> are aliases, and <code>reducer!</code> is preferred, by convention for mutating functions.</p><p>The most commont <code>reducer</code> is the sum, and this is how it is implemented for <code>Union{Number, StaticArraysCore.FieldVector, StaticArraysCore.SVector}</code>. For example, when computin energies, or forces, the total energy is the sum of the energies. The force on one particle is the sum of the forces between the particle and every other particle. Thus, the implemented reducer is the sum: </p><pre><code class="nohighlight hljs">reducer(x,y) = +(x,y)</code></pre><p>However, in  many cases, reduction must be done differently. For instance, if the minimum distance between particles is to be computed, it is interesting to define a custom type and associated reducer. For example:</p><pre><code class="nohighlight hljs">struct MinimumDistance d::Float64 end
+reducer(x::MinimumDistance, y::MinimumDistance) = MinimumDistance(min(x.d, y.d))</code></pre><p>The overloading of <code>reducer</code> allows the use of parallel computations for custom,  complex data types, containing different types of variables, fields, or sizes.</p><p>The appropriate behavior of the reducer should be carefuly inspected by the user to avoid spurious results. </p><p><strong>Example</strong></p><p>In this example we show how to obtain the minimum distance among argon atoms in a simulation box.</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; positions = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia&gt; struct MinimumDistance d::Float64 end # Custom output type
+
+julia&gt; CellListMap.copy_output(d::MinimumDistance) = MinimumDistance(d.d) # Custom copy function for `Out`
+
+julia&gt; CellListMap.reset_output(d::MinimumDistance) = MinimumDistance(+Inf) # How to reset an array with elements of type `MinimumDistance`
+
+julia&gt; CellListMap.reducer(md1::MinimumDistance, md2::MinimumDistance) = MinimumDistance(min(md1.d, md2.d)) # Custom reduction function
+
+julia&gt; # Construct the system
+       sys = ParticleSystem(;
+           positions = positions,
+           unitcell = [21,21,21],
+           cutoff = 8.0,
+           output = MinimumDistance(+Inf),
+       );
+
+julia&gt; # Obtain the minimum distance between atoms:
+       map_pairwise!((x,y,i,j,d2,output) -&gt; sqrt(d2) &lt; output.d ? MinimumDistance(sqrt(d2)) : output, sys)
+MinimumDistance(2.1991993997816563)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L525-L591">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.reset_output!-Tuple{Any}" href="#CellListMap.reset_output!-Tuple{Any}"><code>CellListMap.reset_output!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">reset_output(x)
+reset_output!(x)</code></pre><p>Function that defines how to reset (or zero) the <code>output</code> variable. For <code>Union{Number, StaticArraysCore.FieldVector, StaticArraysCore.SVector}</code> it is  implemented as <code>zero(x)</code>, and for <code>AbstractVecOrMat</code> containers of <code>Number</code>s or <code>SVector</code>s it is implemented as <code>fill!(x, zero(eltype(x))</code>.</p><p>Other custom output types must have their <code>reset_output!</code> method implemented.</p><p>If the variable is mutable, the function <em>must</em> return the variable itself. If it is immutable, a new instante of the variable must be created, with the reset value. </p><p><code>reset_output</code> and <code>reset_output!</code> are aliases, and <code>reset_output!</code> is preferred, by convention for mutating functions.</p><p><strong>Example</strong></p><p>In this example, we define a <code>reset_output</code> function that will set to <code>+Inf</code> the minimum distance between particles (not always resetting means zeroing).</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap
+
+julia&gt; struct MinimumDistance d::Float64 end
+
+julia&gt; CellListMap.reset_output(x::MinimumDistance) = MinimumDistance(+Inf)
+
+julia&gt; x = MinimumDistance(1.0)
+MinimumDistance(1.0)
+
+julia&gt; CellListMap.reset_output(x)
+MinimumDistance(Inf)</code></pre><p>See the <code>reducer</code> help entry for a complete example of how to use <code>reset_output</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L455-L492">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.resize_output!-Tuple{CellListMap.AbstractParticleSystem, Int64}" href="#CellListMap.resize_output!-Tuple{CellListMap.AbstractParticleSystem, Int64}"><code>CellListMap.resize_output!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">resize_output!(sys::AbstractParticleSystem, n::Int)</code></pre><p>Resizes the output array and the auxiliary output arrays used for multithreading, if the number of particles of the system changed.</p><p>This function must be implemented by the user if the output variable is a  vector whose length is dependent on the number of particles. For example, if the output is a vector of forces acting on each particle, the output vector must be resized if the number of particles changes. </p><p>This function <em>must</em> be used in that case, to guarantee that the  auxiliary arrays used for multi-threading are resized accordingly. </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L666-L680">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.unitcelltype-Tuple{CellListMap.AbstractParticleSystem}" href="#CellListMap.unitcelltype-Tuple{CellListMap.AbstractParticleSystem}"><code>CellListMap.unitcelltype</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">unitcelltype(sys::AbstractParticleSystem)</code></pre><p>Returns the type of a unitcell from the <code>ParticleSystem</code> structure.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L198-L203">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.update_cutoff!-Tuple{CellListMap.ParticleSystem1, Any}" href="#CellListMap.update_cutoff!-Tuple{CellListMap.ParticleSystem1, Any}"><code>CellListMap.update_cutoff!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">update_cutoff!(system, cutoff)</code></pre><p>Function to update the <code>cutoff</code>` of the system. </p><p>This function can be used to update the system geometry in iterative schemes.</p><p><strong>Example</strong></p><p>Here we initialize a particle system with a cutoff of <code>8.0</code> and then update the cutoff to <code>10.0</code>. </p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia&gt; sys = ParticleSystem(
+           xpositions = x, 
+           unitcell=[21.0,21.0,21.0], 
+           cutoff = 8.0, 
+           output = 0.0
+       );
+
+julia&gt; update_cutoff!(sys, 10.0)
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
+      cutoff = 10.0
+      number of computing cells on each dimension = [5, 5, 5]
+      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
+      Total number of cells = 125
+    CellList{3, Float64}
+      100 real particles.
+      8 cells with real particles.
+      800 particles in computing box, including images.
+    Parallelization auxiliary data set for:
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 8
+    Type of output variable (output): Float64</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L776-L817">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.update_unitcell!-Tuple{Any, Any}" href="#CellListMap.update_unitcell!-Tuple{Any, Any}"><code>CellListMap.update_unitcell!</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">update_unitcell!(system, unitcell)</code></pre><p>Function to update the unit cell of the system. The <code>unicell</code> must be of the  same type (<code>OrthorhombicCell</code>, <code>TriclinicCell</code>) of the original <code>system</code>  (changing the type of unit cell requires reconstructing the system).</p><p>The <code>unitcell</code> can be a <code>N×N</code> matrix or a vector of dimension <code>N</code>, where <code>N</code> is the dimension of the sytem (2D or 3D).</p><p>This function can be used to update the system geometry in iterative schemes, where the size of the simulation box changes during the simulation.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Manual updating of the unit cell of non-periodic systems is not allowed.</p></div></div><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays, PDBTools
+
+julia&gt; xpositions = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia&gt; sys = ParticleSystem(
+           xpositions = xpositions,
+           unitcell=[21,21,21], 
+           cutoff = 8.0, 
+           output = 0.0
+       );
+
+julia&gt; update_unitcell!(sys, [30.0, 30.0, 30.0])
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
+      cutoff = 8.0
+      number of computing cells on each dimension = [6, 6, 6]
+      computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+      Total number of cells = 216
+    CellList{3, Float64}
+      100 real particles.
+      8 cells with real particles.
+      800 particles in computing box, including images.
+    Parallelization auxiliary data set for:
+      Number of batches for cell list construction: 1
+      Number of batches for function mapping: 1
+    Type of output variable (output): Float64
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L692-L741">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.ParticleSystem1" href="#CellListMap.ParticleSystem1"><code>CellListMap.ParticleSystem1</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">mutable struct ParticleSystem1{OutputName, V, O, B, C, A} &lt;: CellListMap.AbstractParticleSystem{OutputName}</code></pre><ul><li><p><code>xpositions::Any</code></p></li><li><p><code>output::Any</code></p></li><li><p><code>_box::Any</code></p></li><li><p><code>_cell_list::Any</code></p></li><li><p><code>_output_threaded::Vector</code></p></li><li><p><code>_aux::Any</code></p></li><li><p><code>parallel::Bool</code></p></li></ul><p>Structure that carries the information necessary for <code>map_pairwise!</code> computations, for systems with one set of positions (thus, replacing the loops over <code>N(N-1)</code>  pairs of particles of the set). </p><p>The <code>xpositions</code>, <code>output</code>, and <code>parallel</code> fields are considered part of the API, and you can retrive or mutate <code>xpositions</code>, retrieve the <code>output</code> or its elements, and set the computation to use or not parallelization by directly accessing these elements.</p><p>The other fileds of the structure (starting with <code>_</code>) are internal and must not  be modified or accessed directly. The construction of the <code>ParticleSystem1</code> structure is done through the <code>ParticleSystem(;xpositions, unitcell, cutoff, output)</code>  auxiliary function.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L310-L330">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.ParticleSystem2" href="#CellListMap.ParticleSystem2"><code>CellListMap.ParticleSystem2</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">mutable struct ParticleSystem2{OutputName, V, O, B, C, A} &lt;: CellListMap.AbstractParticleSystem{OutputName}</code></pre><ul><li><p><code>xpositions::Any</code></p></li><li><p><code>ypositions::Any</code></p></li><li><p><code>output::Any</code></p></li><li><p><code>_box::Any</code></p></li><li><p><code>_cell_list::Any</code></p></li><li><p><code>_output_threaded::Vector</code></p></li><li><p><code>_aux::Any</code></p></li><li><p><code>parallel::Bool</code></p></li></ul><p>Structure that carries the information necessary for <code>map_pairwise!</code> computations, for systems with two set of positions (thus, replacing the loops over <code>N×M</code>  pairs of particles, being <code>N</code> and <code>M</code> the number of particles of each set).</p><p>The <code>xpositions</code>, <code>ypositions</code>, <code>output</code>, and <code>parallel</code> fields are considered part of the API, and you can retrive or mutate positions, retrieve the <code>output</code> or its elements, and set the computation to use or not parallelization by directly accessing these elements.</p><p>The other fileds of the structure (starting with <code>_</code>) are internal and must not  be modified or accessed directly. The construction of the <code>ParticleSystem1</code> structure is done through the <code>ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)</code>  auxiliary function.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/dbe7a834154e2a1cb5dbd20daca47a1d1999c31d/src/ParticleSystem.jl#L344-L364">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../neighborlists/">Neighbor lists »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Thursday 11 July 2024 14:40">Thursday 11 July 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
