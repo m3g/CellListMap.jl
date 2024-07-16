@@ -187,8 +187,20 @@ function map_pairwise_parallel!(
         output_threaded = [deepcopy(output) for i in 1:nbatches]
     end
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
-    @sync for ibatch in 1:nbatches
-        @spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
+    #@sync for ibatch in 1:nbatches
+    #    @spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
+    #end
+    #Threads.@threads :static for ibatch in 1:nbatches
+    #    batch(f, ibatch, nbatches, output_threaded, box, cl, p)
+    #end
+    #@batch for i in eachindex(cl.ref)
+    #    inner_loop!(f, output_threaded[1], i, box, cl)
+    #    #_next!(p)
+    #end
+    @sync for (ibatch, inds) in enumerate(chunks(cl.ref; n=nbatches))
+        @spawn for i in inds
+            inner_loop!(f, output_threaded[ibatch], i, box, cl)
+        end
     end
     return reduce(output, output_threaded)
 end

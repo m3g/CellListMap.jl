@@ -10,6 +10,8 @@ using Setfield: @set!
 using LinearAlgebra: cross, diagm, I
 using Base.Threads: nthreads, @spawn 
 using Base: @lock # not exported in 1.6
+using Polyester: @batch
+using ChunkSplitters: chunks
 
 export Box
 export CellList, UpdateCellList!
