@@ -24,7 +24,8 @@ const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector}
         output_name::Symbol,
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0, 0),
-        autoswap::Bool = true
+        autoswap::Bool = true,
+        validate_coordinates::Union{Nothing,Function}=_validate_coordinates
     )
 
 Constructor of the `ParticleSystem` type given the positions of the particles.
@@ -58,6 +59,10 @@ By default the parallelization is turned on and `nbatches` is set with heuristic
 that may provide good efficiency in most cases. `autoswap = false` will guarantee that
 the cell lists will be buitl for the `ypositions` (by default they are constructed
 for the smallest set, which is faster).
+
+The `validate_coordinates` function can be used to validate the coordinates
+before the construction of the system. If `nothing`, no validation is performed.
+By default the validation checks if the coordinates are not missing or NaN. 
 
 # Example
 
@@ -116,7 +121,8 @@ function ParticleSystem(;
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
-    autoswap::Bool=true
+    autoswap::Bool=true,
+    validate_coordinates::Union{Nothing,Function}=_validate_coordinates,
 )
     # Set xpositions if positions was set
     if (isnothing(positions) && isnothing(xpositions)) || (!isnothing(positions) && !isnothing(xpositions))
@@ -151,22 +157,22 @@ function ParticleSystem(;
     end
     # Single set of positions
     if isnothing(ypositions)
-        unitcell = isnothing(unitcell) ? limits(xpositions) : unitcell
+        unitcell = isnothing(unitcell) ? limits(xpositions; validate_coordinates) : unitcell
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
-        _cell_list = CellListMap.CellList(xpositions, _box; parallel=parallel, nbatches=nbatches)
+        _cell_list = CellListMap.CellList(xpositions, _box; parallel, nbatches, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
+        sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
         # Two sets of positions
     else
-        unitcell = isnothing(unitcell) ? limits(xpositions, ypositions) : unitcell
+        unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
-        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel=parallel, nbatches=nbatches, autoswap=autoswap)
+        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, autoswap, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
         output = _reset_all_output!(output, _output_threaded)
-        sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel)
+        sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
     end
     return sys
 end
@@ -328,7 +334,7 @@ is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)`
 auxiliary function.
 
 """
-mutable struct ParticleSystem1{OutputName,V,O,B,C,A} <: AbstractParticleSystem{OutputName}
+mutable struct ParticleSystem1{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
     xpositions::V
     output::O
     _box::B
@@ -336,9 +342,10 @@ mutable struct ParticleSystem1{OutputName,V,O,B,C,A} <: AbstractParticleSystem{O
     _output_threaded::Vector{O}
     _aux::A
     parallel::Bool
+    validate_coordinates::VC
 end
-ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
-    ParticleSystem1{OutputName,V,O,B,C,A}(v, o, b, c, vo, a, p)
+ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
+    ParticleSystem1{OutputName,V,O,B,C,A,VC}(v, o, b, c, vo, a, p, vc)
 getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 
 """
@@ -362,7 +369,7 @@ is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, o
 auxiliary function.
 
 """
-mutable struct ParticleSystem2{OutputName,V,O,B,C,A} <: AbstractParticleSystem{OutputName}
+mutable struct ParticleSystem2{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
     xpositions::V
     ypositions::V
     output::O
@@ -371,9 +378,10 @@ mutable struct ParticleSystem2{OutputName,V,O,B,C,A} <: AbstractParticleSystem{O
     _output_threaded::Vector{O}
     _aux::A
     parallel::Bool
+    validate_coordinates::VC
 end
-ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool) where {OutputName,V,O,B,C,A} =
-    ParticleSystem2{OutputName,V,O,B,C,A}(vx, vy, o, b, c, vo, a, p)
+ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
+    ParticleSystem2{OutputName,V,O,B,C,A,VC}(vx, vy, o, b, c, vo, a, p, vc)
 
 import Base.show
 function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputName}) where {OutputName}
@@ -745,7 +753,7 @@ function update_unitcell!(sys, unitcell)
             Manual updating of the unit cell of non-periodic systems is not allowed.
         """))
     end
-    sys._box = update_box(sys._box; unitcell=unitcell)
+    sys._box = update_box(sys._box; unitcell)
     return sys
 end
 
@@ -819,14 +827,14 @@ function update_cutoff!(sys::ParticleSystem1, cutoff)
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions), cutoff)
     end
-    sys._box = update_box(sys._box; cutoff=cutoff)
+    sys._box = update_box(sys._box; cutoff)
     return sys
 end
 function update_cutoff!(sys::ParticleSystem2, cutoff)
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
     end
-    sys._box = update_box(sys._box; cutoff=cutoff)
+    sys._box = update_box(sys._box; cutoff)
     return sys
 end
 
@@ -901,13 +909,15 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
             sys._box,
             sys._cell_list,
             sys._aux;
-            parallel=sys.parallel
+            parallel=sys.parallel,
+            validate_coordinates=sys.validate_coordinates,
         )
     end
     return sys
 end
 
 function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:NotSwapped}
+    isnothing(sys.validate_coordinates) || sys.validate_coordinates(sys.xpositions) 
     resize!(cl.ref, length(sys.xpositions))
     cl.ref .= sys.xpositions
 end
@@ -925,7 +935,8 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
             sys._box,
             sys._cell_list,
             sys._aux;
-            parallel=sys.parallel
+            parallel=sys.parallel,
+            validate_coordinates=sys.validate_coordinates,
         )
     else
         # Always update the reference set positions (the cell lists of the target set are not updated)
@@ -1054,4 +1065,36 @@ function map_pairwise!(
         show_progress=show_progress
     )
     return sys.output
+end
+
+@testitem "ParticleSystem - validate coordinates" begin
+    using CellListMap
+    using StaticArrays
+    # 1-set system
+    x = rand(SVector{3,Float64}, 100)
+    x[50] = SVector(1.1, NaN, 1.1)
+    @test_throws ArgumentError ParticleSystem(positions=x, cutoff=0.1, output=0.0)
+    @test_throws ArgumentError ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    y = rand(SVector{3,Float64}, 100)
+    p = ParticleSystem(positions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    p.positions .= x
+    @test_throws ArgumentError map_pairwise((x,y,i,j,d2,out) -> out += d2, p)
+    p = ParticleSystem(xpositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0, validate_coordinates=nothing)
+    @test map_pairwise((x,y,i,j,d2,out) -> out += d2, p) > 0.0
+    # 2-set system
+    x = rand(SVector{3,Float64}, 100)
+    x[50] = SVector(1.1, NaN, 1.1)
+    y = rand(SVector{3,Float64}, 100)
+    @test_throws ArgumentError ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0)
+    @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, output=0.0)
+    @test_throws ArgumentError ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    p.xpositions .= x
+    @test_throws ArgumentError map_pairwise((x,y,i,j,d2,out) -> out += d2, p)
+    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    p.ypositions .= x
+    @test_throws ArgumentError map_pairwise((x,y,i,j,d2,out) -> out += d2, p)
+    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0, validate_coordinates=nothing)
+    @test map_pairwise((x,y,i,j,d2,out) -> out += d2, p) > 0.0
 end
