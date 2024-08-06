@@ -3,14 +3,14 @@
 
 Function that validates the coordinates. 
 
-=# 
+=#
 function _validate_coordinates(x)
-    for (i,v) in enumerate(x)
+    for (i, v) in enumerate(x)
         if any(isnan, v) || any(ismissing, v)
             throw(ArgumentError("""\n
 
                 Invalid coordinates found: $v for particle of index $i.
-            
+
             """))
         end
     end
@@ -108,8 +108,8 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
     invu = inv(oneunit(T))
     unit_cell_matrix = invu * unit_cell_matrix
-    x_f = wrap_cell_fraction(invu*x, unit_cell_matrix)
-    xref_f = wrap_cell_fraction(invu*xref, unit_cell_matrix)
+    x_f = wrap_cell_fraction(invu * x, unit_cell_matrix)
+    xref_f = wrap_cell_fraction(invu * xref, unit_cell_matrix)
     xw = wrap_relative_to(x_f, xref_f, SVector{N,eltype(x_f)}(ntuple(i -> 1, N)))
     return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
@@ -134,21 +134,21 @@ end
     using StaticArrays
     using Unitful
     for (x, y, xy, yx) in [
-        ([15.0, 13.0], [4.0, 2.0], [5.0, 3.0], [14.0, 12.0]), 
+        ([15.0, 13.0], [4.0, 2.0], [5.0, 3.0], [14.0, 12.0]),
         ([-7.0, -6.0], [1.0, 2.0], [3.0, 4.0], [-9.0, -8.0]),
     ]
         # triclinic cells: unitcell is a matrix
         unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)
-        @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy 
-        @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx        
+        @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy
+        @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx
         unit_cell_matrix = SMatrix{2,2}(-10.0, 0.0, 0.0, -10.0)
         @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy
         @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx
         # orthorhombic cells: sides is a vector
-        sides = [10.0, 10.0] 
+        sides = [10.0, 10.0]
         @test CellListMap.wrap_relative_to(x, y, sides) ≈ xy
         @test CellListMap.wrap_relative_to(y, x, sides) ≈ yx
-        sides = [-10.0, -10.0] 
+        sides = [-10.0, -10.0]
         @test CellListMap.wrap_relative_to(x, y, sides) ≈ xy
         @test CellListMap.wrap_relative_to(y, x, sides) ≈ yx
     end
@@ -207,13 +207,13 @@ end
 
 @testitem "translation image" begin
     using StaticArrays
-    x = SVector{2}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    unitcell = [10.0  0.0 ; 0.0 10.0]
-    @test CellListMap.translation_image(x, unitcell, [0, 0]) ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    @test CellListMap.translation_image(x, unitcell, [1, 1]) ≈ [ [11.0, 11.0], [12.0, 12.0], [13.0, 13.0] ]
-    @test CellListMap.translation_image(x, unitcell, [1, 2]) ≈ [ [11.0, 21.0], [12.0, 22.0], [13.0, 23.0] ]
-    @test CellListMap.translation_image(x, unitcell, [2, 1]) ≈ [ [21.0, 11.0], [22.0, 12.0], [23.0, 13.0] ]
-    @test CellListMap.translation_image(x, unitcell, [-1, -1]) ≈ [ [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0] ]
+    x = SVector{2}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    unitcell = [10.0 0.0; 0.0 10.0]
+    @test CellListMap.translation_image(x, unitcell, [0, 0]) ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    @test CellListMap.translation_image(x, unitcell, [1, 1]) ≈ [[11.0, 11.0], [12.0, 12.0], [13.0, 13.0]]
+    @test CellListMap.translation_image(x, unitcell, [1, 2]) ≈ [[11.0, 21.0], [12.0, 22.0], [13.0, 23.0]]
+    @test CellListMap.translation_image(x, unitcell, [2, 1]) ≈ [[21.0, 11.0], [22.0, 12.0], [23.0, 13.0]]
+    @test CellListMap.translation_image(x, unitcell, [-1, -1]) ≈ [[-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0]]
 end
 
 #=
@@ -279,26 +279,26 @@ end
 @testitem "replicate system" begin
     using StaticArrays
     using CellListMap: replicate_system!, replicate_system
-    unitcell = [ 10.0 0.0; 0.0 10.0 ]
-    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    replicate_system!(x, unitcell, (1,0))
-    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 1.0], [12.0, 2.0], [13.0, 3.0] ]
-    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    replicate_system!(x, unitcell, (1,1))
-    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0] ]
-    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    replicate_system!(x, unitcell, (0,1))
-    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [1.0, 11.0], [2.0, 12.0], [3.0, 13.0] ]
-    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    replicate_system!(x, unitcell, (-1,-1))
-    @test x ≈ [ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0] ]
+    unitcell = [10.0 0.0; 0.0 10.0]
+    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    replicate_system!(x, unitcell, (1, 0))
+    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 1.0], [12.0, 2.0], [13.0, 3.0]]
+    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    replicate_system!(x, unitcell, (1, 1))
+    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0]]
+    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    replicate_system!(x, unitcell, (0, 1))
+    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [1.0, 11.0], [2.0, 12.0], [3.0, 13.0]]
+    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    replicate_system!(x, unitcell, (-1, -1))
+    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0]]
     # with a matrix input
     x = [1.0 2.0 3.0; 1.0 2.0 3.0]
-    y = replicate_system(x, unitcell, (1,0))
+    y = replicate_system(x, unitcell, (1, 0))
     @test y ≈ [1.0 2.0 3.0 11.0 12.0 13.0; 1.0 2.0 3.0 1.0 2.0 3.0]
     # throw error if dimensions do not match
-    x = SVector{2,Float64}[ [1.0, 1.0], [2.0, 2.0], [3.0, 3.0] ]
-    @test_throws DimensionMismatch replicate_system!(x, unitcell, (1,0,1))
+    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    @test_throws DimensionMismatch replicate_system!(x, unitcell, (1, 0, 1))
 end
 
 
@@ -379,13 +379,13 @@ by passing a function that takes the coordinates as input and throws an error if
 are invalid.
 
 """
-function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
+function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
     isnothing(validate_coordinates) || validate_coordinates(x)
     xmin, xmax = _minmax(x)
     return Limits(xmax .- xmin)
 end
 
-function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing, Function}=_validate_coordinates)
+function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
     N = size(x, 1)
     (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
@@ -406,9 +406,9 @@ are invalid.
 
 """
 function limits(
-    x::AbstractVector{<:AbstractVector}, 
+    x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector};
-    validate_coordinates::Union{Nothing, Function} = _validate_coordinates
+    validate_coordinates::Union{Nothing,Function}=_validate_coordinates
 )
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
@@ -419,7 +419,7 @@ function limits(
     return Limits(xymax .- xymin)
 end
 
-function limits(x::AbstractMatrix, y::AbstractMatrix; validate_coordinates::Union{Nothing, Function}=_validate_coordinates)
+function limits(x::AbstractMatrix, y::AbstractMatrix; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
     N = size(x, 1)
     M = size(y, 1)
     N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
@@ -438,9 +438,9 @@ end
     @test_throws ArgumentError limits(x)
     @test_throws ArgumentError limits(x, y)
     @test_throws ArgumentError limits(y, x)
-    x = rand(3,100)
-    x[2,50] = NaN
-    y = rand(3,100)
+    x = rand(3, 100)
+    x[2, 50] = NaN
+    y = rand(3, 100)
     @test_throws ArgumentError limits(x)
     @test_throws ArgumentError limits(x, y)
     @test_throws ArgumentError limits(y, x)
@@ -588,8 +588,8 @@ end
         R = random_rotation()
         mr = R * m
         ma, Ra = align_cell(mr)
-        @test ma[:,1] ≈ m[:,1]
-        @test cross([1,0,0], cross(ma[:,2],ma[:,3])) ≈ zeros(3) atol=1e-10
+        @test ma[:, 1] ≈ m[:, 1]
+        @test cross([1, 0, 0], cross(ma[:, 2], ma[:, 3])) ≈ zeros(3) atol = 1e-10
     end
 
     # throw error if not 2D or 3D

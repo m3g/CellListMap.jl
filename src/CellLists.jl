@@ -628,7 +628,7 @@ function UpdateCellList!(
     box::Box,
     cl::CellList;
     parallel::Bool=true,
-    validate_coordinates = _validate_coordinates,
+    validate_coordinates=_validate_coordinates,
 )
     if parallel
         aux = AuxThreaded(cl)
@@ -732,7 +732,7 @@ function UpdateCellList!(
     cl::CellList{N,T},
     aux::Union{Nothing,AuxThreaded{N,T}};
     parallel::Bool=true,
-    validate_coordinates = _validate_coordinates,
+    validate_coordinates=_validate_coordinates,
 ) where {N,T}
 
     # validate coordinates 
@@ -949,7 +949,7 @@ end
 function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
     cidxs = ntuple(i -> cartesian_index[i], N)
     for i in 1:N
-        if cidxs[i] == box.lcell 
+        if cidxs[i] == box.lcell
             @set! cidxs[i] += 1
         end
         if cidxs[i] == box.nc[i] - box.lcell + 1
@@ -985,7 +985,7 @@ function add_particle_to_celllist!(
     cl.n_particles += 1
     # Cell of this particle
     cartesian_index = particle_cell(x, box)
-    if real_particle 
+    if real_particle
         cartesian_index = real_particle_border_case(cartesian_index, box)
     end
 
@@ -1285,24 +1285,24 @@ particles_per_cell(cl::CellListPair) = particles_per_cell(cl.target)
     x[50] = SVector(1.0, NaN, 1.0)
     box = Box([1.0, 1.0, 1.0], 0.1)
     y = rand(SVector{3,Float64}, 100)
-    @test_throws ArgumentError CellList(x,box)
-    cl = CellList(y,box)
+    @test_throws ArgumentError CellList(x, box)
+    cl = CellList(y, box)
     @test_throws ArgumentError UpdateCellList!(x, box, cl)
-    @test_throws ArgumentError CellList(x,y,box)
-    @test_throws ArgumentError CellList(y,x,box)
-    cl = CellList(y,y,box)
+    @test_throws ArgumentError CellList(x, y, box)
+    @test_throws ArgumentError CellList(y, x, box)
+    cl = CellList(y, y, box)
     @test_throws ArgumentError UpdateCellList!(x, y, box, cl)
     @test_throws ArgumentError UpdateCellList!(y, x, box, cl)
-    x = rand(3,100)
-    x[2,50] = NaN
+    x = rand(3, 100)
+    x[2, 50] = NaN
     box = Box([1.0, 1.0, 1.0], 0.1)
-    y = rand(3,100)
-    @test_throws ArgumentError CellList(x,box)
-    cl = CellList(y,box)
+    y = rand(3, 100)
+    @test_throws ArgumentError CellList(x, box)
+    cl = CellList(y, box)
     @test_throws ArgumentError UpdateCellList!(x, box, cl)
-    @test_throws ArgumentError CellList(x,y,box)
-    @test_throws ArgumentError CellList(y,x,box)
-    cl = CellList(y,y,box)
+    @test_throws ArgumentError CellList(x, y, box)
+    @test_throws ArgumentError CellList(y, x, box)
+    cl = CellList(y, y, box)
     @test_throws ArgumentError UpdateCellList!(x, y, box, cl)
     @test_throws ArgumentError UpdateCellList!(y, x, box, cl)
 end

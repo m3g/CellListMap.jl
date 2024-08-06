@@ -860,16 +860,16 @@ end
     x = coor(readPDB(CellListMap.argon_pdb_file))
     sys1 = ParticleSystem(xpositions=x, cutoff=8.0, output=0.0)
     @test unitcelltype(sys1) == NonPeriodicCell
-    @test sys1.unitcell ≈ [ 35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79 ] atol = 1e-2
+    @test sys1.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1e-2
     update_cutoff!(sys1, 10.0)
-    @test sys1.unitcell ≈ [ 39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99 ] atol = 1e-2
+    @test sys1.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1e-2
     a = @ballocated update_cutoff!($sys1, 8.0) evals = 1 samples = 1
     @test a == 0
     sys2 = ParticleSystem(xpositions=x[1:50], ypositions=x[51:100], cutoff=8.0, output=0.0)
     @test unitcelltype(sys2) == NonPeriodicCell
-    @test sys2.unitcell ≈ [ 35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79 ] atol = 1e-2
+    @test sys2.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1e-2
     update_cutoff!(sys2, 10.0)
-    @test sys2.unitcell ≈ [ 39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99 ] atol = 1e-2
+    @test sys2.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1e-2
     a = @ballocated update_cutoff!($sys2, 8.0) evals = 1 samples = 1
     @test a == 0
 end
@@ -917,7 +917,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
 end
 
 function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:NotSwapped}
-    isnothing(sys.validate_coordinates) || sys.validate_coordinates(sys.xpositions) 
+    isnothing(sys.validate_coordinates) || sys.validate_coordinates(sys.xpositions)
     resize!(cl.ref, length(sys.xpositions))
     cl.ref .= sys.xpositions
 end
@@ -987,10 +987,10 @@ end
 
     # Throw error when trying to *not* update lists with autoswap on:
     sys = ParticleSystem(
-        xpositions = rand(SVector{2,Float64}, 100),
-        ypositions = rand(SVector{2,Float64}, 200),
-        unitcell = [1,1],
-        cutoff = 0.1,
+        xpositions=rand(SVector{2,Float64}, 100),
+        ypositions=rand(SVector{2,Float64}, 200),
+        unitcell=[1, 1],
+        cutoff=0.1,
         output=0.0,
         autoswap=true,
     )
@@ -1074,27 +1074,27 @@ end
     x = rand(SVector{3,Float64}, 100)
     x[50] = SVector(1.1, NaN, 1.1)
     @test_throws ArgumentError ParticleSystem(positions=x, cutoff=0.1, output=0.0)
-    @test_throws ArgumentError ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    @test_throws ArgumentError ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     y = rand(SVector{3,Float64}, 100)
-    p = ParticleSystem(positions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    p = ParticleSystem(positions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.positions .= x
-    @test_throws ArgumentError map_pairwise((x,y,i,j,d2,out) -> out += d2, p)
-    p = ParticleSystem(xpositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0, validate_coordinates=nothing)
-    @test map_pairwise((x,y,i,j,d2,out) -> out += d2, p) > 0.0
+    @test_throws ArgumentError map_pairwise((x, y, i, j, d2, out) -> out += d2, p)
+    p = ParticleSystem(xpositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
+    @test map_pairwise((x, y, i, j, d2, out) -> out += d2, p) > 0.0
     # 2-set system
     x = rand(SVector{3,Float64}, 100)
     x[50] = SVector(1.1, NaN, 1.1)
     y = rand(SVector{3,Float64}, 100)
     @test_throws ArgumentError ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0)
     @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, output=0.0)
-    @test_throws ArgumentError ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1,1,1], output=0.0)
-    @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
-    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    @test_throws ArgumentError ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+    @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.xpositions .= x
-    @test_throws ArgumentError map_pairwise((x,y,i,j,d2,out) -> out += d2, p)
-    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    @test_throws ArgumentError map_pairwise((x, y, i, j, d2, out) -> out += d2, p)
+    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.ypositions .= x
-    @test_throws ArgumentError map_pairwise((x,y,i,j,d2,out) -> out += d2, p)
-    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1,1,1], output=0.0, validate_coordinates=nothing)
-    @test map_pairwise((x,y,i,j,d2,out) -> out += d2, p) > 0.0
+    @test_throws ArgumentError map_pairwise((x, y, i, j, d2, out) -> out += d2, p)
+    p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
+    @test map_pairwise((x, y, i, j, d2, out) -> out += d2, p) > 0.0
 end
