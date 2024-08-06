@@ -528,7 +528,7 @@ MinimumDistance(276, 617, 0.006009804808785543)
 
 - [Turn parallelization on and off](@ref)
 - [Displaying a progress bar](@ref)
-- [Fine control of the paralellization](@ref)
+- [Fine control of the parallelization](@ref)
 - [Avoid cell list updating](@ref)
 - [Control CellList cell size](@ref)
 - [Coordinates as matrices](@ref)
@@ -592,7 +592,7 @@ Progress:  24%|██████████▏                               |
 
 By activating the `show_progress` flag, a nice progress bar is shown. 
 
-### Fine control of the paralellization
+### Fine control of the parallelization
 
 The number of batches launched in parallel runs can be tunned by the 
 `nbatches` keyword parameter of the `ParticleSystem` constructor. 
