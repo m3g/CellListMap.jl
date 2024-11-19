@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version: '1'
+          version: 'lts'
       - run: |
           julia --project=docs -e '
             import Pkg; Pkg.add("Documenter")
