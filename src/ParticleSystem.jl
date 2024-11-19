@@ -90,7 +90,7 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 ```
 ## Two sets of particles
 
-```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2"
+```jldoctest ;filter = r"(\\d*)\\.(\\d{2})\\d+" => s"\\1.\\2"
 julia> using CellListMap, PDBTools
 
 julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file))[1:50];
