@@ -13,7 +13,7 @@ $(TYPEDFIELDS)
 
 Copies particle coordinates and associated index, to build contiguous particle lists
 in memory when building the cell lists. This strategy duplicates the particle coordinates
-data, but is probably worth the effort. 
+data, but is probably worth the effort.
 
 =#
 struct ParticleWithIndex{N,T}
@@ -38,7 +38,7 @@ a standard heuristic that returns at most the number of threads, but may return 
 number if the system is small. The two parameters can be tunned for optimal performance of each
 step of the calculation (cell list construction and mapping of interactions). The construction
 of the cell lists require a larger number of particles for threading to be effective, Thus
-by default the system size that allows multi-threading is greater for this part of the calculation.  
+by default the system size that allows multi-threading is greater for this part of the calculation.
 
 =#
 struct NumberOfBatches
@@ -61,9 +61,9 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-This structure contains the cell linear index and the information 
-about if this cell is in the border of the box (such that its 
-neighboring cells need to be wrapped) 
+This structure contains the cell linear index and the information
+about if this cell is in the border of the box (such that its
+neighboring cells need to be wrapped)
 
 =#
 Base.@kwdef struct Cell{N,T}
@@ -103,7 +103,7 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Auxiliary structure to contain projected particles. Types of 
+Auxiliary structure to contain projected particles. Types of
 scalars are chosen such that with a `SVector{3,Float64}` the
 complete struct has 32bytes.
 
@@ -189,13 +189,13 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
 end
 
 #=
-    set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0);parallel=true)  
+    set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0);parallel=true)
 
 # Extended help
 
-Functions that set the default number of batches for the construction of the cell lists, 
+Functions that set the default number of batches for the construction of the cell lists,
 and mapping computations. This is of course heuristic, and may not be the best choice for
-every problem. See the parameter `nbatches` of the construction of the cell lists for 
+every problem. See the parameter `nbatches` of the construction of the cell lists for
 tunning this.
 
 =#
@@ -259,13 +259,13 @@ end
 """
     nbatches(cl)
 
-Returns the number of batches for parallel processing that will be used in the pairwise function mappings associated to cell list `cl`. 
+Returns the number of batches for parallel processing that will be used in the pairwise function mappings associated to cell list `cl`.
 It returns the `cl.nbatches.map_computation` value. This function is important because it must be used to set the number of copies
 of custom preallocated output arrays.
 
-A second argument can be provided, which may be `:map` or `:build`, in which case the function returns either the number of batches used 
-for pairwise mapping or for the construction of the cell lists. Since this second value is internal and does not affect the interface, 
-it can be usually ignored. 
+A second argument can be provided, which may be `:map` or `:build`, in which case the function returns either the number of batches used
+for pairwise mapping or for the construction of the cell lists. Since this second value is internal and does not affect the interface,
+it can be usually ignored.
 
 ## Example
 
@@ -301,8 +301,8 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Auxiliary structure to carry threaded lists and ranges of particles to 
-be considered by each thread on parallel construction. 
+Auxiliary structure to carry threaded lists and ranges of particles to
+be considered by each thread on parallel construction.
 
 =#
 @with_kw struct AuxThreaded{N,T}
@@ -318,8 +318,8 @@ end
 """
     AuxThreaded(cl::CellList{N,T}) where {N,T}
 
-Constructor for the `AuxThreaded` type, to be passed to `UpdateCellList!` for in-place 
-update of cell lists. 
+Constructor for the `AuxThreaded` type, to be passed to `UpdateCellList!` for in-place
+update of cell lists.
 
 ## Example
 ```julia-repl
@@ -373,7 +373,7 @@ end
 # Extended help
 
 Sets the indexes of the particles that will be considered for each batch in parallel runs.
-Modifies the `idxs` array of ranges, which is usually the `aux.idxs` array of the the 
+Modifies the `idxs` array of ranges, which is usually the `aux.idxs` array of the the
 corresponding `AuxThreaded` structure.
 
 =#
@@ -395,8 +395,8 @@ end
 """
     AuxThreaded(cl::CellListPair{N,T}) where {N,T}
 
-Constructor for the `AuxThreaded` type for lists of disjoint particle sets, 
-to be passed to `UpdateCellList!` for in-place update of cell lists. 
+Constructor for the `AuxThreaded` type for lists of disjoint particle sets,
+to be passed to `UpdateCellList!` for in-place update of cell lists.
 
 ## Example
 ```julia-repl
@@ -430,10 +430,10 @@ AuxThreaded(cl_pair::CellListPair; particles_per_batch=10_000) =
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
-    ) where {UnitCellType,N,T} 
+    ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellList` structure from scratch, given a vector
-or particle coordinates (a vector of vectors, typically of static vectors) 
+or particle coordinates (a vector of vectors, typically of static vectors)
 and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
 systems, the number of parallel batches is equal to the number of threads, but it can
 be tunned for optimal performance in some cases.
@@ -467,10 +467,10 @@ function CellList(
 end
 
 #=
-    CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
+    CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T}
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterprted input. The first dimension of the
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
@@ -516,7 +516,7 @@ end
         nbatches::Tuple{Int,Int}=(0,0),
         autoswap::Bool=true,
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
-    ) where {UnitCellType,N,T} 
+    ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellListPair` structure from scratch, given two vectors
 of particle coordinates and a `Box`, which contain the size of the system, cutoff, etc.
@@ -571,10 +571,10 @@ function CellList(
 end
 
 #=
-    CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
+    CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T}
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterprted input. The first dimension of the
 matrices must be the dimension of the points (`2` or `3`).
 
 =#
@@ -593,15 +593,15 @@ end
         cl:CellList;
         parallel=true,
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
-    ) 
+    )
 
-Function that will update a previously allocated `CellList` structure, given new 
+Function that will update a previously allocated `CellList` structure, given new
 updated particle positions. This function will allocate new threaded auxiliary
 arrays in parallel calculations. To preallocate these auxiliary arrays, use
-the `UpdateCellList!(x,box,cl,aux)` method instead. 
+the `UpdateCellList!(x,box,cl,aux)` method instead.
 
 The `validate_coordinates` function is called before the update of the cell list, and
-should throw an error if the coordinates are invalid. By default, this function 
+should throw an error if the coordinates are invalid. By default, this function
 throws an error if some coordinates are missing or are NaN. Set to `nothing` to disable
 this check, or provide a custom function.
 
@@ -629,8 +629,17 @@ function UpdateCellList!(
     cl::CellList;
     parallel::Bool=true,
     validate_coordinates=_validate_coordinates,
+    set_nbatches=false,
 )
     if parallel
+        # This needs to be done before creating the `AuxThreaded` below
+        if set_nbatches
+            # Find and set best number of batches for parallel computation
+            n1 = _nbatches_build_cell_lists(length(x))
+            n2 = _nbatches_map_computation(length(x))
+            set_number_of_batches!(cl, (n1, n2))
+        end
+
         aux = AuxThreaded(cl)
         return UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
     else
@@ -648,7 +657,7 @@ end
     ) where {N,T}
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterprted input. The first dimension of the
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
@@ -677,8 +686,8 @@ Function that updates the cell list `cl` new coordinates `x` and possibly a new
 box `box`, and receives a preallocated `aux` structure of auxiliary vectors for
 threaded cell list construction. Given a preallocated `aux` vector, allocations in
 this function should be minimal, only associated with the spawning threads, or
-to expansion of the cell lists if the number of cells or number of particles 
-increased. 
+to expansion of the cell lists if the number of cells or number of particles
+increased.
 
 ## Example
 
@@ -735,7 +744,7 @@ function UpdateCellList!(
     validate_coordinates=_validate_coordinates,
 ) where {N,T}
 
-    # validate coordinates 
+    # validate coordinates
     isnothing(validate_coordinates) || validate_coordinates(x)
 
     # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
@@ -794,7 +803,7 @@ end
     ) where {N,T}
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterprted input. The first dimension of the
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
@@ -818,7 +827,7 @@ end
 Add all particles in vector `x` to the cell list `cl`. `ishift` is the shift in particle
 index, meaning that particle `i` of vector `x` corresponds to the particle with original
 index `i+ishift`. The shift is used to construct cell lists from fractions of the original
-set of particles in parallel list construction.  
+set of particles in parallel list construction.
 
 =#
 function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
@@ -928,7 +937,7 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
             # Append particles to initialized cells
         else
             # If the previous cell didn't contain real particles, but the current one
-            # does, update the list information 
+            # does, update the list information
             if !cl.cells[cell_index].contains_real && aux_cell.contains_real
                 cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
@@ -944,7 +953,7 @@ function merge_cell_lists!(cl::CellList, aux::CellList)
 end
 
 # Deal with corner cases where a real particle is found in the exact bundary of real box.
-# This cannot happen because then running over the neighboring boxes can cause an 
+# This cannot happen because then running over the neighboring boxes can cause an
 # invalid access to an index of a cell.
 function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
     cidxs = ntuple(i -> cartesian_index[i], N)
@@ -1059,9 +1068,9 @@ end
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
     )
 
-Function that will update a previously allocated `CellListPair` structure, given 
-new updated particle positions, for example. This method will allocate new 
-`aux` threaded auxiliary arrays. For a non-allocating version, see the 
+Function that will update a previously allocated `CellListPair` structure, given
+new updated particle positions, for example. This method will allocate new
+`aux` threaded auxiliary arrays. For a non-allocating version, see the
 `UpdateCellList!(x,y,box,cl,aux)` method.
 
 The `validate_coordinates` function is called before the update of the cell list, and
@@ -1109,7 +1118,7 @@ end
     ) where {UnitCellType,N}
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterprted input. The first dimension of the
 matrices must be the dimension of the points (`2` or `3`).
 
 =#
@@ -1141,7 +1150,7 @@ end
 This function will update the `cl_pair` structure that contains the cell lists
 for disjoint sets of particles. It receives the preallocated `aux` structure to
 avoid reallocating auxiliary arrays necessary for the threaded construct of the
-lists. 
+lists.
 
 ## Example
 
@@ -1183,13 +1192,13 @@ julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux)
 CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
    50000 particles in the reference vector.
    7414 cells with real particles of target vector.
-   
+
 julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
    13.042 ms (0 allocations: 0 bytes)
  CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
     50000 particles in the reference vector.
     15031 cells with real particles of target vector.
- 
+
 ```
 
 """
@@ -1228,7 +1237,7 @@ end
 # Function barrier that was required to avoid the `Swap` type to cause some instability
 function _update_CellListPair!(ref, target, cl_pair::CellListPair{V,N,T,Swap}) where {V,N,T,Swap}
     # This resizing will fail if the data was input as a (N,M) matrix, because resizing
-    # is not implemented for reinterpreted arrays. 
+    # is not implemented for reinterpreted arrays.
     if length(ref) != length(cl_pair.ref)
         resize!(cl_pair.ref, length(ref))
     end
@@ -1250,7 +1259,7 @@ end
     ) where {UnitCellType,N}
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterprted input. The first dimension of the
 matrices must be the dimension of the points (`2` or `3`).
 
 =#
