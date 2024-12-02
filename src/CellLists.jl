@@ -592,13 +592,16 @@ end
         box::Box,
         cl:CellList;
         parallel=true,
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
+        set_nbatches=false
     )
 
 Function that will update a previously allocated `CellList` structure, given new
 updated particle positions. This function will allocate new threaded auxiliary
 arrays in parallel calculations. To preallocate these auxiliary arrays, use
 the `UpdateCellList!(x,box,cl,aux)` method instead.
+To automatically set the number of batches for parallel computation,
+use `set_nbatches=true`.
 
 The `validate_coordinates` function is called before the update of the cell list, and
 should throw an error if the coordinates are invalid. By default, this function
