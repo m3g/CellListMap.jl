@@ -4,6 +4,7 @@ authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
 version = "0.9.7-DEV"
 
 [deps]
+ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -19,6 +20,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 Aqua = "0.8.5"
 BenchmarkTools = "1.4"
 Chemfiles = "0.10.31"
+ChunkSplitters = "3.1.0"
 Compat = "4.14.0"
 DocStringExtensions = "0.9"
 Documenter = "1.2.1"

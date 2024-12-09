@@ -1,8 +1,3 @@
-#
-# Parallel thread spliiter
-#
-splitter(first, nbatches, n) = first:nbatches:n
-
 #=
     reduce(output, output_threaded)
 
@@ -118,8 +113,8 @@ end
 #
 # Parallel version for self-pairwise computations
 #
-function batch(f::F, ibatch, nbatches, n_cells_with_real_particles, output_threaded, box, cl, p) where {F}
-    for i in splitter(ibatch, nbatches, n_cells_with_real_particles)
+function batch(f::F, ibatch, cell_indices, output_threaded, box, cl, p) where {F}
+    for i in cell_indices
         cellᵢ = cl.cells[cl.cell_indices_real[i]]
         output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
         _next!(p)
@@ -143,8 +138,8 @@ function map_pairwise_parallel!(
     @unpack n_cells_with_real_particles = cl
     nbatches = cl.nbatches.map_computation
     p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
-    @sync for ibatch in 1:nbatches
-        @spawn batch($f, $ibatch, $nbatches, $n_cells_with_real_particles, $output_threaded, $box, $cl, $p)
+    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n=nbatches, split=RoundRobin()))
+        @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
 end
@@ -168,8 +163,8 @@ end
 #
 # Parallel version for cross-interaction computations
 #
-function batch(f::F, ibatch, nbatches, output_threaded, box, cl, p) where {F}
-    for i in splitter(ibatch, nbatches, length(cl.ref))
+function batch_cross(f::F, ibatch, ref_atom_indices, output_threaded, box, cl, p) where {F}
+    for i in ref_atom_indices
         output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl)
         _next!(p)
     end
@@ -187,8 +182,8 @@ function map_pairwise_parallel!(
         output_threaded = [deepcopy(output) for i in 1:nbatches]
     end
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
-    @sync for ibatch in 1:nbatches
-        @spawn batch($f, $ibatch, $nbatches, $output_threaded, $box, $cl, $p)
+    @sync for (ibatch, ref_atom_indices) in enumerate(index_chunks(1:length(cl.ref); n=nbatches, split=Consecutive()))
+        @spawn batch_cross($f, $ibatch, $ref_atom_indices, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
 end
