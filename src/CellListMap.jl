@@ -10,6 +10,7 @@ using Setfield: @set!
 using LinearAlgebra: cross, diagm, I
 using Base.Threads: nthreads, @spawn 
 using Base: @lock # not exported in 1.6
+using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
 export Box
 export CellList, UpdateCellList!
