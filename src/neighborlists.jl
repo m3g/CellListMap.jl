@@ -185,7 +185,6 @@ function InPlaceNeighborList(;
     unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
     parallel::Bool=true,
     show_progress::Bool=false,
-    autoswap=true,
     nbatches=(0, 0)
 )
     T = cutoff isa Integer ? Float64 : eltype(cutoff)
@@ -201,11 +200,11 @@ function InPlaceNeighborList(;
             unitcell = limits(x, y)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box, autoswap=autoswap, parallel=parallel, nbatches=nbatches)
+        cl = CellList(x, y, box, parallel=parallel, nbatches=nbatches)
         aux = AuxThreaded(cl)
     end
     nb = NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[])
-    nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl)]
+    nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl, :map)]
     return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
 end
 
@@ -589,13 +588,10 @@ end
         unitcell=nothing, 
         parallel=true, 
         show_progress=false, 
-        autoswap=true,
         nbatches=(0,0)
     )
 
-Computes the list of pairs of particles of `x` which are closer than `r` to
-the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
-the cost of the construction of the cell list. 
+Computes the list of pairs of particles of `x` which are closer than `r` to the particles of `y`. 
 
 ## Examples
 
@@ -676,7 +672,6 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
-    autoswap=true,
     nbatches=(0, 0)
 )
     system = InPlaceNeighborList(
@@ -686,7 +681,6 @@ function neighborlist(
         unitcell=unitcell,
         parallel=parallel,
         show_progress=show_progress,
-        autoswap=autoswap,
         nbatches=nbatches
     )
     return neighborlist!(system)
@@ -828,23 +822,25 @@ end
         @test compare_nb_lists(cl, nb, x, r)[1]
 
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # with x smaller than y
         x = [rand(SVector{N,Float64}) for _ in 1:500]
         y = [rand(SVector{N,Float64}) for _ in 1:1000]
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # Using matrices as input
         x = rand(N, 1000)
@@ -856,23 +852,25 @@ end
         @test compare_nb_lists(cl, nb, x, r)[1]
 
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # with x smaller than y
         x = rand(N, 500)
         y = rand(N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # Check random coordinates to test the limits more thoroughly
         check_random_NN = true
@@ -880,7 +878,7 @@ end
             x = rand(SVector{N,Float64}, 100)
             y = rand(SVector{N,Float64}, 50)
             nb = nl_NN(BallTree, inrange, x, y, r)
-            cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+            cl = CellListMap.neighborlist(x, y, r)
             @test is_unique(cl; self=false)
             check_random_NN = compare_nb_lists(cl, nb, x, y, r)[1]
         end
@@ -890,12 +888,13 @@ end
         x = rand(Float32, N, 500)
         y = rand(Float32, N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
     end
 

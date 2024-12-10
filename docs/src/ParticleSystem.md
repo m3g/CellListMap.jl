@@ -636,22 +636,6 @@ in which case we are computing the sum of distances from the same cell lists use
 (requires version 0.8.9). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
 option if the cutoff, unitcell, or any other property of the system changed. 
 
-For systems with two sets of particles, the 
-coordinates of the `xpositions` set can be updated, preserving the cell lists computed for the `ypositions`, but this requires
-setting `autoswap=false` in the construction of the `ParticleSystem`: 
-```julia
-using CellListMap, StaticArrays
-system = ParticleSystem(
-    xpositions=rand(SVector{3,Float64},1000), 
-    ypositions=rand(SVector{3,Float64},2000),
-    output=0.0, cutoff=0.1, unitcell=[1,1,1],
-    autoswap=false # Cell lists are constructed for ypositions
-)
-map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
-# Second run: preserve the cell lists but compute a different property
-map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
-```
-
 ### Control CellList cell size
 
 The cell sizes of the construction of the cell lists can be controled with the keyword `lcell`

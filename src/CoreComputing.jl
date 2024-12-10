@@ -131,14 +131,13 @@ function map_pairwise_parallel!(
     reduce::F2=reduce,
     show_progress::Bool=false
 ) where {F1,F2,N,T}
-    nbatches = cl.nbatches.map_computation
+    _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
-        output_threaded = [deepcopy(output) for i in 1:nbatches]
+        output_threaded = [deepcopy(output) for i in 1:_nbatches]
     end
     @unpack n_cells_with_real_particles = cl
-    nbatches = cl.nbatches.map_computation
     p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
-    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n=nbatches, split=RoundRobin()))
+    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n=_nbatches, split=RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
@@ -148,42 +147,48 @@ end
 # Serial version for cross-interaction computations
 #
 function map_pairwise_serial!(
-    f::F, output, box::Box,
-    cl::CellListPair{N,T};
+    f::F, output, box::Box, cl::CellListPair{N,T};
     show_progress::Bool=false
 ) where {F,N,T}
-    p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
-    for i in eachindex(cl.ref)
-        output = inner_loop!(f, output, i, box, cl)
+    @unpack n_cells_with_real_particles = cl.small_set
+    p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
+    ibatch = 1
+    for i in 1:n_cells_with_real_particles
+        cellᵢ = cl.small_set[cl.cell_indices_real[i]]
+        output = inner_loop!(f, box, cellᵢ, cl.large_set, output, ibatch)
         _next!(p)
     end
     return output
 end
 
+# Parallel version for self-pairwise computations
 #
-# Parallel version for cross-interaction computations
-#
-function batch_cross(f::F, ibatch, ref_atom_indices, output_threaded, box, cl, p) where {F}
-    for i in ref_atom_indices
-        output_threaded[ibatch] = inner_loop!(f, output_threaded[ibatch], i, box, cl)
+function batch(f::F, ibatch, cell_indices, output_threaded, box, cl, p) where {F}
+    for i in cell_indices
+        cellᵢ = cl.small_set[cl.cell_indices_real[i]]
+        output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl.large_set, output_threaded[ibatch], ibatch)
         _next!(p)
     end
 end
 
+# Note: the reason why in the next loop @spawn if followed by interpolated variables
+# is to avoid allocations caused by the capturing of variables by the closures created
+# by the macro. This may not be needed in the future, if the corresponding issue is solved.
+# See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
 function map_pairwise_parallel!(
-    f::F1, output, box::Box,
-    cl::CellListPair{N,T};
+    f::F1, output, box::Box, cl::CellListPair{N,T};
     output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
 ) where {F1,F2,N,T}
-    nbatches = cl.target.nbatches.map_computation
+    _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
-        output_threaded = [deepcopy(output) for i in 1:nbatches]
+        output_threaded = [deepcopy(output) for i in 1:_nbatches]
     end
-    p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
-    @sync for (ibatch, ref_atom_indices) in enumerate(index_chunks(1:length(cl.ref); n=nbatches, split=Consecutive()))
-        @spawn batch_cross($f, $ibatch, $ref_atom_indices, $output_threaded, $box, $cl, $p)
+    @unpack n_cells_with_real_particles = cl.small_set
+    p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
+    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n=_nbatches, split=RoundRobin()))
+        @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
 end

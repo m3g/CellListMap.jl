@@ -219,7 +219,7 @@ end
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
+        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
 
         # change x coordinates
@@ -247,7 +247,7 @@ end
         box = Box(uc, 0.1)
         cl = CellList(x, y, box)
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
-        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell, autoswap=false)
+        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system)
 
         # change x coordinates
