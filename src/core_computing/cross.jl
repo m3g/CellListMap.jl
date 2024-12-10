@@ -49,8 +49,8 @@ function map_pairwise_serial!(
     p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
     ibatch = 1
     for i in 1:n_cells_with_real_particles
-        cellᵢ = cl.small_set[cl.cell_indices_real[i]]
-        output = inner_loop!(f, box, cellᵢ, cl.large_set, output, ibatch)
+        cellᵢ = cl.small_set.cells[cl.small_set.cell_indices_real[i]]
+        output = inner_loop!(f, box, cellᵢ, cl, output, ibatch)
         _next!(p)
     end
     return output
