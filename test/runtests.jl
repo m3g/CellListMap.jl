@@ -289,8 +289,6 @@ end
 
 end
 
-
-
 @testitem "applications" begin
 
     using CellListMap
