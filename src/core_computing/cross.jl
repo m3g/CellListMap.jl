@@ -61,7 +61,7 @@ end
 #
 function batch(f::F, ibatch, cell_indices, output_threaded, box, cl::CellListPair, p) where {F}
     for i in cell_indices
-        cellᵢ = cl.small_set[cl.cell_indices_real[i]]
+        cellᵢ = cl.small_set.cells[cl.small_set.cell_indices_real[i]]
         output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
         _next!(p)
     end
@@ -101,12 +101,16 @@ function inner_loop!(
     ibatch
 ) where {F<:Function,N,T}
     @unpack cutoff_sqr, inv_rotation, nc = box
-    output = _current_cell_interactions!(box, f, cellᵢ, cellⱼ, output)
-    for jcell in _neighbor_cells(box)
+    jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index)
+    if cl.large_set.cell_indices[jc_linear] != 0
+        cellⱼ = cl.large_set.cells[cl.large_set.cell_indices[jc_linear]]
+        output = _current_cell_interactions!(box, f, cellᵢ, cellⱼ, output)
+    end
+    for jcell in neighbor_cells(box)
         jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
         if cl.large_set.cell_indices[jc_linear] != 0
-            cellⱼ = cl.large_set.cells[cl.cell_indices[jc_linear]]
-            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
+            cellⱼ = cl.large_set.cells[cl.large_set.cell_indices[jc_linear]]
+            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl.large_set, output, ibatch)
         end
     end
     return output
@@ -118,14 +122,14 @@ end
 # Providing two cells for this function indicates that this is a cross-interaction, thus we need
 # to loop over all pairs of particles.
 #
-function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cellᵢ, cellⱼ, output) where {F<:Function}
+function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cell, output) where {F<:Function}
     @unpack cutoff_sqr, inv_rotation = box
     for i in 1:cellᵢ.n_particles
-        @inbounds pᵢ = cell.particles[i]
+        @inbounds pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
         pᵢ.real || continue
         for j in 1:cellⱼ.n_particles
-            @inbounds pⱼ = cell.particles[j]
+            @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
