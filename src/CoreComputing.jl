@@ -197,6 +197,11 @@ inner_loop!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, cl::CellList, outpu
 inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibatch) where {F<:Function} =
     inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
 
+#
+# Inner loop for self-interaction computations: the call to the current_cell function
+# has a single cell as input, and vicinal cell interactions skip the i>=j for 
+# triclinic cells.
+#
 function inner_loop!(
     f::F,
     _neighbor_cells::NC, # depends on cell type
@@ -212,12 +217,44 @@ function inner_loop!(
         jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
-            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl, output, ibatch)
+            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl, output, ibatch; skip=true)
         end
     end
     return output
 end
 
+#
+# Inner loop for cross-interaction computations: the call to the current_cell function
+# has two cells as input, and vicinal cell interactions do not skip the i>=j in any type
+# of cell. 
+#
+function inner_loop!(
+    f::F,
+    _neighbor_cells::NC, # depends on cell type
+    box,
+    cellᵢ,
+    cl::CellListPair{N,T},
+    output,
+    ibatch
+) where {F<:Function,NC<:Function,N,T}
+    @unpack cutoff_sqr, inv_rotation, nc = box
+    output = _current_cell_interactions!(box, f, cellᵢ, cellⱼ, output)
+    for jcell in _neighbor_cells(box)
+        jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
+        if cl.cell_indices[jc_linear] != 0
+            cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
+            output = _vicinal_cell_interactions!(CrossVicinal, f, box, cellᵢ, cellⱼ, cl, output, ibatch)
+        end
+    end
+    return output
+end
+
+#
+# Interactions in the current cell
+#
+
+# Call with single cell: this implies that this is a self-computation, and thus we loop over the 
+# upper triangle only in the case of the Orthorhombic cell
 function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cell, output) where {F<:Function}
     @unpack cutoff_sqr, inv_rotation = box
     # loop over list of non-repeated particles of cell ic. All particles are real
@@ -236,6 +273,7 @@ function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cel
     return output
 end
 
+# And loop over all pairs but skipping when i >= j when the box is triclinic
 function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output) where {F<:Function}
     @unpack cutoff_sqr, inv_rotation = box
     # loop over all pairs, skip when i >= j, skip if neither particle is real
@@ -256,25 +294,48 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
     return output
 end
 
+# Providing two cells for this function indicates that this is a cross-interaction, thus we need
+# to loop over all pairs of particles.
+function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cellᵢ, cellⱼ, output) where {F<:Function}
+    @unpack cutoff_sqr, inv_rotation = box
+    # loop over all pairs, skip when i >= j, skip if neither particle is real
+    for i in 1:cellᵢ.n_particles
+        @inbounds pᵢ = cell.particles[i]
+        xpᵢ = pᵢ.coordinates
+        pᵢ.real || continue
+        for j in 1:cellⱼ.n_particles
+            @inbounds pⱼ = cell.particles[j]
+            xpⱼ = pⱼ.coordinates
+            d2 = norm_sqr(xpᵢ - xpⱼ)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+            end
+        end
+    end
+    return output
+end
+
 #
 # Compute interactions between vicinal cells
 #
-function _vicinal_cell_interactions!(f::F, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch) where {F<:Function,N,T}
+function _vicinal_cell_interactions!(f::F, box::Box, cellᵢ, cellⱼ, cl::CellList{N,T}, output, ibatch; skip=nothing) where {F<:Function,N,T}
     # project particles in vector connecting cell centers
     Δc = cellⱼ.center - cellᵢ.center
     Δc_norm = norm(Δc)
     Δc = Δc / Δc_norm
     pp = project_particles!(cl.projected_particles[ibatch], cellⱼ, cellᵢ, Δc, Δc_norm, box)
     if length(pp) > 0
-        output = _vinicial_cells!(f, box, cellᵢ, pp, Δc, output)
+        output = _vinicial_cells!(f, box, cellᵢ, pp, Δc, output; skip)
     end
     return output
 end
 
 #
-# The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
+# The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes. The 
+# first parameter (the type Self, or Cross, computation, is not needed here, because the symmetry
+# allows to never compute repeated interactions anyway. 
 #
-function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output) where {F<:Function}
+function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output; skip=nothing) where {F<:Function}
     @unpack cutoff, cutoff_sqr, inv_rotation = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
@@ -297,7 +358,9 @@ function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, �
     return output
 end
 
-function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output) where {F<:Function}
+# Here skip determines if the interactions are self or cross, in such a way
+# that, for self-computations, we need to skip the interactions when i >= j.
+function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output; skip=nothing) where {F<:Function}
     @unpack cutoff, cutoff_sqr, inv_rotation = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
@@ -311,7 +374,9 @@ function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, out
         pᵢ.real || continue
         for j in 1:n
             @inbounds pⱼ = pp[j]
-            pᵢ.index >= pⱼ.index && continue
+            if skip === true
+                pᵢ.index >= pⱼ.index && continue
+            end
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
@@ -355,38 +420,4 @@ function project_particles!(
     pp = @view(projected_particles[1:iproj])
     return pp
 end
-
-#
-# Inner loop of cross-interaction computations. If the two sets
-# are large, this might(?) be improved by computing two separate
-# cell lists and using projection and partitioning.
-#
-function inner_loop!(
-    f, output, i, box,
-    cl::CellListPair{N,T}
-) where {N,T}
-    @unpack nc, cutoff_sqr, inv_rotation, rotation = box
-    xpᵢ = box.rotation * wrap_to_first(cl.ref[i], box.input_unit_cell.matrix)
-    ic = particle_cell(xpᵢ, box)
-    for neighbor_cell in current_and_neighbor_cells(box)
-        jc_cartesian = neighbor_cell + ic
-        jc_linear = cell_linear_index(nc, jc_cartesian)
-        # If cellⱼ is empty, cycle
-        if cl.target.cell_indices[jc_linear] == 0
-            continue
-        end
-        cellⱼ = cl.target.cells[cl.target.cell_indices[jc_linear]]
-        # loop over particles of cellⱼ
-        for j in 1:cellⱼ.n_particles
-            @inbounds pⱼ = cellⱼ.particles[j]
-            xpⱼ = pⱼ.coordinates
-            d2 = norm_sqr(xpᵢ - xpⱼ)
-            if d2 <= cutoff_sqr
-                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
-            end
-        end
-    end
-    return output
-end
-
 
