@@ -107,7 +107,7 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
 ```julia-repl
 julia> using CellListMap, PDBTools
 
-julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+julia> argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
            xpositions=argon_coordinates,
@@ -168,7 +168,7 @@ Now, let us setup the system with the new type of output variable, which will be
 ```julia-repl
 julia> using CellListMap, PDBTools
 
-julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+julia> argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
            xpositions=argon_coordinates,
@@ -285,7 +285,7 @@ end
 To finally define the system and compute the properties:
 
 ```julia
-argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 system = ParticleSystem(
     xpositions = argon_coordinates,
