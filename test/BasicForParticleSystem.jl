@@ -266,6 +266,29 @@ end
         system.xpositions .= x
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=true)
 
+        # change y coordinates
+        y = rand(SVector{3,Float64}, 100)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        system.ypositions .= y
+        @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=true)
+
+        # increase y size
+        y = rand(SVector{3,Float64}, 110)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        resize!(system.ypositions, length(y))
+        system.ypositions .= y
+        @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=true)
+
+        # increase y size beyond x size
+        y = rand(SVector{3,Float64}, 1300)
+        cl = CellList(x, y, box)
+        r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += d2, 0.0, box, cl)
+        resize!(system.ypositions, length(y))
+        system.ypositions .= y
+        @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += d2, system; update_lists=true)
+
         # compute a different property, without updating lists
         r = CellListMap.map_pairwise!((x, y, i, j, d2, r) -> r += 2*d2, 0.0, box, cl)
         @test r ≈ map_pairwise!((x, y, i, j, d2, r) -> r += 2*d2, system; update_lists=false)
