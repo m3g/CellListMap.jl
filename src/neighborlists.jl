@@ -503,7 +503,7 @@ non-periodic (do not provide a `unitcell`):
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> neighborlist(x, 8.0; parallel=false)
 857-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -534,7 +534,7 @@ And now, considering the system periodic:
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
 1143-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -605,9 +605,9 @@ non-periodic (do not provide a `unitcell`):
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
 
-julia> y = coor(readPDB(CellListMap.argon_pdb_file, "index > 50"));
+julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
 
 julia> CellListMap.neighborlist(x, y, 8.0; parallel=false)
 439-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -638,9 +638,9 @@ Now, considering the system periodic:
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
 
-julia> y = coor(readPDB(CellListMap.argon_pdb_file, "index > 50"));
+julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
 
 julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
 584-element Vector{Tuple{Int64, Int64, Float64}}:
