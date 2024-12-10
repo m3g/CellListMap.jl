@@ -128,27 +128,36 @@ end
 The same but to evaluate some function between pairs of the particles of the vectors.
 
 """
-function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{V,N,T,Swap};
+function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{N,T};
     # Parallelization options
     parallel::Bool=true,
     output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
-) where {F1,F2,V,N,T,Swap} # F1, F2 Needed for specialization for these functions
-    if Swap == Swapped
-        fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
+) where {F1,F2,N,T} # F1, F2 Needed for specialization for these functions
+    fswap(x,y,i,j,d2,output) = f(y,x,j,i,d2,output) 
+    if !cl.swap
+        if parallel
+            output = map_pairwise_parallel!(
+                f,output,box,cl;
+                output_threaded=output_threaded,
+                reduce=reduce,
+                show_progress=show_progress
+            )
+        else
+            output = map_pairwise_serial!(f,output,box,cl,show_progress=show_progress)
+        end
     else
-        fswap = f
-    end
-    if parallel
-        output = map_pairwise_parallel!(
-            fswap,output,box,cl;
-            output_threaded=output_threaded,
-            reduce=reduce,
-            show_progress=show_progress
-        )
-    else
-        output = map_pairwise_serial!(fswap,output,box,cl,show_progress=show_progress)
+        if parallel
+            output = map_pairwise_parallel!(
+                fswap,output,box,cl;
+                output_threaded=output_threaded,
+                reduce=reduce,
+                show_progress=show_progress
+            )
+        else
+            output = map_pairwise_serial!(fswap,output,box,cl,show_progress=show_progress)
+        end
     end
     return output
 end
