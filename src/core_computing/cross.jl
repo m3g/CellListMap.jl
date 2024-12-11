@@ -176,7 +176,7 @@ julia> using CellListMap
 
 """
 function map_pairwise!(
-    f::F, x::AbstractVector{<:AbstractVector}, sys::ParticleSystem1; 
+    f::F, x::AbstractVecOrMat, sys::ParticleSystem1; 
     show_progress::Bool=false, update_lists::Bool=true,
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
@@ -220,6 +220,15 @@ function map_pairwise!(
         output
     end
     return output
+end
+
+function map_pairwise!(
+    f::F1, output, box::Box, x::AbstractMatrix, cl::CellList{N}; 
+    parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
+) where {N, F1<:Function, F2<:Function}
+    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
+    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    return map_pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
 end
 
 function single_particle_vs_list!(
