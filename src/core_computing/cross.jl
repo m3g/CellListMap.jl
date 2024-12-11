@@ -271,7 +271,7 @@ function single_particle_vs_list!(
     for neighbor_cell in current_and_neighbor_cells(box)
         jc_cartesian = neighbor_cell + ic
         # if cell is outside computing box, cycle
-        if any(ntuple(i->jc_cartesian[i] .< 1, N)) || any(ntuple(i->jc_cartesian[i] .> nc[i], N))
+        if !all(ntuple(i-> 1 .<= jc_cartesian[i] .<= nc[i], N))
             continue
         end 
         # If cellⱼ is empty, cycle
