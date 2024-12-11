@@ -610,7 +610,7 @@ CollapsedDocStrings = true
 
 ```@autodocs
 Modules = [CellListMap]
-Pages = ["Box.jl", "CellListMap.jl", "CellLists.jl", "CellOperations.jl", "CoreComputing.jl"]
+Pages = ["Box.jl", "CellListMap.jl", "CellLists.jl", "CellOperations.jl", "./core_computing/self.jl", "./core_computing/cross.jl"]
 Order = [:type, :function]
 ```
 
