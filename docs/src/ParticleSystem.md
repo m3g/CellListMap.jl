@@ -107,7 +107,7 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
 ```julia-repl
 julia> using CellListMap, PDBTools
 
-julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+julia> argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
            xpositions=argon_coordinates,
@@ -168,7 +168,7 @@ Now, let us setup the system with the new type of output variable, which will be
 ```julia-repl
 julia> using CellListMap, PDBTools
 
-julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+julia> argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
            xpositions=argon_coordinates,
@@ -285,7 +285,7 @@ end
 To finally define the system and compute the properties:
 
 ```julia
-argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 system = ParticleSystem(
     xpositions = argon_coordinates,
@@ -392,6 +392,15 @@ be attempted.
 The unit cell can be updated to new dimensions at any moment, with the `update_unitcell!` function:
 
 ```julia-repl
+julia> using CellListMap, StaticArrays
+
+julia> system = ParticleSystem(;
+           positions=rand(SVector{3,Float64}, 1000),
+           unitcell=[1.0, 1.0, 1.0],
+           cutoff=0.1,
+           output = 0.0,
+        );
+
 julia> update_unitcell!(system, SVector(1.2, 1.2, 1.2))
 ParticleSystem1 of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
@@ -408,6 +417,7 @@ ParticleSystem1 of dimension 3, composed of:
       Number of batches for cell list construction: 8
       Number of batches for function mapping: 12
     Type of output variable (forces): Vector{SVector{3, Float64}}
+
 ```
 
 !!! note
@@ -425,30 +435,30 @@ ParticleSystem1 of dimension 3, composed of:
 The cutoff can also be updated, using the `update_cutoff!` function:
 
 ```julia-repl
-julia> update_cutoff!(system, 0.2)
-ParticleSystem1 of dimension 3, composed of:
-    Box{OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.2
-      number of computing cells on each dimension = [7, 7, 7]
-      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
-      Total number of cells = 343
-    CellListMap.CellList{3, Float64}
-      1000 real particles.
-      125 cells with real particles.
-      2792 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
-    Type of output variable (forces): Vector{SVector{3, Float64}}
+julia> using CellListMap, StaticArrays
 
-julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
-1000-element Vector{SVector{3, Float64}}:
- [306.9612911344924, -618.7375562535321, -607.1449767066479]
- [224.0803003775478, -241.05319348787023, 67.53780411933884]
- ⋮
- [2114.4873184508524, -3186.265279868732, -6777.748445712408]
- [-25.306486853608945, 119.69319481834582, 104.1501577339471]
+julia> system = ParticleSystem(;
+           positions=rand(SVector{3,Float64}, 1000),
+           unitcell=[1.0, 1.0, 1.0],
+           cutoff=0.1,
+           output = 0.0,
+        );
+
+julia> update_cutoff!(system, 0.2)
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0 ]
+      cutoff = 0.2
+      number of computing cells on each dimension = [8, 8, 8]
+      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
+      Total number of cells = 512
+    CellList{3, Float64}
+      1000 real particles.
+      636 cells with real particles.
+      1738 particles in computing box, including images.
+    Parallelization auxiliary data set for 8 batch(es).
+    Type of output variable (output): Float64
+
 ```
 
 ## Computations for two sets of particles
@@ -633,24 +643,11 @@ map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
 map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
 ```
 in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
-(requires version 0.8.9). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
-option if the cutoff, unitcell, or any other property of the system changed. 
+(requires version 0.8.9). 
 
-For systems with two sets of particles, the 
-coordinates of the `xpositions` set can be updated, preserving the cell lists computed for the `ypositions`, but this requires
-setting `autoswap=false` in the construction of the `ParticleSystem`: 
-```julia
-using CellListMap, StaticArrays
-system = ParticleSystem(
-    xpositions=rand(SVector{3,Float64},1000), 
-    ypositions=rand(SVector{3,Float64},2000),
-    output=0.0, cutoff=0.1, unitcell=[1,1,1],
-    autoswap=false # Cell lists are constructed for ypositions
-)
-map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
-# Second run: preserve the cell lists but compute a different property
-map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
-```
+!!! warning
+    This option will skip the updating of the cell lists, thus be careful to **not** use this
+    option if the coordinates, cutoff, unitcell, or any other property of the system changed. 
 
 ### Control CellList cell size
 
@@ -699,12 +696,10 @@ ParticleSystem2{output} of dimension 2, composed of:
       number of computing cells on each dimension = [13, 13]
       computing cell sizes = [0.1, 0.1] (lcell: 1)
       Total number of cells = 169
-    CellListMap.CellListPair{Vector{StaticArraysCore.SVector{2, Float64}}, 2, Float64, CellListMap.Swapped}
-       200 particles in the reference vector.
-       61 cells with real particles of target vector.
-    Parallelization auxiliary data set for:
-      Number of batches for cell list construction: 1
-      Number of batches for function mapping: 1
+    CellListMap.CellListPair{2, Float64}
+       63 cells with real particles of the smallest set.
+       85 cells with real particles of the largest set.
+    Parallelization auxiliary data set for 1 batch(es).
     Type of output variable (output): Float64
 ```
 !!! warning
