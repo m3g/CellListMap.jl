@@ -1,7 +1,8 @@
 """
-    map_pairwise!(f::Function,output,box::Box,cl::CellListPair)
+    map_pairwise!(f::Function, output, box::Box, cl::CellListPair)
 
-The same but to evaluate some function between pairs of the particles of the vectors.
+Evaluate function f for pairs in two independent sets of particles, for which the `CellListPair`
+object was constructed. 
 
 """
 function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{N,T};
@@ -134,6 +135,116 @@ function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cel
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+            end
+        end
+    end
+    return output
+end
+
+#
+# Cross-computations when only one cell list was computed
+#
+"""
+    map_pairwise!(f::Function, x::AbstractVector{<:AbstractVector}, sys::ParticleSystem1; kargs...)
+    map_pairwise!(f::Function, x::AbstractMatrix, sys::ParticleSystem1; kargs...)
+
+Evaluate function f for pairs in two independent sets of particles, where the `sys::ParicleSystem1` object
+contains the previously computed cell lists of one set of particles, and the second set is given by the
+array of positions `x`.
+
+This function can be advantageous over computing the interactions with `CellListPair`, because here the 
+cell lists are only computed for one set. This is advantageous in two situations:
+
+    1. The second set of particles is not changing, and the first set is changing. Thus, the cell lists
+       of the second set can be computed only once.
+    2. One of the sets is much smaller than the other. In this case, computing the cell lists of the largest
+       set might be too expensive. Construct the `ParticleSystem` object for the smallest set, and use this
+       function to compute the interactions with the largest set.
+
+## Keyword arguments:
+
+- `show_progress::Bool=false`: Show progress bar.
+- `update_lists::Bool=true`: Update the cell lists or not. If the positions of the `ParticleSystem1` object
+   have not changed, it is not necessary to update the cell lists.
+
+## Example
+
+```julia-repl
+julia> using CellListMap
+
+```
+
+"""
+function map_pairwise!(
+    f::F, x::AbstractVector{<:AbstractVector}, sys::ParticleSystem1; 
+    show_progress::Bool=false, update_lists::Bool=true,
+) where {F<:Function}
+    sys.output = _reset_all_output!(sys.output, sys._output_threaded)
+    UpdateParticleSystem!(sys, update_lists)
+    sys.output = map_pairwise!(
+        f, sys.output, sys._box, x, sys._cell_list; 
+        output_threaded=sys._output_threaded,
+        reduce=(output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
+        sys.parallel, show_progress,
+    )
+    return sys.output
+end
+
+function _batch_pairs!(f::F, x, x_atom_indices, ibatch, output_threaded, box, cl, p) where {F<:Function} 
+    for i in x_atom_indices
+        output_threaded[ibatch] = single_particle_vs_list!(f, output_threaded[ibatch], box, i, x[i], cl)
+        _next!(p)
+    end
+end
+
+function map_pairwise!(
+    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList; 
+    parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
+) where {F1<:Function, F2<:Function}
+    p = show_progress ? Progress(length(x), dt=1) : nothing
+    output = if parallel
+        _nbatches = nbatches(cl, :map)
+        if isnothing(output_threaded)
+            output_threaded = [deepcopy(output) for _ in 1:_nbatches]
+        end
+        p = show_progress ? Progress(length(x), dt=1) : nothing
+        @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n=_nbatches, split=Consecutive()))
+            @spawn _batch_pairs!($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
+        end
+        reduce(output, output_threaded)
+    else
+        for i in eachindex(x)
+            output = single_particle_vs_list!(f, output, box, i, x[i], cl)
+            _next!(p)
+        end
+        output
+    end
+    return output
+end
+
+function single_particle_vs_list!(
+    f::F, output, box::Box, 
+    i::Integer, x::SVector{N,T},
+    cl::CellList{N,T};
+) where {F,N,T}
+    @unpack nc, cutoff_sqr, inv_rotation, rotation = box
+    xpᵢ = box.rotation * wrap_to_first(x, box.input_unit_cell.matrix)
+    ic = particle_cell(xpᵢ, box)
+    for neighbor_cell in current_and_neighbor_cells(box)
+        jc_cartesian = neighbor_cell + ic
+        jc_linear = cell_linear_index(nc, jc_cartesian)
+        # If cellⱼ is empty, cycle
+        if cl.cell_indices[jc_linear] == 0
+            continue
+        end
+        cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
+        # loop over particles of cellⱼ
+        for j in 1:cellⱼ.n_particles
+            @inbounds pⱼ = cellⱼ.particles[j]
+            xpⱼ = pⱼ.coordinates
+            d2 = norm_sqr(xpᵢ - xpⱼ)
+            if d2 <= cutoff_sqr
+                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
             end
         end
     end
