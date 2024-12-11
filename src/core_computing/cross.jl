@@ -232,7 +232,7 @@ function map_pairwise!(
 end
 
 function single_particle_vs_list!(
-    f::F, output, box::Box, 
+    f::F, output, box::Box{<:PeriodicCellType}, 
     i::Integer, x::SVector{N,T},
     cl::CellList{N,T};
 ) where {F,N,T}
@@ -254,6 +254,41 @@ function single_particle_vs_list!(
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
+            end
+        end
+    end
+    return output
+end
+
+function single_particle_vs_list!(
+    f::F, output, box::Box{NonPeriodicCell}, 
+    i::Integer, x::SVector{N,T},
+    cl::CellList{N,T};
+) where {F,N,T}
+    @unpack nc, cutoff_sqr, inv_rotation = box
+    xpᵢ = x
+    ic = particle_cell(xpᵢ, box)
+    for neighbor_cell in current_and_neighbor_cells(box)
+        jc_cartesian = neighbor_cell + ic
+        # if cell is outside computing box, cycle
+        if any(ntuple(i->jc_cartesian[i] .< 1, N)) || any(ntuple(i->jc_cartesian[i] .> nc[i], N))
+            continue
+        end 
+        # If cellⱼ is empty, cycle
+        jc_linear = cell_linear_index(nc, jc_cartesian)
+        if cl.cell_indices[jc_linear] == 0
+            continue
+        end
+        cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
+        # loop over particles of cellⱼ
+        for j in 1:cellⱼ.n_particles
+            @inbounds pⱼ = cellⱼ.particles[j]
+            if pⱼ.real
+                xpⱼ = pⱼ.coordinates
+                d2 = norm_sqr(xpᵢ - xpⱼ)
+                if d2 <= cutoff_sqr
+                    output = f(xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
+                end
             end
         end
     end
