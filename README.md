@@ -27,7 +27,8 @@ USER GUIDE: <br>
 
 ## Installation
 
-Download and install Julia for your platform from [this http url](https://julialang.org/downloads/). Version 1.6 or greater is required.
+Download and install Julia for your platform from [this http url](https://julialang.org/downloads/). 
+Version 1.10 or greater is required.
 
 Install it as usual for registered Julia packages:
 
