@@ -190,7 +190,7 @@ function map_pairwise!(
     return sys.output
 end
 
-function _batch_pairs!(f::F, x, x_atom_indices, ibatch, output_threaded, box, cl, p) where {F<:Function} 
+function _batch_x_vs_sys!(f::F, x, x_atom_indices, ibatch, output_threaded, box, cl, p) where {F<:Function} 
     for i in x_atom_indices
         output_threaded[ibatch] = single_particle_vs_list!(f, output_threaded[ibatch], box, i, x[i], cl)
         _next!(p)
@@ -209,7 +209,7 @@ function map_pairwise!(
         end
         p = show_progress ? Progress(length(x), dt=1) : nothing
         @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n=_nbatches, split=Consecutive()))
-            @spawn _batch_pairs!($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
+            @spawn _batch_x_vs_sys($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
         end
         reduce(output, output_threaded)
     else
