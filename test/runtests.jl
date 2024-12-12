@@ -1,5 +1,7 @@
 using TestItemRunner: @run_package_tests, @testitem
 
+@run_package_tests
+
 @testitem "Aqua.test_all" begin
     import Aqua
     Aqua.test_all(CellListMap)
@@ -473,5 +475,6 @@ include("$(@__DIR__)/namd/compare_with_namd.jl")
 include("$(@__DIR__)/gromacs/compare_with_gromacs.jl")
 include("$(@__DIR__)/BasicForParticleSystem.jl")
 include("$(@__DIR__)/namd/ParticleSystem_vs_NAMD.jl")
+include("$(@__DIR__)/test_show.jl")
 
-@run_package_tests
+
