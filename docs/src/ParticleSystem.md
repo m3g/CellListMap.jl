@@ -651,7 +651,7 @@ in which case we are computing the sum of distances from the same cell lists use
 
 ### Control CellList cell size
 
-The cell sizes of the construction of the cell lists can be controled with the keyword `lcell`
+The cell sizes of the construction of the cell lists can be controlled with the keyword `lcell`
 of the `ParticleSystem` constructor. For example:
 ```julia-repl
 julia> system = ParticleSystem(
@@ -837,7 +837,7 @@ copy_output(md::MinimumDistance) = md
 reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
 # Build system 
-xpositions = rand(SVector{3,Float64},1000);
+xpositions = rand(SVector{3,Float64},100);
 ypositions = rand(SVector{3,Float64},1000);
 system = ParticleSystem(
        xpositions = xpositions,
@@ -847,9 +847,124 @@ system = ParticleSystem(
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
 )
+# Function following the required interface of the mapped function
+get_md(_, _, i, j, d2, md) = minimum_distance(i, j, d2, md)
 # Compute the minimum distance
-map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+map_pairwise(get_md, system)
 ```
+
+In the above example, the function is used such that cell lists are constructed for both
+sets. There are situations where this is not optimal, in particular:
+
+1. When one of the sets if very small. In this case, constructing a cell list for the largest
+   set becomes the bottleneck. Therefore, it is better to construct a cell list for the smallest
+   set and loop over the particles of the largest set.
+2. When one of the set is fixed and the second set is variable. In this case, it is better to
+   construct the cell list for the fixed set only and loop over the variables of the variable set.
+
+For dealing with these possibilities, an additional two-set interface is available, where one maps
+the computation over an array of particles relative to a previously computed cell list. Complementing
+the example above, we could compute the same minimum distance using:
+
+```julia
+# Construct the cell list system only for one of the sets: ypositions
+ysystem = ParticleSystem(
+       positions = ypositions,
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+# obtain the minimum distance between xpositions and the cell list in system
+# Note the additional `xpositions` parameter in the call to map_pairwise.
+map_pairwise(get_md, xpositions, ysystem)
+```
+
+Additionally, if the `xpositions` are updated, we can obtain compute the function relative to `ysystem` without
+having to update the cell lists: 
+
+```julia-repl
+julia> xpositions = rand(SVector{3,Float64},100);
+
+julia> map_pairwise(get_md, xpositions, ysystem)
+MinimumDistance(67, 580, 0.008423693268450603)
+```
+
+while with the two-set cell list system one would need to update the cell lists for this new computation.
+
+!!! compat
+    The single-set cross-interaction was introduced in v0.10.0. It uses the method previously implemented
+    for all cross-interactions. 
+
+### Benchmarking of cross-interaction alternatives
+
+With the following functions we will benchmark the performance of the two alternatives for computing
+cross-set interactions, **including** the time required to build the cell lists (the initialization
+of the `ParticleSystem`) objects:
+
+```julia
+# First alternative: compute cell lists for the two sets
+function two_set_celllist(xpositions, ypositions)
+   system = ParticleSystem(
+       xpositions = xpositions,
+       ypositions = ypositions, 
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+    return map_pairwise(get_md, system) 
+end
+# Second alternative: compute cell lists for one set
+function one_set_celllist(xpositions, ypositions)
+   system = ParticleSystem(
+       positions = ypositions,
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+    return map_pairwise(get_md, xpositions, system) 
+end
+```
+
+If one of the sets is small, the one-set alternative is clearly faster, if we 
+construct the cell lists for the smaller set:
+
+```julia-repl
+julia> using BenchmarkTools 
+
+julia> xpositions = rand(SVector{3,Float64}, 10^6);
+
+julia> ypositions = rand(SVector{3,Float64}, 100);
+
+julia> @btime one_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  25.165 ms (1531 allocations: 575.72 KiB)
+MinimumDistance(65937, 63, 0.00044803040276614203)
+
+julia> @btime two_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  207.129 ms (154794 allocations: 478.00 MiB)
+MinimumDistance(65937, 63, 0.00044803040276614203)
+```
+
+For much larger system, though, the computation of the cell lists become less relevant and the first alternative 
+might be the most favorable, even including the cell lists updates:
+
+```julia-repl
+julia> @btime one_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  12.196 s (153327 allocations: 478.02 MiB)
+MinimumDistance(627930, 889247, 7.59096139675071e-5)
+
+julia> @btime two_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  2.887 s (306416 allocations: 952.00 MiB)
+MinimumDistance(627930, 889247, 7.59096139675071e-5)
+```
+
+This performance advantage of the two-set cell lists arises because more interactions can be skipped
+by [precomputing properties of the cells involved](https://onlinelibrary.wiley.com/doi/full/10.1002/jcc.20563). 
+On the other side, when the lists are available 
+for only one set, the loop over all the particles of the second set is mandatory. Since this loop
+is fast, it is favorable over the construction of the cell lists for smaller sets.  
 
 ### Particle simulation
 
