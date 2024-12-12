@@ -272,8 +272,25 @@ function nbatches(cl::CellList, s::Symbol)
     s == :build_cell_lists || s == :build && return cl.nbatches.build_cell_lists
 end
 nbatches(cl::CellList) = (nbatches(cl, :build), nbatches(cl, :map))
-nbatches(cl::CellListPair) = (nbatches(cl.large_set))
+nbatches(cl::CellListPair) = nbatches(cl.small_set)
 nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.small_set, s)
+
+@testitem "output of nbatches" begin
+    using CellListMap, StaticArrays
+    x = rand(3,100)
+    y = rand(3,10)
+    box = Box([1,1,1],0.1)
+    cl = CellList(x,box; nbatches=(2,4))
+    @test nbatches(cl) == (2, 4)
+    @test nbatches(cl, :build) == 2
+    @test nbatches(cl, :map) == 4
+    cl = CellList(x,y,box; nbatches=(2,4))
+    @test nbatches(cl) == (2, 4)
+    @test nbatches(cl, :build) == 2
+    @test nbatches(cl, :map) == 4
+    cl = CellList(x,y,box)
+    @test nbatches(cl.small_set) == nbatches(cl.large_set)
+end
 
 #=
 
