@@ -287,6 +287,17 @@ end
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
 
+    # Same as above, but with parallel=false on the update
+    new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl,new_aux; parallel=false)
+    new_x, new_box = CellListMap.xatomic(10^4)
+    new_box = Box([ 200   0  10 
+                     15 200   0 
+                      0   0 200 ],cutoff)
+    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
+    new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl,new_aux; parallel=false)
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
+
 end
 
 @testitem "applications" begin
