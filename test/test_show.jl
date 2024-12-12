@@ -12,8 +12,7 @@
     )
         match(f,x1,x2) = begin
             if !f(x1,x2)
-                println("x1 = $x1")
-                println("x2 = $x2")
+                println("show method test failed with $x1 == $x2")
                 return false
             end
             return true
