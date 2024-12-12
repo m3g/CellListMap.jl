@@ -170,8 +170,36 @@ cell lists are only computed for one set. This is advantageous in two situations
 ## Example
 
 ```julia-repl
-julia> using CellListMap
+julia> using CellListMap, StaticArrays
 
+julia> x = rand(SVector{3,Float64}, 1000);
+
+julia> sys = ParticleSystem(positions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0);
+
+julia> y = rand(SVector{3,Float64}, 100);
+
+julia> map_pairwise((x,y,i,j,d2,output) -> output + sqrt(d2), y, sys; update_lists=false) # Compute the sum of the distances of x and y
+31.121496300032163
+
+julia> z = rand(SVector{3,Float64}, 200);
+
+julia> map_pairwise((x,y,i,j,d2,output) -> output + sqrt(d2), z, sys; update_lists=false) # Compute the sum of the distances x and z
+63.57860511891242
+```
+
+### Note that, in this case, if the computation is run serially, it is completely non-allocating:
+
+```jldoctest
+julia> using CellListMap, StaticArrays, BenchmarkTools
+
+julia> sys = ParticleSystem(positions=rand(SVector{3,Float64}, 1000), unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false);
+
+julia> y = rand(SVector{3,Float64}, 100);
+
+julia> f(x,y,i,j,d2,output) = output + sqrt(d2);
+
+julia> @ballocated map_pairwise(\$f, \$y, \$sys; update_lists=false) samples=1 evals=1
+0
 ```
 
 """
@@ -190,6 +218,24 @@ function map_pairwise!(
     return sys.output
 end
 
+#
+# The splitting of serial and parallel versions was done to avoid allocations
+# associated to the code of creating of `output_threaded` in the serial version, despite
+# the fact that it is not used and initialized with `nothing`.
+#
+function _serial_map_pairwise_x_vs_sys!(
+    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T}; 
+    show_progress::Bool=false, 
+) where {F1<:Function, N, T}
+    p = show_progress ? Progress(length(x), dt=1) : nothing
+    for i in eachindex(x)
+        xs = SVector{N,T}(x[i])
+        output = single_particle_vs_list!(f, output, box, i, xs, cl)
+        _next!(p)
+    end
+    return output
+end
+
 function _batch_x_vs_sys!(f::F, x, x_atom_indices, ibatch, output_threaded, box, cl, p) where {F<:Function} 
     for i in x_atom_indices
         output_threaded[ibatch] = single_particle_vs_list!(f, output_threaded[ibatch], box, i, x[i], cl)
@@ -197,27 +243,29 @@ function _batch_x_vs_sys!(f::F, x, x_atom_indices, ibatch, output_threaded, box,
     end
 end
 
-function map_pairwise!(
-    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList; 
-    parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
-) where {F1<:Function, F2<:Function}
+function _parallel_map_pairwise_x_vs_sys!(
+    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T}; 
+    show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
+) where {F1<:Function, F2<:Function, N, T}
+    _nbatches = nbatches(cl, :map)
+    if isnothing(output_threaded)
+        output_threaded = [deepcopy(output) for _ in 1:_nbatches]
+    end
     p = show_progress ? Progress(length(x), dt=1) : nothing
+    @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n=_nbatches, split=Consecutive()))
+        @spawn _batch_x_vs_sys!($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
+    end
+    return reduce(output, output_threaded)
+end
+
+function map_pairwise!(
+    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T}; 
+    parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
+) where {F1<:Function, F2<:Function, N, T}
     output = if parallel
-        _nbatches = nbatches(cl, :map)
-        if isnothing(output_threaded)
-            output_threaded = [deepcopy(output) for _ in 1:_nbatches]
-        end
-        p = show_progress ? Progress(length(x), dt=1) : nothing
-        @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n=_nbatches, split=Consecutive()))
-            @spawn _batch_x_vs_sys($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
-        end
-        reduce(output, output_threaded)
+        _parallel_map_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress, output_threaded, reduce)
     else
-        for i in eachindex(x)
-            output = single_particle_vs_list!(f, output, box, i, x[i], cl)
-            _next!(p)
-        end
-        output
+        _serial_map_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress)
     end
     return output
 end
@@ -236,7 +284,7 @@ function single_particle_vs_list!(
     i::Integer, x::SVector{N,T},
     cl::CellList{N,T};
 ) where {F,N,T}
-    @unpack nc, cutoff_sqr, inv_rotation, rotation = box
+    @unpack nc, cutoff_sqr, inv_rotation = box
     xpᵢ = box.rotation * wrap_to_first(x, box.input_unit_cell.matrix)
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)
