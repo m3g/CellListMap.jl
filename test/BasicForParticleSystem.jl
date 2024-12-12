@@ -296,6 +296,53 @@ end
     end
 end
 
+@testitem "cross_x_vs_sys" begin
+    using CellListMap
+    using StaticArrays
+
+    f(_, _, _, _, d2, out) = out += d2
+    cutoff = 0.1
+    for uc in (nothing, [1,1,1], [1 0.2 0; 0.2 1.0 0; 0 0 1 ]), parallel in (false, true)
+        x = rand(SVector{3,Float64}, 100)
+        # y smaller than x
+        y = rand(SVector{3,Float64}, 10)
+        box = Box(isnothing(uc) ? limits(x,y) : uc, cutoff)
+        naive = CellListMap.map_naive!(f, 0.0, x, y, box)
+        sys = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=false)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=true)
+
+        # Update x positions
+        sys.xpositions .= rand(SVector{3,Float64}, 100)
+        box = Box(isnothing(uc) ? limits(x,y) : uc, cutoff)
+        naive = CellListMap.map_naive!(f, 0.0, x, y, box)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=true)
+
+        # Matrices as inputs
+        xmat = stack(x)
+        ymat = stack(y)
+        sys = ParticleSystem(xpositions=xmat, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
+        @test naive ≈ map_pairwise!(f, ymat, sys; update_lists=false)
+        @test naive ≈ map_pairwise!(f, ymat, sys; update_lists=true)
+
+        # y greater than x, and possibly spanning a region outside the box of x
+        y = 2 .* rand(SVector{3,Float64}, 100)
+        box = Box(isnothing(uc) ? limits(x,y) : uc, cutoff)
+        naive = CellListMap.map_naive!(f, 0.0, x, y, box)
+        sys = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=false)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=true)
+
+        # here y is completely outside the range of x, thus without PBCs, this is zero
+        y = rand(SVector{3,Float64}, 10) .+ Ref(SVector(10.0, 10.0, 10.0))
+        box = Box(isnothing(uc) ? limits(x,y) : uc, cutoff)
+        naive = CellListMap.map_naive!(f, 0.0, x, y, box)
+        sys = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=false)
+        @test naive ≈ map_pairwise!(f, y, sys; update_lists=true)
+    end
+end
+
 
 @testitem "ParticleSystem parallelization" begin
 
