@@ -556,6 +556,7 @@ end
 
     # Function to be evalulated for each pair: gravitational potential
     function potential(i, j, d2, u, mass)
+        d2 == 0.0 && return u
         d = sqrt(d2)
         u = u - 9.8 * mass[i] * mass[j] / d
         return u
@@ -571,6 +572,7 @@ end
 
     # Function to be evalulated for each pair: gravitational force
     function calc_forces!(x, y, i, j, d2, mass, forces)
+        d2 == 0.0 && return forces
         G = 9.8 * mass[i] * mass[j] / d2
         d = sqrt(d2)
         df = (G / d) * (x - y)

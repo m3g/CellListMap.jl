@@ -26,6 +26,7 @@ function pathological_coordinates(N)
     x[12] = sides + @SVector [prevfloat(0.0), prevfloat(0.0), sides[3] * rand()]
     x[13] = @SVector [nextfloat(0.0), nextfloat(0.0), sides[3] * rand()]
     x[14] = @SVector [prevfloat(0.0), prevfloat(0.0), sides[3] * rand()]
+    x[15] = zero(SVector{3,Float64})
     x[100] = @SVector [sides[1] / 2, -sides[2] / 2, 2 * sides[3]]
     y = [sides .* rand(SVector{3,Float64}) for i in 1:N]
 
