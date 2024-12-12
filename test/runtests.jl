@@ -298,6 +298,12 @@ end
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
 
+    # Internal argument-error test: the should never reach this test 
+    x = rand(SVector{3,Float64},100)
+    cl1 = CellList(x,Box([1,1,1],0.1))
+    cl2 = CellList(x,Box([1.2,1.2,1.2],0.1))
+    @test_throws ArgumentError CellListMap.merge_cell_lists!(cl1,cl2)
+
 end
 
 @testitem "applications" begin
