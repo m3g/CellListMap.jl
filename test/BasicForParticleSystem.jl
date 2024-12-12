@@ -341,6 +341,15 @@ end
         @test naive ≈ map_pairwise!(f, y, sys; update_lists=false)
         @test naive ≈ map_pairwise!(f, y, sys; update_lists=true)
     end
+
+    # Test if output_threaded was not provided
+    x = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3,Float64}, 10)
+    box = Box([1,1,1], cutoff)
+    cl = CellList(x, box)
+    naive = CellListMap.map_naive!(f, 0.0, x, y, box)
+    @test naive ≈ map_pairwise!(f, 0.0, box, y, cl; output_threaded=nothing, parallel=true)
+
 end
 
 
