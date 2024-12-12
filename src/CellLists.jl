@@ -42,13 +42,14 @@ by default the system size that allows multi-threading is greater for this part 
 
 =#
 struct NumberOfBatches
-    build_cell_lists::Int
-    map_computation::Int
+    build_cell_lists::Tuple{Bool,Int}
+    map_computation::Tuple{Bool,Int}
 end
-NumberOfBatches(t::Tuple{Int,Int}) = NumberOfBatches(t[1], t[2])
-Base.zero(::Type{NumberOfBatches}) = NumberOfBatches(0, 0)
-Base.iszero(x::NumberOfBatches) = (iszero(x.build_cell_lists) && iszero(x.map_computation))
+NumberOfBatches(auto::Tuple{Bool,Bool}, t::Tuple{Int,Int}) = 
+    NumberOfBatches((first(auto), first(t)), (last(auto), last(t)))
+Base.zero(::Type{NumberOfBatches}) = NumberOfBatches((true,0), (true,0))
 function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
+    _println(io, "  Automatic update: $(nbatches.auto)")
     _println(io, "  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
     _print(io, "  Number of batches for function mapping: $(nbatches.map_computation)")
 end
@@ -190,37 +191,39 @@ every problem. See the parameter `nbatches` of the construction of the cell list
 tunning this.
 
 =#
-function set_number_of_batches!(cl::CellList{N,T}, nbatches::Tuple{Int,Int}=(0, 0); parallel=true) where {N,T}
-    if parallel
-        nbatches = NumberOfBatches(nbatches)
-    else
-        if nbatches != (0, 0) && nbatches != (1, 1)
+function set_number_of_batches!(cl::CellList{N,T}, _nbatches::Tuple{Int,Int}=(0, 0); parallel=true) where {N,T}
+    auto = _nbatches .<= (0, 0)
+    if !parallel
+        if !all(auto) && _nbatches != (1, 1)
             @warn begin
                 """\n
-                    WARNING: nbatches set to $nbatches, but parallel is set to false, implying nbatches == (1, 1)
-
+                    WARNING: nbatches set to $_nbatches, but parallel is set to false, implying nbatches == (1, 1)
+    
                 """
             end _file=nothing _line=nothing
         end
-        nbatches = NumberOfBatches((1, 1))
+        nbatches = NumberOfBatches(auto, (1, 1))
+    else # Heuristic choices
+        if first(auto)
+            n1 = _nbatches_build_cell_lists(cl.n_real_particles)
+        else
+            n1 = first(_nbatches)
+        end
+        if last(auto) < 1
+            n2 = _nbatches_map_computation(cl.n_real_particles)
+        else
+            n2 = last(_nbatches)
+        end
+        nbatches = NumberOfBatches(auto, (n1, n2))
     end
-    if nbatches.build_cell_lists < 1
-        n1 = _nbatches_build_cell_lists(cl.n_real_particles)
-    else
-        n1 = nbatches.build_cell_lists
-    end
-    if nbatches.map_computation < 1
-        n2 = _nbatches_map_computation(cl.n_real_particles)
-    else
-        n2 = nbatches.map_computation
-    end
-    nbatches = NumberOfBatches(n1, n2)
     cl.nbatches = nbatches
-    for _ in 1:cl.nbatches.map_computation
+    for _ in 1:nbatches(cl, :map)
         push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, 0))
     end
     return cl
 end
+set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T} =
+    set_number_of_batches!(cl, _nbatches(cl); parallel)
 
 # Heuristic choices for the number of batches, for an atomic system
 _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
