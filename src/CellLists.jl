@@ -49,9 +49,9 @@ NumberOfBatches(auto::Tuple{Bool,Bool}, t::Tuple{Int,Int}) =
     NumberOfBatches((first(auto), first(t)), (last(auto), last(t)))
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches((true,0), (true,0))
 function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
-    _println(io, "  Automatic update: $(nbatches.auto)")
-    _println(io, "  Number of batches for cell list construction: $(nbatches.build_cell_lists)")
-    _print(io, "  Number of batches for function mapping: $(nbatches.map_computation)")
+    _println(io, "  Number of batches for cell list construction: $(first(nbatches.build_cell_lists))")
+    _print(io, "  Number of batches for function mapping: $(first(nbatches.map_computation))")
+    _println(io,"  Automatic updates: $(last(nbatches.build_cell_list)), $(last(nbatches.map_computation))")
 end
 
 #=
@@ -181,7 +181,7 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
 end
 
 #=
-    set_number_of_batches!(cl,nbatches::Tuple{Int,Int}=(0,0);parallel=true)  
+    set_number_of_batches!(cl,nbatches::NumberOfBatches;parallel=true)  
 
 # Extended help
 
@@ -191,13 +191,15 @@ every problem. See the parameter `nbatches` of the construction of the cell list
 tunning this.
 
 =#
-function set_number_of_batches!(cl::CellList{N,T}, _nbatches::Tuple{Int,Int}=(0, 0); parallel=true) where {N,T}
-    auto = _nbatches .<= (0, 0)
+function set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T}
+    auto = (last(_nbatches.build_cell_lists), last(_nbatches.map_computation))
     if !parallel
-        if !all(auto) && _nbatches != (1, 1)
+        n1 = first(_nbatches.build_cell_lists)
+        n2 = first(_nbatches.map_computation)
+        if !all(auto) && (n1, n2) != (1, 1)
             @warn begin
                 """\n
-                    WARNING: nbatches set to $_nbatches, but parallel is set to false, implying nbatches == (1, 1)
+                    WARNING: nbatches set to ($n1,$n2), but parallel is set to false, implying nbatches == (1, 1)
     
                 """
             end _file=nothing _line=nothing
@@ -206,24 +208,20 @@ function set_number_of_batches!(cl::CellList{N,T}, _nbatches::Tuple{Int,Int}=(0,
     else # Heuristic choices
         if first(auto)
             n1 = _nbatches_build_cell_lists(cl.n_real_particles)
-        else
-            n1 = first(_nbatches)
         end
-        if last(auto) < 1
+        if last(auto)
             n2 = _nbatches_map_computation(cl.n_real_particles)
-        else
-            n2 = last(_nbatches)
         end
         nbatches = NumberOfBatches(auto, (n1, n2))
     end
-    cl.nbatches = nbatches
-    for _ in 1:nbatches(cl, :map)
+    for _ in 1:n2
         push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, 0))
     end
+    cl.nbatches = nbatches
     return cl
 end
-set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T} =
-    set_number_of_batches!(cl, _nbatches(cl); parallel)
+#set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T} =
+#    set_number_of_batches!(cl, (first(_nbatches.build_cell_lists), first(_nbatches.map_computation)); parallel)
 
 # Heuristic choices for the number of batches, for an atomic system
 _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
@@ -236,7 +234,7 @@ function set_number_of_batches!(
 ) where {N,T}
     large_set = set_number_of_batches!(cl.large_set, _nbatches; parallel)
     return CellListPair{N,T}(
-        set_number_of_batches!(cl.small_set, nbatches(large_set); parallel),
+        set_number_of_batches!(cl.small_set, (nbatches(large_set, :build), nbatches(large_set, :map)); parallel),
         large_set,
         cl.swap,
     )
@@ -276,12 +274,12 @@ julia> nbatches(cl,:map)
 
 """
 function nbatches(cl::CellList, s::Symbol)
-    s == :map_computation || s == :map && return cl.nbatches.map_computation
-    s == :build_cell_lists || s == :build && return cl.nbatches.build_cell_lists
+    s == :map_computation || s == :map && return first(cl.nbatches.map_computation)
+    s == :build_cell_lists || s == :build && return first(cl.nbatches.build_cell_lists)
 end
 nbatches(cl::CellList) = (nbatches(cl, :build), nbatches(cl, :map))
-nbatches(cl::CellListPair) = nbatches(cl.small_set)
-nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.small_set, s)
+nbatches(cl::CellListPair) = nbatches(cl.large_set)
+nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
 
 @testitem "output of nbatches" begin
     using CellListMap, StaticArrays
@@ -361,13 +359,13 @@ CellList{3, Float64}
 ```
 """
 function AuxThreaded(cl::CellList{N,T}) where {N,T}
-    nbatches = cl.nbatches.build_cell_lists
+    _nbatches = nbatches(cl, :build)
     aux = AuxThreaded{N,T}(
-        idxs=Vector{UnitRange{Int}}(undef, nbatches),
-        lists=Vector{CellList{N,T}}(undef, nbatches)
+        idxs=Vector{UnitRange{Int}}(undef, _nbatches),
+        lists=Vector{CellList{N,T}}(undef, _nbatches)
     )
     # If the calculation is not parallel, no need to initialize this
-    nbatches == 1 && return aux
+    _nbatches == 1 && return aux
     @sync for ibatch in eachindex(aux.lists)
         @spawn begin
             cl_batch = CellList{N,T}(number_of_cells=cl.number_of_cells)
@@ -377,7 +375,7 @@ function AuxThreaded(cl::CellList{N,T}) where {N,T}
     # Set indices of the atoms that will be considered by each thread
     # these indices may be updated by an update of cell lists, if the number
     # of particles change.
-    set_idxs!(aux.idxs, cl.n_real_particles, nbatches)
+    set_idxs!(aux.idxs, cl.n_real_particles, _nbatches)
     return aux
 end
 
@@ -756,15 +754,15 @@ function UpdateCellList!(
     end
 
     # Add particles to cell list
-    nbatches = cl.nbatches.build_cell_lists
-    if !parallel || nbatches == 1
+    _nbatches = nbatches(cl, :build)
+    if !parallel || _nbatches == 1
         reset!(cl, box, length(x))
         add_particles!(x, box, 0, cl)
     else
         # Reset cell list
         reset!(cl, box, 0)
         # Update the aux.idxs ranges, for if the number of particles changed
-        set_idxs!(aux.idxs, length(x), nbatches)
+        set_idxs!(aux.idxs, length(x), _nbatches)
         merge_lock = ReentrantLock()
         @sync for ibatch in eachindex(aux.idxs, aux.lists)
             @spawn let cl = $cl

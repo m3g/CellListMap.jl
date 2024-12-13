@@ -193,14 +193,14 @@ function InPlaceNeighborList(;
             unitcell = limits(x)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, box, parallel=parallel, nbatches=nbatches)
+        cl = CellList(x, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     else
         if isnothing(unitcell)
             unitcell = limits(x, y)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box, parallel=parallel, nbatches=nbatches)
+        cl = CellList(x, y, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     end
     nb = NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[])
@@ -571,14 +571,7 @@ function neighborlist(
     show_progress=false,
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(;
-        x=x,
-        cutoff=cutoff,
-        unitcell=unitcell,
-        parallel=parallel,
-        show_progress=show_progress,
-        nbatches=nbatches
-    )
+    system = InPlaceNeighborList(;x, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
 
@@ -674,15 +667,7 @@ function neighborlist(
     show_progress=false,
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(
-        x=x,
-        y=y,
-        cutoff=cutoff,
-        unitcell=unitcell,
-        parallel=parallel,
-        show_progress=show_progress,
-        nbatches=nbatches
-    )
+    system = InPlaceNeighborList(;x, y, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
 
