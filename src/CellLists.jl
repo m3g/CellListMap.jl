@@ -203,7 +203,6 @@ function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; par
         end
         nbatches = NumberOfBatches(auto, (1, 1))
     else # Heuristic choices
-        @show "entrou"
         if first(auto)
             n1 = _nbatches_build_cell_lists(cl.n_real_particles)
         end
@@ -223,7 +222,7 @@ end
 _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
 _nbatches_map_computation(n::Int) = max(1, min(n, min(floor(Int, 2^(log10(n) + 1)), nthreads())))
 
-function update_number_of_batches!(cl::CellListPair{N,T}, parallel=true) where {N,T}
+function update_number_of_batches!(cl::CellListPair{N,T}; parallel=true) where {N,T}
     large_set = update_number_of_batches!(cl.large_set; parallel)
     return CellListPair{N,T}(
         update_number_of_batches!(cl.small_set, large_set.nbatches; parallel),
@@ -507,7 +506,7 @@ function CellList(
 ) where {UnitCellType,N,T}
     cl = CellList{N,T}(n_real_particles=length(x), number_of_cells=prod(box.nc))
     set_number_of_batches!(cl, nbatches; parallel)
-    return UpdateCellList!(x, box, cl; parallel, validate_coordinates, nbatches)
+    return UpdateCellList!(x, box, cl; parallel, validate_coordinates)
 end
 
 #=
@@ -518,10 +517,16 @@ equivalent function with the reinterprted input. The first dimension of the
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
-function CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T}
+function CellList(
+    x::AbstractMatrix, 
+    box::Box{UnitCellType,N,T}; 
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0, 0),
+    validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
+) where {UnitCellType,N,T}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
-    return CellList(x_re, box; kargs...)
+    return CellList(x_re, box; parallel, nbatches, validate_coordinates)
 end
 
 #=
@@ -607,12 +612,19 @@ equivalent function with the reinterprted input. The first dimension of the
 matrices must be the dimension of the points (`2` or `3`).
 
 =#
-function CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T}
+function CellList(
+    x::AbstractMatrix, 
+    y::AbstractMatrix, 
+    box::Box{UnitCellType,N,T}; 
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0, 0),
+    validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
+) where {UnitCellType,N,T}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     size(y, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
-    CellList(x_re, y_re, box; kargs...)
+    return CellList(x_re, y_re, box; parallel, nbatches, validate_coordinates)
 end
 
 """
@@ -659,13 +671,14 @@ function UpdateCellList!(
     parallel::Bool=true,
     validate_coordinates=_validate_coordinates,
 )
-    cl = update_number_of_batches!(cl; parallel)
-    if parallel
+    cl = if parallel
         aux = AuxThreaded(cl)
         return UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
     else
         return UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
     end
+    cl = update_number_of_batches!(cl; parallel)
+    return cl
 end
 
 #=
@@ -1129,12 +1142,14 @@ function UpdateCellList!(
     parallel::Bool=true,
     kargs...
 )
-    if parallel
+    cl_pair = if parallel
         aux = AuxThreaded(cl_pair)
-        return UpdateCellList!(x, y, box, cl_pair, aux; kargs...)
+        UpdateCellList!(x, y, box, cl_pair, aux; kargs...)
     else
-        return UpdateCellList!(x, y, box, cl_pair, nothing; kargs...)
+        UpdateCellList!(x, y, box, cl_pair, nothing; kargs...)
     end
+    cl_pair = update_number_of_batches!(cl_pair; parallel)
+    return cl_pair
 end
 
 #=
