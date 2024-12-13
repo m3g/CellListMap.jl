@@ -926,6 +926,10 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
     return sys
 end
 
+# Return the number of batches for ParticleSystems
+nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
+nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
+
 # this updates must be non-allocating in the serial case
 @testitem "UpdateParticleSystem!" begin
     using BenchmarkTools

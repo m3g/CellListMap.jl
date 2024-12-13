@@ -250,6 +250,7 @@ end
 """
     nbatches(cl::CellList)
     nbatches(cl::CellListPair)
+    nbatches(system::AbstractParticleSystem)
 
 Returns the number of batches for parallel processing that will be used. Returns a tuple, where 
 the first element is the number of batches for the construction of the cell lists, and the second
@@ -305,6 +306,12 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
     @test nbatches(cl.small_set) == nbatches(cl.large_set)
     cl = CellList(x,box; nbatches=(2,4), parallel=false)
     @test nbatches(cl) == (1,1)
+end
+
+@testitem "automatic nbataches update" begin
+    using CellListMap, StaticArrays
+    x, box = CellListMap.xatomic(5000)
+
 end
 
 #=
