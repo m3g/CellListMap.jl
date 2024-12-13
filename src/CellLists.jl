@@ -45,13 +45,12 @@ struct NumberOfBatches
     build_cell_lists::Tuple{Bool,Int}
     map_computation::Tuple{Bool,Int}
 end
-NumberOfBatches(auto::Tuple{Bool,Bool}, t::Tuple{Int,Int}) = 
-    NumberOfBatches((first(auto), first(t)), (last(auto), last(t)))
+NumberOfBatches(auto::Tuple{Bool,Bool}, n::Tuple{Int,Int}) = 
+    NumberOfBatches((first(auto), first(n)), (last(auto), last(n)))
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches((true,0), (true,0))
 function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
-    _println(io, "  Number of batches for cell list construction: $(first(nbatches.build_cell_lists))")
-    _print(io, "  Number of batches for function mapping: $(first(nbatches.map_computation))")
-    _println(io,"  Automatic updates: $(last(nbatches.build_cell_list)), $(last(nbatches.map_computation))")
+    _println(io,"  Number of batches for cell list construction: $(last(nbatches.build_cell_lists)) (auto-update: $(first(nbatches.build_cell_lists)))")
+      _print(io,"  Number of batches for function mapping: $(last(nbatches.map_computation)) (auto-update: $(first(nbatches.map_computation)))")
 end
 
 #=
@@ -181,25 +180,23 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
 end
 
 #=
-    set_number_of_batches!(cl,nbatches::NumberOfBatches;parallel=true)  
+    set_number_of_batches!(cl, nbatches::NumberOfBatches; parallel=true)  
 
-# Extended help
-
-Functions that set the default number of batches for the construction of the cell lists, 
+Set the default number of batches for the construction of the cell lists, 
 and mapping computations. This is of course heuristic, and may not be the best choice for
 every problem. See the parameter `nbatches` of the construction of the cell lists for 
 tunning this.
 
 =#
 function set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T}
-    auto = (last(_nbatches.build_cell_lists), last(_nbatches.map_computation))
+    auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
+    n1 = last(_nbatches.build_cell_lists)
+    n2 = last(_nbatches.map_computation)
     if !parallel
-        n1 = first(_nbatches.build_cell_lists)
-        n2 = first(_nbatches.map_computation)
         if !all(auto) && (n1, n2) != (1, 1)
             @warn begin
                 """\n
-                    WARNING: nbatches set to ($n1,$n2), but parallel is set to false, implying nbatches == (1, 1)
+                WARNING: nbatches set to ($n1,$n2), but parallel is set to false, implying nbatches == (1, 1)
     
                 """
             end _file=nothing _line=nothing
@@ -220,8 +217,6 @@ function set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; p
     cl.nbatches = nbatches
     return cl
 end
-#set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T} =
-#    set_number_of_batches!(cl, (first(_nbatches.build_cell_lists), first(_nbatches.map_computation)); parallel)
 
 # Heuristic choices for the number of batches, for an atomic system
 _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
@@ -229,15 +224,27 @@ _nbatches_map_computation(n::Int) = max(1, min(n, min(floor(Int, 2^(log10(n) + 1
 
 function set_number_of_batches!(
     cl::CellListPair{N,T},
-    _nbatches::Tuple{Int,Int}=(0, 0);
+    _nbatches::NumberOfBatches;
     parallel=true
 ) where {N,T}
     large_set = set_number_of_batches!(cl.large_set, _nbatches; parallel)
     return CellListPair{N,T}(
-        set_number_of_batches!(cl.small_set, (nbatches(large_set, :build), nbatches(large_set, :map)); parallel),
+        set_number_of_batches!(cl.small_set, _nbatches; parallel),
         large_set,
         cl.swap,
     )
+end
+
+#
+# Functions for initialization of the batches, called from the API functions. Receives a 
+# tuple with the number of batches for the construction of the cell lists and the mapping.
+# If the number of batches are smaller than 1, the function will set the number of batches
+# in automatic mode.
+#
+function set_number_of_batches!(cl::Union{CellList,CellListPair}, _nbatches::Tuple{Int,Int}; parallel=true)
+    auto = _nbatches .<= 0
+    nbatches = NumberOfBatches((first(auto), first(_nbatches)), (last(auto), last(_nbatches)))
+    return set_number_of_batches!(cl, nbatches; parallel)
 end
 
 """
@@ -274,8 +281,8 @@ julia> nbatches(cl,:map)
 
 """
 function nbatches(cl::CellList, s::Symbol)
-    s == :map_computation || s == :map && return first(cl.nbatches.map_computation)
-    s == :build_cell_lists || s == :build && return first(cl.nbatches.build_cell_lists)
+    s == :map_computation || s == :map && return last(cl.nbatches.map_computation)
+    s == :build_cell_lists || s == :build && return last(cl.nbatches.build_cell_lists)
 end
 nbatches(cl::CellList) = (nbatches(cl, :build), nbatches(cl, :map))
 nbatches(cl::CellListPair) = nbatches(cl.large_set)
