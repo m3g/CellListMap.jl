@@ -180,7 +180,7 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
 end
 
 #=
-    set_number_of_batches!(cl, nbatches::NumberOfBatches; parallel=true)  
+    update_number_of_batches!(cl, nbatches::NumberOfBatches; parallel=true)  
 
 Set the default number of batches for the construction of the cell lists, 
 and mapping computations. This is of course heuristic, and may not be the best choice for
@@ -188,7 +188,7 @@ every problem. See the parameter `nbatches` of the construction of the cell list
 tunning this.
 
 =#
-function set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T}
+function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; parallel=true) where {N,T}
     auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
     n1 = last(_nbatches.build_cell_lists)
     n2 = last(_nbatches.map_computation)
@@ -203,6 +203,7 @@ function set_number_of_batches!(cl::CellList{N,T}, _nbatches::NumberOfBatches; p
         end
         nbatches = NumberOfBatches(auto, (1, 1))
     else # Heuristic choices
+        @show "entrou"
         if first(auto)
             n1 = _nbatches_build_cell_lists(cl.n_real_particles)
         end
@@ -222,14 +223,10 @@ end
 _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
 _nbatches_map_computation(n::Int) = max(1, min(n, min(floor(Int, 2^(log10(n) + 1)), nthreads())))
 
-function set_number_of_batches!(
-    cl::CellListPair{N,T},
-    _nbatches::NumberOfBatches;
-    parallel=true
-) where {N,T}
-    large_set = set_number_of_batches!(cl.large_set, _nbatches; parallel)
+function update_number_of_batches!(cl::CellListPair{N,T}, parallel=true) where {N,T}
+    large_set = update_number_of_batches!(cl.large_set; parallel)
     return CellListPair{N,T}(
-        set_number_of_batches!(cl.small_set, _nbatches; parallel),
+        update_number_of_batches!(cl.small_set, large_set.nbatches; parallel),
         large_set,
         cl.swap,
     )
@@ -244,7 +241,7 @@ end
 function set_number_of_batches!(cl::Union{CellList,CellListPair}, _nbatches::Tuple{Int,Int}; parallel=true)
     auto = _nbatches .<= 0
     nbatches = NumberOfBatches((first(auto), first(_nbatches)), (last(auto), last(_nbatches)))
-    return set_number_of_batches!(cl, nbatches; parallel)
+    return update_number_of_batches!(cl, nbatches; parallel)
 end
 
 """
@@ -306,6 +303,19 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
     @test nbatches(cl.small_set) == nbatches(cl.large_set)
     cl = CellList(x,box; nbatches=(2,4), parallel=false)
     @test nbatches(cl) == (1,1)
+    # The automatic set of number of batches for this small system:
+    if Threads.nthreads() == 10
+        x = rand(SVector{3,Float64},10)
+        sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+        @test nbatches(sys) == (8,4)
+        x = rand(SVector{3,Float64},10000)
+        resize!(sys.xpositions, length(x))
+        sys.xpositions .= x
+        map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+        @test nbatches(sys) == (8,10)
+    else
+        @warn "Test not run because it is invalid for this number of threads"
+    end
 end
 
 @testitem "automatic nbataches update" begin
@@ -497,7 +507,7 @@ function CellList(
 ) where {UnitCellType,N,T}
     cl = CellList{N,T}(n_real_particles=length(x), number_of_cells=prod(box.nc))
     set_number_of_batches!(cl, nbatches; parallel)
-    return UpdateCellList!(x, box, cl; parallel, validate_coordinates)
+    return UpdateCellList!(x, box, cl; parallel, validate_coordinates, nbatches)
 end
 
 #=
@@ -649,6 +659,7 @@ function UpdateCellList!(
     parallel::Bool=true,
     validate_coordinates=_validate_coordinates,
 )
+    cl = update_number_of_batches!(cl; parallel)
     if parallel
         aux = AuxThreaded(cl)
         return UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
