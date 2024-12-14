@@ -201,7 +201,7 @@ function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; par
                 """
             end _file=nothing _line=nothing
         end
-        nbatches = NumberOfBatches(auto, (1, 1))
+        nbatches = NumberOfBatches((false, false), (1, 1))
     else # Heuristic choices
         if first(auto)
             n1 = _nbatches_build_cell_lists(cl.n_real_particles)
@@ -211,7 +211,7 @@ function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; par
         end
         nbatches = NumberOfBatches(auto, (n1, n2))
     end
-    for _ in 1:n2
+    for _ in 1:last(nbatches.map_computation)
         push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, 0))
     end
     cl.nbatches = nbatches
@@ -229,7 +229,11 @@ function update_number_of_batches!(
 ) where {N,T}
     large_set = update_number_of_batches!(cl.large_set, _nbatches; parallel)
     return CellListPair{N,T}(
-        update_number_of_batches!(cl.small_set, large_set.nbatches; parallel),
+        update_number_of_batches!(
+            cl.small_set, 
+            NumberOfBatches((false, false), nbatches(large_set)); 
+            parallel
+        ),
         large_set,
         cl.swap,
     )
