@@ -222,8 +222,8 @@ end
 _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
 _nbatches_map_computation(n::Int) = max(1, min(n, min(floor(Int, 2^(log10(n) + 1)), nthreads())))
 
-function update_number_of_batches!(cl::CellListPair{N,T}; parallel=true) where {N,T}
-    large_set = update_number_of_batches!(cl.large_set; parallel)
+function update_number_of_batches!(cl::CellListPair{N,T}, _nbatches::NumberOfBatches; parallel=true) where {N,T}
+    large_set = update_number_of_batches!(cl.large_set, _nbatches; parallel)
     return CellListPair{N,T}(
         update_number_of_batches!(cl.small_set, large_set.nbatches; parallel),
         large_set,
