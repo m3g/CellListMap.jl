@@ -325,12 +325,6 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
     end
 end
 
-@testitem "automatic nbataches update" begin
-    using CellListMap, StaticArrays
-    x, box = CellListMap.xatomic(5000)
-
-end
-
 #=
 
 $(TYPEDEF)
