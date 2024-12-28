@@ -1,16 +1,16 @@
 #=
     reduce(output, output_threaded)
 
-Most common reduction function, which sums the elements of the output. 
+Most common reduction function, which sums the elements of the output.
 Here, `output_threaded` is a vector containing `nbatches(cl)` copies of
-the `output` variable (a scalar or an array). Custom reduction functions 
-must replace this one if the reduction operation is not a simple sum. 
+the `output` variable (a scalar or an array). Custom reduction functions
+must replace this one if the reduction operation is not a simple sum.
 The `output_threaded` array is, by default, created automatically by copying
-the given `output` variable `nbatches(cl)` times. 
+the given `output` variable `nbatches(cl)` times.
 
 ## Examples
 
-Scalar reduction: 
+Scalar reduction:
 
 ```julia-repl
 julia> output = 0.; output_threaded = [ 1, 2 ];
@@ -18,7 +18,7 @@ julia> output = 0.; output_threaded = [ 1, 2 ];
 julia> CellListMap.reduce(output,output_threaded)
 3
 ```
- 
+
 Array reduction:
 
 ```julia-repl
@@ -55,8 +55,8 @@ function reduce(output, output_threaded)
     custom_reduce(output::$T, output_threaded::Vector{$T})
     ```
 
-    The reduction function **must** return the `output` variable, even 
-    if it is mutable.  
+    The reduction function **must** return the `output` variable, even
+    if it is mutable.
 
     See: https://m3g.github.io/CellListMap.jl/stable/parallelization/#Custom-reduction-functions
 
@@ -153,8 +153,8 @@ function map_pairwise_serial!(
     show_progress::Bool=false
 ) where {F,N,T}
     p = show_progress ? Progress(length(cl.ref), dt=1) : nothing
-    for i in eachindex(cl.ref)
-        output = inner_loop!(f, output, i, box, cl)
+    @batch for i in eachindex(cl.ref)
+        inner_loop!(f, output, i, box, cl)
         _next!(p)
     end
     return output
@@ -284,7 +284,7 @@ function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, �
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
         # Partition pp array according to the current projections
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
-        # Compute the interactions 
+        # Compute the interactions
         for j in 1:n
             @inbounds pⱼ = pp[j]
             xpⱼ = pⱼ.coordinates
@@ -307,7 +307,7 @@ function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, out
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
         # Partition pp array according to the current projections
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
-        # Compute the interactions 
+        # Compute the interactions
         pᵢ.real || continue
         for j in 1:n
             @inbounds pⱼ = pp[j]
@@ -327,8 +327,8 @@ end
 
 # Extended help
 
-Projects all particles of the cell `cellⱼ` into unnitary vector `Δc` with direction 
-connecting the centers of `cellⱼ` and `cellᵢ`. Modifies `projected_particles`, and 
+Projects all particles of the cell `cellⱼ` into unnitary vector `Δc` with direction
+connecting the centers of `cellⱼ` and `cellᵢ`. Modifies `projected_particles`, and
 returns a view of `projected particles, where only the particles for which
 the projection on the direction of the cell centers still allows the particle
 to be within the cutoff distance of any point of the other cell.
@@ -388,5 +388,3 @@ function inner_loop!(
     end
     return output
 end
-
-
