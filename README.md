@@ -1,6 +1,6 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://m3g.github.io/CellListMap.jl/stable)
-[![Build Status](https://github.com/m3g/CellListMap.jl/workflows/CI/badge.svg)](https://github.com/m3g/CellListMap.jl/actions?query=branch%3Amain)
+[![Build Status](https://github.com/m3g/CellListMap.jl/workflows/CI/badge.svg?branch=main)](https://github.com/m3g/CellListMap.jl/actions?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/m3g/CellListMap.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/m3g/CellListMap.jl)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
