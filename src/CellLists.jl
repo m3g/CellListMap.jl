@@ -68,7 +68,7 @@ neighboring cells need to be wrapped)
 =#
 Base.@kwdef struct Cell{N,T}
     linear_index::Int = 0
-    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, N))
+    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
     center::SVector{N,T} = zeros(SVector{N,T})
     contains_real::Bool = false
     n_particles::Int = 0
@@ -832,7 +832,7 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
     for ip in eachindex(x)
         xp = x[ip]
         # This converts the coordinates to static arrays, if necessary
-        p = SVector{N,T}(ntuple(i -> xp[i], N))
+        p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
         p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
         add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
         replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
@@ -958,7 +958,7 @@ end
 # This cannot happen because then running over the neighboring boxes can cause an 
 # invalid access to an index of a cell.
 function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
-    cidxs = ntuple(i -> cartesian_index[i], N)
+    cidxs = ntuple(i -> cartesian_index[i], Val(N))
     for i in 1:N
         if cidxs[i] == box.lcell
             @set! cidxs[i] += 1

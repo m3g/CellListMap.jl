@@ -110,7 +110,7 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
     unit_cell_matrix = invu * unit_cell_matrix
     x_f = wrap_cell_fraction(invu * x, unit_cell_matrix)
     xref_f = wrap_cell_fraction(invu * xref, unit_cell_matrix)
-    xw = wrap_relative_to(x_f, xref_f, SVector{N,eltype(x_f)}(ntuple(i -> 1, N)))
+    xw = wrap_relative_to(x_f, xref_f, SVector{N,eltype(x_f)}(ntuple(i -> 1, Val(N))))
     return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
 
@@ -171,7 +171,7 @@ provided.
 
 =#
 @inline translation_image(x::SVector{N,T}, unit_cell_matrix, indices) where {N,T} =
-    x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], N))
+    x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], Val(N)))
 
 #=
     translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
@@ -254,7 +254,7 @@ function replicate_system!(
     ranges::Tuple
 ) where {N,T}
     length(ranges) == N || throw(DimensionMismatch("Tuple of ranges must have the same dimension as the vectors: $N"))
-    i0 = ntuple(i -> 0, N)
+    i0 = ntuple(i -> 0, Val(N))
     imgs = Iterators.filter(!isequal(i0),
         Iterators.product(ranges...)
     )
@@ -270,7 +270,7 @@ end
 # resized in-place.
 function replicate_system(x::AbstractMatrix{T}, cell, ranges) where {T}
     N = size(x, 1)
-    x_re = [SVector{N,T}(ntuple(i -> x[i, j], N)) for j in axes(x, 2)]
+    x_re = [SVector{N,T}(ntuple(i -> x[i, j], Val(N))) for j in axes(x, 2)]
     replicate_system!(x_re, cell, ranges)
     x = Matrix(reinterpret(reshape, Float64, x_re))
     return x
@@ -312,7 +312,7 @@ of the cell (for arbitrary dimension N).
 
 =#
 @inline cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} =
-    CartesianIndices(ntuple(i -> nc[i], N))[i1D]
+    CartesianIndices(ntuple(i -> nc[i], Val(N)))[i1D]
 
 #=
     cell_linear_index(nc::SVector{N,Int}, indices) where N
@@ -323,7 +323,7 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 
 =#
 @inline cell_linear_index(nc::SVector{N,Int}, indices) where {N} =
-    LinearIndices(ntuple(i -> nc[i], N))[ntuple(i -> indices[i], N)...]
+    LinearIndices(ntuple(i -> nc[i], Val(N)))[ntuple(i -> indices[i], Val(N))...]
 
 @testitem "cell cartesian/linear indices" begin
     using StaticArrays

@@ -234,7 +234,7 @@ function _compute_nc_and_cell_size(::Type{<:OrthorhombicCellType}, xmin, xmax, c
 end
 function _compute_nc_and_cell_size(::Type{TriclinicCell}, xmin::SVector{N,T}, xmax::SVector{N,T}, cutoff, lcell) where {N,T}
     _nc = ceil.(Int, (xmax .- xmin) / (cutoff / lcell))
-    cell_size = SVector{N,T}(ntuple(_ -> cutoff/lcell, N))
+    cell_size = SVector{N,T}(ntuple(_ -> cutoff/lcell, Val(N)))
     nc = _nc .+ 2 * lcell .+ 1
     return nc, cell_size
 end
@@ -553,8 +553,8 @@ cells of a cell where the computing cell index is `box.lcell`.
 function neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
     @unpack lcell = box
     return Iterators.filter(
-        !isequal(CartesianIndex(ntuple(i -> 0, N))),
-        CartesianIndices(ntuple(i -> -lcell:lcell, N))
+        !isequal(CartesianIndex(ntuple(i -> 0, Val(N)))),
+        CartesianIndices(ntuple(i -> -lcell:lcell, Val(N)))
     )
 end
 
@@ -568,7 +568,7 @@ Returns an iterator over all neighbor cells, including the center one.
 =#
 function current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
     @unpack lcell = box
-    return CartesianIndices(ntuple(i -> -lcell:lcell, N))
+    return CartesianIndices(ntuple(i -> -lcell:lcell, Val(N)))
 end
 
 #=
@@ -583,7 +583,7 @@ computing box with positive coordinates has indexes `Box.lcell + 1`.
 =#
 @inline function particle_cell(x::SVector{N}, box::Box) where {N}
     CartesianIndex(
-        ntuple(N) do i
+        ntuple(Val(N)) do i
             xmin = box.computing_box[1][i]
             xi = (x[i] - xmin) / box.cell_size[i]
             index = floor(Int, xi) + 1
@@ -601,7 +601,7 @@ of points. Returns a `SVector{N,T}`
 =#
 @inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
     SVector{N,T}(
-        ntuple(N) do i
+        ntuple(Val(N)) do i
             xmin = box.computing_box[1][i]
             ci = xmin + box.cell_size[i] * c[i] - box.cell_size[i] / 2
             return ci
@@ -639,7 +639,7 @@ Replicates the particle as many times as necessary to fill the computing box.
 
 =#
 function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
-    itr = Iterators.product(ntuple(i -> -1:1, N)...)
+    itr = Iterators.product(ntuple(i -> -1:1, Val(N))...)
     for indices in itr
         (count(isequal(0), indices) == N) && continue
         x = translation_image(p, box.aligned_unit_cell.matrix, indices)
