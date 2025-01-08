@@ -26,9 +26,9 @@
     
     function copy_to_svector(positions)
         if positions isa AbstractVector{<:AbstractVector}
-            posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in positions ]
+            posvec = [ SVector(ntuple(i -> v[i], Val(length(v)))) for v in positions ]
         elseif positions isa AbstractMatrix
-            posvec = [ SVector(ntuple(i -> v[i], length(v))) for v in eachcol(positions) ]
+            posvec = [ SVector(ntuple(i -> v[i], Val(length(v)))) for v in eachcol(positions) ]
         end
         return posvec
     end
