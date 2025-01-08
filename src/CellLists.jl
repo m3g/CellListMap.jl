@@ -68,7 +68,7 @@ neighboring cells need to be wrapped)
 =#
 Base.@kwdef struct Cell{N,T}
     linear_index::Int = 0
-    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, N))
+    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
     center::SVector{N,T} = zeros(SVector{N,T})
     contains_real::Bool = false
     n_particles::Int = 0
@@ -556,12 +556,12 @@ function CellList(
 ) where {UnitCellType,N,T}
     if !autoswap || length(x) >= length(y)
         isnothing(validate_coordinates) || validate_coordinates(x)
-        ref = [SVector{N,T}(ntuple(i -> el[i], N)) for el in x]
+        ref = [SVector{N,T}(ntuple(i -> el[i], Val(N))) for el in x]
         target = CellList(y, box; parallel, validate_coordinates)
         swap = NotSwapped()
     else
         isnothing(validate_coordinates) || validate_coordinates(y)
-        ref = [SVector{N,T}(ntuple(i -> el[i], N)) for el in y]
+        ref = [SVector{N,T}(ntuple(i -> el[i], Val(N))) for el in y]
         target = CellList(x, box; parallel, validate_coordinates)
         swap = Swapped()
     end
@@ -825,7 +825,7 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
     for ip in eachindex(x)
         xp = x[ip]
         # This converts the coordinates to static arrays, if necessary
-        p = SVector{N,T}(ntuple(i -> xp[i], N))
+        p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
         p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
         add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
         replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
@@ -947,7 +947,7 @@ end
 # This cannot happen because then running over the neighboring boxes can cause an 
 # invalid access to an index of a cell.
 function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
-    cidxs = ntuple(i -> cartesian_index[i], N)
+    cidxs = ntuple(i -> cartesian_index[i], Val(N))
     for i in 1:N
         if cidxs[i] == box.lcell
             @set! cidxs[i] += 1
@@ -1233,7 +1233,7 @@ function _update_CellListPair!(ref, target, cl_pair::CellListPair{V,N,T,Swap}) w
         resize!(cl_pair.ref, length(ref))
     end
     for i in eachindex(ref, cl_pair.ref)
-        @inbounds cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j], N))
+        @inbounds cl_pair.ref[i] = SVector{N,T}(ntuple(j -> ref[i][j], Val(N)))
     end
     cl_pair = CellListPair{V,N,T,Swap}(cl_pair.ref, target)
     return cl_pair
