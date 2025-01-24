@@ -32,7 +32,7 @@ are in Angstroms, while the box size and cutoff are defined in nanometers:
 ```jldoctest ;filter = r"\d+" => ""
 julia> using CellListMap, Unitful, PDBTools
 
-julia> positions = coor(readPDB(CellListMap.argon_pdb_file))u"Å";
+julia> positions = coor(read_pdb(CellListMap.argon_pdb_file))u"Å";
 
 julia> system = ParticleSystem(
            positions = positions,
@@ -53,7 +53,7 @@ julia> map_pairwise((x,y,i,j,d2,out) -> out += d2, system)
 ```jldoctest ;filter = r"\d+" => s""
 julia> using CellListMap, Unitful, PDBTools
 
-julia> positions = coor(readPDB(CellListMap.argon_pdb_file))u"Å";
+julia> positions = coor(read_pdb(CellListMap.argon_pdb_file))u"Å";
 
 julia> cutoff = 0.8u"nm";
 
