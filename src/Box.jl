@@ -468,16 +468,17 @@ end
     @test list == Tuple{Int64,Int64,Float64}[]
 end
 
-@testitem "Stable Box update" begin
+@testitem "Stable Box update" setup=[AllocTest] begin
     using CellListMap
     using StaticArrays
     using BenchmarkTools
     using LinearAlgebra: diag
+    using .AllocTest: Allocs
 
     # update with tuples
     box = Box([1, 1, 1], 0.1)
     a = @ballocated CellListMap.update_box($box; unitcell=(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
@@ -485,7 +486,7 @@ end
     # update with SVector
     box = Box([1, 1, 1], 0.1)
     a = @ballocated CellListMap.update_box($box; unitcell=SVector(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
@@ -495,7 +496,7 @@ end
     box = Box(limits(x), 0.1)
     new_x = rand(SVector{3,Float64}, 1500)
     a = @ballocated CellListMap.update_box($box; unitcell=$(limits(new_x)), cutoff=0.2) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     new_box = CellListMap.update_box(box; unitcell=limits(new_x), cutoff=0.2)
     @test new_box.cutoff == 0.2
     @test diag(new_box.input_unit_cell.matrix) == limits(new_x).limits .+ 2.1 * 0.2
@@ -504,7 +505,7 @@ end
     box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
     new_matrix = SMatrix{3,3,Float64,9}(2, 0, 0, 0, 2, 0, 0, 0, 2)
     a = @ballocated CellListMap.update_box($box; unitcell=$new_matrix, cutoff=0.2) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     new_box = CellListMap.update_box(box; unitcell=new_matrix, cutoff=0.2)
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
