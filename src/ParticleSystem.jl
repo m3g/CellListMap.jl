@@ -839,11 +839,12 @@ function update_cutoff!(sys::ParticleSystem2, cutoff)
     return sys
 end
 
-@testitem "update_cutoff!" begin
+@testitem "update_cutoff!" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
     using PDBTools
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys1, 0.2)
@@ -947,10 +948,11 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
 end
 
 # this updates must be non-allocating in the serial case
-@testitem "UpdateParticleSystem!" begin
+@testitem "UpdateParticleSystem!" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1

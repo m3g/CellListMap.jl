@@ -439,11 +439,11 @@ end
     neighborlist!(system)
     x = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated update!($system, $x) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x; cutoff=0.2) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
 
     # Non-Periodic systems
     x = rand(SVector{3,Float64}, 10^3)
@@ -451,11 +451,11 @@ end
     neighborlist!(system)
     x = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated update!($system, $x) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x; cutoff=0.2) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
 
     #
     # Two sets of particles
@@ -468,11 +468,11 @@ end
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y; cutoff=0.2) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
 
     # Non-Periodic systems
     y = rand(SVector{3,Float64}, 10^3)
@@ -481,11 +481,11 @@ end
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y; cutoff=0.2) evals = 1 samples = 1
-    @test allocs = Allocs(0)
+    @test allocs == Allocs(0)
 
 end
 
