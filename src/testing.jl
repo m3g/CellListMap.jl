@@ -1,3 +1,4 @@
+
 #=
     pathological_coordinates(N)
 

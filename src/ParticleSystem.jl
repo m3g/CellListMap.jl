@@ -757,23 +757,24 @@ function update_unitcell!(sys, unitcell)
     return sys
 end
 
-@testitem "update_unitcell!" begin
+@testitem "update_unitcell!" setup=[AllocTest] begin
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
     using CellListMap
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
     a = @ballocated update_unitcell!($sys1, SVector(2, 2, 2)) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys2 = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys2, SVector(2, 2, 2))
     @test diag(sys2.unitcell) == [2, 2, 2]
     a = @ballocated update_unitcell!($sys2, SVector(2, 2, 2)) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     # Test throwing error on updating non-periodic unit cells
     sys = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0)
     @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
@@ -838,23 +839,24 @@ function update_cutoff!(sys::ParticleSystem2, cutoff)
     return sys
 end
 
-@testitem "update_cutoff!" begin
+@testitem "update_cutoff!" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
     using PDBTools
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys1, 0.2)
     @test sys1.cutoff == 0.2
     a = @ballocated update_cutoff!($sys1, 0.1) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys2 = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys2, 0.2)
     @test sys2.cutoff == 0.2
     a = @ballocated update_cutoff!($sys2, 0.1) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Update cutoff of non-periodic systems
     x = coor(readPDB(CellListMap.argon_pdb_file))
@@ -864,14 +866,14 @@ end
     update_cutoff!(sys1, 10.0)
     @test sys1.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1e-2
     a = @ballocated update_cutoff!($sys1, 8.0) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     sys2 = ParticleSystem(xpositions=x[1:50], ypositions=x[51:100], cutoff=8.0, output=0.0)
     @test unitcelltype(sys2) == NonPeriodicCell
     @test sys2.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1e-2
     update_cutoff!(sys2, 10.0)
     @test sys2.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1e-2
     a = @ballocated update_cutoff!($sys2, 8.0) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
 end
 
 #
@@ -946,44 +948,45 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
 end
 
 # this updates must be non-allocating in the serial case
-@testitem "UpdateParticleSystem!" begin
+@testitem "UpdateParticleSystem!" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Test construction with more general abstract vectors
     x = @view(x[1:500])
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = @view(y[1:500])
     sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Update with matrices
     x = rand(3, 500)
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Update non-periodic system
     x = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Throw error when trying to *not* update lists with autoswap on:
     sys = ParticleSystem(
