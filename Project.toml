@@ -36,7 +36,7 @@ Random = "1.9"
 Setfield = "0.7, 0.8, 0.9, 1"
 StaticArrays = "1.6"
 Test = "1.9"
-TestItemRunner = "1"
+TestItemRunner = "1.1"
 TestItems = "1"
 Unitful = "1.19"
 julia = "1.9"
@@ -53,7 +53,6 @@ PDBTools = "e29189f1-7114-4dbd-93d0-c5673a921a58"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
-TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [targets]
-test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua", "Documenter", "PDBTools", "TestItems"]
+test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua", "Documenter", "PDBTools"]
