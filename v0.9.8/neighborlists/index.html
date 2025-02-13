@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Neighbor lists · CellListMap.jl</title><meta name="title" content="Neighbor lists · CellListMap.jl"/><meta property="og:title" content="Neighbor lists · CellListMap.jl"/><meta property="twitter:title" content="Neighbor lists · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../ParticleSystem/">ParticleSystem interface</a></li><li class="is-active"><a class="tocitem" href>Neighbor lists</a><ul class="internal"><li><a class="tocitem" href="#Non-periodic-systems"><span>Non-periodic systems</span></a></li><li><a class="tocitem" href="#Periodic-systems"><span>Periodic systems</span></a></li><li><a class="tocitem" href="#In-place-computation-of-neighbor-lists"><span>In-place computation of neighbor lists</span></a></li><li><a class="tocitem" href="#Options"><span>Options</span></a></li><li><a class="tocitem" href="#Docstrings"><span>Docstrings</span></a></li></ul></li><li><a class="tocitem" href="../LowLevel/">Low level interface</a></li><li><a class="tocitem" href="../ecosystem/">Ecosystem integration</a></li><li><a class="tocitem" href="../python/">From Python</a></li><li><a class="tocitem" href="../citation/">Citation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Neighbor lists</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Neighbor lists</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/neighborlists.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Neighbor-lists"><a class="docs-heading-anchor" href="#Neighbor-lists">Neighbor lists</a><a id="Neighbor-lists-1"></a><a class="docs-heading-anchor-permalink" href="#Neighbor-lists" title="Permalink"></a></h1><p>Neighbor lists can be computed, returning all pairs of particles that are found within the cutoff, and the corresponding distances.  </p><ul><li><a href="#Non-periodic-systems">Non-periodic systems</a></li><li><a href="#Periodic-systems">Periodic systems</a></li><li><a href="#In-place-computation-of-neighbor-lists">In-place computation of neighbor lists</a></li><li><a href="#Options">Options</a></li></ul><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>When computing neighbor lists with cell-lists, it is possible for pairs of particles that are at a distance equal to the cutoff to either be included or excluded due to numerical rounding. As a result, these neighbor lists should only be utilized for calculating properties that vanish at the cutoff distance.</p></div></div><h2 id="Non-periodic-systems"><a class="docs-heading-anchor" href="#Non-periodic-systems">Non-periodic systems</a><a id="Non-periodic-systems-1"></a><a class="docs-heading-anchor-permalink" href="#Non-periodic-systems" title="Permalink"></a></h2><p>Without periodic boundary conditions, just provide the coordinates and the cutoff:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap
+
+julia&gt; x = [ rand(2) for _ in 1:10_000 ];
+
+julia&gt; neighborlist(x,0.05)
+376457-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 363, 0.04855594810064624)
+ (1, 513, 0.03356381123125866)
+ (1, 1209, 0.005159666709130686)
+ ⋮
+ (6575, 7378, 0.03791567990447959)
+ (7378, 3450, 0.01748757015908321)</code></pre><p>If the neighbor lists between two sets of points are required, use the following notation,  in this case using coordinates as arrays of static arrays:</p><pre><code class="language-julia-repl hljs">julia&gt; using StaticArrays
+
+julia&gt; x = rand(SVector{3,Float64},10^4);
+
+julia&gt; y = rand(SVector{3,Float64},10^3);
+
+julia&gt; list = neighborlist(x,y,0.1)
+37309-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 971, 0.09867846773727411)
+ (1, 567, 0.06630101425431004)
+ (1, 3, 0.04103170149300593)
+ ⋮
+ (10000, 156, 0.08549899843141298)
+ (10000, 444, 0.0737386384422871)</code></pre><p>where, similarly, the third parameter is the cutoff. The returning array contains tuples with the index of the particle in the first vector, the index of the particle in the second vector, and their distance.</p><h2 id="Periodic-systems"><a class="docs-heading-anchor" href="#Periodic-systems">Periodic systems</a><a id="Periodic-systems-1"></a><a class="docs-heading-anchor-permalink" href="#Periodic-systems" title="Permalink"></a></h2><p>If periodic boundary conditions are used, the <code>unitcell</code> can be provided explicitly as keyword parameters:</p><pre><code class="language-julia-repl hljs">julia&gt; x = [ rand(2) for _ in 1:10_000 ]; 
+
+julia&gt; neighborlist(x, 0.05; unitcell=[1,1])
+392100-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 5, 0.03445098850037766)
+ (1, 393, 0.039448810592487206)
+ (1, 1632, 0.02276457565643465)
+ ⋮
+ (9501, 9781, 0.03351665194098955)
+ (9501, 5429, 0.04199258248973222)</code></pre><p>In the example above, an <code>Orthorhombic</code> cell was assumed, and thus a vector of sides was provided. For general periodic boundary conditions, a unit cell matrix can be provided, for example:</p><pre><code class="language-julia-repl hljs">julia&gt; neighborlist(x, 0.05; unitcell=[1.0 0.5; 0.5 1.0])
+580693-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 457, 0.03935441952786555)
+ (1, 1467, 0.033407692174569875)
+ (1, 1767, 0.04490555313598093)
+ ⋮
+ (3652, 8475, 0.04721628783510375)
+ (6260, 8475, 0.04946130971686825)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Positions and unit cells can be 2 or 3-dimensional.</p></div></div><h2 id="In-place-computation-of-neighbor-lists"><a class="docs-heading-anchor" href="#In-place-computation-of-neighbor-lists">In-place computation of neighbor lists</a><a id="In-place-computation-of-neighbor-lists-1"></a><a class="docs-heading-anchor-permalink" href="#In-place-computation-of-neighbor-lists" title="Permalink"></a></h2><p>If neighbor lists are computed within a interactive scenario, it is interesting preallocate all the necessary data and just update the lists at every iteration. This can be achieved by constructing the <code>InPlaceNeighborList</code>  object in advance. The performance gain of performing the operations in place might vary and may not be  important for single runs, as the allocations do not dominate the computing time. </p><p>We will first illustrate the interface for a non-parallel run:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; x = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+Current list buffer size: 0</code></pre><p>Note that the buffer size has size <code>0</code>. The first time the neighbor lists are computed, the list will be allocated. We will use the <code>neighborlist!</code> (with the bang) function, because it will effectively  mutate the <code>system</code>, by allocating all necessary data:</p><pre><code class="language-julia-repl hljs">julia&gt; @time list = neighborlist!(system)
+  0.017765 seconds (12 allocations: 7.445 MiB)
+209190-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 1375, 0.09425551992016712)
+ (1, 3076, 0.045320021406080775)
+ (1, 3666, 0.07780146666634076)
+ ⋮
+ (9962, 6983, 0.07355578793348823)
+ (9962, 7457, 0.07597724209140656)</code></pre><p>Now, if we modify the coordinates, we can update the system and recompute the neighbor lists:</p><pre><code class="language-julia-repl hljs">julia&gt; x_new = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; @time update!(system, x_new)
+  0.003562 seconds
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+Current list buffer size: 209190
+
+julia&gt; @time list = neighborlist!(system);
+  0.012338 seconds</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><ul><li>Here we illustrate the behavior of the functions in their second calls, to remove the  effects of compilation on the allocation results.</li><li>The <code>cutoff</code> and <code>unitcell</code>  can be modified by providing additional keyword parameters to the <code>update!</code> function (for example <code>update!(system, x; cutoff=0.1)</code>).</li><li>Allocations can occur if the cutoff, unit cell, or number of particles change such that greater buffers are required. The number of allocations tend to diminish as  the buffers become large enough to accommodate the possible variations of the computation.</li></ul></div></div><p>For parallel runs, the allocations are minimal, but some small auxiliary data is required for the launching of multiple threads. We illustrate here the convergence of the allocations to the  minimum required for multi-threaded calculations:</p><pre><code class="language-julia-repl hljs">julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=true);
+
+julia&gt; @time list = neighborlist!(system);
+  0.007762 seconds (230 allocations: 18.142 MiB)
+
+julia&gt; x_new = rand(SVector{3,Float64},10^4);
+
+julia&gt; @time update!(system, x_new)
+  0.005283 seconds (20.30 k allocations: 6.200 MiB)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+Current list buffer size: 209190
+
+julia&gt; @time neighborlist!(system);
+  0.008190 seconds (166 allocations: 6.461 MiB)
+
+julia&gt; x_new = rand(SVector{3,Float64},10^4);
+
+julia&gt; @time update!(system, x_new);
+  0.002723 seconds (221 allocations: 208.922 KiB)
+
+julia&gt; @time neighborlist!(system);
+  0.006227 seconds (165 allocations: 2.863 MiB)
+
+julia&gt; x_new = rand(SVector{3,Float64},10^4);
+
+julia&gt; @time update!(system, x_new);
+  0.002396 seconds (275 allocations: 144.078 KiB)
+
+julia&gt; @time neighborlist!(system);
+  0.004996 seconds (161 allocations: 15.141 KiB)</code></pre><h2 id="Options"><a class="docs-heading-anchor" href="#Options">Options</a><a id="Options-1"></a><a class="docs-heading-anchor-permalink" href="#Options" title="Permalink"></a></h2><p>Additional optional parameters can be used in a <code>neighborlist</code> call:</p><table><tr><th style="text-align: center">Keyword</th><th style="text-align: center">Values types</th><th style="text-align: center">Default</th><th style="text-align: left">About</th></tr><tr><td style="text-align: center"><code>parallel</code></td><td style="text-align: center"><code>Bool</code></td><td style="text-align: center"><code>true</code></td><td style="text-align: left">turns on and off parallelization</td></tr><tr><td style="text-align: center"><code>show_progress</code></td><td style="text-align: center"><code>Bool</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: left">turns on and off progress bar</td></tr><tr><td style="text-align: center"><code>nbatches</code></td><td style="text-align: center"><code>Tuple{Int,Int}</code></td><td style="text-align: center"><code>(0,0)</code></td><td style="text-align: left">Number of batches used in parallelization (see <a href="../LowLevel/#Number-of-batches">here</a>)</td></tr><tr><td style="text-align: center"><code>autoswap</code></td><td style="text-align: center"><code>Bool</code></td><td style="text-align: center"><code>true</code></td><td style="text-align: left">(advanced) automatically choose set to construct the cell lists</td></tr></table><h2 id="Docstrings"><a class="docs-heading-anchor" href="#Docstrings">Docstrings</a><a id="Docstrings-1"></a><a class="docs-heading-anchor-permalink" href="#Docstrings" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.neighborlist-Tuple{Any, Any, Any}" href="#CellListMap.neighborlist-Tuple{Any, Any, Any}"><code>CellListMap.neighborlist</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">neighborlist(
+    x, y, cutoff; 
+    unitcell=nothing, 
+    parallel=true, 
+    show_progress=false, 
+    autoswap=true,
+    nbatches=(0,0)
+)</code></pre><p>Computes the list of pairs of particles of <code>x</code> which are closer than <code>r</code> to the particles of <code>y</code>. The <code>autoswap</code> option will swap <code>x</code> and <code>y</code> to try to optimize the cost of the construction of the cell list. </p><p><strong>Examples</strong></p><p>Compute the neighborlist between two sets of Argon atoms, considering the system non-periodic (do not provide a <code>unitcell</code>):</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(readPDB(CellListMap.argon_pdb_file, &quot;index &lt;= 50&quot;));
+
+julia&gt; y = coor(readPDB(CellListMap.argon_pdb_file, &quot;index &gt; 50&quot;));
+
+julia&gt; CellListMap.neighborlist(x, y, 8.0; parallel=false)
+439-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 13, 7.0177629626541265)
+ (1, 24, 7.976895636774999)
+ (1, 29, 3.1770283284856)
+ (1, 11, 4.0886518560523095)
+ (1, 17, 5.939772807102978)
+ (1, 30, 2.457228927063981)
+ (1, 44, 5.394713986857875)
+ (1, 45, 5.424876588458028)
+ (2, 2, 3.9973374888793174)
+ (2, 6, 5.355242104704511)
+ ⋮
+ (50, 27, 6.257296620746054)
+ (50, 32, 3.109966559305742)
+ (50, 33, 2.9192916949150525)
+ (50, 35, 5.043227240567294)
+ (50, 10, 3.9736202636890208)
+ (50, 20, 6.995405134800989)
+ (50, 39, 3.9001540995196584)
+ (50, 37, 7.5464903100713)
+ (50, 3, 7.232267901564487)</code></pre><p>Now, considering the system periodic:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(readPDB(CellListMap.argon_pdb_file, &quot;index &lt;= 50&quot;));
+
+julia&gt; y = coor(readPDB(CellListMap.argon_pdb_file, &quot;index &gt; 50&quot;));
+
+julia&gt; CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+584-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 12, 7.360804915224965)
+ (1, 13, 7.017762962654125)
+ (1, 24, 7.976895636774997)
+ (1, 29, 3.177028328485598)
+ (1, 44, 5.394713986857875)
+ (1, 45, 5.4248765884580274)
+ (1, 11, 4.088651856052312)
+ (1, 17, 5.93977280710298)
+ (1, 30, 2.457228927063981)
+ (1, 28, 6.853834401267658)
+ ⋮
+ (50, 3, 7.232267901564487)
+ (50, 10, 3.9736202636890203)
+ (50, 27, 6.257296620746054)
+ (50, 32, 3.1099665593057426)
+ (50, 33, 2.919291694915052)
+ (50, 35, 5.043227240567294)
+ (50, 20, 6.995405134800987)
+ (50, 37, 7.546490310071297)
+ (50, 39, 3.900154099519657)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>We set <code>parallel=false</code> in these examples to preserve the order of the pairs  in the list. Parallel executions will not guarantee the order of the pairs.</p></div></div></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/cf898d97ed9aedc567bbaaeaad495f72cf2f879b/src/neighborlists.jl#L587-L674">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.neighborlist-Tuple{Any, Any}" href="#CellListMap.neighborlist-Tuple{Any, Any}"><code>CellListMap.neighborlist</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)</code></pre><p>Computes the list of pairs of particles in <code>x</code> which are closer to each other than <code>cutoff</code>. If the keyword parameter <code>unitcell</code> is provided (as a vector of sides or a general unit cell matrix, periodic boundary conditions are considered). </p><p><strong>Example</strong></p><p>Compute the neighborlist between within a set Argon atoms, considering the system non-periodic (do not provide a <code>unitcell</code>):</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia&gt; neighborlist(x, 8.0; parallel=false)
+857-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 20, 3.163779543520692)
+ (1, 61, 4.0886518560523095)
+ (1, 67, 5.939772807102978)
+ (1, 80, 2.457228927063981)
+ (1, 94, 5.394713986857875)
+ (13, 15, 2.678764267344178)
+ (13, 41, 4.408015539900014)
+ (13, 44, 6.960112211739117)
+ (13, 61, 5.939197673086828)
+ (13, 64, 4.560755858407684)
+ ⋮
+ (46, 18, 6.114385414741209)
+ (46, 51, 7.999472795128439)
+ (51, 68, 2.200357470957844)
+ (51, 22, 6.638020940009152)
+ (54, 45, 4.423308377221737)
+ (73, 78, 2.853611220891874)
+ (73, 88, 6.078711047582372)
+ (78, 88, 7.006116541993863)
+ (88, 54, 7.933654076149277)</code></pre><p>And now, considering the system periodic:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(readPDB(CellListMap.argon_pdb_file));
+
+julia&gt; neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+1143-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 7, 3.36387559222989)
+ (1, 20, 3.163779543520693)
+ (1, 47, 6.243868272153088)
+ (1, 63, 7.017762962654125)
+ (1, 74, 7.976895636774997)
+ (1, 79, 3.177028328485598)
+ (1, 94, 5.394713986857875)
+ (1, 95, 5.4248765884580274)
+ (7, 20, 3.3995637955478935)
+ (7, 26, 7.96292025578556)
+ ⋮
+ (57, 34, 6.536566147450816)
+ (57, 84, 7.225401442134547)
+ (57, 88, 7.971591246420004)
+ (68, 14, 5.2021891545771375)
+ (68, 34, 3.955899012866733)
+ (68, 84, 5.650943284089833)
+ (68, 88, 7.254140403934848)
+ (68, 38, 7.4092885623384905)
+ (68, 90, 7.875801229081395)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>We set <code>parallel=false</code> in these examples to preserve the order of the pairs  in the list. Parallel executions will not guarantee the order of the pairs.</p></div></div></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/cf898d97ed9aedc567bbaaeaad495f72cf2f879b/src/neighborlists.jl#L492-L568">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.update!-Union{Tuple{C}, Tuple{UnitCellType}, Tuple{InPlaceNeighborList{&lt;:Box{UnitCellType}, C}, AbstractVecOrMat}} where {UnitCellType, C&lt;:CellList}" href="#CellListMap.update!-Union{Tuple{C}, Tuple{UnitCellType}, Tuple{InPlaceNeighborList{&lt;:Box{UnitCellType}, C}, AbstractVecOrMat}} where {UnitCellType, C&lt;:CellList}"><code>CellListMap.update!</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">update!(system::InPlaceNeighborList, x::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
+update!(system::InPlaceNeighborList, x::AbstractVecOrMat, y::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)</code></pre><p>Updates a <code>InPlaceNeighborList</code> system, by updating the coordinates, cutoff, and unitcell.</p><p><strong>Examples</strong></p><p><strong>For self-pairs computations</strong></p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(SVector{3,Float64}, 10^3);
+
+julia&gt; system = InPlaceNeighborList(x=x; cutoff=0.1)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{NonPeriodicCell, 3, Float64, Float64, 9}
+Current list buffer size: 0
+
+julia&gt; neighborlist!(system);
+
+julia&gt; new_x = rand(SVector{3,Float64}, 10^3);
+
+julia&gt; update!(system, new_x; cutoff = 0.05)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{NonPeriodicCell, 3, Float64, Float64, 9}
+Current list buffer size: 1826
+
+julia&gt; neighborlist!(system)
+224-element Vector{Tuple{Int64, Int64, Float64}}:
+ (25, 486, 0.03897345036790646)
+ ⋮
+ (723, 533, 0.04795768478723409)
+ (868, 920, 0.042087156715720137)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/cf898d97ed9aedc567bbaaeaad495f72cf2f879b/src/neighborlists.jl#L212-L249">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="CellListMap.InPlaceNeighborList-Tuple{}" href="#CellListMap.InPlaceNeighborList-Tuple{}"><code>CellListMap.InPlaceNeighborList</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">InPlaceNeighborList(;
+    x::AbstractVecOrMat,
+    y::Union{AbstractVecOrMat,Nothing}=nothing,
+    cutoff::T,
+    unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
+    parallel::Bool=true,
+    show_progress::Bool=false,
+) where {T}</code></pre><p>Function that initializes the <code>InPlaceNeighborList</code> structure, to be used for in-place computation of neighbor lists.</p><ul><li>If only <code>x</code> is provided, the neighbor list of the set is computed. </li><li>If <code>x</code> and <code>y</code> are provided, the neighbor list between the sets is computed.</li><li>If <code>unitcell</code> is provided, periodic boundary conditions will be used. The <code>unitcell</code> can be a vector of Orthorhombic box sides, or an actual unitcell matrix for general cells. </li><li>If <code>unicell</code> is not provide (value <code>nothing</code>), no periodic boundary conditions will be considered. </li></ul><p><strong>Examples</strong></p><p>Here the neighborlist structure is constructed for the first time, and used to compute the neighbor lists with the mutating <code>neighborlist!</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; x = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]) 
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+Current list buffer size: 0
+
+julia&gt; neighborlist!(system)
+210034-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 357, 0.09922225615002134)
+ (1, 488, 0.043487074695938925)
+ (1, 2209, 0.017779967072139684)
+ ⋮
+ (9596, 1653, 0.0897570322108541)
+ (9596, 7927, 0.0898266280344037)</code></pre><p>The coordinates of the system, its unitcell, or the cutoff can be changed with the <code>update!</code> function. If the number of pairs of the list does not change  significantly, the new calculation is minimally allocating, or non-allocating  at all, in particular if the computation is run without parallelization:</p><p>If the structure is used repeatedly for similar systems, the allocations will vanish, except for minor allocations used in the threading computation (if a  non-parallel computation is executed, the allocations will vanish completely):</p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.008004 seconds (228 allocations: 16.728 MiB)
+
+julia&gt; update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.024811 seconds (167 allocations: 7.887 MiB)
+
+julia&gt; update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.005213 seconds (164 allocations: 1.439 MiB)
+
+julia&gt; update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.005276 seconds (162 allocations: 15.359 KiB)
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/cf898d97ed9aedc567bbaaeaad495f72cf2f879b/src/neighborlists.jl#L100-L180">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ParticleSystem/">« ParticleSystem interface</a><a class="docs-footer-nextpage" href="../LowLevel/">Low level interface »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Thursday 13 February 2025 12:57">Thursday 13 February 2025</span>. Using Julia version 1.10.8.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
