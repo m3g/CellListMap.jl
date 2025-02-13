@@ -454,7 +454,7 @@ function copy_output(x)
         CellListMap.copy_output(x::$(typeof(x)))
 
         with an appropriate way to copy the required output variable. Many times just
-        defining `output_copy(x::$(typeof(x))) = deepcopy(x)` is ok. 
+        defining `CellListMap.copy_output(x::$(typeof(x))) = deepcopy(x)` is ok. 
     """))
 end
 copy_output(x::T) where {T<:SupportedTypes} = copy(x)
