@@ -1,7 +1,7 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.9.9"
+version = "0.9.10-DEV"
 
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
