@@ -465,16 +465,20 @@ copy_output(x::AbstractVecOrMat{T}) where {T} = T[copy_output(el) for el in x]
     reset_output!(x)
 
 Function that defines how to reset (or zero) the `output` variable. For `$(SupportedTypes)` it is 
-implemented as `zero(x)`, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s
-it is implemented as `fill!(x, zero(eltype(x))`.
+implemented as `zero(x)`.
 
-Other custom output types must have their `reset_output!` method implemented.
+Other custom output types must have their `reset_output!` method implemented. 
 
-If the variable is mutable, the function *must* return the variable itself. If it is immutable,
+The function *must* return the variable itself. If it is immutable,
 a new instante of the variable must be created, with the reset value. 
 
-`reset_output` and `reset_output!` are aliases, and `reset_output!` is preferred, by convention
-for mutating functions.
+!!! note
+    By default, if
+    `reset_output!` is defined for one element type, `reset_output!` is defined for arrays of that type
+    by calling `reset_output!` for each element of the array.  The user must overload the `reset_output!` 
+    function for the custom type array if that is not the desired behavior.
+
+`reset_output` and `reset_output!` are aliases, and by convention `reset_output!` is preferred for mutable types.
 
 # Example
 
@@ -513,7 +517,12 @@ function reset_output!(x)
     """))
 end
 reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
-reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin]))
+function reset_output!(x::AbstractVecOrMat{T}) where {T} 
+    for i in eachindex(x)
+        x[i] = reset_output!(x[i])
+    end
+    return x
+end
 const reset_output = reset_output!
 
 #=
