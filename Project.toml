@@ -1,7 +1,7 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.9.10-DEV"
+version = "0.9.10"
 
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
@@ -28,7 +28,7 @@ ForwardDiff = "0.10.13"
 LinearAlgebra = "1.9"
 Measurements = "2.11"
 NearestNeighbors = "0.4.16"
-PDBTools = "2"
+PDBTools = "2, 3"
 Parameters = "0.12"
 PrecompileTools = "1.2.1"
 ProgressMeter = "1.6"
