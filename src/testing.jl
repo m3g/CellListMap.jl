@@ -142,11 +142,11 @@ function check_random_cells(
         unit_cell_matrix = zeros(SMatrix{N,N,Float64})
         if UnitCellType == OrthorhombicCell
             for i in 1:N
-                @set! unit_cell_matrix[i, i] = 1 + 10 * rand()
+                @set! unit_cell_matrix[i, i] = -10 + 20 * rand()
             end
         else
             for i in 1:N, j in 1:N
-                @set! unit_cell_matrix[i, j] = 1 + 10 * rand()
+                @set! unit_cell_matrix[i, j] = -10 + 20 * rand()
             end
         end
         cutoff = 1 + rand()
