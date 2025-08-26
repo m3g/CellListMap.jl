@@ -10,7 +10,7 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.9.11-DEV
+Version 0.9.11
 -------------
 - ![INFO][badge-info] Fix typo in color definition of non-interface function `draw_computing_cell`. 
 - ![INFO][badge-info] Reduce precompilation work by running smaller examples
