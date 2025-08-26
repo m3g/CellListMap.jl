@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.9.11-DEV
 -------------
+- ![INFO][badge-info] Fix typo in color definition of non-interface function `draw_computing_cell`. 
 - ![INFO][badge-info] Reduce precompilation work by running smaller examples
 - ![INFO][badge-info] Add tests to random cells with negative off-diagonal elements.
 
