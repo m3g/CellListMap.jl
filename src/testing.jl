@@ -371,7 +371,7 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {
         yticks=(round.(digits=3, xmin[2]:box.cell_size[2]:xmax[2])),
         zticks=(round.(digits=3, xmin[3]:box.cell_size[3]:xmax[3])),
         bgcolor=:black,
-        fgcolor=:wyhite,
+        fgcolor=:white,
         size=(800,800),
     )
     return plt
