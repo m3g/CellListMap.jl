@@ -10,18 +10,18 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.9.12-DEV
--------------
+Version 0.9.12
+--------------
 - ![ENHANCEMENT][badge-enhancement] Improve type propagation when no PBCs are used, fixing Float32 to Float64 conversion of sides when `unitcell=nothing`.
 - ![BUGFIX][badge-bugfix] When no PBCs are defined, and the position limits are smaller than the cutoff, with some pathological coordinates,  double-counting could occurr. Fixed.
 
 Version 0.9.11
--------------
+--------------
 - ![INFO][badge-info] Fix typo in color definition of non-interface function `draw_computing_cell`. 
 - ![INFO][badge-info] Reduce precompilation work by running smaller examples
 - ![INFO][badge-info] Add tests to random cells with negative off-diagonal elements.
 
 Previous versions
--------------
+--------------
 Previous version changes are listed in the [releases](https://github.com/m3g/CellListMap.jl/releases) page.
 
