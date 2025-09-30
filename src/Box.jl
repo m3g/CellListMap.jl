@@ -34,7 +34,7 @@ end
 # Set cell size from Limits, when no periodic boundary conditions are 
 # used. Adding a fraction of the cutoff to the result avoids 
 # the condition of 2*cutoff and the unit cell check check fail
-_sides_from_limits(unitcell, cutoff) = unitcell.limits .+ (2.1 * cutoff)
+_sides_from_limits(unitcell, cutoff::T) where {T} = unitcell.limits .+ (T(2.1) * cutoff)
 
 #=
 
