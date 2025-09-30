@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.9.13-DEV
+--------------
+
 Version 0.9.12
 --------------
 - ![ENHANCEMENT][badge-enhancement] Improve type propagation when no PBCs are used, fixing Float32 to Float64 conversion of sides when `unitcell=nothing`.
