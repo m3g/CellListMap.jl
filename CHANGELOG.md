@@ -12,6 +12,8 @@ CellListMap.jl Changelog
 
 Version 0.9.12-DEV
 -------------
+- ![ENHANCEMENT][badge-enhancement] Improve type propagation when no PBCs are used, fixing Float32 to Float64 conversion of sides when `unitcell=nothing`.
+- ![BUGFIX][badge-bugfix] When no PBCs are defined, and the position limits are smaller than the cutoff, with some pathological coordinates,  double-counting could occurr. Fixed.
 
 Version 0.9.11
 -------------

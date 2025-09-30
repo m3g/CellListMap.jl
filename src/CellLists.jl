@@ -112,6 +112,7 @@ Base.@kwdef struct ProjectedParticle{N,T}
     index::Int
     xproj::T
     coordinates::SVector{N,T}
+    real::Bool
 end
 
 #=

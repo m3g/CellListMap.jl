@@ -226,6 +226,7 @@ function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cel
         xpᵢ = pᵢ.coordinates
         for j in i+1:cell.n_particles
             @inbounds pⱼ = cell.particles[j]
+            (pᵢ.real | pⱼ.real) || continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
@@ -287,6 +288,7 @@ function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, �
         # Compute the interactions 
         for j in 1:n
             @inbounds pⱼ = pp[j]
+            (pᵢ.real | pⱼ.real) || continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
@@ -349,7 +351,7 @@ function project_particles!(
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
         if abs(xproj) <= margin
             iproj += 1
-            projected_particles[iproj] = ProjectedParticle(pⱼ.index, xproj, pⱼ.coordinates)
+            projected_particles[iproj] = ProjectedParticle(pⱼ.index, xproj, pⱼ.coordinates, pⱼ.real)
         end
     end
     pp = @view(projected_particles[1:iproj])

@@ -34,7 +34,7 @@ end
 # Set cell size from Limits, when no periodic boundary conditions are 
 # used. Adding a fraction of the cutoff to the result avoids 
 # the condition of 2*cutoff and the unit cell check check fail
-_sides_from_limits(unitcell, cutoff) = unitcell.limits .+ (2.1 * cutoff)
+_sides_from_limits(unitcell, cutoff::T) where {T} = unitcell.limits .+ (210 * cutoff / 100)
 
 #=
 
@@ -475,6 +475,23 @@ end
     using LinearAlgebra: diag
     using .AllocTest: Allocs
 
+    # test box construction with different types
+    box = Box([1, 1, 1], 0.1f0)
+    @test typeof(box.cutoff) == Float32
+    @test eltype(box.input_unit_cell.matrix) == Float32
+    box = Box([1, 1, 1], 0.1)
+    @test typeof(box.cutoff) == Float64
+    @test eltype(box.input_unit_cell.matrix) == Float64
+    box = Box([1.0, 1.0, 1.0], 0.1f0)
+    @test typeof(box.cutoff) == Float64
+    @test eltype(box.input_unit_cell.matrix) == Float64
+    box = Box([10, 10, 10], 1)
+    @test typeof(box.cutoff) == Float64
+    @test eltype(box.input_unit_cell.matrix) == Float64
+    box = Box([10.f0, 10.f0, 10.f0], 1)
+    @test typeof(box.cutoff) == Float32
+    @test eltype(box.input_unit_cell.matrix) == Float32
+
     # update with tuples
     box = Box([1, 1, 1], 0.1)
     a = @ballocated CellListMap.update_box($box; unitcell=(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
@@ -499,7 +516,7 @@ end
     @test a == Allocs(0)
     new_box = CellListMap.update_box(box; unitcell=limits(new_x), cutoff=0.2)
     @test new_box.cutoff == 0.2
-    @test diag(new_box.input_unit_cell.matrix) == limits(new_x).limits .+ 2.1 * 0.2
+    @test diag(new_box.input_unit_cell.matrix) ≈ limits(new_x).limits .+ 2.1 * 0.2
 
     # Update with SMatrix
     box = Box([1 0 0; 0 1 0; 0 0 1], 0.1)
