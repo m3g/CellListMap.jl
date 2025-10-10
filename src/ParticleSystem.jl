@@ -43,7 +43,7 @@ Constructor of the `ParticleSystem` type given the positions of the particles.
   being `N` and `M` the number of particles of each set of coordinates.
 
 The unit cell (either a vector for `Orthorhombic` cells or a 
-full unit cell matrix for `Triclinic` cells - where columns contains
+full unit cell matrix for `Triclinic` cells - where columns contain
 the lattice vectors), the cutoff used for the
 construction of the cell lists and the output variable of the calculations.
 If unitcell == nothing, the system is considered not-periodic, in which
