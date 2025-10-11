@@ -10,7 +10,7 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.9.13-DEV
+Version 0.9.13
 --------------
 - ![INFO][badge-info] Document the fact that the unitcell matrix is column-major, thus columns are the lattice vectors.
 
