@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.9.13-DEV
 --------------
+- ![INFO][badge-info] Document the fact that the unitcell matrix is column-major, thus columns are the lattice vectors.
 
 Version 0.9.12
 --------------

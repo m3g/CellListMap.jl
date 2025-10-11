@@ -160,9 +160,10 @@ end
 """
     Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)
 
-Construct box structure given the cell matrix of lattice vectors. This 
-constructor will always return a `TriclinicCell` box type, unless the
-`UnitCellType` parameter is set manually to `OrthorhombicCell`
+Construct box structure given the cell matrix, where
+columns correspond to the lattice vectors. This constructor will always return 
+a `TriclinicCell` box type, unless the `UnitCellType` parameter is set 
+manually to `OrthorhombicCell`
 
 ## Examples
 
