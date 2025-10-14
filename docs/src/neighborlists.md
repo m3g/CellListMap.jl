@@ -30,6 +30,10 @@ julia> neighborlist(x,0.05)
  (7378, 3450, 0.01748757015908321)
 ```
 
+!!! note
+    The order of the pairs in the output list is not guaranteed and may change, in particular,
+    for parallel executions.
+
 If the neighbor lists between two sets of points are required, use the following notation, 
 in this case using coordinates as arrays of static arrays:
 ```julia-repl

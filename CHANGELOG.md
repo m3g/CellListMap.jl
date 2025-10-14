@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.9.14-DEV
 --------------
+- ![INFO][badge-info] Document the fact that the order of the pairs output  by `neighborlist` functions is not guaranteed.
 
 Version 0.9.13
 --------------

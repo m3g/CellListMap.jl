@@ -147,6 +147,10 @@ The coordinates of the system, its unitcell, or the cutoff can be changed with
 the `update!` function. If the number of pairs of the list does not change 
 significantly, the new calculation is minimally allocating, or non-allocating 
 at all, in particular if the computation is run without parallelization:
+
+!!! note
+    The order of the pairs in the output of `neighborlist!` is not guaranteed,
+    and may change, in particular, in parallel runs.
     
 If the structure is used repeatedly for similar systems, the allocations will
 vanish, except for minor allocations used in the threading computation (if a 
@@ -496,6 +500,10 @@ Computes the list of pairs of particles in `x` which are closer to each other th
 If the keyword parameter `unitcell` is provided (as a vector of sides or a general unit cell
 matrix, periodic boundary conditions are considered). 
 
+!!! note
+    The order of the pairs in the output of `neighborlist` is not guaranteed,
+    and may change, in particular, in parallel runs.
+
 ## Example
 
 Compute the neighborlist between within a set Argon atoms, considering the system
@@ -561,10 +569,6 @@ julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
  (68, 90, 7.875801229081395)
 ```
 
-!!! note
-    We set `parallel=false` in these examples to preserve the order of the pairs 
-    in the list. Parallel executions will not guarantee the order of the pairs.
-
 """
 function neighborlist(
     x, cutoff;
@@ -598,6 +602,10 @@ Computes the list of pairs of particles of `x` which are closer than `r` to
 the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
 the cost of the construction of the cell list. 
 
+!!! note
+    The order of the pairs in the output of `neighborlist!` is not guaranteed,
+    and may change, in particular, in parallel runs.
+    
 ## Examples
 
 Compute the neighborlist between two sets of Argon atoms, considering the system
@@ -666,10 +674,6 @@ julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parall
  (50, 37, 7.546490310071297)
  (50, 39, 3.900154099519657)
 ```
-
-!!! note
-    We set `parallel=false` in these examples to preserve the order of the pairs 
-    in the list. Parallel executions will not guarantee the order of the pairs.
 
 """
 function neighborlist(
