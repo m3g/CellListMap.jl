@@ -74,9 +74,9 @@ Parallel calculations are the default if more than one thread is available. Use 
 
 The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. 
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.8.27-DEV.png>
+<img src="https://m3g.github.io/CellListMap.jl/stable/assets/b_cd.png">
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.8.27-DEV.png>
+<img src="https://m3g.github.io/CellListMap.jl/stable/assets/b_cv.png">
 
 The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. These benchmarks were run on an Intel(R) Core(TM) i7-12700, using 8 CPUs. 
 
