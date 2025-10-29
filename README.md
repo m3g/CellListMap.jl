@@ -6,7 +6,7 @@
 [![Package Downloads](https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FCellListMap&query=total_requests&label=Downloads)](http://juliapkgstats.com/pkg/CellListMap)
 
 <p align=center>
-<img src=/docs/src/assets/logo.svg>
+<img src="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/assets/logo.svg?raw=true">
 </p>
 
 # CellListMap.jl
