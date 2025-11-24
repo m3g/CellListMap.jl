@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.9.15-DEV
 --------------
+- ![INFO][badge-info] Use julia-actions/cache@v2 in CI
 
 Version 0.9.14
 --------------
