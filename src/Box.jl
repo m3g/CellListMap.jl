@@ -680,19 +680,11 @@ convention.
 =#
 check_unit_cell(box::Box) = check_unit_cell(box.aligned_unit_cell.matrix, box.cutoff)
 
-function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
+function check_unit_cell(unit_cell_matrix::SMatrix{3,3,T,9}, cutoff; printerr=true) where {T}
     a = @view(unit_cell_matrix[:, 1])
     b = @view(unit_cell_matrix[:, 2])
     c = @view(unit_cell_matrix[:, 3])
     check = true
-
-    if size(unit_cell_matrix) != (3, 3)
-        printerr && println("""\n
-            UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (3,3).
-            
-        """)
-        check = false
-    end
 
     bc = cross(b, c)
     bc = bc / norm(bc)
@@ -719,18 +711,10 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
     return check
 end
 
-function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
+function check_unit_cell(unit_cell_matrix::SMatrix{2,2,T,4}, cutoff; printerr=true) where {T}
     a = @view(unit_cell_matrix[:, 1])
     b = @view(unit_cell_matrix[:, 2])
     check = true
-
-    if size(unit_cell_matrix) != (2, 2)
-        printerr && println("""\n
-            UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (2,2).
-
-        """)
-        check = false
-    end
 
     i = a / norm(a)
     bproj = sqrt(norm_sqr(b) - dot(b, i)^2)
