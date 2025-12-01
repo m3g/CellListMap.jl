@@ -687,7 +687,10 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
     check = true
 
     if size(unit_cell_matrix) != (3, 3)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (3,3).")
+        printerr && println("""\n
+            UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (3,3).
+            
+        """)
         check = false
     end
 
@@ -704,7 +707,12 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
     bproj = dot(b, ca)
 
     if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff) || (cproj <= 2 * cutoff)
-        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        printerr && println("""\n
+            UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.
+            Got: a⋅(b×c)/|b×c|=$aproj; b⋅(c×a)/|c×a|=$bproj; c⋅(a×b)/|a×b|=$cproj
+            with: cutoff = $cutoff (above distances must be greater than 2*cutoff = $(2*cutoff))
+            
+        """)
         check = false
     end
 
@@ -717,7 +725,10 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
     check = true
 
     if size(unit_cell_matrix) != (2, 2)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (2,2).")
+        printerr && println("""\n
+            UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (2,2).
+
+        """)
         check = false
     end
 
@@ -728,7 +739,12 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
     aproj = sqrt(norm_sqr(a) - dot(a, j)^2)
 
     if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
-        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        printerr && println("""\n
+            UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.
+               Got: √(|a|²-(a⋅b/|b|)²)=$aproj; √(|b|²-(b⋅a/|a|)²)=$bproj 
+               with: cutoff = $cutoff (above distances must be greater than 2*cutoff = $(2*cutoff))
+            
+        """)
         check = false
     end
 
