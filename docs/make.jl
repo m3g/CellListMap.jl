@@ -13,6 +13,7 @@ makedocs(
         "ParticleSystem interface" => "ParticleSystem.md",
         "Neighbor lists" => "neighborlists.md",
         "Low level interface" => "LowLevel.md",
+        "Unitcell requirements" => "unitcell.md",
         "Ecosystem integration" => "ecosystem.md",
         "From Python" => "python.md",
         "Citation" => "citation.md",

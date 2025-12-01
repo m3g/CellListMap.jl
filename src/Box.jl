@@ -680,16 +680,11 @@ convention.
 =#
 check_unit_cell(box::Box) = check_unit_cell(box.aligned_unit_cell.matrix, box.cutoff)
 
-function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
+function check_unit_cell(unit_cell_matrix::SMatrix{3,3,T,9}, cutoff; printerr=true) where {T}
     a = @view(unit_cell_matrix[:, 1])
     b = @view(unit_cell_matrix[:, 2])
     c = @view(unit_cell_matrix[:, 3])
     check = true
-
-    if size(unit_cell_matrix) != (3, 3)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (3,3).")
-        check = false
-    end
 
     bc = cross(b, c)
     bc = bc / norm(bc)
@@ -704,22 +699,22 @@ function check_unit_cell(unit_cell_matrix::SMatrix{3}, cutoff; printerr=true)
     bproj = dot(b, ca)
 
     if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff) || (cproj <= 2 * cutoff)
-        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        printerr && println("""\n
+            UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.
+            Got: a⋅(b×c)/|b×c|=$aproj; b⋅(c×a)/|c×a|=$bproj; c⋅(a×b)/|a×b|=$cproj
+            with: cutoff = $cutoff (above distances must be greater than 2*cutoff = $(2*cutoff))
+            
+        """)
         check = false
     end
 
     return check
 end
 
-function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
+function check_unit_cell(unit_cell_matrix::SMatrix{2,2,T,4}, cutoff; printerr=true) where {T}
     a = @view(unit_cell_matrix[:, 1])
     b = @view(unit_cell_matrix[:, 2])
     check = true
-
-    if size(unit_cell_matrix) != (2, 2)
-        printerr && println("UNIT CELL CHECK FAILED: unit cell matrix must have dimensions (2,2).")
-        check = false
-    end
 
     i = a / norm(a)
     bproj = sqrt(norm_sqr(b) - dot(b, i)^2)
@@ -728,7 +723,12 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2}, cutoff; printerr=true)
     aproj = sqrt(norm_sqr(a) - dot(a, j)^2)
 
     if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
-        printerr && println("UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.")
+        printerr && println("""\n
+            UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.
+               Got: √(|a|²-(a⋅b/|b|)²)=$aproj; √(|b|²-(b⋅a/|a|)²)=$bproj 
+               with: cutoff = $cutoff (above distances must be greater than 2*cutoff = $(2*cutoff))
+            
+        """)
         check = false
     end
 
