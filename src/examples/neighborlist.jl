@@ -26,7 +26,7 @@ function neighborlist(;N=100_000,parallel=true,x=nothing)
     # Initialize auxiliary linked lists
     cl = CellList(x, box, parallel=parallel)
 
-    # Function to be evalulated for each pair: push pair if d<cutoff
+    # Function to be evaluated for each pair: push pair if d<cutoff
     function push_pair!(i, j, d2, pairs, cutoff) 
         d = sqrt(d2)
         if d < cutoff

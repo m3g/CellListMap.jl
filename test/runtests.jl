@@ -31,7 +31,7 @@ end
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
     mass = rand(N)
 
-    # Function to be evalulated for each pair: gravitational potential
+    # Function to be evaluated for each pair: gravitational potential
     function potential(i,j,d2,u,mass)
         d = sqrt(d2)
         u = u - 9.8*mass[i]*mass[j]/d
@@ -419,7 +419,7 @@ end
     using StaticArrays
     # This function is an interesting function because it sort of counts 
     # the indexes of the particles within the cutoff. However, we need to 
-    # check for numerical precision innacuracies before adding them, otherwise
+    # check for numerical precision inaccuracies before adding them, otherwise
     # pairs that match in one test can be skiped in another. This kind of issue
     # exists for any property that does not goes to zero when the distance
     # approaches that of the cutoff.
@@ -462,6 +462,192 @@ end
     r = 0.06788225099390856
     @test length(neighborlist(p2d, r)) == 1
 
+end
+
+@testitem "particle index uniqueness and periodic images" begin
+    using CellListMap
+    using StaticArrays
+    
+    # Test 1: Verify particle pairs near periodic boundaries are counted exactly once
+    # Two particles separated such that they interact through PBC
+    function count_interactions(x, y, i, j, d2, counter)
+        return counter + 1
+    end
+    
+    sides = [10.0, 10.0, 10.0]
+    cutoff = 2.0
+    x = [SVector{3,Float64}(0.5, 5.0, 5.0), SVector{3,Float64}(9.6, 5.0, 5.0)]
+    box = Box(sides, cutoff)
+    
+    # These particles are ~0.9 apart through PBC, should interact exactly once
+    n_cell = map_pairwise!(count_interactions, 0, box, CellList(x, box))
+    n_naive = CellListMap.map_naive!(count_interactions, 0, x, box)
+    
+    @test n_cell == n_naive
+    @test n_cell == 1  # Should find exactly one pair
+    
+    # Test 2: Triclinic cell - verify interactions counted exactly once
+    # even with complex periodic wrapping
+    unit_cell = [10.0 3.0 0.0; 0.0 10.0 2.0; 0.0 0.0 10.0]
+    cutoff = 2.5
+    box = Box(unit_cell, cutoff)
+    
+    # Place particles near boundaries where triclinic wrapping matters
+    x = [SVector{3,Float64}(0.5, 0.5, 0.5), 
+         SVector{3,Float64}(2.0, 1.0, 1.0),
+         SVector{3,Float64}(9.5, 9.5, 9.5),
+         SVector{3,Float64}(8.5, 9.0, 9.0)]
+    
+    cl = CellList(x, box)
+    n_cell = map_pairwise!(count_interactions, 0, box, cl)
+    n_naive = CellListMap.map_naive!(count_interactions, 0, x, box)
+    
+    @test n_cell == n_naive
+    
+    # Test 3: Verify no duplicate pairs are computed
+    # Collect all pairs and check for duplicates (regardless of order)
+    function collect_pairs(x, y, i, j, d2, pairs)
+        # Normalize pair to (min, max) for duplicate detection
+        pair = i < j ? (i, j) : (j, i)
+        push!(pairs, pair)
+        return pairs
+    end
+    
+    x = [SVector{3,Float64}(rand(3) .* 20.0...) for _ in 1:50]
+    box = Box([20.0, 20.0, 20.0], 3.0)
+    cl = CellList(x, box)
+    
+    pairs = map_pairwise!(collect_pairs, Tuple{Int,Int}[], box, cl, parallel=false)
+    
+    # Verify no duplicate pairs (each unique pair appears exactly once)
+    @test length(pairs) == length(unique(pairs))
+    
+    # Verify count matches naive implementation
+    n_pairs = length(pairs)
+    n_naive = map_pairwise!((x,y,i,j,d2,c) -> c + 1, 0, box, cl, parallel=false)
+    @test n_pairs == n_naive
+    
+    # Test 4: Same test with triclinic cell
+    unit_cell = [20.0 5.0 0.0; 0.0 20.0 3.0; 0.0 0.0 20.0]
+    box = Box(unit_cell, 3.0)
+    x = [SVector{3,Float64}((unit_cell * rand(3))...) for _ in 1:50]
+    cl = CellList(x, box)
+    
+    pairs = map_pairwise!(collect_pairs, Tuple{Int,Int}[], box, cl, parallel=false)
+    
+    @test length(pairs) == length(unique(pairs))
+    
+    # Test 5: Dense system near boundaries - stress test for duplicate prevention
+    # Many particles near boundaries where PBC creates many potential duplicates
+    sides = [15.0, 15.0, 15.0]
+    cutoff = 2.5
+    box = Box(sides, cutoff)
+    
+    # Create particles clustered near boundaries
+    x = SVector{3,Float64}[]
+    for i in 1:5, j in 1:5, k in 1:5
+        push!(x, SVector{3,Float64}(0.3 * i, 0.3 * j, 0.3 * k))
+        push!(x, SVector{3,Float64}(sides[1] - 0.3 * i, sides[2] - 0.3 * j, sides[3] - 0.3 * k))
+    end
+    
+    cl = CellList(x, box)
+    n_cell = map_pairwise!(count_interactions, 0, box, cl, parallel=false)
+    n_naive = CellListMap.map_naive!(count_interactions, 0, x, box)
+    
+    @test n_cell == n_naive
+end
+
+@testitem "margin calculation with lcell > 1" begin
+    using CellListMap
+    using StaticArrays
+    
+    # Test that particles at cell corners are not missed with lcell > 1
+    # This tests the margin calculation in project_particles!
+    function sum_distances(x, y, i, j, d2, s)
+        return s + sqrt(d2)
+    end
+    
+    # Test various lcell values
+    for lcell in [1, 2, 3, 5]
+        # Create a system where particles are positioned at strategic locations
+        # including near cell corners
+        sides = [20.0, 20.0, 20.0]
+        cutoff = 2.5
+        box = Box(sides, cutoff, lcell=lcell)
+        
+        # Generate particles including some at corners of cells
+        N = 200
+        x = [SVector{3,Float64}(sides .* rand(3)...) for _ in 1:N]
+        
+        # Add specific particles near cell boundaries to test corner cases
+        cell_size = sides ./ (2 * lcell + 1)
+        for i in 1:lcell+1
+            for j in 1:lcell+1
+                for k in 1:lcell+1
+                    # Place particle at corner of cell (i,j,k)
+                    corner = SVector{3,Float64}(
+                        cell_size[1] * i + 0.1,
+                        cell_size[2] * j + 0.1,
+                        cell_size[3] * k + 0.1
+                    )
+                    if all(corner .< sides)
+                        push!(x, corner)
+                    end
+                end
+            end
+        end
+        
+        cl = CellList(x, box)
+        
+        # Compare with naive implementation
+        result_cell = map_pairwise!(sum_distances, 0.0, box, cl, parallel=false)
+        result_naive = CellListMap.map_naive!(sum_distances, 0.0, x, box)
+        
+        @test result_cell ≈ result_naive rtol=1e-10
+    end
+    
+    # Test 2: Triclinic cells with lcell > 1
+    for lcell in [1, 2, 3]
+        unit_cell = [15.0 5.0 0.0; 0.0 15.0 3.0; 0.0 0.0 15.0]
+        cutoff = 2.0
+        box = Box(unit_cell, cutoff, lcell=lcell)
+        
+        N = 150
+        # Generate random fractional coordinates and convert to Cartesian
+        x = [SVector{3,Float64}((unit_cell * rand(3))...) for _ in 1:N]
+        
+        cl = CellList(x, box)
+        
+        result_cell = map_pairwise!(sum_distances, 0.0, box, cl, parallel=false)
+        result_naive = CellListMap.map_naive!(sum_distances, 0.0, x, box)
+        
+        @test result_cell ≈ result_naive rtol=1e-10
+    end
+    
+    # Test 3: Verify no interactions are missed at exactly the cutoff distance
+    # with lcell > 1 and particles positioned to stress-test the margin calculation
+    cutoff = 3.0
+    lcell = 3
+    sides = [30.0, 30.0, 30.0]
+    box = Box(sides, cutoff, lcell=lcell)
+    
+    # Create pairs of particles at exactly cutoff distance apart
+    # positioned across cell boundaries
+    x = SVector{3,Float64}[]
+    push!(x, SVector{3,Float64}(5.0, 5.0, 5.0))
+    push!(x, SVector{3,Float64}(5.0 + cutoff - 0.001, 5.0, 5.0))  # Just within cutoff
+    push!(x, SVector{3,Float64}(10.0, 10.0, 10.0))
+    push!(x, SVector{3,Float64}(10.0, 10.0 + cutoff - 0.001, 10.0))  # Just within cutoff
+    push!(x, SVector{3,Float64}(15.0, 15.0, 15.0))
+    push!(x, SVector{3,Float64}(15.0, 15.0, 15.0 + cutoff - 0.001))  # Just within cutoff
+    
+    cl = CellList(x, box)
+    
+    n_cell = map_pairwise!((x,y,i,j,d2,c) -> c + 1, 0, box, cl, parallel=false)
+    n_naive = CellListMap.map_naive!((x,y,i,j,d2,c) -> c + 1, 0, x, box)
+    
+    @test n_cell == n_naive
+    @test n_cell >= 3  # At least the 3 pairs we explicitly created
 end
 
 include("$(@__DIR__)/namd/compare_with_namd.jl")

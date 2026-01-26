@@ -26,7 +26,7 @@ function gravitational_force(;N=100_000,parallel=true,x=nothing)
     # Initialize auxiliary linked lists
     cl = CellList(x, box, parallel=parallel)
 
-    # Function to be evalulated for each pair
+    # Function to be evaluated for each pair
     function calc_forces!(x, y, i, j, d2, mass, forces) 
         G = 9.8 * mass[i] * mass[j] / d2
         d = sqrt(d2)
