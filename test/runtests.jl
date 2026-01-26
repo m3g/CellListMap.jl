@@ -31,7 +31,7 @@ end
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
     mass = rand(N)
 
-    # Function to be evalulated for each pair: gravitational potential
+    # Function to be evaluated for each pair: gravitational potential
     function potential(i,j,d2,u,mass)
         d = sqrt(d2)
         u = u - 9.8*mass[i]*mass[j]/d
@@ -419,7 +419,7 @@ end
     using StaticArrays
     # This function is an interesting function because it sort of counts 
     # the indexes of the particles within the cutoff. However, we need to 
-    # check for numerical precision innacuracies before adding them, otherwise
+    # check for numerical precision inaccuracies before adding them, otherwise
     # pairs that match in one test can be skiped in another. This kind of issue
     # exists for any property that does not goes to zero when the distance
     # approaches that of the cutoff.

@@ -41,7 +41,7 @@ julia> Pkg.add("CellListMap")
 
 ## Brief overview
 
-The main function is `map_parwise!`: 
+The main function is `map_pairwise!`: 
 
 If the analysis is performed on the pairs of a single vector `x` (`n*(n-1)/2` pairs), the function can be called with:
 ```julia

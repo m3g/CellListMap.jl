@@ -87,7 +87,7 @@ function partition!(by, x::AbstractVector)
 end
 
 #
-# Auxiliary functions to control the exibition of the progress meter
+# Auxiliary functions to control the exhibition of the progress meter
 #
 _next!(::Nothing) = nothing
 _next!(p) = ProgressMeter.next!(p)
@@ -274,15 +274,15 @@ function _vicinal_cell_interactions!(f::F, box::Box, cellᵢ, cellⱼ, cl::CellL
     Δc = Δc / Δc_norm
     pp = project_particles!(cl.projected_particles[ibatch], cellⱼ, cellᵢ, Δc, Δc_norm, box)
     if length(pp) > 0
-        output = _vinicial_cells!(f, box, cellᵢ, pp, Δc, output)
+        output = _vicinal_cells!(f, box, cellᵢ, pp, Δc, output)
     end
     return output
 end
 
 #
-# The criteria form skipping computations is different then in Orthorhombic or Triclinic boxes
+# The criteria for skipping computations is different than in Orthorhombic or Triclinic boxes
 #
-function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output) where {F<:Function}
+function _vicinal_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output) where {F<:Function}
     @unpack cutoff, cutoff_sqr, inv_rotation = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
@@ -306,7 +306,7 @@ function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, �
     return output
 end
 
-function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output) where {F<:Function}
+function _vicinal_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output) where {F<:Function}
     @unpack cutoff, cutoff_sqr, inv_rotation = box
     # Loop over particles of cell icell
     # For vicinal cells in triclinic boxes, we use the same particle index comparison

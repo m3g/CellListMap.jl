@@ -97,7 +97,7 @@ julia> f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
 
 julia> normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
-julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl)
+julia> avg_dx = normalization * map_pairwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl)
 
 ```
 
