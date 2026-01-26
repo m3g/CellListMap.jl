@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.9.16-DEV
 --------------
+- ![INFO][badge-info] Some code simplification and add comments to code.
 
 Version 0.9.15
 --------------
