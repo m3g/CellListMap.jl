@@ -130,31 +130,32 @@ end
 
 # Extended help
 
-Promotes the types of the unit cell matrix (or sides) and cutoff to floats if one or both were input as integers. 
+Promotes the types of the unit cell matrix (or sides) and cutoff to floats if one or both were input as integers,
+returns the minimum float type necessary. 
 
 =#
 function _promote_types(cell, cutoff)
     input_type = promote_type(eltype(cell), typeof(cutoff))
     float_type = input_type == Int ? Float64 : input_type
-    return float_type.(cell), float_type(cutoff)
+    return float_type
 end
 
 @testitem "promote types" begin
     import CellListMap: _promote_types
-    cell, cutoff = _promote_types([1, 1, 1], 0.1)
-    @test (eltype(cell), typeof(cutoff)) == (Float64, Float64)
-    cell, cutoff = _promote_types([1, 1, 1], 0.1f0)
-    @test (eltype(cell), typeof(cutoff)) == (Float32, Float32)
-    cell, cutoff = _promote_types([1.0, 1, 1], 0.1f0)
-    @test (eltype(cell), typeof(cutoff)) == (Float64, Float64)
-    cell, cutoff = _promote_types([1.0f0, 1, 1], 0.1f0)
-    @test (eltype(cell), typeof(cutoff)) == (Float32, Float32)
-    cell, cutoff = _promote_types([10, 10, 10.0], 1)
-    @test (eltype(cell), typeof(cutoff)) == (Float64, Float64)
-    cell, cutoff = _promote_types([10.0f0, 10, 10], 1)
-    @test (eltype(cell), typeof(cutoff)) == (Float32, Float32)
-    cell, cutoff = _promote_types([10, 10, 10], 1)
-    @test (eltype(cell), typeof(cutoff)) == (Float64, Float64)
+    T = _promote_types([1, 1, 1], 0.1)
+    @test T == Float64
+    T = _promote_types([1, 1, 1], 0.1f0)
+    @test T == Float32
+    T = _promote_types([1.0, 1, 1], 0.1f0)
+    @test T == Float64
+    T = _promote_types([1.0f0, 1, 1], 0.1f0)
+    @test T == Float32
+    T = _promote_types([10, 10, 10.0], 1)
+    @test T == Float64
+    T = _promote_types([10.0f0, 10, 10], 1)
+    @test T == Float32
+    T = _promote_types([10, 10, 10], 1)
+    @test T == Float64
 end
 
 """
@@ -205,19 +206,13 @@ Box{OrthorhombicCell, 3}
 
 """
 function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
-    input_unit_cell_matrix, cutoff = _promote_types(input_unit_cell_matrix, cutoff)
-    T = eltype(input_unit_cell_matrix)
-
-    s = size(input_unit_cell_matrix)
-    input_unit_cell_matrix = SMatrix{s[1],s[2],T,s[1] * s[2]}(input_unit_cell_matrix)
-
     lcell >= 1 || throw(ArgumentError("lcell must be greater or equal to 1"))
-    N = size(input_unit_cell_matrix)[1]
-    N == size(input_unit_cell_matrix)[2] || throw(ArgumentError("Unit cell matrix must be square."))
-
-    input_unit_cell = UnitCell{UnitCellType,N,T,N * N}(input_unit_cell_matrix)
-
-    return _construct_box(input_unit_cell, lcell, cutoff)
+    s = size(input_unit_cell_matrix)
+    s[1] == s[2] || throw(ArgumentError("Unit cell matrix must be square."))
+    T = _promote_types(input_unit_cell_matrix, cutoff)
+    unit_cell_matrix = SMatrix{s[1],s[2],T,s[1] * s[2]}(input_unit_cell_matrix)
+    unit_cell = UnitCell{UnitCellType, s[1], T, s[1] * s[2]}(unit_cell_matrix)
+    return _construct_box(unit_cell, lcell, T(cutoff))
 end
 
 Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int=1, UnitCellType=TriclinicCell) =
@@ -361,9 +356,9 @@ Box{OrthorhombicCell, 3}
 
 """
 function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
-    sides, cutoff = _promote_types(sides, cutoff)
-    unit_cell_matrix = cell_matrix_from_sides(sides)
-    return Box(unit_cell_matrix, cutoff, lcell, UnitCellType)
+    T = _promote_types(sides, cutoff)
+    unit_cell_matrix = cell_matrix_from_sides(T.(sides))
+    return Box(unit_cell_matrix, T(cutoff), lcell, UnitCellType)
 end
 Box(sides::AbstractVector, cutoff; lcell::Int=1, UnitCellType=OrthorhombicCell) = Box(sides, cutoff, lcell, UnitCellType)
 
