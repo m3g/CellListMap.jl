@@ -239,7 +239,14 @@ end
 
 function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output) where {F<:Function}
     @unpack cutoff_sqr, inv_rotation = box
-    # loop over all pairs, skip when i >= j, skip if neither particle is real
+    # For triclinic cells, we cannot rely on forward half-space iteration alone due to
+    # complex cell wrapping. Instead, we use particle indices to avoid duplicate interactions.
+    # Only real particles from this cell are used as the first particle (pᵢ.real check),
+    # and the index comparison (pᵢ.index >= pⱼ.index) ensures each pair is computed once.
+    # This works correctly with periodic images because:
+    #   - If both particles have the same index, they represent the same particle (self-interaction, d=0)
+    #   - If one is real and one is an image of the same particle, the check prevents double-counting
+    #   - For different particles, the index comparison based on original indices establishes a unique ordering
     for i in 1:cell.n_particles
         @inbounds pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
@@ -302,6 +309,8 @@ end
 function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output) where {F<:Function}
     @unpack cutoff, cutoff_sqr, inv_rotation = box
     # Loop over particles of cell icell
+    # For vicinal cells in triclinic boxes, we use the same particle index comparison
+    # strategy as for current cell interactions to avoid duplicates.
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
         # project particle in vector connecting cell centers
@@ -310,6 +319,7 @@ function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, out
         # Partition pp array according to the current projections
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
         # Compute the interactions 
+        # Only consider real particles from cellᵢ, and use index comparison to avoid duplicates
         pᵢ.real || continue
         for j in 1:n
             @inbounds pⱼ = pp[j]
@@ -340,6 +350,12 @@ function project_particles!(
     projected_particles, cellⱼ, cellᵢ,
     Δc, Δc_norm, box::Box{UnitCellType,N}
 ) where {UnitCellType,N}
+    # Calculate margin for particle projection to ensure no interactions are missed.
+    # For lcell=1: margin is cutoff plus half the distance between cell centers.
+    # For lcell>1: margin accounts for the diagonal of the cutoff hypercube,
+    # using a conservative estimate to handle particles at cell corners.
+    # The factor (1 + sqrt(N)/2) ensures particles near corners of neighboring
+    # cells are not incorrectly excluded from consideration.
     if box.lcell == 1
         margin = box.cutoff + Δc_norm / 2 # half of the distance between centers
     else
