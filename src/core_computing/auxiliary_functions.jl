@@ -67,7 +67,7 @@ end
 # Auxiliary functions to control the exibition of the progress meter
 #
 _next!(::Nothing) = nothing
-_next!(p) = ProgressMeter.next!(p)
+_next!(p) = next!(p)
 
 @testitem "reduce fallback error" begin
     using CellListMap

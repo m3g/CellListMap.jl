@@ -1201,9 +1201,9 @@ function UpdateCellList!(
 )
     cl_pair = if parallel
         aux = AuxThreaded(cl_pair)
-        UpdateCellList!(x, y, box, cl_pair, aux; kargs...)
+        UpdateCellList!(x, y, box, cl_pair, aux; parallel, kargs...)
     else
-        UpdateCellList!(x, y, box, cl_pair, nothing; kargs...)
+        UpdateCellList!(x, y, box, cl_pair, nothing; parallel, kargs...)
     end
     cl_pair = update_number_of_batches!(cl_pair; parallel)
     return cl_pair
