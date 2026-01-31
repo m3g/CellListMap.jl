@@ -1,7 +1,7 @@
 module CellListMap
 
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS 
-using TestItems: @testitem
+using TestItems: @testitem, @testmodule
 using Compat: @compat
 using ProgressMeter: Progress, next!
 using Parameters: @unpack, @with_kw

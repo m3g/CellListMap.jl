@@ -42,7 +42,8 @@ Constructor of the `ParticleSystem` type given the positions of the particles.
   being `N` and `M` the number of particles of each set of coordinates.
 
 The unit cell (either a vector for `Orthorhombic` cells or a 
-full unit cell matrix for `Triclinic` cells), the cutoff used for the
+full unit cell matrix for `Triclinic` cells - where columns contain
+the lattice vectors), the cutoff used for the
 construction of the cell lists and the output variable of the calculations.
 If unitcell == nothing, the system is considered not-periodic, in which
 case artificial periodic boundaries will be built such that images 
@@ -448,7 +449,7 @@ function copy_output(x)
         CellListMap.copy_output(x::$(typeof(x)))
 
         with an appropriate way to copy the required output variable. Many times just
-        defining `output_copy(x::$(typeof(x))) = deepcopy(x)` is ok. 
+        defining `CellListMap.copy_output(x::$(typeof(x))) = deepcopy(x)` is ok. 
     """))
 end
 copy_output(x::T) where {T<:SupportedTypes} = copy(x)
@@ -459,16 +460,20 @@ copy_output(x::AbstractVecOrMat{T}) where {T} = T[copy_output(el) for el in x]
     reset_output!(x)
 
 Function that defines how to reset (or zero) the `output` variable. For `$(SupportedTypes)` it is 
-implemented as `zero(x)`, and for `AbstractVecOrMat` containers of `Number`s or `SVector`s
-it is implemented as `fill!(x, zero(eltype(x))`.
+implemented as `zero(x)`.
 
-Other custom output types must have their `reset_output!` method implemented.
+Other custom output types must have their `reset_output!` method implemented. 
 
-If the variable is mutable, the function *must* return the variable itself. If it is immutable,
+The function *must* return the variable itself. If it is immutable,
 a new instante of the variable must be created, with the reset value. 
 
-`reset_output` and `reset_output!` are aliases, and `reset_output!` is preferred, by convention
-for mutating functions.
+!!! note
+    By default, if
+    `reset_output!` is defined for one element type, `reset_output!` is defined for arrays of that type
+    by calling `reset_output!` for each element of the array.  The user must overload the `reset_output!` 
+    function for the custom type array if that is not the desired behavior.
+
+`reset_output` and `reset_output!` are aliases, and by convention `reset_output!` is preferred for mutable types.
 
 # Example
 
@@ -507,7 +512,12 @@ function reset_output!(x)
     """))
 end
 reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
-reset_output!(x::AbstractVecOrMat{T}) where {T} = fill!(x, reset_output!(x[begin]))
+function reset_output!(x::AbstractVecOrMat{T}) where {T} 
+    for i in eachindex(x)
+        x[i] = reset_output!(x[i])
+    end
+    return x
+end
 const reset_output = reset_output!
 
 #=
@@ -751,23 +761,24 @@ function update_unitcell!(sys, unitcell)
     return sys
 end
 
-@testitem "update_unitcell!" begin
+@testitem "update_unitcell!" setup=[AllocTest] begin
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
     using CellListMap
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
     a = @ballocated update_unitcell!($sys1, SVector(2, 2, 2)) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys2 = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_unitcell!(sys2, SVector(2, 2, 2))
     @test diag(sys2.unitcell) == [2, 2, 2]
     a = @ballocated update_unitcell!($sys2, SVector(2, 2, 2)) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     # Test throwing error on updating non-periodic unit cells
     sys = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0)
     @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
@@ -830,23 +841,24 @@ function update_cutoff!(sys::ParticleSystem2, cutoff)
     return sys
 end
 
-@testitem "update_cutoff!" begin
+@testitem "update_cutoff!" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
     using PDBTools
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys1 = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys1, 0.2)
     @test sys1.cutoff == 0.2
     a = @ballocated update_cutoff!($sys1, 0.1) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys2 = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
     update_cutoff!(sys2, 0.2)
     @test sys2.cutoff == 0.2
     a = @ballocated update_cutoff!($sys2, 0.1) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Update cutoff of non-periodic systems
     x = coor(read_pdb(CellListMap.argon_pdb_file))
@@ -856,14 +868,14 @@ end
     update_cutoff!(sys1, 10.0)
     @test sys1.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1e-2
     a = @ballocated update_cutoff!($sys1, 8.0) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
     sys2 = ParticleSystem(xpositions=x[1:50], ypositions=x[51:100], cutoff=8.0, output=0.0)
     @test unitcelltype(sys2) == NonPeriodicCell
     @test sys2.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1e-2
     update_cutoff!(sys2, 10.0)
     @test sys2.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1e-2
     a = @ballocated update_cutoff!($sys2, 8.0) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
 end
 
 #
@@ -927,44 +939,45 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
 end
 
 # this updates must be non-allocating in the serial case
-@testitem "UpdateParticleSystem!" begin
+@testitem "UpdateParticleSystem!" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
+    using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Test construction with more general abstract vectors
     x = @view(x[1:500])
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = @view(y[1:500])
     sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Update with matrices
     x = rand(3, 500)
     sys = ParticleSystem(xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
     # Update non-periodic system
     x = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
     y = rand(SVector{3,Float64}, 1000)
     sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, parallel=false)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
-    @test a == 0
+    @test a == Allocs(0)
 
 end
 

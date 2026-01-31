@@ -2,6 +2,12 @@ name: CI
 on:
   - push
   - pull_request
+
+# needed to allow julia-actions/cache to delete old caches that it has created
+permissions:
+  actions: write
+  contents: read
+
 env:
   JULIA_NUM_THREADS: 2
 jobs:
@@ -18,23 +24,43 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
+        build_is_production_build:
+          - true
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - uses: actions/cache@v3
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest    
         env:
-          cache-name: cache-artifacts
+          BUILD_IS_PRODUCTION_BUILD: ${{ matrix.build_is_production_build }}
         with:
-          path: ~/.julia/artifacts
-          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-test-${{ env.cache-name }}-
-            ${{ runner.os }}-test-
-            ${{ runner.os }}-
+          coverage: false
+  tests-with-coverage:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 'lts'
+          - 'pre'
+        os:
+          - ubuntu-latest
+        build_is_production_build:
+          - false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
+        env:
+          BUILD_IS_PRODUCTION_BUILD: false
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
         with: 

@@ -1,11 +1,13 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://m3g.github.io/CellListMap.jl/stable)
-[![Build Status](https://github.com/m3g/CellListMap.jl/workflows/CI/badge.svg)](https://github.com/m3g/CellListMap.jl/actions?query=branch%3Amain)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://m3g.github.io/CellListMap.jl/dev)
+[![Build Status](https://github.com/m3g/CellListMap.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/m3g/CellListMap.jl/actions/workflows/ci.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/m3g/CellListMap.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/m3g/CellListMap.jl)
-[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![Aqua QA](https://JuliaTesting.github.io/Aqua.jl/dev/assets/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![Package Downloads](https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FCellListMap&query=total_requests&label=Downloads)](http://juliapkgstats.com/pkg/CellListMap)
 
 <p align=center>
-<img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/logo.svg>
+<img src="https://m3g.github.io/CellListMap.jl/stable/assets/logo.svg">
 </p>
 
 # CellListMap.jl
@@ -27,8 +29,7 @@ USER GUIDE: <br>
 
 ## Installation
 
-Download and install Julia for your platform from [this http url](https://julialang.org/downloads/). 
-Version 1.10 or greater is required.
+Download and install Julia for your platform from [this http url](https://julialang.org/downloads/). Version 1.10 or greater is required.
 
 Install it as usual for registered Julia packages:
 
@@ -40,7 +41,7 @@ julia> Pkg.add("CellListMap")
 
 ## Brief overview
 
-The main function is `map_parwise!`: 
+The main function is `map_pairwise!`: 
 
 If the analysis is performed on the pairs of a single vector `x` (`n*(n-1)/2` pairs), the function can be called with:
 ```julia
@@ -74,9 +75,9 @@ Parallel calculations are the default if more than one thread is available. Use 
 
 The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. 
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cd_v0.8.27-DEV.png>
+<img src="https://m3g.github.io/CellListMap.jl/stable/assets/b_cd.png">
 
-<img src=https://github.com/lmiq/PairVelocities/blob/main/data/cv_v0.8.27-DEV.png>
+<img src="https://m3g.github.io/CellListMap.jl/stable/assets/b_cv.png">
 
 The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. These benchmarks were run on an Intel(R) Core(TM) i7-12700, using 8 CPUs. 
 

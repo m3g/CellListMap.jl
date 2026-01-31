@@ -122,7 +122,8 @@ julia> system = ParticleSystem(
     - Systems can be 2 or 3-dimensional. 
     - The `unitcell` parameter may be:
         - a vector, in which case the system periodic boundaries are Orthorhombic, this is faster.
-        - a matrix, in which case the system periodic boundaries are Triclinic (general).
+        - a matrix, in which case the system periodic boundaries are Triclinic (general). The lattice
+          vectors correspond to the *columns* of the matrix.
         - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters. 
 

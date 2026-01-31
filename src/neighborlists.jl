@@ -147,6 +147,10 @@ The coordinates of the system, its unitcell, or the cutoff can be changed with
 the `update!` function. If the number of pairs of the list does not change 
 significantly, the new calculation is minimally allocating, or non-allocating 
 at all, in particular if the computation is run without parallelization:
+
+!!! note
+    The order of the pairs in the output of `neighborlist!` is not guaranteed,
+    and may change, in particular, in parallel runs.
     
 If the structure is used repeatedly for similar systems, the allocations will
 vanish, except for minor allocations used in the threading computation (if a 
@@ -422,10 +426,11 @@ end
 
 end
 
-@testitem "Allocations" begin
+@testitem "Allocations" setup=[AllocTest] begin
     using CellListMap
     using StaticArrays
     using BenchmarkTools
+    using .AllocTest: Allocs
 
     #
     # Single set of particles
@@ -437,11 +442,11 @@ end
     neighborlist!(system)
     x = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated update!($system, $x) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x; cutoff=0.2) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
 
     # Non-Periodic systems
     x = rand(SVector{3,Float64}, 10^3)
@@ -449,11 +454,11 @@ end
     neighborlist!(system)
     x = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated update!($system, $x) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x; cutoff=0.2) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
 
     #
     # Two sets of particles
@@ -466,11 +471,11 @@ end
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y; cutoff=0.2) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
 
     # Non-Periodic systems
     y = rand(SVector{3,Float64}, 10^3)
@@ -479,11 +484,11 @@ end
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
     allocs = @ballocated neighborlist!($system) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
     allocs = @ballocated update!($system, $x, $y; cutoff=0.2) evals = 1 samples = 1
-    @test allocs == 0
+    @test allocs == Allocs(0)
 
 end
 
@@ -493,6 +498,10 @@ end
 Computes the list of pairs of particles in `x` which are closer to each other than `cutoff`.
 If the keyword parameter `unitcell` is provided (as a vector of sides or a general unit cell
 matrix, periodic boundary conditions are considered). 
+
+!!! note
+    The order of the pairs in the output of `neighborlist` is not guaranteed,
+    and may change, in particular, in parallel runs.
 
 ## Example
 
@@ -559,10 +568,6 @@ julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
  (68, 90, 7.875801229081395)
 ```
 
-!!! note
-    We set `parallel=false` in these examples to preserve the order of the pairs 
-    in the list. Parallel executions will not guarantee the order of the pairs.
-
 """
 function neighborlist(
     x, cutoff;
@@ -593,6 +598,10 @@ end
 
 Computes the list of pairs of particles of `x` which are closer than `r` to the particles of `y`. 
 
+!!! note
+    The order of the pairs in the output of `neighborlist!` is not guaranteed,
+    and may change, in particular, in parallel runs.
+    
 ## Examples
 
 Compute the neighborlist between two sets of Argon atoms, considering the system
@@ -661,10 +670,6 @@ julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parall
  (18, 10, 6.9654396670725)
  (18, 37, 6.222988130894417)
 ```
-
-!!! note
-    We set `parallel=false` in these examples to preserve the order of the pairs 
-    in the list. Parallel executions will not guarantee the order of the pairs.
 
 """
 function neighborlist(
