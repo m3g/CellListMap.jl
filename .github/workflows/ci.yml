@@ -25,6 +25,7 @@ jobs:
           - macOS-latest
           - windows-latest
         exclude:
+          - version: 'lts'
             os: macOS-latest
         build_is_production_build:
           - true
