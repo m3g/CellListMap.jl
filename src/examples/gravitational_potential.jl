@@ -26,7 +26,7 @@ function gravitational_potential(;N=100_000,parallel=true,x=nothing)
     # masses
     mass = [ 5 * x[i][1] for i in 1:N ]
 
-    # Function to be evalulated for each pair: build distance histogram
+    # Function to be evaluated for each pair: build distance histogram
     function potential(i, j, d2, u, mass) 
         d = sqrt(d2)
         u = u - 9.8 * mass[i] * mass[j] / d

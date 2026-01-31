@@ -7,7 +7,7 @@
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
     mass = rand(N)
 
-    # Function to be evalulated for each pair: gravitational potential
+    # Function to be evaluated for each pair: gravitational potential
     function potential(i, j, d2, u, mass)
         d = sqrt(d2)
         u = u - 9.8 * mass[i] * mass[j] / d
@@ -368,7 +368,7 @@ end
         """)
     end
 
-    # Function to be evalulated for each pair: sum of displacements on x
+    # Function to be evaluated for each pair: sum of displacements on x
     f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
 
     x, y, sides, cutoff = CellListMap.pathological_coordinates(2000)
@@ -429,7 +429,7 @@ end
         output=0.0,
     )
 
-    # Function to be evalulated for each pair: sum of displacements on x
+    # Function to be evaluated for each pair: sum of displacements on x
     f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
 
     naive = CellListMap.map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
@@ -543,7 +543,7 @@ end
     box = Box(sides, cutoff)
     cl = CellList(x, box)
 
-    # Function to be evalulated for each pair: build distance histogram
+    # Function to be evaluated for each pair: build distance histogram
     function build_histogram!(d2, hist)
         d = sqrt(d2)
         ibin = floor(Int, d) + 1
@@ -554,7 +554,7 @@ end
     system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=zeros(Int, 10))
     @test naive == map_pairwise!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), system)
 
-    # Function to be evalulated for each pair: gravitational potential
+    # Function to be evaluated for each pair: gravitational potential
     function potential(i, j, d2, u, mass)
         d2 == 0.0 && return u
         d = sqrt(d2)
@@ -570,7 +570,7 @@ end
     naive = CellListMap.map_pairwise!((x, y, i, j, d2, u) -> u += d2, 0.0, box, cl)
     @test map_pairwise!((x, y, i, j, d2, u) -> u += d2, system; update_lists=false) ≈ naive
 
-    # Function to be evalulated for each pair: gravitational force
+    # Function to be evaluated for each pair: gravitational force
     function calc_forces!(x, y, i, j, d2, mass, forces)
         d2 == 0.0 && return forces
         G = 9.8 * mass[i] * mass[j] / d2

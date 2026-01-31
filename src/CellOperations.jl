@@ -354,16 +354,17 @@ function _minmax(x::AbstractVector{<:AbstractVector})
     return SVector(xmin), SVector(xmax)
 end
 
-@testitem "_minmax" begin
+@testitem "_minmax" setup=[AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     import CellListMap: _minmax
+    using .AllocTest: Allocs
     x = [[0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5]]
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
     x = [SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5)]
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
     a = @ballocated _minmax($x) evals = 1 samples = 1
-    @test a == 0
+    @test a == Allocs(0)
 end
 
 """

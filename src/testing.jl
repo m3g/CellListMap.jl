@@ -1,3 +1,4 @@
+
 #=
     pathological_coordinates(N)
 
@@ -142,11 +143,11 @@ function check_random_cells(
         unit_cell_matrix = zeros(SMatrix{N,N,Float64})
         if UnitCellType == OrthorhombicCell
             for i in 1:N
-                @set! unit_cell_matrix[i, i] = 1 + 10 * rand()
+                @set! unit_cell_matrix[i, i] = -10 + 20 * rand()
             end
         else
             for i in 1:N, j in 1:N
-                @set! unit_cell_matrix[i, j] = 1 + 10 * rand()
+                @set! unit_cell_matrix[i, j] = -10 + 20 * rand()
             end
         end
         cutoff = 1 + rand()
@@ -371,7 +372,7 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {
         yticks=(round.(digits=3, xmin[2]:box.cell_size[2]:xmax[2])),
         zticks=(round.(digits=3, xmin[3]:box.cell_size[3]:xmax[3])),
         bgcolor=:black,
-        fgcolor=:wyhite,
+        fgcolor=:white,
         size=(800,800),
     )
     return plt

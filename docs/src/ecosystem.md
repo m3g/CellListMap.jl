@@ -13,7 +13,7 @@ The example will produce the following animation:
 
 ```@raw html
 <video width="auto" controls autoplay loop>
-<source src="https://juliadynamics.github.io/Agents.jl/dev/examples/celllistmap.mp4" type="video/mp4">
+<source src="https://juliadynamics.github.io/Agents.jl/stable/examples/celllistmap.mp4" type="video/mp4">
 </video>
 ```
 

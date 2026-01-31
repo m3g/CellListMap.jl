@@ -259,7 +259,7 @@ julia> CellListMap.draw_computing_cell(x,box)
 ```
 
 ```@raw html
-<img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/lattice.png>
+<img src=../assets/lattice.png>
 ```
 
 The construction of the cell list is, as always, done with:
@@ -274,7 +274,7 @@ CellList{2, Float64}
 
 Upon construction of the cell lists, the cell is rotated such that the longest axis becomes oriented along the x-axis, and the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (these is an implementation detail only). 
 
-In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors. In three dimensions, for example, one could use:
+In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors *as columns*. In three dimensions, for example, one could use:
 
 ```julia-repl
 julia> unitcell = [ 50.  0. 00. 
@@ -294,7 +294,7 @@ julia> scatter(Tuple.(p),aspect_ratio=1,framestyle=:box,label=:none)
 to work with an arbitrary 3D lattice, Which in this case looks like:
 
 ```@raw html
-<img src=https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/3Dlattice.png>
+<img src=../assets/3Dlattice.png>
 ```
 
 ### Without periodic boundary conditions
@@ -572,9 +572,9 @@ The goal here is to provide a good implementation of cell lists. We compare it w
 
 ```@raw html
 <center>
-<img src=https://raw.githubusercontent.com/lmiq/PairVelocities/main/data/cd_v0.5.3.png>
+<img src=../assets/b_cd.png>
 <br>
-<img src=https://raw.githubusercontent.com/lmiq/PairVelocities/main/data/cv_v0.5.3.png>
+<img src=../assets/b_cv.png>
 </center>
 ```
 

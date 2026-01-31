@@ -21,7 +21,7 @@ function average_displacement(;N=100_000,parallel=true,x=nothing)
     # Initialize auxiliary linked lists
     cl = CellList(x, box, parallel=parallel)
   
-    # Function to be evalulated for each pair: sum of displacements on x
+    # Function to be evaluated for each pair: sum of displacements on x
     f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
   
     avg_dx = (N / (N * (N - 1) / 2)) * map_pairwise(
