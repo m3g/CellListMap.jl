@@ -12,6 +12,8 @@ CellListMap.jl Changelog
 
 Version 0.9.16-DEV
 --------------
+- ![ENHANCEMENT][badge-enhancement] Improve scaling when two sets of particles are used.
+- ![ENHANCEMENT][badge-enhancement] Automatic updating of the number of batches if the number of particles change.
 - ![INFO][badge-info] Some code simplification and add comments to code. Fix documentation typos.
 
 Version 0.9.15
