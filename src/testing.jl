@@ -175,7 +175,7 @@ function check_random_cells(
         for i in eachindex(x)
             x[i] = x[i] .- 50
         end
-        test = try 
+        test = try
             cl = CellList(x, box, parallel=parallel)
             test_map(box, cl, parallel=parallel)
         catch
@@ -207,12 +207,13 @@ function check_random_cells(
 end
 
 function test_random_cells(::Type{T}) where {T}
-    for N in 2:3, 
-        M in rand(10:20), 
-        parallel in [ false, true ],
+    for N in 2:3,
+        M in rand(10:20),
+        parallel in [false, true],
         lcell in 1:3
+
         test = CellListMap.check_random_cells(
-            N,M,
+            N, M,
             UnitCellType=T,
             parallel=parallel,
             lcell=lcell,
@@ -229,14 +230,14 @@ end
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    @test CellListMap.test_random_cells(CellListMap.OrthorhombicCell) == (nothing, nothing, nothing) 
+    @test CellListMap.test_random_cells(CellListMap.OrthorhombicCell) == (nothing, nothing, nothing)
 end
 
 @testitem "random cells - Triclinic" begin
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    @test CellListMap.test_random_cells(CellListMap.TriclinicCell) == (nothing, nothing, nothing) 
+    @test CellListMap.test_random_cells(CellListMap.TriclinicCell) == (nothing, nothing, nothing)
 end
 function drawbox(box::Box{UnitCellType,2}) where {UnitCellType}
     S = SVector{2,Float64}
@@ -328,8 +329,8 @@ function draw_computing_cell(
         Main.scatter!(plt, Tuple.(wrap_to_first.(x_rotated, Ref(box.aligned_unit_cell.matrix))), color=:red, label=:none)
     end
     xmin, xmax = cell_limits(box.aligned_unit_cell.matrix)
-    xmin = xmin .- 3*box.cell_size
-    xmax = xmax .+ 3*box.cell_size
+    xmin = xmin .- 3 * box.cell_size
+    xmax = xmax .+ 3 * box.cell_size
     isnothing(xticks) && (xticks = (round.(digits=3, xmin[1]:box.cell_size[1]:xmax[1])))
     isnothing(yticks) && (yticks = (round.(digits=3, xmin[2]:box.cell_size[2]:xmax[2])))
     Main.plot!(plt,
@@ -373,7 +374,7 @@ function draw_computing_cell(x, box::Box{UnitCellType,3}; parallel=true) where {
         zticks=(round.(digits=3, xmin[3]:box.cell_size[3]:xmax[3])),
         bgcolor=:black,
         fgcolor=:white,
-        size=(800,800),
+        size=(800, 800),
     )
     return plt
 end

@@ -45,12 +45,12 @@ struct NumberOfBatches
     build_cell_lists::Tuple{Bool,Int}
     map_computation::Tuple{Bool,Int}
 end
-NumberOfBatches(auto::Tuple{Bool,Bool}, n::Tuple{Int,Int}) = 
+NumberOfBatches(auto::Tuple{Bool,Bool}, n::Tuple{Int,Int}) =
     NumberOfBatches((first(auto), first(n)), (last(auto), last(n)))
-Base.zero(::Type{NumberOfBatches}) = NumberOfBatches((true,0), (true,0))
+Base.zero(::Type{NumberOfBatches}) = NumberOfBatches((true, 0), (true, 0))
 function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
-    _println(io,"  Number of batches for cell list construction: $(last(nbatches.build_cell_lists)) (auto-update: $(first(nbatches.build_cell_lists)))")
-      _print(io,"  Number of batches for function mapping: $(last(nbatches.map_computation)) (auto-update: $(first(nbatches.map_computation)))")
+    _println(io, "  Number of batches for cell list construction: $(last(nbatches.build_cell_lists)) (auto-update: $(first(nbatches.build_cell_lists)))")
+    _print(io, "  Number of batches for function mapping: $(last(nbatches.map_computation)) (auto-update: $(first(nbatches.map_computation)))")
 end
 
 #=
@@ -198,9 +198,9 @@ function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; par
             @warn begin
                 """\n
                 WARNING: nbatches set to ($n1,$n2), but parallel is set to false, implying nbatches == (1, 1)
-    
+
                 """
-            end _file=nothing _line=nothing
+            end _file = nothing _line = nothing
         end
         nbatches = NumberOfBatches((false, false), (1, 1))
     else # Heuristic choices
@@ -225,15 +225,15 @@ _nbatches_build_cell_lists(n::Int) = max(1, min(n, min(8, nthreads())))
 _nbatches_map_computation(n::Int) = max(1, min(n, min(floor(Int, 2^(log10(n) + 1)), nthreads())))
 
 function update_number_of_batches!(
-    cl::CellListPair{N,T}, 
-    _nbatches::NumberOfBatches=cl.large_set.nbatches; 
+    cl::CellListPair{N,T},
+    _nbatches::NumberOfBatches=cl.large_set.nbatches;
     parallel=true
 ) where {N,T}
     large_set = update_number_of_batches!(cl.large_set, _nbatches; parallel)
     return CellListPair{N,T}(
         update_number_of_batches!(
-            cl.small_set, 
-            NumberOfBatches((false, false), nbatches(large_set)); 
+            cl.small_set,
+            NumberOfBatches((false, false), nbatches(large_set));
             parallel
         ),
         large_set,
@@ -300,31 +300,31 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
 
 @testitem "output of nbatches" begin
     using CellListMap, StaticArrays
-    x = rand(3,100)
-    y = rand(3,10)
-    box = Box([1,1,1],0.1)
-    cl = CellList(x,box; nbatches=(2,4))
+    x = rand(3, 100)
+    y = rand(3, 10)
+    box = Box([1, 1, 1], 0.1)
+    cl = CellList(x, box; nbatches=(2, 4))
     @test nbatches(cl) == (2, 4)
     @test nbatches(cl, :build) == 2
     @test nbatches(cl, :map) == 4
-    cl = CellList(x,y,box; nbatches=(2,4))
+    cl = CellList(x, y, box; nbatches=(2, 4))
     @test nbatches(cl) == (2, 4)
     @test nbatches(cl, :build) == 2
     @test nbatches(cl, :map) == 4
-    cl = CellList(x,y,box)
+    cl = CellList(x, y, box)
     @test nbatches(cl.small_set) == nbatches(cl.large_set)
-    cl = CellList(x,box; nbatches=(2,4), parallel=false)
-    @test nbatches(cl) == (1,1)
+    cl = CellList(x, box; nbatches=(2, 4), parallel=false)
+    @test nbatches(cl) == (1, 1)
     # The automatic set of number of batches for this small system:
     if Threads.nthreads() == 10
-        x = rand(SVector{3,Float64},10)
-        sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
-        @test nbatches(sys) == (8,4)
-        x = rand(SVector{3,Float64},10000)
+        x = rand(SVector{3,Float64}, 10)
+        sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+        @test nbatches(sys) == (8, 4)
+        x = rand(SVector{3,Float64}, 10000)
         resize!(sys.xpositions, length(x))
         sys.xpositions .= x
         map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
-        @test nbatches(sys) == (8,10)
+        @test nbatches(sys) == (8, 10)
     else
         @warn "Test not run because it is invalid for this number of threads"
     end
@@ -335,7 +335,7 @@ end
     # 3-arg UpdateCellList! (without preallocated aux) should update nbatches
     # when the number of particles changes
     x = rand(SVector{3,Float64}, 2)
-    box = Box([1,1,1], 0.1)
+    box = Box([1, 1, 1], 0.1)
     cl = CellList(x, box)
     nb_initial = nbatches(cl)
     x = rand(SVector{3,Float64}, 10000)
@@ -355,8 +355,8 @@ end
     using CellListMap, StaticArrays
     x = rand(SVector{3,Float64}, 100)
     y = rand(SVector{3,Float64}, 50)
-    box = Box([1,1,1], 0.1)
-    cl = CellList(x, box; nbatches=(2,4))
+    box = Box([1, 1, 1], 0.1)
+    cl = CellList(x, box; nbatches=(2, 4))
     # Full symbol names
     @test nbatches(cl, :map_computation) == 4
     @test nbatches(cl, :build_cell_lists) == 2
@@ -465,7 +465,7 @@ corresponding `AuxThreaded` structure.
 
 =#
 function set_idxs!(idxs, n_particles, nbatches)
-    if length(idxs) != nbatches 
+    if length(idxs) != nbatches
         throw(ArgumentError("""\n 
             Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array.
 
@@ -520,7 +520,7 @@ CellList{3, Float64}
 
 ```
 """
-AuxThreaded(cl_pair::CellListPair) = 
+AuxThreaded(cl_pair::CellListPair) =
     AuxThreadedPair(AuxThreaded(cl_pair.small_set), AuxThreaded(cl_pair.large_set))
 
 """
@@ -575,8 +575,8 @@ matrix must be the dimension of the points (`2` or `3`).
 
 =#
 function CellList(
-    x::AbstractMatrix, 
-    box::Box{UnitCellType,N,T}; 
+    x::AbstractMatrix,
+    box::Box{UnitCellType,N,T};
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
     validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
@@ -654,7 +654,7 @@ function CellList(
     xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
-    small_set = CellList(xsmall, box; parallel, validate_coordinates) 
+    small_set = CellList(xsmall, box; parallel, validate_coordinates)
     large_set = CellList(xlarge, box; parallel, validate_coordinates)
     cl_pair = CellListPair{N,T}(small_set, large_set, swap)
     cl_pair = set_number_of_batches!(cl_pair, nbatches; parallel)
@@ -670,9 +670,9 @@ matrices must be the dimension of the points (`2` or `3`).
 
 =#
 function CellList(
-    x::AbstractMatrix, 
-    y::AbstractMatrix, 
-    box::Box{UnitCellType,N,T}; 
+    x::AbstractMatrix,
+    y::AbstractMatrix,
+    box::Box{UnitCellType,N,T};
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
     validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
@@ -1367,7 +1367,7 @@ particles_per_cell(cl::CellListPair) = particles_per_cell(cl.small_set) + partic
     using CellListMap, StaticArrays
     x = rand(SVector{3,Float64}, 100)
     y = rand(SVector{3,Float64}, 50)
-    box = Box([1,1,1], 0.1)
+    box = Box([1, 1, 1], 0.1)
     cl = CellList(x, y, box)
     # 3-arg update, serial path
     x2 = rand(SVector{3,Float64}, 100)

@@ -1,6 +1,6 @@
 module CellListMap
 
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS 
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using TestItems: @testitem, @testmodule
 using Compat: @compat
 using ProgressMeter: Progress, next!
@@ -8,7 +8,7 @@ using Parameters: @unpack, @with_kw
 using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector
 using Setfield: @set!
 using LinearAlgebra: cross, diagm, I
-using Base.Threads: nthreads, @spawn 
+using Base.Threads: nthreads, @spawn
 using Base: @lock # not exported in 1.6
 using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 

@@ -300,7 +300,7 @@ end
     @test system.box.cutoff == 0.1
     update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(limits(x),0.05)
+    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(limits(x), 0.05)
 
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
@@ -427,7 +427,7 @@ end
 
 end
 
-@testitem "Allocations" setup=[AllocTest] begin
+@testitem "Allocations" setup = [AllocTest] begin
     using CellListMap
     using StaticArrays
     using BenchmarkTools
@@ -578,7 +578,7 @@ function neighborlist(
     autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(;x, cutoff, unitcell, parallel, show_progress, nbatches)
+    system = InPlaceNeighborList(; x, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
 
@@ -675,7 +675,7 @@ function neighborlist(
     autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(;x, y, cutoff, unitcell, parallel, show_progress, nbatches)
+    system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
 
@@ -691,83 +691,83 @@ end
     @test neighborlist([[0.0, 0.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0, 0.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == Tuple{Int64,Int64,Float64}[]
-    @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) in ([(1, 2, 1.0)],[(2, 1, 1.0)])
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) in ([(1, 2, 1.0)], [(2, 1, 1.0)])
     @test neighborlist([[0.0, 0.0], [0.0, 1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64,Int64,Float64}[]
-    @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) in ([(1, 2, 0.9999999999999998)],[(2, 1, 0.9999999999999998)])
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) in ([(1, 2, 0.9999999999999998)], [(2, 1, 0.9999999999999998)])
 
     # Some pathological cases related to bug 84
-    l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
-    nl = neighborlist(l, 7.0) 
+    l = SVector{3,Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463], [0.462, -0.512, 5.473]]
+    nl = neighborlist(l, 7.0)
     @test is_unique(nl; self=true)
-    lr = Ref(x_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(x_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(y_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(y_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(z_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(z_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(z_rotation(π/2) * y_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(z_rotation(π / 2) * y_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(z_rotation(π/2) * x_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(z_rotation(π / 2) * x_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(y_rotation(π/2) * x_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(y_rotation(π / 2) * x_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
     # in 2D
-    rotation(x) = @SMatrix[ cos(x) sin(x); -sin(x) cos(x)]
+    rotation(x) = @SMatrix[cos(x) sin(x); -sin(x) cos(x)]
 
-    l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
-    nl = neighborlist(l, 7.0) 
+    l = SVector{2,Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0], [0.0, 5.5]]
+    nl = neighborlist(l, 7.0)
     @test is_unique(nl; self=true)
-    lr = Ref(rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
-    l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
+    l = SVector{2,Float32}[[0.0, 0.0], [-0.1, 5.0]]
     nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
     @test length(nl) == 1
-    l = Ref(rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    l = Ref(rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
-    l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
+    l = SVector{2,Float64}[[0.0, 0.0], [-1, 0.0]]
     unitcell = [14.01, 14.02]
     nl = neighborlist(l, 5.0; unitcell=unitcell)
     @test length(nl) == 1
-    l = Ref(rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    l = Ref(rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
-    unitcell=[1.0,1.0]
-    for x in [nextfloat(0.1),prevfloat(0.9)]
+    unitcell = [1.0, 1.0]
+    for x in [nextfloat(0.1), prevfloat(0.9)]
         local l, nl, lr
-        l = [[0.0,0.0],[x,0.0]] 
+        l = [[0.0, 0.0], [x, 0.0]]
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 0
-        lr = Ref(rotation(π/2)) .* l
+        lr = Ref(rotation(π / 2)) .* l
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 0
     end
-    for x in [-0.1,0.1,0.9]
+    for x in [-0.1, 0.1, 0.9]
         local l, nl, lr
-        l = [[0.0,0.0],[x,0.0]] 
+        l = [[0.0, 0.0], [x, 0.0]]
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 1
-        lr = Ref(rotation(π/2)) .* l
+        lr = Ref(rotation(π / 2)) .* l
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 1
     end
 
     # allow cutoff as an integer, promoting it to Float64
-    x = [[1,2], [3,4]]
+    x = [[1, 2], [3, 4]]
     nb = neighborlist(x, 3)
     @test length(nb) == 1
-    @test nb isa Vector{Tuple{Int64, Int64, Float64}}
+    @test nb isa Vector{Tuple{Int64,Int64,Float64}}
 
 end
 
@@ -776,7 +776,7 @@ end
     using Unitful
     using StaticArrays
 
-    positions = [SVector(0.1, 0.0, 0.0), SVector(0.11, 0.01, 0.01) ]u"nm"
+    positions = [SVector(0.1, 0.0, 0.0), SVector(0.11, 0.01, 0.01)]u"nm"
     cutoff = 0.1u"nm"
     nb = neighborlist(positions, cutoff)
     @test unit(nb[1][3]) == u"nm"
@@ -896,11 +896,11 @@ end
 @testitem "list buffer reduction" begin
     using CellListMap
     using StaticArrays
-    x = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.05) ];
-    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false)
+    x = [SVector{3,Float64}(0, 0, 0), SVector{3,Float64}(0, 0, 0.05)]
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1, 1, 1], parallel=false)
     list0 = neighborlist!(system) # correct
     @test length(list0) == 1
-    xnew = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.2) ];
+    xnew = [SVector{3,Float64}(0, 0, 0), SVector{3,Float64}(0, 0, 0.2)]
     update!(system, xnew)
     list1 = neighborlist!(system)
     @test length(list1) == 0

@@ -515,7 +515,7 @@ function reset_output!(x)
     """))
 end
 reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
-function reset_output!(x::AbstractVecOrMat{T}) where {T} 
+function reset_output!(x::AbstractVecOrMat{T}) where {T}
     for i in eachindex(x)
         x[i] = reset_output!(x[i])
     end
@@ -764,7 +764,7 @@ function update_unitcell!(sys, unitcell)
     return sys
 end
 
-@testitem "update_unitcell!" setup=[AllocTest] begin
+@testitem "update_unitcell!" setup = [AllocTest] begin
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
@@ -844,7 +844,7 @@ function update_cutoff!(sys::ParticleSystem2, cutoff)
     return sys
 end
 
-@testitem "update_cutoff!" setup=[AllocTest] begin
+@testitem "update_cutoff!" setup = [AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
@@ -967,7 +967,7 @@ nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
 nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
 
 # this updates must be non-allocating in the serial case
-@testitem "UpdateParticleSystem!" setup=[AllocTest] begin
+@testitem "UpdateParticleSystem!" setup = [AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
@@ -1014,7 +1014,7 @@ end
 
     # ParticleSystem1: nbatches updates when particle count changes
     x = rand(SVector{3,Float64}, 2)
-    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
@@ -1027,7 +1027,7 @@ end
 
     # ParticleSystem1: nbatches stable when particle count does not change
     x = rand(SVector{3,Float64}, 1000)
-    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     nb_before = nbatches(sys)
     sys.xpositions .= rand(SVector{3,Float64}, 1000)
     map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
@@ -1035,7 +1035,7 @@ end
 
     # ParticleSystem1: manually set nbatches are not overridden on resize
     x = rand(SVector{3,Float64}, 100)
-    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0, nbatches=(2, 3))
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0, nbatches=(2, 3))
     @test nbatches(sys) == (2, 3)
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
@@ -1046,7 +1046,7 @@ end
     # ParticleSystem2: nbatches updates when particle count changes
     x = rand(SVector{3,Float64}, 2)
     y = rand(SVector{3,Float64}, 3)
-    sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     x = rand(SVector{3,Float64}, 5000)
     y = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
