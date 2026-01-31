@@ -288,8 +288,11 @@ julia> nbatches(cl,:map)
 
 """
 function nbatches(cl::CellList, s::Symbol)
-    s == :map_computation || s == :map && return last(cl.nbatches.map_computation)
-    s == :build_cell_lists || s == :build && return last(cl.nbatches.build_cell_lists)
+    if s == :map_computation || s == :map
+        return last(cl.nbatches.map_computation)
+    elseif s == :build_cell_lists || s == :build
+        return last(cl.nbatches.build_cell_lists)
+    end
 end
 nbatches(cl::CellList) = (nbatches(cl, :build), nbatches(cl, :map))
 nbatches(cl::CellListPair) = nbatches(cl.large_set)
@@ -346,6 +349,29 @@ end
     x .= rand(SVector{3,Float64}, 10000)
     cl = UpdateCellList!(x, box, cl)
     @test nbatches(cl) == expected
+end
+
+@testitem "nbatches symbol variants, show, and CellListPair" begin
+    using CellListMap, StaticArrays
+    x = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3,Float64}, 50)
+    box = Box([1,1,1], 0.1)
+    cl = CellList(x, box; nbatches=(2,4))
+    # Full symbol names
+    @test nbatches(cl, :map_computation) == 4
+    @test nbatches(cl, :build_cell_lists) == 2
+    # show method for NumberOfBatches
+    @test sprint(show, MIME"text/plain"(), cl.nbatches) !== ""
+    # Auto nbatches with parallel=true (unconditional)
+    cl = CellList(x, box)
+    nb = nbatches(cl)
+    @test nb[1] >= 1 && nb[1] <= min(8, Threads.nthreads())
+    @test nb[2] >= 1
+    # nbatches on CellListPair
+    cl_pair = CellList(x, y, box)
+    @test nbatches(cl_pair) == nbatches(cl_pair.large_set)
+    @test nbatches(cl_pair, :build) == nbatches(cl_pair.large_set, :build)
+    @test nbatches(cl_pair, :map) == nbatches(cl_pair.large_set, :map)
 end
 
 #=
@@ -456,6 +482,12 @@ function set_idxs!(idxs, n_particles, nbatches)
         first += nx
     end
     return nothing
+end
+
+@testitem "set_idxs! error on nbatches mismatch" begin
+    using CellListMap
+    idxs = [1:10, 11:20]
+    @test_throws ArgumentError CellListMap.set_idxs!(idxs, 100, 3)
 end
 
 """
@@ -1328,6 +1360,26 @@ Returns the average number of real particles per computing cell.
 =#
 particles_per_cell(cl::CellList) = cl.n_real_particles / cl.number_of_cells
 particles_per_cell(cl::CellListPair) = particles_per_cell(cl.small_set) + particle_cell(cl.large_set)
+
+@testitem "UpdateCellList! for CellListPair" begin
+    using CellListMap, StaticArrays
+    x = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3,Float64}, 50)
+    box = Box([1,1,1], 0.1)
+    cl = CellList(x, y, box)
+    # 3-arg update, serial path
+    x2 = rand(SVector{3,Float64}, 100)
+    y2 = rand(SVector{3,Float64}, 50)
+    cl = UpdateCellList!(x2, y2, box, cl; parallel=false)
+    @test cl.small_set.n_real_particles == 50
+    @test cl.large_set.n_real_particles == 100
+    # 3-arg update, parallel path
+    x3 = rand(SVector{3,Float64}, 100)
+    y3 = rand(SVector{3,Float64}, 50)
+    cl = UpdateCellList!(x3, y3, box, cl; parallel=true)
+    @test cl.small_set.n_real_particles == 50
+    @test cl.large_set.n_real_particles == 100
+end
 
 @testitem "celllists - validate coordinates" begin
     using CellListMap
