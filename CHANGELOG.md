@@ -15,6 +15,8 @@ Version 0.9.16-DEV
 - ![ENHANCEMENT][badge-enhancement] Improve scaling when two sets of particles are used.
 - ![ENHANCEMENT][badge-enhancement] Automatic updating of the number of batches if the number of particles change.
 - ![INFO][badge-info] Some code simplification and add comments to code. Fix documentation typos.
+- ![INFO][badge-info] Drop support for Julia 1.9 (requires 1.10)
+- ![INFO][badge-info] The `autoswap` option was deprecated, and does not have any effect now. Kept for backwards compatibility. 
 
 Version 0.9.15
 --------------
