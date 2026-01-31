@@ -197,6 +197,8 @@ setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, 
 setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_aux}, x) = setfield!(sys, :_aux, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_output_threaded}, x) = setfield!(sys, :_output_threaded, x)
 
 """
     unitcelltype(sys::AbstractParticleSystem)
@@ -908,6 +910,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
         end
+        n_particles_changed = length(sys.xpositions) != sys._cell_list.n_real_particles
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys._box,
@@ -916,6 +919,15 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
             parallel=sys.parallel,
             validate_coordinates=sys.validate_coordinates,
         )
+        if n_particles_changed
+            _old_nbatches = nbatches(sys)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel=sys.parallel)
+            _new_nbatches = nbatches(sys)
+            if _old_nbatches != _new_nbatches
+                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+            end
+        end
     end
     return sys
 end
@@ -925,6 +937,8 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end
+        n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
+                              (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
@@ -934,6 +948,15 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
             parallel=sys.parallel,
             validate_coordinates=sys.validate_coordinates,
         )
+        if n_particles_changed
+            _old_nbatches = nbatches(sys)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel=sys.parallel)
+            _new_nbatches = nbatches(sys)
+            if _old_nbatches != _new_nbatches
+                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+            end
+        end
     end
     return sys
 end
@@ -983,6 +1006,59 @@ nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == Allocs(0)
 
+end
+
+@testitem "automatic nbatches update on ParticleSystem resize" begin
+    using CellListMap, StaticArrays
+
+    # ParticleSystem1: nbatches updates when particle count changes
+    x = rand(SVector{3,Float64}, 2)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    x = rand(SVector{3,Float64}, 10000)
+    resize!(sys.xpositions, length(x))
+    sys.xpositions .= x
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    expected = (
+        CellListMap._nbatches_build_cell_lists(10000),
+        CellListMap._nbatches_map_computation(10000),
+    )
+    @test nbatches(sys) == expected
+
+    # ParticleSystem1: nbatches stable when particle count does not change
+    x = rand(SVector{3,Float64}, 1000)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    nb_before = nbatches(sys)
+    sys.xpositions .= rand(SVector{3,Float64}, 1000)
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    @test nbatches(sys) == nb_before
+
+    # ParticleSystem1: manually set nbatches are not overridden on resize
+    x = rand(SVector{3,Float64}, 100)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1,1,1], output=0.0, nbatches=(2, 3))
+    @test nbatches(sys) == (2, 3)
+    x = rand(SVector{3,Float64}, 10000)
+    resize!(sys.xpositions, length(x))
+    sys.xpositions .= x
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    @test nbatches(sys) == (2, 3)
+
+    # ParticleSystem2: nbatches updates when particle count changes
+    x = rand(SVector{3,Float64}, 2)
+    y = rand(SVector{3,Float64}, 3)
+    sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1,1,1], output=0.0)
+    x = rand(SVector{3,Float64}, 5000)
+    y = rand(SVector{3,Float64}, 10000)
+    resize!(sys.xpositions, length(x))
+    sys.xpositions .= x
+    resize!(sys.ypositions, length(y))
+    sys.ypositions .= y
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    # For CellListPair, nbatches is determined by the large set
+    expected = (
+        CellListMap._nbatches_build_cell_lists(10000),
+        CellListMap._nbatches_map_computation(10000),
+    )
+    @test nbatches(sys) == expected
 end
 
 """

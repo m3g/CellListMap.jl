@@ -212,8 +212,9 @@ function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; par
         end
         nbatches = NumberOfBatches(auto, (n1, n2))
     end
-    for _ in 1:last(nbatches.map_computation)
-        push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, 0))
+    _size = isempty(cl.projected_particles) ? 0 : length(cl.projected_particles[1])
+    for _ in (length(cl.projected_particles)+1):last(nbatches.map_computation)
+        push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, _size))
     end
     cl.nbatches = nbatches
     return cl
@@ -324,6 +325,27 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
     else
         @warn "Test not run because it is invalid for this number of threads"
     end
+end
+
+@testitem "automatic nbatches update on UpdateCellList!" begin
+    using CellListMap, StaticArrays
+    # 3-arg UpdateCellList! (without preallocated aux) should update nbatches
+    # when the number of particles changes
+    x = rand(SVector{3,Float64}, 2)
+    box = Box([1,1,1], 0.1)
+    cl = CellList(x, box)
+    nb_initial = nbatches(cl)
+    x = rand(SVector{3,Float64}, 10000)
+    cl = UpdateCellList!(x, box, cl)
+    expected = (
+        CellListMap._nbatches_build_cell_lists(10000),
+        CellListMap._nbatches_map_computation(10000),
+    )
+    @test nbatches(cl) == expected
+    # nbatches should not change when particle count is unchanged
+    x .= rand(SVector{3,Float64}, 10000)
+    cl = UpdateCellList!(x, box, cl)
+    @test nbatches(cl) == expected
 end
 
 #=
@@ -676,9 +698,9 @@ function UpdateCellList!(
 )
     cl = if parallel
         aux = AuxThreaded(cl)
-        return UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
+        UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
     else
-        return UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
+        UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
     end
     cl = update_number_of_batches!(cl; parallel)
     return cl
