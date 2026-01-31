@@ -172,12 +172,13 @@ end
 # upper triangle only in the case of the Orthorhombic cell
 function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cell, output) where {F<:Function}
     @unpack cutoff_sqr, inv_rotation = box
-    # loop over list of non-repeated particles of cell ic. All particles are real
+    # loop over list of non-repeated particles of cell ic.
     for i in 1:cell.n_particles-1
         @inbounds pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
         for j in i+1:cell.n_particles
             @inbounds pⱼ = cell.particles[j]
+            (pᵢ.real | pⱼ.real) || continue # voltar
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr

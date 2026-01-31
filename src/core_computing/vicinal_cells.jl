@@ -31,6 +31,7 @@ function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, �
         # Compute the interactions 
         for j in 1:n
             @inbounds pⱼ = pp[j]
+            (pᵢ.real | pⱼ.real) || continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
