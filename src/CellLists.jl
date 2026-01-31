@@ -1317,8 +1317,10 @@ function UpdateCellList!(
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
-    small_set = UpdateCellList!(xsmall, box, cl_pair.small_set, aux.small_set; parallel, validate_coordinates)
-    large_set = UpdateCellList!(xlarge, box, cl_pair.large_set, aux.large_set; parallel, validate_coordinates)
+    small_aux = isnothing(aux) ? nothing : aux.small_set
+    large_aux = isnothing(aux) ? nothing : aux.large_set
+    small_set = UpdateCellList!(xsmall, box, cl_pair.small_set, small_aux; parallel, validate_coordinates)
+    large_set = UpdateCellList!(xlarge, box, cl_pair.large_set, large_aux; parallel, validate_coordinates)
     return CellListPair{N,T}(small_set, large_set, swap)
 end
 
