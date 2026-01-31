@@ -117,6 +117,7 @@ function ParticleSystem(;
     output::Any,
     output_name::Symbol=:output,
     parallel::Bool=true,
+    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
     validate_coordinates::Union{Nothing,Function}=_validate_coordinates,
