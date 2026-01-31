@@ -473,6 +473,27 @@ julia> nbatches(cl,:build) # returns cl.nbatches.build_cell_lists
 
 The call `nbatches(cl)` is important for defining the number of copies of preallocated threaded output variables, as explained in the previous section.
 
+#### Automatic update of the number of batches
+
+When the number of batches is left at the default (i.e., set to zero at construction), the
+number of batches is automatically updated whenever `UpdateCellList!` is called and the
+number of particles has changed. This means that if you add or remove particles from the
+system, the number of batches will be recomputed according to the heuristic functions,
+without any action required from the user.
+
+If the number of batches is explicitly set to a non-zero value, it will be kept fixed and
+will not be updated automatically. For example:
+
+```julia-repl
+julia> cl = CellList(x, box, nbatches=(0, 0)); # automatic mode (default)
+
+julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches updated
+
+julia> cl = CellList(x, box, nbatches=(2, 4)); # fixed mode
+
+julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches unchanged
+```
+
 ## Performance tunning and additional options
 
 - [Preallocating the cell lists and cell list auxiliary arrays](@ref)

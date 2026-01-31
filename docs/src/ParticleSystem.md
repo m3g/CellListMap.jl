@@ -626,10 +626,38 @@ julia> system = ParticleSystem(
        );
 ```
 
-Most times it is expected that the default parameters are optimal. But particularly for 
+Most times it is expected that the default parameters are optimal. But particularly for
 inhomogeneous systems increasing the number of batches of the mapping phase (second
-parameter of the tuple) may improve the performance by reducing the idle time of 
+parameter of the tuple) may improve the performance by reducing the idle time of
 threads.
+
+When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted),
+it is automatically recomputed whenever `UpdateParticleSystem!` detects that the number
+of particles has changed. This allows adding or removing particles from the system
+without having to manually adjust the parallelization parameters:
+
+```julia-repl
+julia> system = ParticleSystem(
+           xpositions = rand(SVector{3,Float64}, 1000),
+           unitcell = [1,1,1],
+           cutoff = 0.1,
+           output = 0.0,
+           output_name = :energy,
+       );
+
+julia> nbatches(system) # default batches for 1000 particles
+(2, 4)
+
+julia> system.xpositions = rand(SVector{3,Float64}, 100000); # resize
+
+julia> UpdateParticleSystem!(system); # nbatches recomputed automatically
+
+julia> nbatches(system) # updated for 100000 particles
+(8, 32)
+```
+
+If the number of batches is explicitly set to non-zero values, they will be kept fixed
+and will not change when the number of particles changes.
 
 ### Avoid cell list updating
 
