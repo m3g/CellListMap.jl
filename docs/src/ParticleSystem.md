@@ -107,7 +107,7 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
 ```julia-repl
 julia> using CellListMap, PDBTools
 
-julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+julia> argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
            xpositions=argon_coordinates,
@@ -169,7 +169,7 @@ Now, let us setup the system with the new type of output variable, which will be
 ```julia-repl
 julia> using CellListMap, PDBTools
 
-julia> argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+julia> argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 julia> system = ParticleSystem(
            xpositions=argon_coordinates,
@@ -286,7 +286,7 @@ end
 To finally define the system and compute the properties:
 
 ```julia
-argon_coordinates = coor(readPDB(CellListMap.argon_pdb_file))
+argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
 
 system = ParticleSystem(
     xpositions = argon_coordinates,
@@ -393,6 +393,15 @@ be attempted.
 The unit cell can be updated to new dimensions at any moment, with the `update_unitcell!` function:
 
 ```julia-repl
+julia> using CellListMap, StaticArrays
+
+julia> system = ParticleSystem(;
+           positions=rand(SVector{3,Float64}, 1000),
+           unitcell=[1.0, 1.0, 1.0],
+           cutoff=0.1,
+           output = 0.0,
+        );
+
 julia> update_unitcell!(system, SVector(1.2, 1.2, 1.2))
 ParticleSystem1 of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
@@ -409,6 +418,7 @@ ParticleSystem1 of dimension 3, composed of:
       Number of batches for cell list construction: 8
       Number of batches for function mapping: 12
     Type of output variable (forces): Vector{SVector{3, Float64}}
+
 ```
 
 !!! note
@@ -426,30 +436,30 @@ ParticleSystem1 of dimension 3, composed of:
 The cutoff can also be updated, using the `update_cutoff!` function:
 
 ```julia-repl
-julia> update_cutoff!(system, 0.2)
-ParticleSystem1 of dimension 3, composed of:
-    Box{OrthorhombicCell, 3}
-      unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
-      cutoff = 0.2
-      number of computing cells on each dimension = [7, 7, 7]
-      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
-      Total number of cells = 343
-    CellListMap.CellList{3, Float64}
-      1000 real particles.
-      125 cells with real particles.
-      2792 particles in computing box, including images.
-    Parallelization auxiliary data set for: 
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
-    Type of output variable (forces): Vector{SVector{3, Float64}}
+julia> using CellListMap, StaticArrays
 
-julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
-1000-element Vector{SVector{3, Float64}}:
- [306.9612911344924, -618.7375562535321, -607.1449767066479]
- [224.0803003775478, -241.05319348787023, 67.53780411933884]
- ⋮
- [2114.4873184508524, -3186.265279868732, -6777.748445712408]
- [-25.306486853608945, 119.69319481834582, 104.1501577339471]
+julia> system = ParticleSystem(;
+           positions=rand(SVector{3,Float64}, 1000),
+           unitcell=[1.0, 1.0, 1.0],
+           cutoff=0.1,
+           output = 0.0,
+        );
+
+julia> update_cutoff!(system, 0.2)
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0 ]
+      cutoff = 0.2
+      number of computing cells on each dimension = [8, 8, 8]
+      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
+      Total number of cells = 512
+    CellList{3, Float64}
+      1000 real particles.
+      636 cells with real particles.
+      1738 particles in computing box, including images.
+    Parallelization auxiliary data set for 8 batch(es).
+    Type of output variable (output): Float64
+
 ```
 
 ## Computations for two sets of particles
@@ -616,10 +626,38 @@ julia> system = ParticleSystem(
        );
 ```
 
-Most times it is expected that the default parameters are optimal. But particularly for 
+Most times it is expected that the default parameters are optimal. But particularly for
 inhomogeneous systems increasing the number of batches of the mapping phase (second
-parameter of the tuple) may improve the performance by reducing the idle time of 
+parameter of the tuple) may improve the performance by reducing the idle time of
 threads.
+
+When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted),
+it is automatically recomputed whenever `UpdateParticleSystem!` detects that the number
+of particles has changed. This allows adding or removing particles from the system
+without having to manually adjust the parallelization parameters:
+
+```julia-repl
+julia> system = ParticleSystem(
+           xpositions = rand(SVector{3,Float64}, 1000),
+           unitcell = [1,1,1],
+           cutoff = 0.1,
+           output = 0.0,
+           output_name = :energy,
+       );
+
+julia> nbatches(system) # default batches for 1000 particles
+(2, 4)
+
+julia> system.xpositions = rand(SVector{3,Float64}, 100000); # resize
+
+julia> UpdateParticleSystem!(system); # nbatches recomputed automatically
+
+julia> nbatches(system) # updated for 100000 particles
+(8, 32)
+```
+
+If the number of batches is explicitly set to non-zero values, they will be kept fixed
+and will not change when the number of particles changes.
 
 ### Avoid cell list updating
 
@@ -634,28 +672,15 @@ map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
 map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
 ```
 in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
-(requires version 0.8.9). Specifically, this will skip the updating of the cell lists, thus be careful to not use this
-option if the cutoff, unitcell, or any other property of the system changed. 
+(requires version 0.8.9). 
 
-For systems with two sets of particles, the 
-coordinates of the `xpositions` set can be updated, preserving the cell lists computed for the `ypositions`, but this requires
-setting `autoswap=false` in the construction of the `ParticleSystem`: 
-```julia
-using CellListMap, StaticArrays
-system = ParticleSystem(
-    xpositions=rand(SVector{3,Float64},1000), 
-    ypositions=rand(SVector{3,Float64},2000),
-    output=0.0, cutoff=0.1, unitcell=[1,1,1],
-    autoswap=false # Cell lists are constructed for ypositions
-)
-map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
-# Second run: preserve the cell lists but compute a different property
-map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
-```
+!!! warning
+    This option will skip the updating of the cell lists, thus be careful to **not** use this
+    option if the coordinates, cutoff, unitcell, or any other property of the system changed. 
 
 ### Control CellList cell size
 
-The cell sizes of the construction of the cell lists can be controled with the keyword `lcell`
+The cell sizes of the construction of the cell lists can be controlled with the keyword `lcell`
 of the `ParticleSystem` constructor. For example:
 ```julia-repl
 julia> system = ParticleSystem(
@@ -700,12 +725,10 @@ ParticleSystem2{output} of dimension 2, composed of:
       number of computing cells on each dimension = [13, 13]
       computing cell sizes = [0.1, 0.1] (lcell: 1)
       Total number of cells = 169
-    CellListMap.CellListPair{Vector{StaticArraysCore.SVector{2, Float64}}, 2, Float64, CellListMap.Swapped}
-       200 particles in the reference vector.
-       61 cells with real particles of target vector.
-    Parallelization auxiliary data set for:
-      Number of batches for cell list construction: 1
-      Number of batches for function mapping: 1
+    CellListMap.CellListPair{2, Float64}
+       63 cells with real particles of the smallest set.
+       85 cells with real particles of the largest set.
+    Parallelization auxiliary data set for 1 batch(es).
     Type of output variable (output): Float64
 ```
 !!! warning
@@ -843,7 +866,7 @@ copy_output(md::MinimumDistance) = md
 reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
 # Build system 
-xpositions = rand(SVector{3,Float64},1000);
+xpositions = rand(SVector{3,Float64},100);
 ypositions = rand(SVector{3,Float64},1000);
 system = ParticleSystem(
        xpositions = xpositions,
@@ -853,9 +876,124 @@ system = ParticleSystem(
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
 )
+# Function following the required interface of the mapped function
+get_md(_, _, i, j, d2, md) = minimum_distance(i, j, d2, md)
 # Compute the minimum distance
-map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+map_pairwise(get_md, system)
 ```
+
+In the above example, the function is used such that cell lists are constructed for both
+sets. There are situations where this is not optimal, in particular:
+
+1. When one of the sets if very small. In this case, constructing a cell list for the largest
+   set becomes the bottleneck. Therefore, it is better to construct a cell list for the smallest
+   set and loop over the particles of the largest set.
+2. When one of the set is fixed and the second set is variable. In this case, it is better to
+   construct the cell list for the fixed set only and loop over the variables of the variable set.
+
+For dealing with these possibilities, an additional two-set interface is available, where one maps
+the computation over an array of particles relative to a previously computed cell list. Complementing
+the example above, we could compute the same minimum distance using:
+
+```julia
+# Construct the cell list system only for one of the sets: ypositions
+ysystem = ParticleSystem(
+       positions = ypositions,
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+# obtain the minimum distance between xpositions and the cell list in system
+# Note the additional `xpositions` parameter in the call to map_pairwise.
+map_pairwise(get_md, xpositions, ysystem)
+```
+
+Additionally, if the `xpositions` are updated, we can obtain compute the function relative to `ysystem` without
+having to update the cell lists: 
+
+```julia-repl
+julia> xpositions = rand(SVector{3,Float64},100);
+
+julia> map_pairwise(get_md, xpositions, ysystem)
+MinimumDistance(67, 580, 0.008423693268450603)
+```
+
+while with the two-set cell list system one would need to update the cell lists for this new computation.
+
+!!! compat
+    The single-set cross-interaction was introduced in v0.10.0. It uses the method previously implemented
+    for all cross-interactions. 
+
+### Benchmarking of cross-interaction alternatives
+
+With the following functions we will benchmark the performance of the two alternatives for computing
+cross-set interactions, **including** the time required to build the cell lists (the initialization
+of the `ParticleSystem`) objects:
+
+```julia
+# First alternative: compute cell lists for the two sets
+function two_set_celllist(xpositions, ypositions)
+   system = ParticleSystem(
+       xpositions = xpositions,
+       ypositions = ypositions, 
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+    return map_pairwise(get_md, system) 
+end
+# Second alternative: compute cell lists for one set
+function one_set_celllist(xpositions, ypositions)
+   system = ParticleSystem(
+       positions = ypositions,
+       unitcell=[1.0,1.0,1.0], 
+       cutoff = 0.1, 
+       output = MinimumDistance(0,0,+Inf),
+       output_name = :minimum_distance,
+)
+    return map_pairwise(get_md, xpositions, system) 
+end
+```
+
+If one of the sets is small, the one-set alternative is clearly faster, if we 
+construct the cell lists for the smaller set:
+
+```julia-repl
+julia> using BenchmarkTools 
+
+julia> xpositions = rand(SVector{3,Float64}, 10^6);
+
+julia> ypositions = rand(SVector{3,Float64}, 100);
+
+julia> @btime one_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  25.165 ms (1531 allocations: 575.72 KiB)
+MinimumDistance(65937, 63, 0.00044803040276614203)
+
+julia> @btime two_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  207.129 ms (154794 allocations: 478.00 MiB)
+MinimumDistance(65937, 63, 0.00044803040276614203)
+```
+
+For much larger system, though, the computation of the cell lists become less relevant and the first alternative 
+might be the most favorable, even including the cell lists updates:
+
+```julia-repl
+julia> @btime one_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  12.196 s (153327 allocations: 478.02 MiB)
+MinimumDistance(627930, 889247, 7.59096139675071e-5)
+
+julia> @btime two_set_celllist($xpositions, $ypositions) samples=1 evals=1
+  2.887 s (306416 allocations: 952.00 MiB)
+MinimumDistance(627930, 889247, 7.59096139675071e-5)
+```
+
+This performance advantage of the two-set cell lists arises because more interactions can be skipped
+by [precomputing properties of the cells involved](https://onlinelibrary.wiley.com/doi/full/10.1002/jcc.20563). 
+On the other side, when the lists are available 
+for only one set, the loop over all the particles of the second set is mandatory. Since this loop
+is fast, it is favorable over the construction of the cell lists for smaller sets.  
 
 ### Particle simulation
 

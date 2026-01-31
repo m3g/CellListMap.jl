@@ -377,7 +377,7 @@ particles do not see images of each other.
 ```jldoctest ;filter = r"\\d+" => ""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> box = Box(limits(x), 10.0)
 Box{NonPeriodicCell, 3}

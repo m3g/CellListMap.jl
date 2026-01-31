@@ -354,7 +354,7 @@ function _minmax(x::AbstractVector{<:AbstractVector})
     return SVector(xmin), SVector(xmax)
 end
 
-@testitem "_minmax" setup=[AllocTest] begin
+@testitem "_minmax" setup = [AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     import CellListMap: _minmax
@@ -703,29 +703,29 @@ end
     )
     m = [1 0 0; 0 1 0; 0 0 1]
     @test all(
-        isapprox.(cell_vertices(m), 
-        [ [0, 0, 0],
-          [1, 0, 0],
-          [1, 1, 0],
-          [0, 1, 0],
-          [1, 0, 1],
-          [0, 0, 1],
-          [0, 1, 1],
-          [1, 1, 1] ],
-        atol = 1e-6)
+        isapprox.(cell_vertices(m),
+            [[0, 0, 0],
+                [1, 0, 0],
+                [1, 1, 0],
+                [0, 1, 0],
+                [1, 0, 1],
+                [0, 0, 1],
+                [0, 1, 1],
+                [1, 1, 1]],
+            atol=1e-6)
     )
     m = [1 0.5 0; 0 1 0; 0 0 1]
     @test all(
-        isapprox.(cell_vertices(m), 
-        [ [0.0, 0.0, 0.0],
-          [1.0, 0.0, 0.0],
-          [1.5, 1.0, 0.0],
-          [0.5, 1.0, 0.0],
-          [1.0, 0.0, 1.0],
-          [0.0, 0.0, 1.0],
-          [0.5, 1.0, 1.0],
-          [1.5, 1.0, 1.0] ],
-        atol=1e-6)
+        isapprox.(cell_vertices(m),
+            [[0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.5, 1.0, 0.0],
+                [0.5, 1.0, 0.0],
+                [1.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [0.5, 1.0, 1.0],
+                [1.5, 1.0, 1.0]],
+            atol=1e-6)
     )
     # throw error if not 2D or 3D
     @test_throws ArgumentError cell_vertices(rand(4, 4))

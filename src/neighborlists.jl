@@ -189,7 +189,7 @@ function InPlaceNeighborList(;
     unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
     parallel::Bool=true,
     show_progress::Bool=false,
-    autoswap=true,
+    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
     T = cutoff isa Integer ? Float64 : eltype(cutoff)
@@ -198,18 +198,18 @@ function InPlaceNeighborList(;
             unitcell = limits(x)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, box, parallel=parallel, nbatches=nbatches)
+        cl = CellList(x, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     else
         if isnothing(unitcell)
             unitcell = limits(x, y)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box, autoswap=autoswap, parallel=parallel, nbatches=nbatches)
+        cl = CellList(x, y, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     end
     nb = NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[])
-    nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl)]
+    nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl, :map)]
     return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
 end
 
@@ -300,7 +300,7 @@ end
     @test system.box.cutoff == 0.1
     update!(system, x; cutoff=0.05)
     @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(limits(x),0.05)
+    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(limits(x), 0.05)
 
     x = rand(SVector{3,Float64}, 10^3)
     y = rand(SVector{3,Float64}, 10^3)
@@ -427,7 +427,7 @@ end
 
 end
 
-@testitem "Allocations" setup=[AllocTest] begin
+@testitem "Allocations" setup = [AllocTest] begin
     using CellListMap
     using StaticArrays
     using BenchmarkTools
@@ -512,7 +512,7 @@ non-periodic (do not provide a `unitcell`):
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> neighborlist(x, 8.0; parallel=false)
 857-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -543,7 +543,7 @@ And now, considering the system periodic:
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
 1143-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -575,16 +575,10 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
+    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(;
-        x=x,
-        cutoff=cutoff,
-        unitcell=unitcell,
-        parallel=parallel,
-        show_progress=show_progress,
-        nbatches=nbatches
-    )
+    system = InPlaceNeighborList(; x, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
 
@@ -594,13 +588,10 @@ end
         unitcell=nothing, 
         parallel=true, 
         show_progress=false, 
-        autoswap=true,
         nbatches=(0,0)
     )
 
-Computes the list of pairs of particles of `x` which are closer than `r` to
-the particles of `y`. The `autoswap` option will swap `x` and `y` to try to optimize
-the cost of the construction of the cell list. 
+Computes the list of pairs of particles of `x` which are closer than `r` to the particles of `y`. 
 
 !!! note
     The order of the pairs in the output of `neighborlist!` is not guaranteed,
@@ -614,32 +605,32 @@ non-periodic (do not provide a `unitcell`):
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
 
-julia> y = coor(readPDB(CellListMap.argon_pdb_file, "index > 50"));
+julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
 
 julia> CellListMap.neighborlist(x, y, 8.0; parallel=false)
 439-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 13, 7.0177629626541265)
- (1, 24, 7.976895636774999)
- (1, 29, 3.1770283284856)
- (1, 11, 4.0886518560523095)
- (1, 17, 5.939772807102978)
- (1, 30, 2.457228927063981)
- (1, 44, 5.394713986857875)
- (1, 45, 5.424876588458028)
- (2, 2, 3.9973374888793174)
- (2, 6, 5.355242104704511)
+ (1, 11, 4.088651646755291)
+ (1, 17, 5.939772435456664)
+ (1, 30, 2.4572288423012236)
+ (1, 44, 5.394714484195586)
+ (13, 11, 5.9391977223435495)
+ (13, 14, 4.560755938642345)
+ (13, 17, 5.323270872969311)
+ (13, 31, 4.201549872989818)
+ (15, 11, 6.710523644838785)
+ (15, 14, 6.58933933286106)
  ⋮
- (50, 27, 6.257296620746054)
- (50, 32, 3.109966559305742)
- (50, 33, 2.9192916949150525)
- (50, 35, 5.043227240567294)
- (50, 10, 3.9736202636890208)
- (50, 20, 6.995405134800989)
- (50, 39, 3.9001540995196584)
- (50, 37, 7.5464903100713)
- (50, 3, 7.232267901564487)
+ (46, 29, 7.402029970260964)
+ (46, 50, 4.926250116154994)
+ (46, 5, 6.738722573577668)
+ (46, 12, 6.363161177968381)
+ (46, 22, 5.082701606032681)
+ (46, 41, 4.531261514830008)
+ (46, 45, 4.251787182648767)
+ (46, 48, 4.9269093987894745)
+ (46, 1, 7.99947286297016)
 ```
 
 Now, considering the system periodic:
@@ -647,32 +638,32 @@ Now, considering the system periodic:
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file, "index <= 50"));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
 
-julia> y = coor(readPDB(CellListMap.argon_pdb_file, "index > 50"));
+julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
 
 julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
 584-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 12, 7.360804915224965)
- (1, 13, 7.017762962654125)
- (1, 24, 7.976895636774997)
- (1, 29, 3.177028328485598)
- (1, 44, 5.394713986857875)
- (1, 45, 5.4248765884580274)
- (1, 11, 4.088651856052312)
- (1, 17, 5.93977280710298)
- (1, 30, 2.457228927063981)
- (1, 28, 6.853834401267658)
+ (1, 13, 7.0177634180502215)
+ (1, 24, 7.97689645513632)
+ (1, 29, 3.177029085967527)
+ (1, 44, 5.3947144841955845)
+ (1, 45, 5.424876392996784)
+ (7, 13, 5.245861876160856)
+ (7, 24, 7.56131349268393)
+ (7, 29, 2.2629708276336706)
+ (7, 44, 7.7484227088218764)
+ (7, 45, 3.3104152017215167)
  ⋮
- (50, 3, 7.232267901564487)
- (50, 10, 3.9736202636890203)
- (50, 27, 6.257296620746054)
- (50, 32, 3.1099665593057426)
- (50, 33, 2.919291694915052)
- (50, 35, 5.043227240567294)
- (50, 20, 6.995405134800987)
- (50, 37, 7.546490310071297)
- (50, 39, 3.900154099519657)
+ (45, 36, 7.530346972366768)
+ (18, 5, 6.8561687188298315)
+ (18, 12, 4.461142949385965)
+ (18, 41, 5.01835758100573)
+ (45, 16, 7.493858435501202)
+ (45, 25, 6.0791278577215815)
+ (45, 24, 6.97677144471301)
+ (18, 10, 6.9654396670725)
+ (18, 37, 6.222988130894417)
 ```
 
 """
@@ -681,19 +672,10 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
-    autoswap=true,
+    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(
-        x=x,
-        y=y,
-        cutoff=cutoff,
-        unitcell=unitcell,
-        parallel=parallel,
-        show_progress=show_progress,
-        autoswap=autoswap,
-        nbatches=nbatches
-    )
+    system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
 
@@ -709,83 +691,83 @@ end
     @test neighborlist([[0.0, 0.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0, 0.0]], 2.0) == Tuple{Int64,Int64,Float64}[]
     @test neighborlist([[0.0, 0.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) == Tuple{Int64,Int64,Float64}[]
-    @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) in ([(1, 2, 1.0)],[(2, 1, 1.0)])
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0]], 1.0; unitcell=[2.0, 2.0] .+ nextfloat(1.0)) in ([(1, 2, 1.0)], [(2, 1, 1.0)])
     @test neighborlist([[0.0, 0.0], [0.0, 1.0]], prevfloat(1.0); unitcell=[2.0, 2.0]) == Tuple{Int64,Int64,Float64}[]
-    @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) in ([(1, 2, 0.9999999999999998)],[(2, 1, 0.9999999999999998)])
+    @test neighborlist([[0.0, 0.0], [0.0, 1.0] .+ nextfloat(1.0)], prevfloat(1.0); unitcell=[2.0, 2.0]) in ([(1, 2, 0.9999999999999998)], [(2, 1, 0.9999999999999998)])
 
     # Some pathological cases related to bug 84
-    l = SVector{3, Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463],  [0.462, -0.512, 5.473]]
-    nl = neighborlist(l, 7.0) 
+    l = SVector{3,Float32}[[0.0, 0.0, 0.0], [0.154, 1.136, -1.827], [-1.16, 1.868, 4.519], [-0.089, 2.07, 4.463], [0.462, -0.512, 5.473]]
+    nl = neighborlist(l, 7.0)
     @test is_unique(nl; self=true)
-    lr = Ref(x_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(x_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(y_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(y_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(z_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(z_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(z_rotation(π/2) * y_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(z_rotation(π / 2) * y_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(z_rotation(π/2) * x_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(z_rotation(π / 2) * x_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
-    lr = Ref(y_rotation(π/2) * x_rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(y_rotation(π / 2) * x_rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
     # in 2D
-    rotation(x) = @SMatrix[ cos(x) sin(x); -sin(x) cos(x)]
+    rotation(x) = @SMatrix[cos(x) sin(x); -sin(x) cos(x)]
 
-    l = SVector{2, Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0],  [0.0, 5.5]]
-    nl = neighborlist(l, 7.0) 
+    l = SVector{2,Float32}[[0.0, 0.0], [0.0, -2.0], [-0.1, 5.0], [0.0, 5.5]]
+    nl = neighborlist(l, 7.0)
     @test is_unique(nl; self=true)
-    lr = Ref(rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    lr = Ref(rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
-    l = SVector{2, Float32}[[0.0, 0.0], [-0.1, 5.0]]
+    l = SVector{2,Float32}[[0.0, 0.0], [-0.1, 5.0]]
     nl = neighborlist(l, 7.0; unitcell=[14.01, 14.51])
     @test length(nl) == 1
-    l = Ref(rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    l = Ref(rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
-    l = SVector{2, Float64}[[0.0, 0.0], [-1, 0.0]]
+    l = SVector{2,Float64}[[0.0, 0.0], [-1, 0.0]]
     unitcell = [14.01, 14.02]
     nl = neighborlist(l, 5.0; unitcell=unitcell)
     @test length(nl) == 1
-    l = Ref(rotation(π/2)) .* l
-    nr = neighborlist(l, 7.0) 
+    l = Ref(rotation(π / 2)) .* l
+    nr = neighborlist(l, 7.0)
     @test is_unique(nr; self=true)
 
-    unitcell=[1.0,1.0]
-    for x in [nextfloat(0.1),prevfloat(0.9)]
+    unitcell = [1.0, 1.0]
+    for x in [nextfloat(0.1), prevfloat(0.9)]
         local l, nl, lr
-        l = [[0.0,0.0],[x,0.0]] 
+        l = [[0.0, 0.0], [x, 0.0]]
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 0
-        lr = Ref(rotation(π/2)) .* l
+        lr = Ref(rotation(π / 2)) .* l
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 0
     end
-    for x in [-0.1,0.1,0.9]
+    for x in [-0.1, 0.1, 0.9]
         local l, nl, lr
-        l = [[0.0,0.0],[x,0.0]] 
+        l = [[0.0, 0.0], [x, 0.0]]
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 1
-        lr = Ref(rotation(π/2)) .* l
+        lr = Ref(rotation(π / 2)) .* l
         nl = neighborlist(l, 0.1; unitcell=unitcell)
         @test length(nl) == 1
     end
 
     # allow cutoff as an integer, promoting it to Float64
-    x = [[1,2], [3,4]]
+    x = [[1, 2], [3, 4]]
     nb = neighborlist(x, 3)
     @test length(nb) == 1
-    @test nb isa Vector{Tuple{Int64, Int64, Float64}}
+    @test nb isa Vector{Tuple{Int64,Int64,Float64}}
 
 end
 
@@ -794,7 +776,7 @@ end
     using Unitful
     using StaticArrays
 
-    positions = [SVector(0.1, 0.0, 0.0), SVector(0.11, 0.01, 0.01) ]u"nm"
+    positions = [SVector(0.1, 0.0, 0.0), SVector(0.11, 0.01, 0.01)]u"nm"
     cutoff = 0.1u"nm"
     nb = neighborlist(positions, cutoff)
     @test unit(nb[1][3]) == u"nm"
@@ -833,23 +815,25 @@ end
         @test compare_nb_lists(cl, nb, x, r)[1]
 
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # with x smaller than y
         x = [rand(SVector{N,Float64}) for _ in 1:500]
         y = [rand(SVector{N,Float64}) for _ in 1:1000]
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # Using matrices as input
         x = rand(N, 1000)
@@ -861,23 +845,25 @@ end
         @test compare_nb_lists(cl, nb, x, r)[1]
 
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # with x smaller than y
         x = rand(N, 500)
         y = rand(N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
         # Check random coordinates to test the limits more thoroughly
         check_random_NN = true
@@ -885,7 +871,7 @@ end
             x = rand(SVector{N,Float64}, 100)
             y = rand(SVector{N,Float64}, 50)
             nb = nl_NN(BallTree, inrange, x, y, r)
-            cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+            cl = CellListMap.neighborlist(x, y, r)
             @test is_unique(cl; self=false)
             check_random_NN = compare_nb_lists(cl, nb, x, y, r)[1]
         end
@@ -895,12 +881,13 @@ end
         x = rand(Float32, N, 500)
         y = rand(Float32, N, 1000)
         nb = nl_NN(BallTree, inrange, x, y, r)
-        cl = CellListMap.neighborlist(x, y, r, autoswap=false)
+        cl = CellListMap.neighborlist(x, y, r)
         @test is_unique(cl; self=false)
         @test compare_nb_lists(cl, nb, x, y, r)[1]
-        cl = CellListMap.neighborlist(x, y, r, autoswap=true)
+        nb = nl_NN(BallTree, inrange, y, x, r)
+        cl = CellListMap.neighborlist(y, x, r)
         @test is_unique(cl; self=false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, y, x, r)[1]
 
     end
 
@@ -909,11 +896,11 @@ end
 @testitem "list buffer reduction" begin
     using CellListMap
     using StaticArrays
-    x = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.05) ];
-    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false)
+    x = [SVector{3,Float64}(0, 0, 0), SVector{3,Float64}(0, 0, 0.05)]
+    system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1, 1, 1], parallel=false)
     list0 = neighborlist!(system) # correct
     @test length(list0) == 1
-    xnew = [ SVector{3,Float64}(0,0,0), SVector{3,Float64}(0,0,0.2) ];
+    xnew = [SVector{3,Float64}(0, 0, 0), SVector{3,Float64}(0, 0, 0.2)]
     update!(system, xnew)
     list1 = neighborlist!(system)
     @test length(list1) == 0

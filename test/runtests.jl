@@ -17,6 +17,8 @@ using TestItemRunner
     <(a::Allocs, b::Int) = a.prodbuild ? a.allocs < b : true
 end
 
+@run_package_tests
+
 @testitem "Aqua.test_all" begin
     import Aqua
     Aqua.test_all(CellListMap)
@@ -299,9 +301,24 @@ end
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
     @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
 
+    # Same as above, but with parallel=false on the update
+    new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl,new_aux; parallel=false)
+    new_x, new_box = CellListMap.xatomic(10^4)
+    new_box = Box([ 200   0  10 
+                     15 200   0 
+                      0   0 200 ],cutoff)
+    new_naive = CellListMap.map_naive!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_x,new_box)
+    new_cl = CellListMap.UpdateCellList!(new_x,new_box,new_cl,new_aux; parallel=false)
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=false) ≈ new_naive
+    @test map_pairwise!((x,y,i,j,d2,avg_dx) -> f(x,y,avg_dx),0.,new_box,new_cl,parallel=true) ≈ new_naive
+
+    # Internal argument-error test: the should never reach this test 
+    x = rand(SVector{3,Float64},100)
+    cl1 = CellList(x,Box([1,1,1],0.1))
+    cl2 = CellList(x,Box([1.2,1.2,1.2],0.1))
+    @test_throws ArgumentError CellListMap.merge_cell_lists!(cl1,cl2)
+
 end
-
-
 
 @testitem "applications" begin
 
@@ -331,6 +348,7 @@ end
 
     # Function to be evalulated for each pair: gravitational potential
     function potential(i,j,d2,u,mass)
+        d2 == 0.0 && return u
         d = sqrt(d2)
         u = u - 9.8*mass[i]*mass[j]/d
         return u
@@ -344,6 +362,7 @@ end
 
     # Function to be evalulated for each pair: gravitational force
     function calc_forces!(x,y,i,j,d2,mass,forces)
+        d2 == 0.0 && return forces
         G = 9.8*mass[i]*mass[j]/d2
         d = sqrt(d2)
         df = (G/d)*(x - y)
@@ -654,5 +673,6 @@ include("$(@__DIR__)/namd/compare_with_namd.jl")
 include("$(@__DIR__)/gromacs/compare_with_gromacs.jl")
 include("$(@__DIR__)/BasicForParticleSystem.jl")
 include("$(@__DIR__)/namd/ParticleSystem_vs_NAMD.jl")
+include("$(@__DIR__)/test_show.jl")
 
-@run_package_tests
+

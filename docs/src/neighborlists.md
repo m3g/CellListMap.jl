@@ -198,7 +198,6 @@ Additional optional parameters can be used in a `neighborlist` call:
 | `parallel` | `Bool`  | `true` | turns on and off parallelization |
 | `show_progress` | `Bool` | `false` |  turns on and off progress bar | 
 | `nbatches` | `Tuple{Int,Int}` | `(0,0)` |  Number of batches used in parallelization (see [here](@ref Number-of-batches)) | 
-| `autoswap` | `Bool` | `true` |  (advanced) automatically choose set to construct the cell lists |
 
 
 ## Docstrings

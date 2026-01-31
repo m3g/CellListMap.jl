@@ -24,7 +24,6 @@ const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector}
         output_name::Symbol,
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0, 0),
-        autoswap::Bool = true,
         validate_coordinates::Union{Nothing,Function}=_validate_coordinates
     )
 
@@ -57,9 +56,7 @@ structure using the `system.forces` notation.
 The `parallel` and `nbatches` flags control the parallelization scheme of
 computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
 By default the parallelization is turned on and `nbatches` is set with heuristics
-that may provide good efficiency in most cases. `autoswap = false` will guarantee that
-the cell lists will be buitl for the `ypositions` (by default they are constructed
-for the smallest set, which is faster).
+that may provide good efficiency in most cases. 
 
 The `validate_coordinates` function can be used to validate the coordinates
 before the construction of the system. If `nothing`, no validation is performed.
@@ -75,9 +72,9 @@ the particles that are within the cutoff:
 ```jldoctest ;filter = r"(\\d*)\\.(\\d)\\d+" => s"\\1.\\2"
 julia> using CellListMap
 
-julia> using PDBTools: readPDB, coor
+julia> using PDBTools: read_pdb, coor
 
-julia> positions = coor(readPDB(CellListMap.argon_pdb_file));
+julia> positions = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> sys = ParticleSystem(
            xpositions = positions, 
@@ -94,9 +91,9 @@ julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{2})\\d+" => s"\\1.\\2"
 julia> using CellListMap, PDBTools
 
-julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file))[1:50];
+julia> xpositions = coor(read_pdb(CellListMap.argon_pdb_file))[1:50];
 
-julia> ypositions = coor(readPDB(CellListMap.argon_pdb_file))[51:100];
+julia> ypositions = coor(read_pdb(CellListMap.argon_pdb_file))[51:100];
 
 julia> sys = ParticleSystem(
            xpositions = xpositions, 
@@ -120,9 +117,9 @@ function ParticleSystem(;
     output::Any,
     output_name::Symbol=:output,
     parallel::Bool=true,
+    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
-    autoswap::Bool=true,
     validate_coordinates::Union{Nothing,Function}=_validate_coordinates,
 )
     # Set xpositions if positions was set
@@ -162,16 +159,16 @@ function ParticleSystem(;
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
         _cell_list = CellListMap.CellList(xpositions, _box; parallel, nbatches, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
-        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
+        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         output = _reset_all_output!(output, _output_threaded)
         sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
         # Two sets of positions
     else
         unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
-        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, autoswap, validate_coordinates)
+        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
-        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list)]
+        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         output = _reset_all_output!(output, _output_threaded)
         sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
     end
@@ -201,6 +198,8 @@ setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, 
 setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_aux}, x) = setfield!(sys, :_aux, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_output_threaded}, x) = setfield!(sys, :_output_threaded, x)
 
 """
     unitcelltype(sys::AbstractParticleSystem)
@@ -393,8 +392,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputNa
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println(io)
     show(io_sub, mime, sys._cell_list)
-    println(io, "\n    Parallelization auxiliary data set for: ")
-    show(io_sub, mime, sys._cell_list.nbatches)
+    print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
     print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
@@ -406,8 +404,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputNa
     show(IOContext(io, :indent => indent + 4), mime, sys._box)
     println(io)
     show(io_sub, mime, sys._cell_list)
-    println(io, "\n    Parallelization auxiliary data set for: ")
-    show(io_sub, mime, sys._cell_list.target.nbatches)
+    print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
     print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
@@ -518,7 +515,7 @@ function reset_output!(x)
     """))
 end
 reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
-function reset_output!(x::AbstractVecOrMat{T}) where {T} 
+function reset_output!(x::AbstractVecOrMat{T}) where {T}
     for i in eachindex(x)
         x[i] = reset_output!(x[i])
     end
@@ -583,7 +580,7 @@ in a simulation box.
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2"
 julia> using CellListMap, PDBTools
 
-julia> positions = coor(readPDB(CellListMap.argon_pdb_file));
+julia> positions = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> struct MinimumDistance d::Float64 end # Custom output type
 
@@ -617,6 +614,7 @@ function reducer!(x, y)
         
         with the appropriate way to combine two instances of the type (summing, keeping
         the minimum, etc), such that threaded computations can be reduced.
+
     """))
 end
 reducer!(x::T, y::T) where {T<:SupportedTypes} = +(x, y)
@@ -728,7 +726,7 @@ where the size of the simulation box changes during the simulation.
 ```jldoctest ;filter = r"batches.*" => ""  
 julia> using CellListMap, StaticArrays, PDBTools
 
-julia> xpositions = coor(readPDB(CellListMap.argon_pdb_file));
+julia> xpositions = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> sys = ParticleSystem(
            xpositions = xpositions,
@@ -749,9 +747,7 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for:
-      Number of batches for cell list construction: 1
-      Number of batches for function mapping: 1
+    Parallelization auxiliary data set for 8 batch(es).
     Type of output variable (output): Float64
 
 ```
@@ -761,13 +757,14 @@ function update_unitcell!(sys, unitcell)
     if unitcelltype(sys) == NonPeriodicCell
         throw(ArgumentError("""\n
             Manual updating of the unit cell of non-periodic systems is not allowed.
+
         """))
     end
     sys._box = update_box(sys._box; unitcell)
     return sys
 end
 
-@testitem "update_unitcell!" setup=[AllocTest] begin
+@testitem "update_unitcell!" setup = [AllocTest] begin
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
@@ -807,7 +804,7 @@ the cutoff to `10.0`.
 ```jldoctest ; filter = r"batches.*" => ""
 julia> using CellListMap, PDBTools
 
-julia> x = coor(readPDB(CellListMap.argon_pdb_file));
+julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> sys = ParticleSystem(
            xpositions = x, 
@@ -828,9 +825,7 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for:
-      Number of batches for cell list construction: 8
-      Number of batches for function mapping: 8
+    Parallelization auxiliary data set for 8 batch(es).
     Type of output variable (output): Float64
 ```
 """
@@ -849,7 +844,7 @@ function update_cutoff!(sys::ParticleSystem2, cutoff)
     return sys
 end
 
-@testitem "update_cutoff!" setup=[AllocTest] begin
+@testitem "update_cutoff!" setup = [AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
@@ -869,7 +864,7 @@ end
     @test a == Allocs(0)
 
     # Update cutoff of non-periodic systems
-    x = coor(readPDB(CellListMap.argon_pdb_file))
+    x = coor(read_pdb(CellListMap.argon_pdb_file))
     sys1 = ParticleSystem(xpositions=x, cutoff=8.0, output=0.0)
     @test unitcelltype(sys1) == NonPeriodicCell
     @test sys1.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1e-2
@@ -916,6 +911,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
         end
+        n_particles_changed = length(sys.xpositions) != sys._cell_list.n_real_particles
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys._box,
@@ -924,23 +920,26 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
             parallel=sys.parallel,
             validate_coordinates=sys.validate_coordinates,
         )
+        if n_particles_changed
+            _old_nbatches = nbatches(sys)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel=sys.parallel)
+            _new_nbatches = nbatches(sys)
+            if _old_nbatches != _new_nbatches
+                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+            end
+        end
     end
     return sys
 end
 
-function _update_ref_positions!(cl::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:NotSwapped}
-    isnothing(sys.validate_coordinates) || sys.validate_coordinates(sys.xpositions)
-    resize!(cl.ref, length(sys.xpositions))
-    cl.ref .= sys.xpositions
-end
-function _update_ref_positions!(::CellListPair{V,N,T,Swap}, sys) where {V,N,T,Swap<:Swapped}
-    throw(ArgumentError("update_lists == false requires autoswap == false for 2-set systems."))
-end
 function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
     if update_lists
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end
+        n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
+                              (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
@@ -950,15 +949,25 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
             parallel=sys.parallel,
             validate_coordinates=sys.validate_coordinates,
         )
-    else
-        # Always update the reference set positions (the cell lists of the target set are not updated)
-        _update_ref_positions!(sys._cell_list, sys)
+        if n_particles_changed
+            _old_nbatches = nbatches(sys)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel=sys.parallel)
+            _new_nbatches = nbatches(sys)
+            if _old_nbatches != _new_nbatches
+                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+            end
+        end
     end
     return sys
 end
 
+# Return the number of batches for ParticleSystems
+nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
+nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
+
 # this updates must be non-allocating in the serial case
-@testitem "UpdateParticleSystem!" setup=[AllocTest] begin
+@testitem "UpdateParticleSystem!" setup = [AllocTest] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
@@ -998,17 +1007,59 @@ end
     a = @ballocated CellListMap.UpdateParticleSystem!($sys) samples = 1 evals = 1
     @test a == Allocs(0)
 
-    # Throw error when trying to *not* update lists with autoswap on:
-    sys = ParticleSystem(
-        xpositions=rand(SVector{2,Float64}, 100),
-        ypositions=rand(SVector{2,Float64}, 200),
-        unitcell=[1, 1],
-        cutoff=0.1,
-        output=0.0,
-        autoswap=true,
-    )
-    @test_throws ArgumentError map_pairwise!((_, _, _, _, d2, u) -> u += d2, sys, update_lists=false)
+end
 
+@testitem "automatic nbatches update on ParticleSystem resize" begin
+    using CellListMap, StaticArrays
+
+    # ParticleSystem1: nbatches updates when particle count changes
+    x = rand(SVector{3,Float64}, 2)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+    x = rand(SVector{3,Float64}, 10000)
+    resize!(sys.xpositions, length(x))
+    sys.xpositions .= x
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    expected = (
+        CellListMap._nbatches_build_cell_lists(10000),
+        CellListMap._nbatches_map_computation(10000),
+    )
+    @test nbatches(sys) == expected
+
+    # ParticleSystem1: nbatches stable when particle count does not change
+    x = rand(SVector{3,Float64}, 1000)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+    nb_before = nbatches(sys)
+    sys.xpositions .= rand(SVector{3,Float64}, 1000)
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    @test nbatches(sys) == nb_before
+
+    # ParticleSystem1: manually set nbatches are not overridden on resize
+    x = rand(SVector{3,Float64}, 100)
+    sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0, nbatches=(2, 3))
+    @test nbatches(sys) == (2, 3)
+    x = rand(SVector{3,Float64}, 10000)
+    resize!(sys.xpositions, length(x))
+    sys.xpositions .= x
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    @test nbatches(sys) == (2, 3)
+
+    # ParticleSystem2: nbatches updates when particle count changes
+    x = rand(SVector{3,Float64}, 2)
+    y = rand(SVector{3,Float64}, 3)
+    sys = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+    x = rand(SVector{3,Float64}, 5000)
+    y = rand(SVector{3,Float64}, 10000)
+    resize!(sys.xpositions, length(x))
+    sys.xpositions .= x
+    resize!(sys.ypositions, length(y))
+    sys.ypositions .= y
+    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    # For CellListPair, nbatches is determined by the large set
+    expected = (
+        CellListMap._nbatches_build_cell_lists(10000),
+        CellListMap._nbatches_map_computation(10000),
+    )
+    @test nbatches(sys) == expected
 end
 
 """

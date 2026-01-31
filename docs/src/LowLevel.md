@@ -347,9 +347,9 @@ To control these steps, set manually the `output_threaded` and `reduce` optional
 
 By default, we define:
 ```julia
-output_threaded = [ deepcopy(output) for i in 1:nbatches(cl) ]
+output_threaded = [ deepcopy(output) for i in 1:nbatches(cl, :map) ]
 ```
-where `nbatches(cl)` is the number of batches into which the computation will be divided. The number of batches is *not* necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the **Number of batches** section below. 
+where `nbatches(cl, :map)` is the number of batches into which the mapped computation will be divided. The number of batches is *not* necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the **Number of batches** section below. 
 
 The default reduction function just assumes the additivity of the results obtained by each batch:
 ```julia
@@ -398,7 +398,7 @@ At the same time, the homogeneity of the computation of the mapped function may 
 
 Both the above considerations can be used to tunning the `nbatches` parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations. 
 
-By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small. The default value by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`. 
+By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small. The default value is defined by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`. 
 
 The values assumed for each number of batches can bee seen by printing the `nbatches` parameter of the cell lists:
 ```julia-repl
@@ -472,6 +472,27 @@ julia> nbatches(cl,:build) # returns cl.nbatches.build_cell_lists
 ```
 
 The call `nbatches(cl)` is important for defining the number of copies of preallocated threaded output variables, as explained in the previous section.
+
+#### Automatic update of the number of batches
+
+When the number of batches is left at the default (i.e., set to zero at construction), the
+number of batches is automatically updated whenever `UpdateCellList!` is called and the
+number of particles has changed. This means that if you add or remove particles from the
+system, the number of batches will be recomputed according to the heuristic functions,
+without any action required from the user.
+
+If the number of batches is explicitly set to a non-zero value, it will be kept fixed and
+will not be updated automatically. For example:
+
+```julia-repl
+julia> cl = CellList(x, box, nbatches=(0, 0)); # automatic mode (default)
+
+julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches updated
+
+julia> cl = CellList(x, box, nbatches=(2, 4)); # fixed mode
+
+julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches unchanged
+```
 
 ## Performance tunning and additional options
 
@@ -610,7 +631,7 @@ CollapsedDocStrings = true
 
 ```@autodocs
 Modules = [CellListMap]
-Pages = ["Box.jl", "CellListMap.jl", "CellLists.jl", "CellOperations.jl", "CoreComputing.jl"]
+Pages = ["Box.jl", "CellListMap.jl", "CellLists.jl", "CellOperations.jl", "./core_computing/self.jl", "./core_computing/cross.jl"]
 Order = [:type, :function]
 ```
 
