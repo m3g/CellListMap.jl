@@ -10,7 +10,7 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.9.16-DEV
+Version 0.9.16
 --------------
 - ![ENHANCEMENT][badge-enhancement] Improve scaling when two sets of particles are used.
 - ![ENHANCEMENT][badge-enhancement] Automatic updating of the number of batches if the number of particles change.
