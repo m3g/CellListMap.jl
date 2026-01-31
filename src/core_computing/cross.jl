@@ -213,7 +213,7 @@ function map_pairwise!(
         f, sys.output, sys._box, x, sys._cell_list; 
         output_threaded=sys._output_threaded,
         reduce=(output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
-        sys.parallel, show_progress,
+        parallel=sys.parallel, show_progress,
     )
     return sys.output
 end

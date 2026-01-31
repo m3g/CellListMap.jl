@@ -122,7 +122,7 @@ function project_particles!(
         xproj = dot(pⱼ.coordinates - cellᵢ.center, Δc)
         if abs(xproj) <= margin
             iproj += 1
-            projected_particles[iproj] = ProjectedParticle(pⱼ.index, xproj, pⱼ.coordinates)
+            projected_particles[iproj] = ProjectedParticle(pⱼ.index, xproj, pⱼ.coordinates, pⱼ.real)
         end
     end
     pp = @view(projected_particles[1:iproj])
