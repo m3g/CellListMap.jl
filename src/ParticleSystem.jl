@@ -724,15 +724,15 @@ where the size of the simulation box changes during the simulation.
 
 # Example
 
-```jldoctest ;filter = r"batches.*" => ""  
+```jldoctest ;filter = r" +Parallelization.*" => ""
 julia> using CellListMap, StaticArrays, PDBTools
 
 julia> xpositions = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> sys = ParticleSystem(
            xpositions = xpositions,
-           unitcell=[21,21,21], 
-           cutoff = 8.0, 
+           unitcell=[21,21,21],
+           cutoff = 8.0,
            output = 0.0
        );
 
@@ -748,7 +748,7 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for 4 batch(es).
+
     Type of output variable (output): Float64
 
 ```
@@ -802,15 +802,15 @@ This function can be used to update the system geometry in iterative schemes.
 Here we initialize a particle system with a cutoff of `8.0` and then update
 the cutoff to `10.0`. 
 
-```jldoctest ; filter = r"auxiliary.*" => ""
+```jldoctest ; filter = r" +Parallelization.*" => ""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> sys = ParticleSystem(
-           xpositions = x, 
-           unitcell=[21.0,21.0,21.0], 
-           cutoff = 8.0, 
+           xpositions = x,
+           unitcell=[21.0,21.0,21.0],
+           cutoff = 8.0,
            output = 0.0
        );
 
@@ -826,7 +826,7 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for 4 batch(es).
+
     Type of output variable (output): Float64
 ```
 """
