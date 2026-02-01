@@ -367,10 +367,10 @@ end
     @test a == Allocs(0)
 end
 
-"""
+#=
     limits(x; validate_coordinates::Union{Nothing,Function})
 
-Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`, 
+Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`,
 to be used to set a box without effective periodic boundary conditions.
 
 The `validate_coordinates` function is used to validate the coordinates of the particles.
@@ -379,7 +379,7 @@ To disable this validation, set `validate_coordinates = nothing`. Custom checks 
 by passing a function that takes the coordinates as input and throws an error if the coordinates
 are invalid.
 
-"""
+=#
 function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
     isnothing(validate_coordinates) || validate_coordinates(x)
     xmin, xmax = _minmax(x)
@@ -393,7 +393,7 @@ function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing,Function}
     return limits(x_re; validate_coordinates)
 end
 
-"""
+#=
     limits(x,y; validate_coordinates::Union{Nothing, Function})
 
 Returns the lengths of a orthorhombic box that encompasses all the particles defined in `x`
@@ -405,7 +405,7 @@ To disable this validation, set `validate_coordinates = nothing`. Custom checks 
 by passing a function that takes the coordinates as input and throws an error if the coordinates
 are invalid.
 
-"""
+=#
 function limits(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector};

@@ -27,6 +27,7 @@ end
 @testitem "disjoint sets" begin
 
     using CellListMap
+    using CellListMap: Box, CellList, UpdateCellList!
     using StaticArrays
 
     N = 2000
@@ -114,6 +115,7 @@ end
 @testitem "matrix inputs" begin
 
     using CellListMap
+    using CellListMap: Box, CellList
     using StaticArrays
 
     # Function to be evalulated for each pair: sum of displacements on x
@@ -143,6 +145,7 @@ end
 @testitem "parallelization" begin
 
     using CellListMap
+    using CellListMap: Box, CellList
     using StaticArrays
 
     if Threads.nthreads() == 1
@@ -189,6 +192,7 @@ end
 @testitem "updating lists" begin
 
     using CellListMap
+    using CellListMap: Box, CellList
     using StaticArrays
 
     N = 2000
@@ -323,6 +327,7 @@ end
 @testitem "applications" begin
 
     using CellListMap
+    using CellListMap: Box, CellList, TriclinicCell, OrthorhombicCell
     using StaticArrays
 
     # Loads Unitful and ForwardDiff
@@ -435,6 +440,7 @@ end
 end
 
 @testitem "pathological cells" begin
+    using CellListMap: Box, CellList
     using StaticArrays
     # This function is an interesting function because it sort of counts 
     # the indexes of the particles within the cutoff. However, we need to 
@@ -485,6 +491,7 @@ end
 
 @testitem "particle index uniqueness and periodic images" begin
     using CellListMap
+    using CellListMap: Box, CellList
     using StaticArrays
     
     # Test 1: Verify particle pairs near periodic boundaries are counted exactly once
@@ -578,6 +585,7 @@ end
 
 @testitem "margin calculation with lcell > 1" begin
     using CellListMap
+    using CellListMap: Box, CellList
     using StaticArrays
     
     # Test that particles at cell corners are not missed with lcell > 1

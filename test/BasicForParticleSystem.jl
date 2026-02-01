@@ -2,6 +2,7 @@
 
     using StaticArrays
     using CellListMap
+    using CellListMap: Box, CellList, UpdateCellList!, limits
 
     N = 2000
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
@@ -155,6 +156,7 @@ end
 @testitem "ParticleSystem - resize output" begin
     using StaticArrays
     using CellListMap
+    using CellListMap: Box
     function force(x, y, i, j, d2, f) 
         fxy = (x - y) / d2 
         f[i] -= fxy
@@ -190,6 +192,7 @@ end
 @testitem "ParticleSystem - update_lists" begin
     using StaticArrays
     using CellListMap
+    using CellListMap: Box, CellList, limits
 
     for unitcell in [[1, 1, 1], nothing]
         #
@@ -298,6 +301,7 @@ end
 
 @testitem "cross_x_vs_sys" begin
     using CellListMap
+    using CellListMap: Box, CellList, limits
     using StaticArrays
 
     f(_, _, _, _, d2, out) = out += d2
@@ -358,7 +362,7 @@ end
     using Test
     using StaticArrays
     using CellListMap
-    using CellListMap
+    using CellListMap: Box, limits
 
     if Threads.nthreads() == 1
         println("""
@@ -416,6 +420,7 @@ end
     using Test
     using StaticArrays
     using CellListMap
+    using CellListMap: Box, CellList, UpdateCellList!, limits
 
     N = 2000
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)
@@ -536,7 +541,7 @@ end
     using Test
     using StaticArrays
     using CellListMap
-    using CellListMap
+    using CellListMap: Box, CellList
 
     N = 2000
     x, y, sides, cutoff = CellListMap.pathological_coordinates(N)

@@ -3,6 +3,7 @@
 #
 @testitem "show methods" begin
     using CellListMap, StaticArrays
+    using CellListMap: Box, CellList, nbatches
 
     function test_show(
         x, s::String; 

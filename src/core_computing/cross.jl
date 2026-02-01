@@ -1,10 +1,10 @@
-"""
+#=
     map_pairwise!(f::Function, output, box::Box, cl::CellListPair)
 
 Evaluate function f for pairs in two independent sets of particles, for which the `CellListPair`
-object was constructed. 
+object was constructed.
 
-"""
+=#
 function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{N,T};
     # Parallelization options
     parallel::Bool=true,

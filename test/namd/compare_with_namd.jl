@@ -3,6 +3,7 @@
     using Test
     import Chemfiles
     using CellListMap
+    using CellListMap: Box, CellList, UpdateCellList!
     using StaticArrays
 
     function lj_NE(d2, u)

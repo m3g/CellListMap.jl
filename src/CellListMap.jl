@@ -12,15 +12,7 @@ using Base.Threads: nthreads, @spawn
 using Base: @lock # not exported in 1.6
 using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
-export Box
-export CellList, UpdateCellList!
 export map_pairwise!, map_pairwise
-export limits
-export TriclinicCell
-export OrthorhombicCell
-export NonPeriodicCell
-export unitcelltype
-export nbatches
 
 # Testing file
 const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")

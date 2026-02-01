@@ -201,17 +201,17 @@ setproperty!(sys::AbstractParticleSystem, ::Val{:output}, x) = setfield!(sys, :o
 setproperty!(sys::AbstractParticleSystem, ::Val{:_aux}, x) = setfield!(sys, :_aux, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:_output_threaded}, x) = setfield!(sys, :_output_threaded, x)
 
-"""
+#=
     unitcelltype(sys::AbstractParticleSystem)
 
 Returns the type of a unitcell from the `ParticleSystem` structure.
 
-"""
+=#
 CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
 
 @testitem "ParticleSystem properties" begin
-
     using CellListMap
+    using CellListMap: unitcelltype, NonPeriodicCell, TriclinicCell, OrthorhombicCell
     using StaticArrays
     sys = ParticleSystem(
         positions=rand(SVector{3,Float64}, 1000),
@@ -347,6 +347,7 @@ end
 ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
     ParticleSystem1{OutputName,V,O,B,C,A,VC}(v, o, b, c, vo, a, p, vc)
 getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
+getproperty(sys::ParticleSystem2, ::Val{:positions}) = getfield(sys, :xpositions)
 
 """
 
@@ -737,17 +738,17 @@ julia> sys = ParticleSystem(
 
 julia> update_unitcell!(sys, [30.0, 30.0, 30.0])
 ParticleSystem1{output} of dimension 3, composed of:
-    Box{OrthorhombicCell, 3}
+    Box{CellListMap.OrthorhombicCell, 3}
       unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
       cutoff = 8.0
       number of computing cells on each dimension = [6, 6, 6]
       computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
       Total number of cells = 216
-    CellList{3, Float64}
+    CellListMap.CellList{3, Float64}
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for 8 batch(es).
+    Parallelization auxiliary data set for 4 batch(es).
     Type of output variable (output): Float64
 
 ```
@@ -815,17 +816,17 @@ julia> sys = ParticleSystem(
 
 julia> update_cutoff!(sys, 10.0)
 ParticleSystem1{output} of dimension 3, composed of:
-    Box{OrthorhombicCell, 3}
+    Box{CellListMap.OrthorhombicCell, 3}
       unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
       cutoff = 10.0
       number of computing cells on each dimension = [5, 5, 5]
       computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
       Total number of cells = 125
-    CellList{3, Float64}
+    CellListMap.CellList{3, Float64}
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for 8 batch(es).
+    Parallelization auxiliary data set for 4 batch(es).
     Type of output variable (output): Float64
 ```
 """
@@ -848,6 +849,7 @@ end
     using BenchmarkTools
     using StaticArrays
     using CellListMap
+    using CellListMap: unitcelltype, NonPeriodicCell
     using PDBTools
     using .AllocTest: Allocs
     x = rand(SVector{3,Float64}, 1000)
@@ -1011,6 +1013,7 @@ end
 
 @testitem "automatic nbatches update on ParticleSystem resize" begin
     using CellListMap, StaticArrays
+    using CellListMap: nbatches
 
     # ParticleSystem1: nbatches updates when particle count changes
     x = rand(SVector{3,Float64}, 2)

@@ -43,7 +43,7 @@ julia> system = ParticleSystem(
        );
 
 julia> map_pairwise((x,y,i,j,d2,out) -> out += d2, system)
-437.74543675999995 nm^2
+437.74544424050725 nm²
 ```
 
 ### Units in neighbor lists

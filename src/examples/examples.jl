@@ -1,5 +1,7 @@
 module Examples
 
+using CellListMap: Box, CellList, UpdateCellList!, OrthorhombicCell, limits
+
 include("./average_displacement.jl")
 include("./distance_histogram.jl")
 include("./gravitational_force.jl")

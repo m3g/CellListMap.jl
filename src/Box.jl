@@ -93,7 +93,7 @@ Base.@kwdef struct Box{UnitCellType,N,T,TSQ,M,TR}
     cell_size::SVector{N,T}
 end
 
-"""
+#=
     unitcelltype(::Box{T}) where T = T
 
 Returns the type of a unitcell from the `Box` structure.
@@ -114,11 +114,12 @@ julia> unitcelltype(box)
 TriclinicCell
 ```
 
-"""
+=#
 unitcelltype(::Box{T}) where {T} = T
 
 @testitem "unitcelltype" begin
     using CellListMap
+    using CellListMap: Box, unitcelltype, OrthorhombicCell, TriclinicCell, NonPeriodicCell, limits
     @test unitcelltype(Box([1, 1, 1], 0.1)) == OrthorhombicCell
     @test unitcelltype(Box([1 0 0; 0 1 0; 0 0 1], 0.1)) == TriclinicCell
     x = rand(3, 100)
@@ -158,7 +159,7 @@ end
     @test T == Float64
 end
 
-"""
+#=
     Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)
 
 Construct box structure given the cell matrix, where
@@ -204,7 +205,7 @@ Box{OrthorhombicCell, 3}
 
 ```
 
-"""
+=#
 function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
     lcell >= 1 || throw(ArgumentError("lcell must be greater or equal to 1"))
     s = size(input_unit_cell_matrix)
@@ -336,7 +337,7 @@ cell_matrix_from_sides(sides::Tuple) = cell_matrix_from_sides(SVector(sides))
     @test eltype(sides) == eltype(cell_matrix)
 end
 
-"""
+#=
     Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=OrthorhombicCell)
 
 For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side. 
@@ -354,7 +355,7 @@ Box{OrthorhombicCell, 3}
   Total number of cells = 3510
 ```
 
-"""
+=#
 function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
     T = _promote_types(sides, cutoff)
     unit_cell_matrix = cell_matrix_from_sides(T.(sides))
@@ -362,7 +363,7 @@ function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}) wh
 end
 Box(sides::AbstractVector, cutoff; lcell::Int=1, UnitCellType=OrthorhombicCell) = Box(sides, cutoff, lcell, UnitCellType)
 
-"""
+#=
     Box(unitcell::Limits, cutoff; lcell::Int=1)
 
 This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
@@ -398,7 +399,7 @@ Box{NonPeriodicCell, 3}
   Total number of cells = 343
 ```
 
-"""
+=#
 function Box(unitcell::Limits, cutoff::T; lcell::Int=1) where {T}
     sides = _sides_from_limits(unitcell, cutoff)
     return Box(sides, cutoff, lcell, NonPeriodicCell)
@@ -466,6 +467,7 @@ end
 
 @testitem "Stable Box update" setup = [AllocTest] begin
     using CellListMap
+    using CellListMap: Box, limits
     using StaticArrays
     using BenchmarkTools
     using LinearAlgebra: diag

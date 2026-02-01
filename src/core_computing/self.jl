@@ -1,4 +1,4 @@
-"""
+#=
     map_pairwise!(
         f::Function,
         output,
@@ -8,52 +8,26 @@
         show_progress::Bool=false
     )
 
-This function will run over every pair of particles which are closer than 
-`box.cutoff` and compute the Euclidean distance between the particles, 
-considering the periodic boundary conditions given in the `Box` structure. 
-If the distance is smaller than the cutoff, a function `f` of the 
-coordinates of the two particles will be computed. 
+This function will run over every pair of particles which are closer than
+`box.cutoff` and compute the Euclidean distance between the particles,
+considering the periodic boundary conditions given in the `Box` structure.
+If the distance is smaller than the cutoff, a function `f` of the
+coordinates of the two particles will be computed.
 
-The function `f` receives six arguments as input: 
-```
-f(x,y,i,j,d2,output)
-```
-Which are the coordinates of one particle, the coordinates of the 
-second particle, the index of the first particle, the index of the second 
-particle, the squared distance between them, and the `output` variable. 
-It has also to return the same `output` variable. Thus, `f` may or not 
-mutate `output`, but in either case it must return it. With that, it is 
-possible to compute an average property of the distance of the particles 
-or, for example, build a histogram. The squared distance `d2` is computed 
-internally for comparison with the 
-`cutoff`, and is passed to the `f` because many times it is used for the 
-desired computation. 
+The function `f` receives six arguments as input:
+    f(x,y,i,j,d2,output)
+Which are the coordinates of one particle, the coordinates of the
+second particle, the index of the first particle, the index of the second
+particle, the squared distance between them, and the `output` variable.
+It has also to return the same `output` variable. Thus, `f` may or not
+mutate `output`, but in either case it must return it. With that, it is
+possible to compute an average property of the distance of the particles
+or, for example, build a histogram. The squared distance `d2` is computed
+internally for comparison with the
+`cutoff`, and is passed to the `f` because many times it is used for the
+desired computation.
 
-## Example
-
-Computing the mean absolute difference in `x` position between random particles, 
-remembering the number of pairs of `n` particles is `n(n-1)/2`. The function does 
-not use the indices or the distance, such that we remove them from the parameters 
-by using a closure.
-
-```julia-repl
-julia> n = 100_000;
-
-julia> box = Box([250,250,250],10);
-
-julia> x = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:n ];
-
-julia> cl = CellList(x,box);
-
-julia> f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
-
-julia> normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
-
-julia> avg_dx = normalization * map_parwise!((x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl)
-
-```
-
-"""
+=#
 function map_pairwise!(f::F, output, box::Box, cl::CellList;
     # Parallelization options
     parallel::Bool=true,

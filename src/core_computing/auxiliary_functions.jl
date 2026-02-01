@@ -75,7 +75,9 @@ _next!(p) = next!(p)
 end
 
 @testitem "map_pairwise with show_progress" begin
-    using CellListMap, StaticArrays
+    using CellListMap
+    using CellListMap: Box, CellList
+    using StaticArrays
     x = rand(SVector{3,Float64}, 100)
     box = Box([1, 1, 1], 0.1)
     cl = CellList(x, box)

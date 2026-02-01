@@ -535,6 +535,51 @@ julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
 MinimumDistance(276, 617, 0.006009804808785543)
 ```
 
+### Cross-interactions with a single cell list
+
+The two-set interface above builds cell lists for both sets. There are situations where this is not optimal:
+
+1. **One set is fixed, the other changes.** If `ypositions` never changes but `xpositions` is updated each step,
+   rebuilding a cell list for `ypositions` every time is wasteful. Build it once and reuse.
+2. **One set is much smaller.** Building a cell list for a very large set can be expensive. Build the cell list
+   only for the smaller set and iterate over the larger set directly.
+
+For these cases, construct a `ParticleSystem` for the *reference* set (the one whose cell list you want to keep),
+then pass the *other* set as a plain array to `map_pairwise`:
+
+```julia-repl
+julia> # Build the system only for ypositions (the reference set)
+
+julia> ysystem = ParticleSystem(
+           positions = ypositions,
+           unitcell = [1.0, 1.0, 1.0],
+           cutoff = 0.1,
+           output = MinimumDistance(0, 0, +Inf),
+           output_name = :minimum_distance,
+       )
+
+julia> # Compute interactions between xpositions and the cell list in ysystem.
+       # Note: xpositions is passed as a plain array, before the system argument.
+
+julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), xpositions, ysystem)
+MinimumDistance(67, 580, 0.008423693268450603)
+```
+
+When `xpositions` changes, the cell list in `ysystem` does not need to be rebuilt:
+
+```julia-repl
+julia> xpositions = rand(SVector{3,Float64}, 100);  # new positions
+
+julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), xpositions, ysystem; update_lists=false)
+MinimumDistance(42, 310, 0.005182736498125341)
+```
+
+The `update_lists=false` keyword skips updating the cell list of `ysystem`, since only `xpositions` changed.
+If `ysystem.positions` itself changed, use `update_lists=true` (the default).
+
+!!! compat
+    The single-set cross-interaction interface (`map_pairwise(f, x, system)`) was introduced in v0.10.0.
+
 ## Additional options
 
 - [Turn parallelization on and off](@ref)
@@ -719,16 +764,16 @@ julia> system = ParticleSystem(
            output=0.0,
        )
 ParticleSystem2{output} of dimension 2, composed of:
-    Box{OrthorhombicCell, 2}
+    Box{CellListMap.OrthorhombicCell, 2}
       unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
       cutoff = 0.1
       number of computing cells on each dimension = [13, 13]
       computing cell sizes = [0.1, 0.1] (lcell: 1)
       Total number of cells = 169
     CellListMap.CellListPair{2, Float64}
-       63 cells with real particles of the smallest set.
+       70 cells with real particles of the smallest set.
        85 cells with real particles of the largest set.
-    Parallelization auxiliary data set for 1 batch(es).
+    Parallelization auxiliary data set for 4 batch(es).
     Type of output variable (output): Float64
 ```
 !!! warning

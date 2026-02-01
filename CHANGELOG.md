@@ -10,8 +10,11 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.9.17-DEV
+Version 0.10.0-DEV
 --------------
+- ![FEATURE][badge-feature] `map_pairwise(f, x, sys)` maps `f` to the pairs of the particles defined in vector `x` to the cell list defined in `sys` (to reuse the same cell list for cross-computations with different set of particles).
+- ![BREAKING][badge-breaking] The previous "lower level interface" is now internal and not exported or public anymore.
+- ![BREAKING][badge-breaking] The `autoswap` function was removed.
 
 Version 0.9.16
 --------------

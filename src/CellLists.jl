@@ -253,7 +253,7 @@ function set_number_of_batches!(cl::Union{CellList,CellListPair}, _nbatches::Tup
     return update_number_of_batches!(cl, nbatches; parallel)
 end
 
-"""
+#=
     nbatches(cl::CellList)
     nbatches(cl::CellListPair)
     nbatches(system::AbstractParticleSystem)
@@ -286,7 +286,7 @@ julia> nbatches(cl,:map)
 
 ```
 
-"""
+=#
 function nbatches(cl::CellList, s::Symbol)
     if s == :map_computation || s == :map
         return last(cl.nbatches.map_computation)
@@ -300,6 +300,7 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
 
 @testitem "output of nbatches" begin
     using CellListMap, StaticArrays
+    using CellListMap: Box, CellList, nbatches
     x = rand(3, 100)
     y = rand(3, 10)
     box = Box([1, 1, 1], 0.1)
@@ -332,6 +333,7 @@ end
 
 @testitem "automatic nbatches update on UpdateCellList!" begin
     using CellListMap, StaticArrays
+    using CellListMap: Box, CellList, UpdateCellList!, nbatches
     # 3-arg UpdateCellList! (without preallocated aux) should update nbatches
     # when the number of particles changes
     x = rand(SVector{3,Float64}, 2)
@@ -353,6 +355,7 @@ end
 
 @testitem "nbatches symbol variants, show, and CellListPair" begin
     using CellListMap, StaticArrays
+    using CellListMap: Box, CellList, nbatches
     x = rand(SVector{3,Float64}, 100)
     y = rand(SVector{3,Float64}, 50)
     box = Box([1, 1, 1], 0.1)
@@ -523,17 +526,17 @@ CellList{3, Float64}
 AuxThreaded(cl_pair::CellListPair) =
     AuxThreadedPair(AuxThreaded(cl_pair.small_set), AuxThreaded(cl_pair.large_set))
 
-"""
+#=
     CellList(
         x::AbstractVector{AbstractVector},
         box::Box{UnitCellType,N,T};
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
-    ) where {UnitCellType,N,T} 
+    ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellList` structure from scratch, given a vector
-or particle coordinates (a vector of vectors, typically of static vectors) 
+or particle coordinates (a vector of vectors, typically of static vectors)
 and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
 systems, the number of parallel batches is equal to the number of threads, but it can
 be tunned for optimal performance in some cases.
@@ -553,7 +556,7 @@ CellList{3, Float64}
 
 ```
 
-"""
+=#
 function CellList(
     x::AbstractVector{<:AbstractVector},
     box::Box{UnitCellType,N,T};
@@ -613,7 +616,7 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     return cl
 end
 
-"""
+#=
     CellList(
         x::AbstractVector{<:AbstractVector},
         y::AbstractVector{<:AbstractVector},
@@ -621,7 +624,7 @@ end
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
-    ) where {UnitCellType,N,T} 
+    ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellListPair` structure from scratch, given two vectors
 of particle coordinates and a `Box`, which contain the size of the system, cutoff, etc.
@@ -642,7 +645,7 @@ CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
 
 ```
 
-"""
+=#
 function CellList(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
@@ -684,16 +687,16 @@ function CellList(
     return CellList(x_re, y_re, box; parallel, nbatches, validate_coordinates)
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractVector{<:AbstractVector},
         box::Box,
         cl:CellList;
         parallel=true,
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
-    ) 
+    )
 
-Function that will update a previously allocated `CellList` structure, given new 
+Function that will update a previously allocated `CellList` structure, given new
 updated particle positions. This function will allocate new threaded auxiliary
 arrays in parallel calculations. To preallocate these auxiliary arrays, use
 the `UpdateCellList!(x,box,cl,aux)` method instead. 
@@ -720,7 +723,7 @@ julia> UpdateCellList!(x,box,cl); # update lists
 
 ```
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
@@ -763,7 +766,7 @@ function UpdateCellList!(
     return UpdateCellList!(x_re, box, cl; kargs...)
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractVector{<:AbstractVector},
         box::Box,
@@ -825,7 +828,7 @@ CellList{3, Float64}
 
 ```
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     box::Box,
@@ -835,7 +838,7 @@ function UpdateCellList!(
     validate_coordinates=_validate_coordinates,
 ) where {N,T}
 
-    # validate coordinates 
+    # validate coordinates
     isnothing(validate_coordinates) || validate_coordinates(x)
 
     # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
@@ -1156,7 +1159,7 @@ function add_particle_to_celllist!(
     return cl
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractVector{<:AbstractVector},
         y::AbstractVector{<:AbstractVector},
@@ -1166,7 +1169,7 @@ end
         validate_coordinates::Union{Function,Nothing}=_validate_coordinates
     )
 
-Function that will update a previously allocated `CellListPair` structure, given 
+Function that will update a previously allocated `CellListPair` structure, given
 updated particle positions, for example. This method will allocate new 
 `aux` threaded auxiliary arrays. For a non-allocating version, see the 
 `UpdateCellList!(x,y,box,cl,aux)` method.
@@ -1190,7 +1193,7 @@ julia> cl = CellList(x,y,box);
 julia> UpdateCellList!(x,y,box,cl); # update lists
 ```
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
@@ -1237,7 +1240,7 @@ function UpdateCellList!(
     return UpdateCellList!(x_re, y_re, box, cl_pair; kargs...)
 end
 
-"""
+#=
     UpdateCellList!(
         x::AbstractVector{<:AbstractVector},
         y::AbstractVector{<:AbstractVector},
@@ -1304,7 +1307,7 @@ julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
  
 ```
 
-"""
+=#
 function UpdateCellList!(
     x::AbstractVector{<:AbstractVector},
     y::AbstractVector{<:AbstractVector},
@@ -1365,6 +1368,7 @@ particles_per_cell(cl::CellListPair) = particles_per_cell(cl.small_set) + partic
 
 @testitem "UpdateCellList! for CellListPair" begin
     using CellListMap, StaticArrays
+    using CellListMap: Box, CellList, UpdateCellList!
     x = rand(SVector{3,Float64}, 100)
     y = rand(SVector{3,Float64}, 50)
     box = Box([1, 1, 1], 0.1)
@@ -1384,7 +1388,7 @@ particles_per_cell(cl::CellListPair) = particles_per_cell(cl.small_set) + partic
 end
 
 @testitem "celllists - validate coordinates" begin
-    using CellListMap
+    using CellListMap: Box, CellList, UpdateCellList!
     using StaticArrays
     x = rand(SVector{3,Float64}, 100)
     x[50] = SVector(1.0, NaN, 1.0)

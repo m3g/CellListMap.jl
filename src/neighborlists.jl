@@ -287,6 +287,7 @@ end
 
 @testitem "InPlaceNeighborLists Updates" begin
     using CellListMap
+    using CellListMap: limits
     using StaticArrays
     using LinearAlgebra: diag
     import CellListMap: _sides_from_limits

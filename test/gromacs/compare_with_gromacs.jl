@@ -3,6 +3,7 @@
     using Test
     import Chemfiles
     using CellListMap
+    using CellListMap: Box, CellList
     using StaticArrays
 
     function lj_Argon_Gromacs(d2, u)
