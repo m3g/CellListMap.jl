@@ -748,7 +748,7 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-
+    Parallelization auxiliary data set for 4 batch(es).
     Type of output variable (output): Float64
 
 ```
@@ -826,7 +826,7 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-
+    Parallelization auxiliary data set for 4 batch(es).
     Type of output variable (output): Float64
 ```
 """
