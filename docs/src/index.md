@@ -38,22 +38,46 @@ these loops are very expensive, and it is possible to avoid looping over particl
 
 CellListMap implements an efficient and parallel cell-list method, with optimizations, to substitute such double-loops while taking into account
 periodic boundary conditions. Cell lists are an alternative to distance trees and are particularly effective when the distribution
-of the particles is roughly homogeneous. For highly heterogeneous systems distance trees like those implemented in 
-[NearestNeighbors.jl](https://github.com/KristofferC/NearestNeighbors.jl) might be more performant. 
+of the particles is roughly homogeneous. For highly heterogeneous systems distance trees like those implemented in
+[NearestNeighbors.jl](https://github.com/KristofferC/NearestNeighbors.jl) might be more performant.
 
-### High level interface for particle systems
+## Quick start: computing neighbor lists
 
-Since version `0.8.30`, a simpler, higher level interface was introduced, that will facilitate the use of `CellListMap` without any loss in performance. The new interface is flexible enough for the majority of applications. See the [ParticleSystem interface](@ref) menu for details. 
+The simplest use case of `CellListMap` is to compute the list of neighboring particles within a cutoff distance.
+This is provided by the `neighborlist` function:
 
-### Cutoff-delimited neighbor lists
+```julia-repl
+julia> using CellListMap
 
-The user might be more comfortable in using the package to compute the list of neighboring particles. A custom interface for this application is provided though the [Neighbor lists](@ref) interface. 
+julia> x = rand(3, 10_000); # 10,000 particles in 3D
 
-Note that, in general, neighbor lists are used to compute other pairwise dependent properties, and these can be, in principle, computed directly with `CellListMap` without the need to explicitly compute or store the lists of neighbors. 
+julia> neighborlist(x, 0.05) # cutoff of 0.05
+209452-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 1055, 0.04770602450750023)
+ (1, 1261, 0.048087995599677004)
+ ⋮
+ (9989, 8269, 0.0442616226498007)
+ (9989, 6452, 0.042189574206507035)
+```
 
-### Lower level interface
+Each element of the list is a tuple `(i, j, d)` containing the indices of the particles and their distance.
 
-The [Low level interface](@ref) allows the customization and optimization of very demanding calculations (although the ParticleSystem interface does not have any performance limitation and is easier to use).
+For periodic boundary conditions, provide the unit cell:
+
+```julia-repl
+julia> neighborlist(x, 0.05; unitcell=[1,1,1]) # periodic box of side 1
+305006-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 1055, 0.04770602450750023)
+ ⋮
+```
+
+See the [Neighbor lists](@ref) section for more details, including in-place computations for iterative workflows.
+
+## General pairwise computations
+
+For more general pairwise computations (energies, forces, etc.), the `ParticleSystem` interface provides
+a flexible way to define custom functions that are applied to all pairs of particles within the cutoff.
+See the [ParticleSystem interface](@ref) section for details.
 
 ## Installation
 

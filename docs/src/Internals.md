@@ -1,14 +1,21 @@
-# Low level interface
+# Internals
 
-Since version `0.8.30` we strongly encourage the use of the `ParticleSystem` interface. Yet, 
-the low level interface is still available. To use it, load the package as usual:
+!!! warning "Internal API"
+    The functions and types documented in this section are **not part of the public API**
+    and may change without notice between versions. They are documented here for
+    reference and for developers who need to understand the internal workings of the package.
+
+The internal interface provides direct access to the `Box` and `CellList` data structures.
+For most use cases, the [ParticleSystem interface](@ref) is recommended instead.
+
+To use the internal interface, load the package as usual:
 ```julia
 using CellListMap
 ```
 
 ## Examples
 
-The full code of the examples described here is available at the [examples](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/) directory. 
+The full code of the examples described here is available at the [examples](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/) directory.
 
 - [Mean difference of coordinates](@ref)
 - [Histogram of distances](@ref)
@@ -17,7 +24,7 @@ The full code of the examples described here is available at the [examples](http
 - [Nearest neighbor](@ref)
 - [Implementing Neighbor lists](@ref)
 
-### Mean difference of coordinates 
+### Mean difference of coordinates
 
 Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.
 
@@ -36,13 +43,13 @@ x = [ sides .* rand(3) for i in 1:N ]
 box = Box(sides,cutoff)
 cl = CellList(x,box)
 
-# Function to be evaluated from positions 
+# Function to be evaluated from positions
 f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation (0.0 is the initial value)
 avg_dx = normalization * map_pairwise(
-    (x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl 
+    (x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl
 )
 ```
 
@@ -72,7 +79,7 @@ map_pairwise!(
     hist,box,cl
 )
 ```
-Note that, since `hist` is mutable, there is no need to assign the output of `map_pairwise!` to it. 
+Note that, since `hist` is mutable, there is no need to assign the output of `map_pairwise!` to it.
 
 The example above can be run with `CellListMap.Examples.distance_histogram()` and is available in the
 [distance_histogram.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl) file.
@@ -85,7 +92,7 @@ In this test we compute the "gravitational potential", assigning to each particl
 # masses
 const mass = rand(N)
 
-# Function to be evaluated for each pair 
+# Function to be evaluated for each pair
 function potential(i,j,d2,mass,u)
     d = sqrt(d2)
     u = u - 9.8*mass[i]*mass[j]/d
@@ -171,7 +178,7 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = map_pairwise( 
+mind = map_pairwise(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
     mind,box,cl;reduce=reduce_mind
 )
@@ -180,12 +187,12 @@ mind = map_pairwise(
 The example above can be run with `CellListMap.Examples.nearest_neighbor()` and is available in the
 [nearest_neighbor.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor.jl) file.
 
-The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods. 
+The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods.
 
 ### Implementing Neighbor lists
 
 The implementation of the `CellLIstMap.neighborlist` (see [Neighbor lists](@ref)) is as follows:
-The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function. 
+The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function.
 
 ```julia
 # Function to be evaluated for each pair: push pair
@@ -214,7 +221,7 @@ map_pairwise!(
 )
 ```
 
-The full example can be run with `CellListMap.Examples.neighborlist()`, available in the file 
+The full example can be run with `CellListMap.Examples.neighborlist()`, available in the file
 [neighborlist.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/neighborlist.jl).
 
 ## Periodic boundary conditions
@@ -239,11 +246,11 @@ Box{OrthorhombicCell, 3, Float64, 9}
 
 ### Triclinic periodic boundary conditions
 
-Triclinic periodic boundary conditions of any kind can be used. However, the input has some limitations for the moment. The lattice vectors must have strictly positive coordinates, and the smallest distance within the cell cannot be smaller than twice the size of the cutoff. An error will be produced if the cell does not satisfy these conditions. 
+Triclinic periodic boundary conditions of any kind can be used. However, the input has some limitations for the moment. The lattice vectors must have strictly positive coordinates, and the smallest distance within the cell cannot be smaller than twice the size of the cutoff. An error will be produced if the cell does not satisfy these conditions.
 
-Let us illustrate building a two-dimensional cell, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all. 
+Let us illustrate building a two-dimensional cell, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all.
 
-Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cutoff=0.1`): 
+Here, the lattice vectors are `[1,0]` and `[0.5,1]` (and we illustrate with `cutoff=0.1`):
 
 ```julia-repl
 julia> box = Box([ 1.0  0.5
@@ -272,13 +279,13 @@ CellList{2, Float64}
 
 ```
 
-Upon construction of the cell lists, the cell is rotated such that the longest axis becomes oriented along the x-axis, and the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (these is an implementation detail only). 
+Upon construction of the cell lists, the cell is rotated such that the longest axis becomes oriented along the x-axis, and the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (these is an implementation detail only).
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors *as columns*. In three dimensions, for example, one could use:
 
 ```julia-repl
-julia> unitcell = [ 50.  0. 00. 
-                     0. 30. 30.          
+julia> unitcell = [ 50.  0. 00.
+                     0. 30. 30.
                      0. 00. 50. ]
 
 julia> box = Box(unitcell,  2.)
@@ -337,27 +344,27 @@ Note that the unit cell length is, on each direction, the maximum coordinates of
 - [Custom reduction functions](@ref)
 - [Number of batches](@ref)
 
-The parallel execution requires the splitting of the computation among tasks. 
+The parallel execution requires the splitting of the computation among tasks.
 
 ### How output is updated thread-safely
 
-To allow general output types, the approach of `CellListMap` is to copy the output variable the number of times necessary for each parallel task to update an independent output variables, which are reduced at the end. This, of course, requires some additional memory, particularly if the output being updated is formed by arrays. These copies can be preallocated, and custom reduction functions can be defined. 
+To allow general output types, the approach of `CellListMap` is to copy the output variable the number of times necessary for each parallel task to update an independent output variables, which are reduced at the end. This, of course, requires some additional memory, particularly if the output being updated is formed by arrays. These copies can be preallocated, and custom reduction functions can be defined.
 
-To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function. 
+To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function.
 
 By default, we define:
 ```julia
 output_threaded = [ deepcopy(output) for i in 1:nbatches(cl, :map) ]
 ```
-where `nbatches(cl, :map)` is the number of batches into which the mapped computation will be divided. The number of batches is *not* necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the **Number of batches** section below. 
+where `nbatches(cl, :map)` is the number of batches into which the mapped computation will be divided. The number of batches is *not* necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the **Number of batches** section below.
 
 The default reduction function just assumes the additivity of the results obtained by each batch:
 ```julia
 reduce(output::Number,output_threaded) = sum(output_threaded)
-function reduce(output::Vector,output_threaded) 
+function reduce(output::Vector,output_threaded)
     @. output = output_threaded[1]
     for i in 2:length(output_threaded)
-         @. output += output_threaded[i] 
+         @. output += output_threaded[i]
     end
     return output
 end
@@ -367,7 +374,7 @@ end
 
 In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
 ```julia
-mind = map_pairwise!( 
+mind = map_pairwise!(
     (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,box,cl;
     reduce=reduce_mind
 )
@@ -384,21 +391,21 @@ function reduce_mind(output,output_threaded)
     return mind
 end
 ```
-This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.  
+This function *must* return the updated `output` variable, being it mutable or not, to be compatible with the interface.
 
 Using the `length` of the `output_threaded` vector as the measure of how many copies of the array is available is convenient because it will be insensitive in changes in the number of batches that may be set.
 
 ### Number of batches
 
-Every calculation with cell lists has two steps: the construction of the lists, and the mapping of the computation among the pairs of particles that satisfy the cutoff criterion. 
+Every calculation with cell lists has two steps: the construction of the lists, and the mapping of the computation among the pairs of particles that satisfy the cutoff criterion.
 
-The construction of the cell list is harder to parallelize, because assigning each particle to a cell is fast, such that the cost of merging a set of lists generated in parallel can be as costly as building the lists themselves. Therefore, it is frequent that it is not worthwhile (actually it is detrimental for performance) to split the construction of the cell lists in too many threads. This is particularly relevant for smaller systems, for which the cost of constructing the lists can be comparable to the cost of actually computing the mapped function. 
+The construction of the cell list is harder to parallelize, because assigning each particle to a cell is fast, such that the cost of merging a set of lists generated in parallel can be as costly as building the lists themselves. Therefore, it is frequent that it is not worthwhile (actually it is detrimental for performance) to split the construction of the cell lists in too many threads. This is particularly relevant for smaller systems, for which the cost of constructing the lists can be comparable to the cost of actually computing the mapped function.
 
-At the same time, the homogeneity of the computation of the mapped function may be fast or not, homogeneous or not. These characteristics affect the optimal workload splitting strategy. For very large systems, or systems for which the function to be computed is not homogeneous in time, it may be interesting to split the workload in many tasks as possible, such that slow tasks do not dominate the final computational time.   
+At the same time, the homogeneity of the computation of the mapped function may be fast or not, homogeneous or not. These characteristics affect the optimal workload splitting strategy. For very large systems, or systems for which the function to be computed is not homogeneous in time, it may be interesting to split the workload in many tasks as possible, such that slow tasks do not dominate the final computational time.
 
-Both the above considerations can be used to tunning the `nbatches` parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations. 
+Both the above considerations can be used to tunning the `nbatches` parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations.
 
-By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small. The default value is defined by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`. 
+By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small. The default value is defined by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`.
 
 The values assumed for each number of batches can bee seen by printing the `nbatches` parameter of the cell lists:
 ```julia-repl
@@ -411,11 +418,11 @@ julia> cl = CellList(x,box);
 
 julia> cl.nbatches
 NumberOfBatches
-  Number of batches for cell list construction: 8 
-  Number of batches for function mapping: 32 
+  Number of batches for cell list construction: 8
+  Number of batches for function mapping: 32
 ```
-The construction of the cell lists is performed by creating copies of the data, and currently does not scale very well. Thus, no more than 8 batches are used by default, to avoid delays associated to data copying and garbage collection. The number of batches of the mapping function uses an heuristic which currently limits somewhat the number of batches for small systems, when the overhead of spawning tasks is greater than the computation. 
-Using more batches than threads for the function mapping is effective most times in avoiding uneven workload, but it may be a problem if the output to be reduced is too large, as the threaded version of the output contains `nbatches` copies of the output. 
+The construction of the cell lists is performed by creating copies of the data, and currently does not scale very well. Thus, no more than 8 batches are used by default, to avoid delays associated to data copying and garbage collection. The number of batches of the mapping function uses an heuristic which currently limits somewhat the number of batches for small systems, when the overhead of spawning tasks is greater than the computation.
+Using more batches than threads for the function mapping is effective most times in avoiding uneven workload, but it may be a problem if the output to be reduced is too large, as the threaded version of the output contains `nbatches` copies of the output.
 
 Using less batches than the number of threads also allows the efficient use of nested multi-threading, as the computations will only use the number of threads required, leaving the other threads available for other tasks.
 
@@ -432,7 +439,7 @@ NumberOfBatches
   Number of batches for cell list construction: 1
   Number of batches for function mapping: 4
 ```
-fine tunning of the performance for a specific problem can be obtained by adjusting this parameter. 
+fine tunning of the performance for a specific problem can be obtained by adjusting this parameter.
 
 If the number of batches is set as zero for any of the two options, the default value is retained. For example:
 
@@ -441,7 +448,7 @@ julia> cl = CellList(x,box,nbatches=(0,4));
 
 julia> cl.nbatches
 NumberOfBatches
-  Number of batches for cell list construction: 8 
+  Number of batches for cell list construction: 8
   Number of batches for function mapping: 4
 
 julia> cl = CellList(x,box,nbatches=(4,0));
@@ -502,7 +509,7 @@ julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches 
 
 ### Preallocating the cell lists and cell list auxiliary arrays
 
-The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrink) on this update. 
+The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrink) on this update.
 
 ```julia
 # Initialize cell lists with initial coordinates
@@ -529,7 +536,7 @@ for i in 1:nsteps
 end
 ```
 
-By passing the `aux` auxiliary structure, the `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater. 
+By passing the `aux` auxiliary structure, the `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater.
 
 !!! warning
     If the number of batches of threading is changed, the structure of auxiliary arrays must be reinitialized. Otherwise, incorrect results can be obtained.
@@ -546,7 +553,7 @@ for i in 1:nsteps
     ...
     # Reset forces_threaded
     for i in 1:nbatches(cl)
-        @. forces_threaded[i] = zero(SVector{3,Float64}) 
+        @. forces_threaded[i] = zero(SVector{3,Float64})
     end
 end
 ```
@@ -560,19 +567,19 @@ box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 map_pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is `lcell=1`, because in `CellListMap` implements a method to avoid spurious computations of distances on top of the cell lists, but for very dense systems, or for very large cutoffs (meaning, for situations in which the number of particles per cell may be very large), a greater `lcell` may provide a better performance. It is unlikely that `lcell > 3` is useful in any practical situation. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The performance can be tested using the progress meter, as explained below.  
+This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is `lcell=1`, because in `CellListMap` implements a method to avoid spurious computations of distances on top of the cell lists, but for very dense systems, or for very large cutoffs (meaning, for situations in which the number of particles per cell may be very large), a greater `lcell` may provide a better performance. It is unlikely that `lcell > 3` is useful in any practical situation. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The performance can be tested using the progress meter, as explained below.
 
-As a rough guide, `lcell > 1` is only worthwhile if the number of particles per cell is greater than  `~200-400`.  
+As a rough guide, `lcell > 1` is only worthwhile if the number of particles per cell is greater than  `~200-400`.
 
 !!! note
-    The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`. 
+    The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.
     Thus if the `length` of the box is too large relative to the `cutoff`, many cells will be created, and this
     imposes a perhaps large memory requirement. Usually, it is a good practice to limit the number of cells to
     be not greater than the number of particles, and for that the cutoff may have to be increased, if there is
-    a memory bottleneck. A reasonable choice is to use `cutoff = max(real_cutoff, length/n^(1/D))` where `n` is the 
-    number of particles and `D` is the dimension (2 or 3). With that the number of cells will be close to `n` in the worst case.  
+    a memory bottleneck. A reasonable choice is to use `cutoff = max(real_cutoff, length/n^(1/D))` where `n` is the
+    number of particles and `D` is the dimension (2 or 3). With that the number of cells will be close to `n` in the worst case.
 
-## Output progress 
+## Output progress
 
 For long-running computations, the user might want to see the progress. A progress meter can be turned on with the `show_progress` option. For example:
 ```julia
@@ -583,13 +590,13 @@ will print something like:
 Progress:  43%|█████████████████                    | ETA: 0:18:25
 ```
 
-Thus, besides being useful for following the progress of a long run, it is useful to test different values of `lcell` to tune the performance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. The default and recommended option for production runs is to use `show_progress=false`, because tracking the progress introduces a small overhead into the computation. 
+Thus, besides being useful for following the progress of a long run, it is useful to test different values of `lcell` to tune the performance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. The default and recommended option for production runs is to use `show_progress=false`, because tracking the progress introduces a small overhead into the computation.
 
 ## Some benchmarks
 
 ### Computing a histogram of pairwise velocities
 
-The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. 
+The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities.
 
 ```@raw html
 <center>
@@ -599,13 +606,13 @@ The goal here is to provide a good implementation of cell lists. We compare it w
 </center>
 ```
 
-The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. These benchmarks were run on an Intel i7 8th gen laptop, with 4 cores (8 threads). 
+The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. These benchmarks were run on an Intel i7 8th gen laptop, with 4 cores (8 threads).
 
 ## Additional options
 
 ### Input coordinates as matrices
 
-For compatibility with other software, the input coordinates can be provided as matrices. The matrices must have dimensions `(2,N)` or `(3,N)`, where `N` is the number of particles (because Julia is column-major, thus this has the same memory layout of an array of length `N` of static vectors). 
+For compatibility with other software, the input coordinates can be provided as matrices. The matrices must have dimensions `(2,N)` or `(3,N)`, where `N` is the number of particles (because Julia is column-major, thus this has the same memory layout of an array of length `N` of static vectors).
 
 For example:
 ```julia-repl
@@ -634,9 +641,3 @@ Modules = [CellListMap]
 Pages = ["Box.jl", "CellListMap.jl", "CellLists.jl", "CellOperations.jl", "./core_computing/self.jl", "./core_computing/cross.jl"]
 Order = [:type, :function]
 ```
-
-
-
-
-
-
