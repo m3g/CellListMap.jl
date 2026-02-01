@@ -189,7 +189,6 @@ function InPlaceNeighborList(;
     unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
     parallel::Bool=true,
     show_progress::Bool=false,
-    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
     T = cutoff isa Integer ? Float64 : eltype(cutoff)
@@ -576,7 +575,6 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
-    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
     system = InPlaceNeighborList(; x, cutoff, unitcell, parallel, show_progress, nbatches)
@@ -673,7 +671,6 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
-    autoswap=true, # deprecated, sets are always swapped automatically
     nbatches=(0, 0)
 )
     system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, nbatches)
