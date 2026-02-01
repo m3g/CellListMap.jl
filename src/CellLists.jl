@@ -172,6 +172,7 @@ struct CellListPair{N,T}
     small_set::CellList{N,T}
     large_set::CellList{N,T}
     swap::Bool
+    autoswap::Bool
 end
 
 function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
@@ -238,6 +239,7 @@ function update_number_of_batches!(
         ),
         large_set,
         cl.swap,
+        cl.autoswap,
     )
 end
 
@@ -649,14 +651,19 @@ function CellList(
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
+    autoswap::Bool=true,
     validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
 ) where {UnitCellType,N,T}
-    xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
+    if autoswap
+        xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
+    else
+        xsmall, xlarge, swap = x, y, false
+    end
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     small_set = CellList(xsmall, box; parallel, validate_coordinates)
     large_set = CellList(xlarge, box; parallel, validate_coordinates)
-    cl_pair = CellListPair{N,T}(small_set, large_set, swap)
+    cl_pair = CellListPair{N,T}(small_set, large_set, swap, autoswap)
     cl_pair = set_number_of_batches!(cl_pair, nbatches; parallel)
     return cl_pair
 end
@@ -675,13 +682,14 @@ function CellList(
     box::Box{UnitCellType,N,T};
     parallel::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
+    autoswap::Bool=true,
     validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
 ) where {UnitCellType,N,T}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     size(y, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
     y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
-    return CellList(x_re, y_re, box; parallel, nbatches, validate_coordinates)
+    return CellList(x_re, y_re, box; parallel, nbatches, autoswap, validate_coordinates)
 end
 
 """
@@ -1316,12 +1324,16 @@ function UpdateCellList!(
 ) where {N,T}
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
-    xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
+    if cl_pair.autoswap
+        xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
+    else
+        xsmall, xlarge, swap = x, y, false
+    end
     small_aux = isnothing(aux) ? nothing : aux.small_set
     large_aux = isnothing(aux) ? nothing : aux.large_set
     small_set = UpdateCellList!(xsmall, box, cl_pair.small_set, small_aux; parallel, validate_coordinates)
     large_set = UpdateCellList!(xlarge, box, cl_pair.large_set, large_aux; parallel, validate_coordinates)
-    return CellListPair{N,T}(small_set, large_set, swap)
+    return CellListPair{N,T}(small_set, large_set, swap, cl_pair.autoswap)
 end
 
 #=
@@ -1381,6 +1393,53 @@ particles_per_cell(cl::CellListPair) = particles_per_cell(cl.small_set) + partic
     cl = UpdateCellList!(x3, y3, box, cl; parallel=true)
     @test cl.small_set.n_real_particles == 50
     @test cl.large_set.n_real_particles == 100
+end
+
+@testitem "CellListPair autoswap option" begin
+    using CellListMap, StaticArrays
+    box = Box([1, 1, 1], 0.1)
+
+    # When x is larger, autoswap=true (default) swaps so y is small_set
+    x = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3,Float64}, 50)
+    cl = CellList(x, y, box)
+    @test cl.swap == true
+    @test cl.autoswap == true
+    @test cl.small_set.n_real_particles == 50
+    @test cl.large_set.n_real_particles == 100
+
+    # autoswap=false keeps x as small_set regardless of size
+    cl = CellList(x, y, box; autoswap=false)
+    @test cl.swap == false
+    @test cl.autoswap == false
+    @test cl.small_set.n_real_particles == 100
+    @test cl.large_set.n_real_particles == 50
+
+    # When x is smaller, autoswap=true does not swap
+    x_small = rand(SVector{3,Float64}, 30)
+    cl = CellList(x_small, y, box)
+    @test cl.swap == false
+    @test cl.autoswap == true
+    @test cl.small_set.n_real_particles == 30
+
+    # autoswap persists through UpdateCellList!
+    cl = CellList(x, y, box; autoswap=false)
+    x2 = rand(SVector{3,Float64}, 100)
+    y2 = rand(SVector{3,Float64}, 50)
+    cl = UpdateCellList!(x2, y2, box, cl)
+    @test cl.autoswap == false
+    @test cl.swap == false
+    @test cl.small_set.n_real_particles == 100
+    @test cl.large_set.n_real_particles == 50
+
+    # autoswap=true re-evaluates swap on update when sizes change
+    cl = CellList(x, y, box; autoswap=true)
+    @test cl.swap == true  # x(100) > y(50), so swapped
+    x3 = rand(SVector{3,Float64}, 20)  # now x is smaller
+    y3 = rand(SVector{3,Float64}, 50)
+    cl = UpdateCellList!(x3, y3, box, cl)
+    @test cl.swap == false  # x(20) < y(50), no swap needed
+    @test cl.small_set.n_real_particles == 20
 end
 
 @testitem "celllists - validate coordinates" begin

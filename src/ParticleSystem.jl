@@ -117,7 +117,7 @@ function ParticleSystem(;
     output::Any,
     output_name::Symbol=:output,
     parallel::Bool=true,
-    autoswap=true, # deprecated, sets are always swapped automatically
+    autoswap::Bool=true,
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
     validate_coordinates::Union{Nothing,Function}=_validate_coordinates,
@@ -166,7 +166,7 @@ function ParticleSystem(;
     else
         unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
         _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
-        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, validate_coordinates)
+        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, autoswap, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         output = _reset_all_output!(output, _output_threaded)
@@ -938,8 +938,13 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end
-        n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
-                              (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
+        if sys._cell_list.autoswap
+            n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
+                                  (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
+        else
+            n_particles_changed = (length(sys.xpositions) != sys._cell_list.small_set.n_real_particles) ||
+                                  (length(sys.ypositions) != sys._cell_list.large_set.n_real_particles)
+        end
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys.ypositions,

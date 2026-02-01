@@ -189,7 +189,7 @@ function InPlaceNeighborList(;
     unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
     parallel::Bool=true,
     show_progress::Bool=false,
-    autoswap=true, # deprecated, sets are always swapped automatically
+    autoswap::Bool=true,
     nbatches=(0, 0)
 )
     T = cutoff isa Integer ? Float64 : eltype(cutoff)
@@ -205,7 +205,7 @@ function InPlaceNeighborList(;
             unitcell = limits(x, y)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box; parallel, nbatches)
+        cl = CellList(x, y, box; parallel, nbatches, autoswap)
         aux = AuxThreaded(cl)
     end
     nb = NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[])
@@ -575,7 +575,7 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
-    autoswap=true, # deprecated, sets are always swapped automatically
+    autoswap=true,
     nbatches=(0, 0)
 )
     system = InPlaceNeighborList(; x, cutoff, unitcell, parallel, show_progress, nbatches)
@@ -672,11 +672,37 @@ function neighborlist(
     unitcell=nothing,
     parallel=true,
     show_progress=false,
-    autoswap=true, # deprecated, sets are always swapped automatically
+    autoswap=true,
     nbatches=(0, 0)
 )
-    system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, nbatches)
+    system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, autoswap, nbatches)
     return neighborlist!(system)
+end
+
+@testitem "Neighborlist autoswap option" begin
+    using CellListMap, StaticArrays
+
+    x = rand(SVector{3,Float64}, 200)
+    y = rand(SVector{3,Float64}, 50)
+    unitcell = [1.0 0 0; 0 1.0 0; 0 0 1.0]
+
+    # autoswap=true and autoswap=false produce the same index pairs
+    nl_swap = neighborlist(x, y, 0.1; unitcell, autoswap=true)
+    nl_noswap = neighborlist(x, y, 0.1; unitcell, autoswap=false)
+    @test length(nl_swap) == length(nl_noswap)
+    s1 = sort(nl_swap)
+    s2 = sort(nl_noswap)
+    @test all(s1[k][1:2] == s2[k][1:2] for k in eachindex(s1))
+    @test all(abs(s1[k][3] - s2[k][3]) < 1e-15 for k in eachindex(s1))
+
+    # InPlaceNeighborList preserves autoswap=false across updates
+    system = InPlaceNeighborList(; x, y, cutoff=0.1, unitcell=unitcell, autoswap=false)
+    @test system.cl.autoswap == false
+    @test system.cl.swap == false
+    neighborlist!(system)
+    update!(system, x, y)
+    @test system.cl.autoswap == false
+    @test system.cl.swap == false
 end
 
 @testitem "Neighborlist - pathological" begin

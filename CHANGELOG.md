@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.9.17-DEV
 --------------
+- ![INFO][badge-info] Recover the `autoswap` option: users can now set `autoswap=false` to disable the automatic reordering of particle sets in two-set computations.
 
 Version 0.9.16
 --------------
