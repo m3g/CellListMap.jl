@@ -802,7 +802,7 @@ This function can be used to update the system geometry in iterative schemes.
 Here we initialize a particle system with a cutoff of `8.0` and then update
 the cutoff to `10.0`. 
 
-```jldoctest ; filter = r"batches.*" => ""
+```jldoctest ; filter = r"auxiliary.*" => ""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
