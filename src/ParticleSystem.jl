@@ -11,6 +11,76 @@ const SupportedTypes = Union{Number,SVector,FieldVector}
 # Supported types for coordinates
 const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}
 
+# Abstract type only for cleaner dispatch
+abstract type AbstractParticleSystem{OutputName} end
+
+"""
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+Structure that carries the information necessary for `map_pairwise!` computations,
+for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
+pairs of particles of the set). 
+
+The `xpositions`, `output`, and `parallel` fields are considered part of the API,
+and you can retrive or mutate `xpositions`, retrieve the `output` or its elements,
+and set the computation to use or not parallelization by directly accessing these
+elements.
+
+The other fileds of the structure (starting with `_`) are internal and must not 
+be modified or accessed directly. The construction of the `ParticleSystem1` structure
+is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)` 
+auxiliary function.
+
+"""
+mutable struct ParticleSystem1{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
+    xpositions::V
+    output::O
+    _box::B
+    _cell_list::C
+    _output_threaded::Vector{O}
+    _aux::A
+    parallel::Bool
+    validate_coordinates::VC
+end
+
+"""
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+Structure that carries the information necessary for `map_pairwise!` computations,
+for systems with two set of positions (thus, replacing the loops over `N×M` 
+pairs of particles, being `N` and `M` the number of particles of each set).
+
+The `xpositions`, `ypositions`, `output`, and `parallel` fields are considered part of the API,
+and you can retrive or mutate positions, retrieve the `output` or its elements,
+and set the computation to use or not parallelization by directly accessing these
+elements.
+
+The other fileds of the structure (starting with `_`) are internal and must not 
+be modified or accessed directly. The construction of the `ParticleSystem1` structure
+is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
+auxiliary function.
+
+"""
+mutable struct ParticleSystem2{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
+    xpositions::V
+    ypositions::V
+    output::O
+    _box::B
+    _cell_list::C
+    _output_threaded::Vector{O}
+    _aux::A
+    parallel::Bool
+    validate_coordinates::VC
+end
+ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
+    ParticleSystem2{OutputName,V,O,B,C,A,VC}(vx, vy, o, b, c, vo, a, p, vc)
+
 """
     ParticleSystem(;
         xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
@@ -174,44 +244,6 @@ function ParticleSystem(;
     return sys
 end
 
-# Abstract type only for cleaner dispatch
-abstract type AbstractParticleSystem{OutputName} end
-
-"""
-
-$(TYPEDEF)
-
-$(TYPEDFIELDS)
-
-Structure that carries the information necessary for `map_pairwise!` computations,
-for systems with two set of positions (thus, replacing the loops over `N×M` 
-pairs of particles, being `N` and `M` the number of particles of each set).
-
-The `xpositions`, `ypositions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrive or mutate positions, retrieve the `output` or its elements,
-and set the computation to use or not parallelization by directly accessing these
-elements.
-
-The other fileds of the structure (starting with `_`) are internal and must not 
-be modified or accessed directly. The construction of the `ParticleSystem1` structure
-is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
-auxiliary function.
-
-"""
-mutable struct ParticleSystem2{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
-    xpositions::V
-    ypositions::V
-    output::O
-    _box::B
-    _cell_list::C
-    _output_threaded::Vector{O}
-    _aux::A
-    parallel::Bool
-    validate_coordinates::VC
-end
-ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
-    ParticleSystem2{OutputName,V,O,B,C,A,VC}(vx, vy, o, b, c, vo, a, p, vc)
-
 import Base: getproperty, propertynames
 getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractParticleSystem, s::Val{S}) where {S} = getfield(sys, S)
@@ -219,7 +251,7 @@ getproperty(sys::AbstractParticleSystem, s::Val{S}) where {S} = getfield(sys, S)
 getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
 getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
 getproperty(sys::AbstractParticleSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
-propertynames(sys::AbstractParticleSystem{OutputName}) where {OutputName} =
+propertynames(::AbstractParticleSystem{OutputName}) where {OutputName} =
     (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, OutputName)
 
 import Base: setproperty!
@@ -347,37 +379,6 @@ CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
 
 end
 
-"""
-
-$(TYPEDEF)
-
-$(TYPEDFIELDS)
-
-Structure that carries the information necessary for `map_pairwise!` computations,
-for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
-pairs of particles of the set). 
-
-The `xpositions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrive or mutate `xpositions`, retrieve the `output` or its elements,
-and set the computation to use or not parallelization by directly accessing these
-elements.
-
-The other fileds of the structure (starting with `_`) are internal and must not 
-be modified or accessed directly. The construction of the `ParticleSystem1` structure
-is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)` 
-auxiliary function.
-
-"""
-mutable struct ParticleSystem1{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
-    xpositions::V
-    output::O
-    _box::B
-    _cell_list::C
-    _output_threaded::Vector{O}
-    _aux::A
-    parallel::Bool
-    validate_coordinates::VC
-end
 ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
     ParticleSystem1{OutputName,V,O,B,C,A,VC}(v, o, b, c, vo, a, p, vc)
 getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
