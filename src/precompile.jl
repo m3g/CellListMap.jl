@@ -13,10 +13,10 @@ PrecompileTools.@setup_workload begin
     y2d = copy(x2d)
     u2d = [1.0 0.0; 0.0 1.0]
     x, box = CellListMap.xatomic(5000)
-    f(_, _, _, _, d2, out) = out += d2
+    f(pair, out) = out += pair.d2
     PrecompileTools.@compile_workload begin
         cl = CellList(x, box)
-        map_pairwise!(f, 0.0, box, cl)
+        foreachneighbor!(f, 0.0, box, cl)
         neighborlist(x3d, y3d, cutoff, unitcell=u3d)
         neighborlist(x3d, y3d, cutoff, unitcell=LinearAlgebra.diag(u3d))
         neighborlist(x3d, cutoff, unitcell=u3d)
@@ -28,8 +28,8 @@ PrecompileTools.@setup_workload begin
         neighborlist(x2d, y2d, cutoff)
         neighborlist(x2d, cutoff, unitcell=u2d)
         sys = ParticleSystem(positions=x3d, unitcell=u3d, cutoff=cutoff, output=0.0)
-        map_pairwise(f, y3d, sys)
+        foreachneighbor(f, y3d, sys)
         sys = ParticleSystem(positions=x2d, unitcell=u2d, cutoff=cutoff, output=0.0)
-        map_pairwise(f, y2d, sys)
+        foreachneighbor(f, y2d, sys)
     end
 end

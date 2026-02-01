@@ -95,8 +95,8 @@ function view_celllist_particles(cl::CellList{N,T}) where {N,T}
 end
 
 test_map2(box, cl; parallel=true) =
-    map_pairwise!(
-        (x, y, i, j, d2, s) -> begin
+    foreachneighbor!(
+        (pair, s) -> begin
             s += 1
         end,
         0, box, cl, parallel=parallel
@@ -118,7 +118,7 @@ function missing_pair(x1, x2)
     end
 end
 
-test_map(box, cl; parallel=true) = map_pairwise!((x, y, i, j, d2, s) -> s += 1 / d2, 0.0, box, cl, parallel=parallel)
+test_map(box, cl; parallel=true) = foreachneighbor!((pair, s) -> s += 1 / pair.d2, 0.0, box, cl, parallel=parallel)
 test_naive(x, box) = CellListMap.map_naive!((x, y, i, j, d2, s) -> s += 1 / d2, 0.0, x, box)
 function simple_test(x, box; parallel=true)
     cl = CellList(x, box, parallel=parallel)
@@ -571,7 +571,7 @@ function test_pathological(; nmax=1000, npoints=2)
         box = Box(matrix, cutoff; lcell=lcell)
         naive = CellListMap.map_naive!((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, x, box)
         cl = CellList(x, box)
-        clmap = map_pairwise((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, box, cl)
+        clmap = foreachneighbor((pair, out) -> g(pair.i, pair.j, pair.d2, box.cutoff, out), 0, box, cl)
         if naive != clmap
             return x, box
         end

@@ -1,5 +1,5 @@
 #=
-    map_pairwise!(
+    foreachneighbor!(
         f::Function,
         output,
         box::Box,
@@ -14,21 +14,18 @@ considering the periodic boundary conditions given in the `Box` structure.
 If the distance is smaller than the cutoff, a function `f` of the
 coordinates of the two particles will be computed.
 
-The function `f` receives six arguments as input:
-    f(x,y,i,j,d2,output)
-Which are the coordinates of one particle, the coordinates of the
-second particle, the index of the first particle, the index of the second
-particle, the squared distance between them, and the `output` variable.
-It has also to return the same `output` variable. Thus, `f` may or not
-mutate `output`, but in either case it must return it. With that, it is
-possible to compute an average property of the distance of the particles
-or, for example, build a histogram. The squared distance `d2` is computed
-internally for comparison with the
-`cutoff`, and is passed to the `f` because many times it is used for the
-desired computation.
+The function `f` receives two arguments as input:
+    f(pair, output)
+Where `pair` is a `NeighborPair` struct with fields:
+- `pair.i`, `pair.j`: indices of the particles
+- `pair.x`, `pair.y`: coordinates (minimum-image adjusted)
+- `pair.d`: distance between particles
+- `pair.d2`: squared distance
+
+The function must return the updated `output` variable.
 
 =#
-function map_pairwise!(f::F, output, box::Box, cl::CellList;
+function foreachneighbor!(f::F, output, box::Box, cl::CellList;
     # Parallelization options
     parallel::Bool=true,
     output_threaded=nothing,
@@ -36,14 +33,14 @@ function map_pairwise!(f::F, output, box::Box, cl::CellList;
     show_progress::Bool=false,
 ) where {F} # Needed for specialization for this function (avoids some allocations)
     if parallel
-        output = map_pairwise_parallel!(
+        output = foreachneighbor_parallel!(
             f, output, box, cl;
             output_threaded=output_threaded,
             reduce=reduce,
             show_progress=show_progress
         )
     else
-        output = map_pairwise_serial!(f, output, box, cl, show_progress=show_progress)
+        output = foreachneighbor_serial!(f, output, box, cl, show_progress=show_progress)
     end
     return output
 end
@@ -51,7 +48,7 @@ end
 #
 # Serial version for self-pairwise computations
 #
-function map_pairwise_serial!(
+function foreachneighbor_serial!(
     f::F, output, box::Box, cl::CellList{N,T};
     show_progress::Bool=false
 ) where {F,N,T}
@@ -81,7 +78,7 @@ end
 # is to avoid allocations caused by the capturing of variables by the closures created
 # by the macro. This may not be needed in the future, if the corresponding issue is solved.
 # See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
-function map_pairwise_parallel!(
+function foreachneighbor_parallel!(
     f::F1, output, box::Box, cl::CellList{N,T};
     output_threaded=nothing,
     reduce::F2=reduce,
@@ -114,7 +111,7 @@ inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibat
 
 #
 # The call to the current_cell function
-# has a single cell as input, and vicinal cell interactions skip the i>=j for 
+# has a single cell as input, and vicinal cell interactions skip the i>=j for
 # triclinic cells.
 #
 function inner_loop!(
@@ -142,7 +139,7 @@ end
 # Interactions in the current cell
 #
 
-# Call with single cell: this implies that this is a self-computation, and thus we loop over the 
+# Call with single cell: this implies that this is a self-computation, and thus we loop over the
 # upper triangle only in the case of the Orthorhombic cell
 function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cell, output) where {F<:Function}
     @unpack cutoff_sqr, inv_rotation = box
@@ -156,7 +153,8 @@ function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cel
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                output = f(pair, output)
             end
         end
     end
@@ -177,7 +175,8 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                output = f(pair, output)
             end
         end
     end

@@ -24,8 +24,8 @@ function average_displacement(;N=100_000,parallel=true,x=nothing)
     # Function to be evaluated for each pair: sum of displacements on x
     f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
   
-    avg_dx = (N / (N * (N - 1) / 2)) * map_pairwise(
-        (x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx),
+    avg_dx = (N / (N * (N - 1) / 2)) * foreachneighbor(
+        (pair, avg_dx) -> f(pair.x, pair.y, avg_dx),
         0.,box,cl,
         parallel=parallel
     )

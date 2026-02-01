@@ -47,8 +47,8 @@ function neighborlist(;N=100_000,parallel=true,x=nothing)
     pairs = Tuple{Int,Int,Float64}[]
 
     # Run pairwise computation
-    map_pairwise!(
-        (x, y, i, j, d2, pairs) -> push_pair!(i, j, d2, pairs, cutoff),
+    foreachneighbor!(
+        (pair, pairs) -> push_pair!(pair.i, pair.j, pair.d2, pairs, cutoff),
         pairs,box,cl,
         reduce=reduce_pairs,
         parallel=parallel

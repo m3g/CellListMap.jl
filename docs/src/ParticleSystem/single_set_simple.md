@@ -25,12 +25,12 @@ julia> system = ParticleSystem(
 Now, let us compute the energy of the particles, assuming a simple formula which depends on the inverse of the distance between pairs:
 
 ```julia-repl
-julia> function energy(x, y, i, j, d2, energy)
-           energy += 1 / sqrt(d2)
-           return energy
-       end
+function energy(pair, energy)
+    energy += 1 / pair.d
+    return energy
+end
 
-julia> map_pairwise!(energy, system)
+julia> foreachneighbor!(energy, system)
 207.37593043370865
 ```
 Note that the first four parameters of `energy` are not used here but are needed to adhere to the interface. The function
@@ -48,11 +48,11 @@ If the `output_name` field is not provided, the output value from the `system.ou
 Following the example above, let us compute the forces between the particles. We have to define the function that computes the force between a pair of particles and updates the array of forces:
 
 ```julia
-function update_forces!(x,y,i,j,d2,forces)
-    d = sqrt(d2)
-    df = (1/d2)*(1/d)*(y - x)
-    forces[i] += df
-    forces[j] -= df
+function update_forces!(pair, forces)
+    d = pair.d
+    df = (1/pair.d2)*(1/d)*(pair.y - pair.x)
+    forces[pair.i] += df
+    forces[pair.j] -= df
     return forces
 end
 ```
@@ -87,7 +87,7 @@ julia> system.forces
 
 A call to `map_pairwise!` with the appropriate function definition will update the forces:
 ```julia-repl
-julia> map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
+foreachneighbor!((pair, forces) -> update_forces!(pair, forces), system)
 100-element Vector{SVector{3, Float64}}:
  [0.026493833307357332, 0.18454277989323772, -0.012253902366284965]
  [0.07782602581235695, 0.2791082233740261, 0.21926615329195248]

@@ -26,7 +26,7 @@
         unitcell, coordinates = getcoor(file)
         box = Box(unitcell, cutoff, lcell=lcell)
         cl = CellList(coordinates, box)
-        u = map_pairwise!((x, y, i, j, d2, u) -> lj_Argon_Gromacs(d2, u), 0.0, box, cl)
+        u = foreachneighbor!((pair, u) -> lj_Argon_Gromacs(pair.d2, u), 0.0, box, cl)
         return u
     end
 

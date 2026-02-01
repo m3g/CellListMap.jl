@@ -74,14 +74,14 @@ _next!(p) = next!(p)
     @test_throws ArgumentError CellListMap.reduce("hello", [1, 2, 3])
 end
 
-@testitem "map_pairwise with show_progress" begin
+@testitem "foreachneighbor with show_progress" begin
     using CellListMap
     using CellListMap: Box, CellList
     using StaticArrays
     x = rand(SVector{3,Float64}, 100)
     box = Box([1, 1, 1], 0.1)
     cl = CellList(x, box)
-    r = map_pairwise!((x, y, i, j, d2, r) -> r + d2, 0.0, box, cl; show_progress=true)
+    r = foreachneighbor!((pair, r) -> r + pair.d2, 0.0, box, cl; show_progress=true)
     @test r >= 0.0
 end
 

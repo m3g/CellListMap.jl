@@ -20,7 +20,7 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Structure that carries the information necessary for `map_pairwise!` computations,
+Structure that carries the information necessary for `foreachneighbor!` computations,
 for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
 pairs of particles of the set). 
 
@@ -52,7 +52,7 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Structure that carries the information necessary for `map_pairwise!` computations,
+Structure that carries the information necessary for `foreachneighbor!` computations,
 for systems with two set of positions (thus, replacing the loops over `N×M` 
 pairs of particles, being `N` and `M` the number of particles of each set).
 
@@ -153,7 +153,7 @@ julia> sys = ParticleSystem(
            output = 0.0, 
         );
 
-julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
+julia> foreachneighbor!((pair,output) -> output += pair.d2, sys)
 43774.54367600001
 ```
 ## Two sets of particles
@@ -174,7 +174,7 @@ julia> sys = ParticleSystem(
            parallel = false, # use true for parallelization
         );
 
-julia> map_pairwise!((x,y,i,j,d2,output) -> output += d2, sys)
+julia> foreachneighbor!((pair,output) -> output += pair.d2, sys)
 21886.196785000004
 ```
 """
@@ -318,7 +318,7 @@ CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
             output=0.0,
             output_name=:test
         )
-        @test CellListMap.map_pairwise((x, y, i, j, d2, out) -> out += d2, _sys) == 0.0
+        @test CellListMap.foreachneighbor((pair, out) -> out += pair.d2, _sys) == 0.0
     end
 
     # unitcell type
@@ -600,7 +600,7 @@ julia> # Construct the system
        );
 
 julia> # Obtain the minimum distance between atoms:
-       map_pairwise!((x,y,i,j,d2,output) -> sqrt(d2) < output.d ? MinimumDistance(sqrt(d2)) : output, sys)
+       foreachneighbor!((pair,output) -> pair.d < output.d ? MinimumDistance(pair.d) : output, sys)
 MinimumDistance(2.1991993997816563)
 ```
 
@@ -1021,7 +1021,7 @@ end
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
-    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    foreachneighbor((pair, out) -> out += pair.d2, sys)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
         CellListMap._nbatches_map_computation(10000),
@@ -1033,7 +1033,7 @@ end
     sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     nb_before = nbatches(sys)
     sys.xpositions .= rand(SVector{3,Float64}, 1000)
-    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    foreachneighbor((pair, out) -> out += pair.d2, sys)
     @test nbatches(sys) == nb_before
 
     # ParticleSystem1: manually set nbatches are not overridden on resize
@@ -1043,7 +1043,7 @@ end
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
-    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    foreachneighbor((pair, out) -> out += pair.d2, sys)
     @test nbatches(sys) == (2, 3)
 
     # ParticleSystem2: nbatches updates when particle count changes
@@ -1056,7 +1056,7 @@ end
     sys.xpositions .= x
     resize!(sys.ypositions, length(y))
     sys.ypositions .= y
-    map_pairwise((_, _, _, _, d2, out) -> out += d2, sys)
+    foreachneighbor((pair, out) -> out += pair.d2, sys)
     # For CellListPair, nbatches is determined by the large set
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
@@ -1066,7 +1066,7 @@ end
 end
 
 """
-    map_pairwise!(
+    foreachneighbor!(
         f::Function, system::AbstractParticleSystem; 
         show_progress = true, update_lists = true
     )
@@ -1074,24 +1074,21 @@ end
 Function that maps the `f` function into all pairs of particles of
 `system` that are found to be within the `cutoff`. 
 
-The function `f` must be of the general form:
+The function `f` receives a `NeighborPair` struct and the output:
 ```
-function f(x,y,i,j,d2,output)
-    # operate on particle coordinates, distance and indexes
+function f(pair, output)
+    # pair.i, pair.j: indices of the particles
+    # pair.x, pair.y: coordinates (minimum-image adjusted)
+    # pair.d: distance between particles
+    # pair.d2: squared distance
     # update output
     return output
 end
 ```
-where `x` and `y` are the coordinates (adjusted for the minimum
-image) of the two particles involved, `i` and `j` their indices in the
-original arrays of positions, `d2` their squared Euclidean distance,
-and `output` the current value of the `output` variable. The `output`
-variable must be updated within this function with the contribution
-of the two particles involved. 
 
 Thread-safety is taken care automatically in parallel executions.
 
-`map_pairwise` is an alias to `map_pairwise!` for syntax consistency
+`foreachneighbor` is an alias to `foreachneighbor!` for syntax consistency
 when the `output` variable is immutable.
 
 If `update_lists` is `false`, the cell lists will not be recomputed,
@@ -1111,12 +1108,12 @@ julia> sys = ParticleSystem(
            output = 0.0
            );
 
-julia> map_pairwise((x,y,i,j,d2,output) -> output += 1 / (1 + sqrt(d2)), sys)
+julia> foreachneighbor((pair, output) -> output += 1 / (1 + pair.d), sys)
 1870.0274887950268
 ```
 
 """
-function map_pairwise!(
+function foreachneighbor!(
     f::F,
     sys::AbstractParticleSystem;
     update_lists::Bool=true,
@@ -1124,7 +1121,7 @@ function map_pairwise!(
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
     UpdateParticleSystem!(sys, update_lists)
-    sys.output = CellListMap.map_pairwise!(
+    sys.output = CellListMap.foreachneighbor!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
         parallel=sys.parallel,
@@ -1145,9 +1142,9 @@ end
     y = rand(SVector{3,Float64}, 100)
     p = ParticleSystem(positions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.positions .= x
-    @test_throws ArgumentError map_pairwise((x, y, i, j, d2, out) -> out += d2, p)
+    @test_throws ArgumentError foreachneighbor((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
-    @test map_pairwise((x, y, i, j, d2, out) -> out += d2, p) > 0.0
+    @test foreachneighbor((pair, out) -> out += pair.d2, p) > 0.0
     # 2-set system
     x = rand(SVector{3,Float64}, 100)
     x[50] = SVector(1.1, NaN, 1.1)
@@ -1158,10 +1155,10 @@ end
     @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.xpositions .= x
-    @test_throws ArgumentError map_pairwise((x, y, i, j, d2, out) -> out += d2, p)
+    @test_throws ArgumentError foreachneighbor((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.ypositions .= x
-    @test_throws ArgumentError map_pairwise((x, y, i, j, d2, out) -> out += d2, p)
+    @test_throws ArgumentError foreachneighbor((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
-    @test map_pairwise((x, y, i, j, d2, out) -> out += d2, p) > 0.0
+    @test foreachneighbor((pair, out) -> out += pair.d2, p) > 0.0
 end

@@ -39,7 +39,7 @@ system = ParticleSystem(
     output = 0.0u"nm^2",
     output_name = :sum_sqr
 )
-map_pairwise((x,y,i,j,d2,out) -> out += d2, system)
+foreachneighbor((pair, out) -> out += pair.d2, system)
 ```
 
 ### Units in neighbor lists
@@ -75,7 +75,7 @@ julia> function sum_sqr(x, sides, cutoff)
                cutoff=eltype(x).(cutoff),
                output=zero(eltype(x))
            )
-           return  map_pairwise((_, _, _, _, d2, sum_sqr) -> sum_sqr += d2, sys)
+           return  foreachneighbor((pair, sum_sqr) -> sum_sqr += pair.d2, sys)
        end
 ```
 
@@ -155,7 +155,7 @@ and the mapping is performed with the stripped coordinates, but passing the valu
 ```julia-repl
 julia> using LinearAlgebra: norm_sqr
 
-julia> result = map_pairwise!(
+result = foreachneighbor!(
            (xᵢ,xⱼ,i,j,d2,sum_sqr) -> begin
                x1 = x_input[i]
                x2 = CellListMap.wrap_relative_to(x_input[j],x1,unitcell)

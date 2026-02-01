@@ -57,8 +57,8 @@ function pairwise_velocities(::Type{T}=Float64;
   
     # Needs this to stabilize the type of velocities and hist, probably
     function barrier!(f!, velocities, rbins, hist, box, cl, reduce_hist, parallel)
-        map_pairwise!(
-            (x, y, i, j, d2, hist) -> f!(x, y, i, j, d2, hist, velocities, rbins),
+        foreachneighbor!(
+            (pair, hist) -> f!(pair.x, pair.y, pair.i, pair.j, pair.d2, hist, velocities, rbins),
             hist, box, cl,
             reduce=reduce_hist,
             parallel=parallel

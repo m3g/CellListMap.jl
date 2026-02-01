@@ -46,8 +46,8 @@ function packmol(;parallel=false,sides=[46.4,31.5,18.7],tol=2.0,UnitCellType=Ort
     function forces_cl!(f::Vector{T},x,box::Box,cl::CellList,fpair::F) where {T,F}
         fill!(f,zero(T))
         cl = UpdateCellList!(x,box,cl,parallel=parallel)
-        map_pairwise!(
-            (x,y,i,j,d2,f) -> fpair(x,y,i,j,d2,f,box),
+        foreachneighbor!(
+            (pair,f) -> fpair(pair.x,pair.y,pair.i,pair.j,pair.d2,f,box),
             f, box, cl, parallel=parallel
         )
         return f
@@ -55,9 +55,9 @@ function packmol(;parallel=false,sides=[46.4,31.5,18.7],tol=2.0,UnitCellType=Ort
 
     function u_pack(x,box::Box,cl::CellList)
         cl = UpdateCellList!(x,box,cl,parallel=false)
-        u = map_pairwise(
-            (x,y,i,j,d2,u) -> begin
-                u += (sqrt(d2) - box.cutoff)^2 # objective function
+        u = foreachneighbor(
+            (pair,u) -> begin
+                u += (sqrt(pair.d2) - box.cutoff)^2 # objective function
                 return u
             end,
             0., box, cl,

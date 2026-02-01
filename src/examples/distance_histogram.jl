@@ -34,8 +34,8 @@ function distance_histogram(;N=100_000,parallel=true,x=nothing)
     hist = zeros(Int, 10)
 
     # Run pairwise computation
-    map_pairwise!(
-        (x, y, i, j, d2, hist) -> build_histogram!(d2, hist),
+    foreachneighbor!(
+        (pair, hist) -> build_histogram!(pair.d2, hist),
         hist, box, cl,
         parallel=parallel
     )

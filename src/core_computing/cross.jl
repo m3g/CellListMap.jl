@@ -1,39 +1,39 @@
 #=
-    map_pairwise!(f::Function, output, box::Box, cl::CellListPair)
+    foreachneighbor!(f::Function, output, box::Box, cl::CellListPair)
 
 Evaluate function f for pairs in two independent sets of particles, for which the `CellListPair`
 object was constructed.
 
 =#
-function map_pairwise!(f::F1, output, box::Box, cl::CellListPair{N,T};
+function foreachneighbor!(f::F1, output, box::Box, cl::CellListPair{N,T};
     # Parallelization options
     parallel::Bool=true,
     output_threaded=nothing,
     reduce::F2=reduce,
     show_progress::Bool=false
 ) where {F1,F2,N,T} # F1, F2 Needed for specialization for these functions
-    fswap(x, y, i, j, d2, output) = f(y, x, j, i, d2, output)
+    fswap(pair, output) = f(NeighborPair(pair.j, pair.i, pair.y, pair.x, pair.d2), output)
     if !cl.swap
         if parallel
-            output = map_pairwise_parallel!(
+            output = foreachneighbor_parallel!(
                 f, output, box, cl;
                 output_threaded=output_threaded,
                 reduce=reduce,
                 show_progress=show_progress
             )
         else
-            output = map_pairwise_serial!(f, output, box, cl, show_progress=show_progress)
+            output = foreachneighbor_serial!(f, output, box, cl, show_progress=show_progress)
         end
     else
         if parallel
-            output = map_pairwise_parallel!(
+            output = foreachneighbor_parallel!(
                 fswap, output, box, cl;
                 output_threaded=output_threaded,
                 reduce=reduce,
                 show_progress=show_progress
             )
         else
-            output = map_pairwise_serial!(fswap, output, box, cl, show_progress=show_progress)
+            output = foreachneighbor_serial!(fswap, output, box, cl, show_progress=show_progress)
         end
     end
     return output
@@ -42,7 +42,7 @@ end
 #
 # Serial version for cross-interaction computations
 #
-function map_pairwise_serial!(
+function foreachneighbor_serial!(
     f::F, output, box::Box, cl::CellListPair;
     show_progress::Bool=false
 ) where {F<:Function}
@@ -72,7 +72,7 @@ end
 # is to avoid allocations caused by the capturing of variables by the closures created
 # by the macro. This may not be needed in the future, if the corresponding issue is solved.
 # See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
-function map_pairwise_parallel!(
+function foreachneighbor_parallel!(
     f::F1, output, box::Box, cl::CellListPair{N,T};
     output_threaded=nothing,
     reduce::F2=reduce,
@@ -91,7 +91,7 @@ function map_pairwise_parallel!(
 end
 
 #
-# The interactions do not skip the i>=j in any type of cell. 
+# The interactions do not skip the i>=j in any type of cell.
 #
 function inner_loop!(
     f::F,
@@ -134,7 +134,8 @@ function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cel
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, pᵢ.index, pⱼ.index, d2, output)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                output = f(pair, output)
             end
         end
     end
@@ -145,14 +146,14 @@ end
 # Cross-computations when only one cell list was computed
 #
 """
-    map_pairwise!(f::Function, x::AbstractVector{<:AbstractVector}, sys::ParticleSystem1; kargs...)
-    map_pairwise!(f::Function, x::AbstractMatrix, sys::ParticleSystem1; kargs...)
+    foreachneighbor!(f::Function, x::AbstractVector{<:AbstractVector}, sys::ParticleSystem1; kargs...)
+    foreachneighbor!(f::Function, x::AbstractMatrix, sys::ParticleSystem1; kargs...)
 
 Evaluate function f for pairs in two independent sets of particles, where the `sys::ParicleSystem1` object
 contains the previously computed cell lists of one set of particles, and the second set is given by the
 array of positions `x`.
 
-This function can be advantageous over computing the interactions with `CellListPair`, because here the 
+This function can be advantageous over computing the interactions with `CellListPair`, because here the
 cell lists are only computed for one set. This is advantageous in two situations:
 
     1. The second set of particles is not changing, and the first set is changing. Thus, the cell lists
@@ -178,12 +179,12 @@ julia> sys = ParticleSystem(positions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, o
 
 julia> y = rand(SVector{3,Float64}, 100);
 
-julia> map_pairwise((x,y,i,j,d2,output) -> output + sqrt(d2), y, sys; update_lists=false) # Compute the sum of the distances of x and y
+julia> foreachneighbor((pair, output) -> output + pair.d, y, sys; update_lists=false) # Compute the sum of the distances of x and y
 31.121496300032163
 
 julia> z = rand(SVector{3,Float64}, 200);
 
-julia> map_pairwise((x,y,i,j,d2,output) -> output + sqrt(d2), z, sys; update_lists=false) # Compute the sum of the distances x and z
+julia> foreachneighbor((pair, output) -> output + pair.d, z, sys; update_lists=false) # Compute the sum of the distances x and z
 63.57860511891242
 ```
 
@@ -196,20 +197,20 @@ julia> sys = ParticleSystem(positions=rand(SVector{3,Float64}, 1000), unitcell=[
 
 julia> y = rand(SVector{3,Float64}, 100);
 
-julia> f(x,y,i,j,d2,output) = output + sqrt(d2);
+julia> f(pair, output) = output + pair.d;
 
-julia> @ballocated map_pairwise(\$f, \$y, \$sys; update_lists=false) samples=1 evals=1
+julia> @ballocated foreachneighbor(\$f, \$y, \$sys; update_lists=false) samples=1 evals=1
 0
 ```
 
 """
-function map_pairwise!(
+function foreachneighbor!(
     f::F, x::AbstractVecOrMat, sys::ParticleSystem1;
     show_progress::Bool=false, update_lists::Bool=true,
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
     UpdateParticleSystem!(sys, update_lists)
-    sys.output = map_pairwise!(
+    sys.output = foreachneighbor!(
         f, sys.output, sys._box, x, sys._cell_list;
         output_threaded=sys._output_threaded,
         reduce=(output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
@@ -223,7 +224,7 @@ end
 # associated to the code of creating of `output_threaded` in the serial version, despite
 # the fact that it is not used and initialized with `nothing`.
 #
-function _serial_map_pairwise_x_vs_sys!(
+function _serial_foreachneighbor_x_vs_sys!(
     f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T};
     show_progress::Bool=false,
 ) where {F1<:Function,N,T}
@@ -243,7 +244,7 @@ function _batch_x_vs_sys!(f::F, x, x_atom_indices, ibatch, output_threaded, box,
     end
 end
 
-function _parallel_map_pairwise_x_vs_sys!(
+function _parallel_foreachneighbor_x_vs_sys!(
     f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T};
     show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
 ) where {F1<:Function,F2<:Function,N,T}
@@ -258,25 +259,25 @@ function _parallel_map_pairwise_x_vs_sys!(
     return reduce(output, output_threaded)
 end
 
-function map_pairwise!(
+function foreachneighbor!(
     f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T};
     parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
 ) where {F1<:Function,F2<:Function,N,T}
     output = if parallel
-        _parallel_map_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress, output_threaded, reduce)
+        _parallel_foreachneighbor_x_vs_sys!(f, output, box, x, cl; show_progress, output_threaded, reduce)
     else
-        _serial_map_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress)
+        _serial_foreachneighbor_x_vs_sys!(f, output, box, x, cl; show_progress)
     end
     return output
 end
 
-function map_pairwise!(
+function foreachneighbor!(
     f::F1, output, box::Box, x::AbstractMatrix, cl::CellList{N};
     parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
 ) where {N,F1<:Function,F2<:Function}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
-    return map_pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
+    return foreachneighbor!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
 end
 
 function single_particle_vs_list!(
@@ -301,7 +302,8 @@ function single_particle_vs_list!(
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                output = f(inv_rotation * xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
+                pair = NeighborPair(i, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                output = f(pair, output)
             end
         end
     end
@@ -335,7 +337,8 @@ function single_particle_vs_list!(
                 xpⱼ = pⱼ.coordinates
                 d2 = norm_sqr(xpᵢ - xpⱼ)
                 if d2 <= cutoff_sqr
-                    output = f(xpᵢ, inv_rotation * xpⱼ, i, pⱼ.index, d2, output)
+                    pair = NeighborPair(i, pⱼ.index, xpᵢ, inv_rotation * xpⱼ, d2)
+                    output = f(pair, output)
                 end
             end
         end

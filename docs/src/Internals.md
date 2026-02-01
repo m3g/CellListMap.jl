@@ -48,8 +48,8 @@ f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation (0.0 is the initial value)
-avg_dx = normalization * map_pairwise(
-    (x,y,i,j,d2,sum_dx) -> f(x,y,sum_dx), 0.0, box, cl
+avg_dx = normalization * foreachneighbor(
+    (pair, sum_dx) -> f(pair.x, pair.y, sum_dx), 0.0, box, cl
 )
 ```
 
@@ -74,9 +74,9 @@ end;
 hist = zeros(Int,10);
 
 # Run calculation
-map_pairwise!(
-    (x,y,i,j,d2,hist) -> build_histogram!(d2,hist),
-    hist,box,cl
+foreachneighbor!(
+    (pair, hist) -> build_histogram!(pair.d2, hist),
+    hist, box, cl
 )
 ```
 Note that, since `hist` is mutable, there is no need to assign the output of `map_pairwise!` to it.
@@ -100,7 +100,7 @@ function potential(i,j,d2,mass,u)
 end
 
 # Run pairwise computation
-u = map_pairwise((x,y,i,j,d2,u) -> potential(i,j,d2,mass,u),0.0,box,cl)
+u = foreachneighbor((pair, u) -> potential(pair.i, pair.j, pair.d2, mass, u), 0.0, box, cl)
 ```
 
 The example above can be run with `CellListMap.Examples.gravitational_potential()` and is available in the
@@ -128,9 +128,9 @@ end
 forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
 # Run pairwise computation
-map_pairwise!(
-    (x,y,i,j,d2,forces) -> calc_forces!(x,y,i,j,d2,mass,forces),
-    forces,box,cl
+foreachneighbor!(
+    (pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces),
+    forces, box, cl
 )
 
 ```
@@ -178,9 +178,9 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = map_pairwise(
-    (x,y,i,j,d2,mind) -> f(i,j,d2,mind),
-    mind,box,cl;reduce=reduce_mind
+mind = foreachneighbor(
+    (pair, mind) -> f(pair.i, pair.j, pair.d2, mind),
+    mind, box, cl; reduce=reduce_mind
 )
 ```
 
@@ -214,9 +214,9 @@ end
 pairs = Tuple{Int,Int,Float64}[]
 
 # Run pairwise computation
-map_pairwise!(
-    (x,y,i,j,d2,pairs) -> push_pair!(i,j,d2,pairs),
-    pairs,box,cl,
+foreachneighbor!(
+    (pair, pairs) -> push_pair!(pair.i, pair.j, pair.d2, pairs),
+    pairs, box, cl,
     reduce=reduce_pairs
 )
 ```
