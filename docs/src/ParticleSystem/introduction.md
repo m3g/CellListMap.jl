@@ -55,7 +55,7 @@ end
 ```
 and this function is passed directly to `map_pairwise`:
 ```julia
-u = map_pairwise(energy, system)
+u = map_pairwise!(energy, system)
 ```
 (what `system` is will be explained in the examples below). Note that the `energy` function only uses `pair.d` (the distance), but all other fields (`pair.x`, `pair.y`, `pair.i`, `pair.j`, `pair.d2`) are available.
 
@@ -67,7 +67,7 @@ function energy(pair, u, masses)
     return u
 end
 const masses = # ... some masses
-u = map_pairwise((pair, u) -> energy(pair, u, masses), system)
+u = map_pairwise!((pair, u) -> energy(pair, u, masses), system)
 ```
 
 Here we reinforce the fact that the `energy` functions defined above compute the contribution to the energy of the interaction of *a single* pair

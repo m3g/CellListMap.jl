@@ -59,7 +59,7 @@ Base.propertynames(::NeighborPair) = (:i, :j, :x, :y, :d, :d2)
 function map_pairwise! end
 
 """
-    map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
+    map_pairwise!(args...;kargs...) = map_pairwise!(args...;kargs...)
 
 is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the function is immutable, it may be
 clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the

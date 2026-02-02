@@ -40,7 +40,7 @@ f(x,y,sum_dx) = sum_dx + abs(x[1] - y[1])
 normalization = N / (N*(N-1)/2) # (number of particles) / (number of pairs)
 
 # Run calculation (0.0 is the initial value)
-avg_dx = normalization * map_pairwise(
+avg_dx = normalization * map_pairwise!(
     (pair, sum_dx) -> f(pair.x, pair.y, sum_dx), 0.0, box, cl
 )
 ```
@@ -92,7 +92,7 @@ function potential(i,j,d2,mass,u)
 end
 
 # Run pairwise computation
-u = map_pairwise((pair, u) -> potential(pair.i, pair.j, pair.d2, mass, u), 0.0, box, cl)
+u = map_pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, mass, u), 0.0, box, cl)
 ```
 
 The example above can be run with `CellListMap.Examples.gravitational_potential()` and is available in the
@@ -171,7 +171,7 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = map_pairwise(f, mind, box, cl; reduce=reduce_mind)
+mind = map_pairwise!(f, mind, box, cl; reduce=reduce_mind)
 ```
 
 The example above can be run with `CellListMap.Examples.nearest_neighbor()` and is available in the
@@ -515,7 +515,7 @@ for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
     UpdateCellList!(x,y,box,cl,aux) # modifies cl
-    map_pairwise(...)
+    map_pairwise!(...)
 end
 ```
 

@@ -167,6 +167,8 @@ cell lists are only computed for one set. This is advantageous in two situations
 - `show_progress::Bool=false`: Show progress bar.
 - `update_lists::Bool=true`: Update the cell lists or not. If the positions of the `ParticleSystem1` object
    have not changed, it is not necessary to update the cell lists.
+- `reset::Bool=true`: If set to `false` the value of `sys.output` will not be set to `zero(typeof(sys.output)`,
+   and the result will be accumulated
 
 ## Example
 
@@ -179,36 +181,21 @@ julia> sys = ParticleSystem(positions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, o
 
 julia> y = rand(SVector{3,Float64}, 100);
 
-julia> map_pairwise((pair, output) -> output + pair.d, y, sys; update_lists=false) # Compute the sum of the distances of x and y
+julia> map_pairwise!((pair, output) -> output + pair.d, y, sys; update_lists=false) # Compute the sum of the distances of x and y
 31.121496300032163
 
 julia> z = rand(SVector{3,Float64}, 200);
 
-julia> map_pairwise((pair, output) -> output + pair.d, z, sys; update_lists=false) # Compute the sum of the distances x and z
+julia> map_pairwise!((pair, output) -> output + pair.d, z, sys; update_lists=false) # Compute the sum of the distances x and z
 63.57860511891242
-```
-
-### Note that, in this case, if the computation is run serially, it is completely non-allocating:
-
-```jldoctest
-julia> using CellListMap, StaticArrays, BenchmarkTools
-
-julia> sys = ParticleSystem(positions=rand(SVector{3,Float64}, 1000), unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, parallel=false);
-
-julia> y = rand(SVector{3,Float64}, 100);
-
-julia> f(pair, output) = output + pair.d2;
-
-julia> @ballocated map_pairwise(\$f, \$y, \$sys; update_lists=false) samples=1 evals=1
-0
 ```
 
 """
 function map_pairwise!(
     f::F, x::AbstractVecOrMat, sys::ParticleSystem1;
-    show_progress::Bool=false, update_lists::Bool=true,
+    show_progress::Bool=false, update_lists::Bool=true, reset::Bool=true,
 ) where {F<:Function}
-    sys.output = _reset_all_output!(sys.output, sys._output_threaded)
+    sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
     UpdateParticleSystem!(sys, update_lists)
     sys.output = map_pairwise!(
         f, sys.output, sys._box, x, sys._cell_list;

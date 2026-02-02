@@ -94,7 +94,7 @@ system = ParticleSystem(
     output_name = :energy_and_forces
 )
 # Compute energy and forces
-map_pairwise(energy_and_forces!, system)
+map_pairwise!(energy_and_forces!, system)
 ```
 
 ## Two sets of particles
@@ -136,7 +136,7 @@ system = ParticleSystem(
        output_name = :minimum_distance,
 )
 # Compute the minimum distance
-map_pairwise(minimum_distance, system)
+map_pairwise!(minimum_distance, system)
 ```
 
 In the above example, the function is used such that cell lists are constructed for both
@@ -163,7 +163,7 @@ ysystem = ParticleSystem(
 )
 # obtain the minimum distance between xpositions and the cell list in system
 # Note the additional `xpositions` parameter in the call to map_pairwise.
-map_pairwise(get_md, xpositions, ysystem)
+map_pairwise!(get_md, xpositions, ysystem)
 ```
 
 Additionally, if the `xpositions` are updated, we can obtain compute the function relative to `ysystem` without
@@ -172,7 +172,7 @@ having to update the cell lists:
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},100);
 
-julia> map_pairwise(minimum_distance, xpositions, ysystem)
+julia> map_pairwise!(minimum_distance, xpositions, ysystem)
 MinimumDistance(67, 580, 0.008423693268450603)
 ```
 

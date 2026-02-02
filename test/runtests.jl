@@ -481,7 +481,7 @@ end
             [SVector{2,Float64}(0.1 * i, 0.1 * j) for i in 0:5 for j in 0:5]
         ]
             cl = CellList(x, box)
-            d0 = map_pairwise((pair, out) -> f(pair.i, pair.j, pair.d2, out), 0, box, cl)
+            d0 = map_pairwise!((pair, out) -> f(pair.i, pair.j, pair.d2, out), 0, box, cl)
             d1 = CellListMap.map_naive!((x, y, i, j, d2, out) -> f(i,j,d2,out), 0, x, box)
             @test d0 ≈ d1
         end

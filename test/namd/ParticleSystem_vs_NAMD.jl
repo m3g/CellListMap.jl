@@ -42,7 +42,7 @@
             output=0.0,
             lcell=lcell,
         )
-        u = map_pairwise(
+        u = map_pairwise!(
             (pair, u) -> lj_NE(pair.d2, u),
             system,
         )

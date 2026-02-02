@@ -571,7 +571,7 @@ function test_pathological(; nmax=1000, npoints=2)
         box = Box(matrix, cutoff; lcell=lcell)
         naive = CellListMap.map_naive!((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, x, box)
         cl = CellList(x, box)
-        clmap = map_pairwise((pair, out) -> g(pair.i, pair.j, pair.d2, box.cutoff, out), 0, box, cl)
+        clmap = map_pairwise!((pair, out) -> g(pair.i, pair.j, pair.d2, box.cutoff, out), 0, box, cl)
         if naive != clmap
             return x, box
         end
