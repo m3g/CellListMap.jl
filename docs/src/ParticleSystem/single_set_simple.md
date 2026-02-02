@@ -30,7 +30,7 @@ function energy(pair, energy)
     return energy
 end
 
-julia> map_pairwise!(energy, system)
+julia> pairwise!(energy, system)
 207.37593043370865
 ```
 Note that the first four parameters of `energy` are not used here but are needed to adhere to the interface. The function
@@ -85,9 +85,9 @@ julia> system.forces
  [0.0, 0.0, 0.0]
 ```
 
-A call to `map_pairwise!` with the appropriate function definition will update the forces:
+A call to `pairwise!` with the appropriate function definition will update the forces:
 ```julia-repl
-map_pairwise!((pair, forces) -> update_forces!(pair, forces), system)
+pairwise!((pair, forces) -> update_forces!(pair, forces), system)
 100-element Vector{SVector{3, Float64}}:
  [0.026493833307357332, 0.18454277989323772, -0.012253902366284965]
  [0.07782602581235695, 0.2791082233740261, 0.21926615329195248]

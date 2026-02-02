@@ -33,7 +33,7 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 
 Structure to define the number of batches used in the parallel splitting of the calculations
-of the cell list construction and of the `map_pairwise` computation. It is initialized with
+of the cell list construction and of the `pairwise` computation. It is initialized with
 a standard heuristic that returns at most the number of threads, but may return a smaller
 number if the system is small. The two parameters can be tuned for optimal performance of each
 step of the calculation (cell list construction and mapping of interactions). The construction
@@ -324,7 +324,7 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
         x = rand(SVector{3,Float64}, 10000)
         resize!(sys.xpositions, length(x))
         sys.xpositions .= x
-        map_pairwise!((pair, out) -> out += pair.d2, sys)
+        pairwise!((pair, out) -> out += pair.d2, sys)
         @test nbatches(sys) == (8, 10)
     else
         @warn "Test not run because it is invalid for this number of threads"

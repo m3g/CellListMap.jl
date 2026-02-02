@@ -1,6 +1,6 @@
 # Updating the system
 
-If the `map_pairwise!` function will compute energy and/or forces in an iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.
+If the `pairwise!` function will compute energy and/or forces in an iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.
 
 ## Updating coordinates
 
@@ -56,7 +56,7 @@ same length as the array of positions:
 ```julia-repl
 julia> resize_output!(system, length(system.xpositions));
 
-julia> map_pairwise!(update_forces!, system)
+julia> pairwise!(update_forces!, system)
 1001-element Vector{SVector{3, Float64}}:
  [756.2076075886971, -335.1637545330828, 541.8627090466914]
  [-173.02442398784672, -178.782819965489, 4.570607952876692]

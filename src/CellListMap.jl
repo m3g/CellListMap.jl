@@ -13,7 +13,7 @@ using Base: @lock # not exported in 1.6
 using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
 export NeighborPair
-export map_pairwise!, map_pairwise
+export pairwise!, pairwise
 
 # Testing file
 const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
@@ -37,7 +37,7 @@ within the cutoff distance.
 ```julia-repl
 julia> sys = ParticleSystem(positions=rand(SVector{3,Float64},100), cutoff=0.1, unitcell=[1,1,1], output=0.0);
 
-julia> map_pairwise!((pair, out) -> out += 1/pair.d, sys)
+julia> pairwise!((pair, out) -> out += 1/pair.d, sys)
 ```
 
 """
@@ -56,17 +56,17 @@ Base.getproperty(p::NeighborPair, ::Val{:d}) = sqrt(getfield(p, :d2))
 Base.propertynames(::NeighborPair) = (:i, :j, :x, :y, :d, :d2)
 
 # name holder
-function map_pairwise! end
+function pairwise! end
 
 """
-    map_pairwise!(args...;kargs...) = map_pairwise!(args...;kargs...)
+    pairwise!(args...;kargs...) = pairwise!(args...;kargs...)
 
-is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the function is immutable, it may be
+is an alias for `pairwise!` which is defined for two reasons: first, if the output of the function is immutable, it may be
 clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the
 bang as a valid character.
 
 """
-const map_pairwise = map_pairwise!
+const pairwise = pairwise!
 
 include("./linearalgebra.jl")
 include("./show.jl")

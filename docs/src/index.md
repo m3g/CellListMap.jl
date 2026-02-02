@@ -91,11 +91,11 @@ julia> x = rand(3, 10_000); # 10,000 particles in 3D
 
 julia> sys = ParticleSystem(positions=x, cutoff=0.05, unitcell=[1,1,1], output=0.0)
 
-julia> map_pairwise!((pair, u) -> u += 1/pair.d, sys)
+julia> pairwise!((pair, u) -> u += 1/pair.d, sys)
 792925.6234732079
 ```
 
-Note that in the above example the `map_pairwise` method is actually performing a `map_pairwise` operation, where the output value `u` is summed up over all neighboring pairs of particles. 
+Note that in the above example the `pairwise` method is actually performing a `pairwise` operation, where the output value `u` is summed up over all neighboring pairs of particles. 
 
 ## Installation
 

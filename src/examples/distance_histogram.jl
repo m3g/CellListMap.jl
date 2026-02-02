@@ -34,7 +34,7 @@ function distance_histogram(;N=100_000,parallel=true,x=nothing)
     hist = zeros(Int, 10)
 
     # Run pairwise computation
-    map_pairwise!(
+    pairwise!(
         (pair, hist) -> build_histogram!(pair.d2, hist),
         hist, box, cl,
         parallel=parallel

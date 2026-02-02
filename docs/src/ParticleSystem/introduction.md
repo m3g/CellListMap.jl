@@ -53,9 +53,9 @@ function energy(pair, u)
     return u
 end
 ```
-and this function is passed directly to `map_pairwise`:
+and this function is passed directly to `pairwise`:
 ```julia
-u = map_pairwise!(energy, system)
+u = pairwise!(energy, system)
 ```
 (what `system` is will be explained in the examples below). Note that the `energy` function only uses `pair.d` (the distance), but all other fields (`pair.x`, `pair.y`, `pair.i`, `pair.j`, `pair.d2`) are available.
 
@@ -67,11 +67,11 @@ function energy(pair, u, masses)
     return u
 end
 const masses = # ... some masses
-u = map_pairwise!((pair, u) -> energy(pair, u, masses), system)
+u = pairwise!((pair, u) -> energy(pair, u, masses), system)
 ```
 
 Here we reinforce the fact that the `energy` functions defined above compute the contribution to the energy of the interaction of *a single* pair
-of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `map_pairwise` call.
+of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `pairwise` call.
 
 !!! note
     The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as an arrays of forces.

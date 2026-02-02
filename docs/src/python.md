@@ -352,10 +352,10 @@ We can initialize the output variable (the histogram) using a regular `numpy` ar
 In [45]: hist = np.zeros(10)
 ```
 
-and call the `map_pairwise` function to obtain the histogram of the distances within the `cutoff`:
+and call the `pairwise` function to obtain the histogram of the distances within the `cutoff`:
 
 ```python
-In [46]: jl.map_pairwise!(jl.histogram, hist, box, cl)
+In [46]: jl.pairwise!(jl.histogram, hist, box, cl)
 Out[46]: 
 10-element PythonCall.PyArray{Float64, 1, true, true, Float64}:
  153344.0

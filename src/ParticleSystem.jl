@@ -20,7 +20,7 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Structure that carries the information necessary for `map_pairwise!` computations,
+Structure that carries the information necessary for `pairwise!` computations,
 for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
 pairs of particles of the set). 
 
@@ -52,7 +52,7 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Structure that carries the information necessary for `map_pairwise!` computations,
+Structure that carries the information necessary for `pairwise!` computations,
 for systems with two set of positions (thus, replacing the loops over `N×M` 
 pairs of particles, being `N` and `M` the number of particles of each set).
 
@@ -121,7 +121,7 @@ are farther from each other than the cutoff.
 
 !!! note
     The `output` value is the initial value of the output. Tipicaly this is 
-    set to `zero(typeof(output))`. In subsequent call to `map_pairwise!`, 
+    set to `zero(typeof(output))`. In subsequent call to `pairwise!`, 
     the initial value can be optionally reset to `zero(typeof(output))`.
 
 `output_name` can be set to a symbol that best identifies the output variable.
@@ -158,7 +158,7 @@ julia> sys = ParticleSystem(
            output = 0.0, 
         );
 
-julia> map_pairwise!((pair,output) -> output += pair.d2, sys)
+julia> pairwise!((pair,output) -> output += pair.d2, sys)
 43774.54367600001
 ```
 ## Two sets of particles
@@ -179,7 +179,7 @@ julia> sys = ParticleSystem(
            parallel = false, # use true for parallelization
         );
 
-julia> map_pairwise!((pair,output) -> output += pair.d2, sys)
+julia> pairwise!((pair,output) -> output += pair.d2, sys)
 21886.196785000004
 ```
 """
@@ -323,7 +323,7 @@ CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
             output=0.0,
             output_name=:test
         )
-        @test CellListMap.map_pairwise!((pair, out) -> out += pair.d2, _sys) == 0.0
+        @test CellListMap.pairwise!((pair, out) -> out += pair.d2, _sys) == 0.0
     end
 
     # unitcell type
@@ -605,7 +605,7 @@ julia> # Construct the system
        );
 
 julia> # Obtain the minimum distance between atoms:
-       map_pairwise!((pair,output) -> pair.d < output.d ? MinimumDistance(pair.d) : output, sys)
+       pairwise!((pair,output) -> pair.d < output.d ? MinimumDistance(pair.d) : output, sys)
 MinimumDistance(2.1991993997816563)
 ```
 
@@ -1026,7 +1026,7 @@ end
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
-    map_pairwise!((pair, out) -> out += pair.d2, sys)
+    pairwise!((pair, out) -> out += pair.d2, sys)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
         CellListMap._nbatches_map_computation(10000),
@@ -1038,7 +1038,7 @@ end
     sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     nb_before = nbatches(sys)
     sys.xpositions .= rand(SVector{3,Float64}, 1000)
-    map_pairwise!((pair, out) -> out += pair.d2, sys)
+    pairwise!((pair, out) -> out += pair.d2, sys)
     @test nbatches(sys) == nb_before
 
     # ParticleSystem1: manually set nbatches are not overridden on resize
@@ -1048,7 +1048,7 @@ end
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
-    map_pairwise!((pair, out) -> out += pair.d2, sys)
+    pairwise!((pair, out) -> out += pair.d2, sys)
     @test nbatches(sys) == (2, 3)
 
     # ParticleSystem2: nbatches updates when particle count changes
@@ -1061,7 +1061,7 @@ end
     sys.xpositions .= x
     resize!(sys.ypositions, length(y))
     sys.ypositions .= y
-    map_pairwise!((pair, out) -> out += pair.d2, sys)
+    pairwise!((pair, out) -> out += pair.d2, sys)
     # For CellListPair, nbatches is determined by the large set
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
@@ -1071,7 +1071,7 @@ end
 end
 
 """
-    map_pairwise!(
+    pairwise!(
         f::Function, system::AbstractParticleSystem; 
         show_progress=true, update_lists=true, reset=true,
     )
@@ -1093,7 +1093,7 @@ end
 
 Thread-safety is taken care automatically in parallel executions.
 
-`map_pairwise` is an alias to `map_pairwise!` for syntax consistency
+`pairwise` is an alias to `pairwise!` for syntax consistency
 when the `output` variable is immutable.
 
 If `update_lists` is `false`, the cell lists will not be recomputed,
@@ -1116,12 +1116,12 @@ julia> sys = ParticleSystem(
            output = 0.0
            );
 
-julia> map_pairwise!((pair, output) -> output += 1 / (1 + pair.d), sys)
+julia> pairwise!((pair, output) -> output += 1 / (1 + pair.d), sys)
 1870.0274887950268
 ```
 
 """
-function map_pairwise!(
+function pairwise!(
     f::F,
     sys::AbstractParticleSystem;
     update_lists::Bool=true,
@@ -1130,7 +1130,7 @@ function map_pairwise!(
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
     UpdateParticleSystem!(sys, update_lists)
-    sys.output = CellListMap.map_pairwise!(
+    sys.output = CellListMap.pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
         parallel=sys.parallel,
@@ -1151,9 +1151,9 @@ end
     y = rand(SVector{3,Float64}, 100)
     p = ParticleSystem(positions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.positions .= x
-    @test_throws ArgumentError map_pairwise!((pair, out) -> out += pair.d2, p)
+    @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
-    @test map_pairwise!((pair, out) -> out += pair.d2, p) > 0.0
+    @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
     # 2-set system
     x = rand(SVector{3,Float64}, 100)
     x[50] = SVector(1.1, NaN, 1.1)
@@ -1164,12 +1164,12 @@ end
     @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.xpositions .= x
-    @test_throws ArgumentError map_pairwise!((pair, out) -> out += pair.d2, p)
+    @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.ypositions .= x
-    @test_throws ArgumentError map_pairwise!((pair, out) -> out += pair.d2, p)
+    @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
-    @test map_pairwise!((pair, out) -> out += pair.d2, p) > 0.0
+    @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
 end
 
 @testitem "reset output value" begin
@@ -1177,10 +1177,10 @@ end
     x, box = CellListMap.xatomic(5000)
     uc = box.input_unit_cell.matrix
     sys = ParticleSystem(positions=x, unitcell=uc, cutoff=12.0, output=0.0)
-    u = map_pairwise!((pair, u) -> u += inv(pair.d), sys)
+    u = pairwise!((pair, u) -> u += inv(pair.d), sys)
     sys = ParticleSystem(positions=x, unitcell=uc, cutoff=12.0, output=u)
-    map_pairwise!((pair, u) -> u += inv(pair.d), sys; reset=false)
+    pairwise!((pair, u) -> u += inv(pair.d), sys; reset=false)
     @test sys.output ≈ 2 * u
-    map_pairwise!((pair, u) -> u += inv(pair.d), sys)
+    pairwise!((pair, u) -> u += inv(pair.d), sys)
     @test sys.output ≈ u
 end

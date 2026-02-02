@@ -72,7 +72,7 @@ system = ParticleSystem(
 And finally we can obtain the minimum distance between the sets:
 
 ```@example mind
-map_pairwise!(minimum_distance, system)
+pairwise!(minimum_distance, system)
 ```
 
 ## Cross-interactions with a single cell list
@@ -82,7 +82,7 @@ The two-set interface above builds cell lists for both sets. There are situation
 1. **One set is fixed, the other changes.** If `ypositions` never changes but `xpositions` is updated each step, rebuilding a cell list for `ypositions` every time is wasteful. Build it once and reuse.
 2. **One set is much smaller.** Building a cell list for a very large set can be expensive. Build the cell list only for the smaller set and iterate over the larger set directly.
 
-For these cases, construct a `ParticleSystem` for the *reference* set (the one whose cell list you want to keep), then pass the *other* set as a plain array to `map_pairwise`:
+For these cases, construct a `ParticleSystem` for the *reference* set (the one whose cell list you want to keep), then pass the *other* set as a plain array to `pairwise`:
 
 Build the system only for ypositions (the reference set):
 
@@ -100,20 +100,20 @@ Compute interactions between xpositions and the cell list in ysystem.
 Note: `xpositions` is passed as a plain array, before the system argument.
 
 ```@example mind
-map_pairwise!(minimum_distance, xpositions, ysystem)
+pairwise!(minimum_distance, xpositions, ysystem)
 ```
 
 When `xpositions` changes, the cell list in `ysystem` does not need to be rebuilt:
 
 ```@example mind
 xpositions = rand(SVector{3,Float64}, 100);  # new positions
-map_pairwise!(minimum_distance, xpositions, ysystem; update_lists=false)
+pairwise!(minimum_distance, xpositions, ysystem; update_lists=false)
 ```
 
 The `update_lists=false` keyword skips updating the cell list of `ysystem`, since only `xpositions` changed. If `ysystem.positions` itself changed, use `update_lists=true` (the default).
 
 !!! compat
-    The single-set cross-interaction interface (`map_pairwise!(f, x, system)`) was introduced in v0.10.0.
+    The single-set cross-interaction interface (`pairwise!(f, x, system)`) was introduced in v0.10.0.
 
 ## Benchmarking of cross-interaction alternatives
 
@@ -133,7 +133,7 @@ function two_set_celllist(xpositions, ypositions)
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
     )
-    return map_pairwise!(minimum_distance, system)
+    return pairwise!(minimum_distance, system)
 end
 ```
 
@@ -148,7 +148,7 @@ function one_set_celllist(xpositions, ypositions)
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
     )
-    return map_pairwise!(minimum_distance, xpositions, system)
+    return pairwise!(minimum_distance, xpositions, system)
 end
 ```
 

@@ -9,7 +9,7 @@ The use of parallel computations can be tunned on and of by the `system.parallel
 For example, using 6 cores (12 threads) for the calculation of the minimum-distance example:
 
 ```julia-repl
-julia> f(system) = map_pairwise!(minimum_distance, system)
+julia> f(system) = pairwise!(minimum_distance, system)
 f (generic function with 1 method)
 
 julia> Threads.nthreads()
@@ -33,7 +33,7 @@ MinimumDistance(783, 497, 0.007213710914619913)
 ## Displaying a progress bar
 
 Displaying a progress bar: for very long runs, the user might want to see the progress
-of the computation. Use the `show_progress` keyword parameter of the `map_pairwise!`
+of the computation. Use the `show_progress` keyword parameter of the `pairwise!`
 function for that.
 
 For example, we execute the computation above, but with much more
@@ -53,7 +53,7 @@ julia> system = ParticleSystem(
                   output_name = :minimum_distance,
                );
 
-julia> map_pairwise!(minimum_distance, system; show_progress = true)
+julia> pairwise!(minimum_distance, system; show_progress = true)
 Progress:  24%|██████████▏                               |  ETA: 0:00:29
 ```
 
@@ -118,14 +118,14 @@ and will not change when the number of particles changes.
 ## Avoid cell list updating
 
 To compute different properties without recomputing cell lists, use `update_lists=false` in
-the call of `map_pairwise` methods, for example,
+the call of `pairwise` methods, for example,
 ```julia
 using CellListMap, StaticArrays
 system = ParticleSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
 # First call, will compute the cell lists
-map_pairwise!((pair, u) -> u += pair.d2, system)
+pairwise!((pair, u) -> u += pair.d2, system)
 # Second run: do not update the cell lists but compute a different property
-map_pairwise!((pair, u) -> u += pair.d, system; update_lists = false)
+pairwise!((pair, u) -> u += pair.d, system; update_lists = false)
 ```
 in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
 (requires version 0.8.9).

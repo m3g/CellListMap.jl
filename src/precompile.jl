@@ -27,15 +27,15 @@ PrecompileTools.@setup_workload begin
         neighborlist(x2d, cutoff, unitcell=u2d)
         # 3D
         sys = ParticleSystem(positions=x3d, unitcell=u3d, cutoff=cutoff, output=0.0)
-        map_pairwise!(f, sys)
-        map_pairwise!(f, y3d, sys)
+        pairwise!(f, sys)
+        pairwise!(f, y3d, sys)
         sys = ParticleSystem(xpositions=x3d, ypositions=y3d, unitcell=u3d, cutoff=cutoff, output=0.0)
-        map_pairwise!(f, sys)
+        pairwise!(f, sys)
         # 2D
         sys = ParticleSystem(positions=x2d, unitcell=u2d, cutoff=cutoff, output=0.0)
-        map_pairwise!(f, sys)
-        map_pairwise!(f, y2d, sys)
+        pairwise!(f, sys)
+        pairwise!(f, y2d, sys)
         sys = ParticleSystem(xpositions=x2d, ypositions=y2d, unitcell=u2d, cutoff=cutoff, output=0.0)
-        map_pairwise!(f, sys)
+        pairwise!(f, sys)
     end
 end
