@@ -12,7 +12,7 @@ function sumsq(x,sides,cutoff;parallel=false)
     box = Box(sides,cutoff)
     cl = CellList(x,box,parallel=parallel)
     s = zero(eltype(x[1]^2))
-    s = foreachneighbor(
+    s = map_pairwise(
         (pair,s) -> s += pair.d2,
         s, box, cl, parallel=parallel
     )
@@ -27,7 +27,7 @@ function sumsq_grad(x,sides,cutoff;parallel=false)
     box = Box(sides,cutoff)
     cl = CellList(x,box)
     g .= zero(eltype(x))
-    foreachneighbor!(
+    map_pairwise!(
         (pair,g) -> begin
             dx = pair.x - pair.y
             g[:,pair.i] .+= 2*dx
@@ -71,7 +71,7 @@ function sumsq_measurements(x_input,sides,cutoff;parallel=false)
 
     # And instead of using the `x` and `y` coordinates provided by the
     # interface, we close over the `x_input` and `box` for the calculations.
-    s = foreachneighbor(
+    s = map_pairwise(
         (pair,s) -> sum_sqr_pair(pair.i,pair.j,s,x_input,box),
         s, box, cl, parallel=parallel
     )

@@ -35,7 +35,7 @@ function simulate(system=init_system(); nsteps::Int=100, isave=1)
     trajectory = typeof(system.positions)[]
     for step in 1:nsteps
         # compute forces at this step
-        foreachneighbor!(
+        map_pairwise!(
             (pair,forces) -> update_forces!(pair.x,pair.y,pair.i,pair.j,pair.d2,forces,system.cutoff),
             system
         )

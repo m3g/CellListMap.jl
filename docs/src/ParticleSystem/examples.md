@@ -18,7 +18,7 @@ system = ParticleSystem(
     output = 0.0,
     output_name = :energy
 )
-foreachneighbor!((pair, energy) -> energy += 1 / pair.d, system)
+map_pairwise!((pair, energy) -> energy += 1 / pair.d, system)
 ```
 
 ## Force computation
@@ -44,7 +44,7 @@ function update_forces!(pair, forces)
     forces[j] -= df
     return forces
 end
-foreachneighbor!(update_forces!, system)
+map_pairwise!(update_forces!, system)
 ```
 
 ## Energy and forces
@@ -94,7 +94,7 @@ system = ParticleSystem(
     output_name = :energy_and_forces
 )
 # Compute energy and forces
-foreachneighbor(energy_and_forces!, system)
+map_pairwise(energy_and_forces!, system)
 ```
 
 ## Two sets of particles
@@ -136,7 +136,7 @@ system = ParticleSystem(
        output_name = :minimum_distance,
 )
 # Compute the minimum distance
-foreachneighbor(minimum_distance, system)
+map_pairwise(minimum_distance, system)
 ```
 
 In the above example, the function is used such that cell lists are constructed for both
@@ -162,8 +162,8 @@ ysystem = ParticleSystem(
        output_name = :minimum_distance,
 )
 # obtain the minimum distance between xpositions and the cell list in system
-# Note the additional `xpositions` parameter in the call to foreachneighbor.
-foreachneighbor(get_md, xpositions, ysystem)
+# Note the additional `xpositions` parameter in the call to map_pairwise.
+map_pairwise(get_md, xpositions, ysystem)
 ```
 
 Additionally, if the `xpositions` are updated, we can obtain compute the function relative to `ysystem` without
@@ -172,7 +172,7 @@ having to update the cell lists:
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},100);
 
-julia> foreachneighbor(minimum_distance, xpositions, ysystem)
+julia> map_pairwise(minimum_distance, xpositions, ysystem)
 MinimumDistance(67, 580, 0.008423693268450603)
 ```
 
@@ -236,7 +236,7 @@ function simulate(system=init_system(); nsteps::Int=100, isave=1)
     trajectory = typeof(system.positions)[]
     for step in 1:nsteps
         # compute forces at this step
-        foreachneighbor!(
+        map_pairwise!(
             (pair, forces) -> update_forces!(pair, forces, system.cutoff),
             system
         )

@@ -42,7 +42,7 @@ function nearest_neighbor(;N1=1_500,N2=1_500_000,parallel=true,x=nothing,y=nothi
     mind = (0, 0, +Inf)
   
     # Run pairwise computation
-    mind = foreachneighbor(
+    mind = map_pairwise(
         (pair, mind) -> f(pair.i, pair.j, pair.d2, mind),
         mind,box,cl;reduce=reduce_mind, parallel=parallel
     )

@@ -20,16 +20,16 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Structure that carries the information necessary for `foreachneighbor!` computations,
+Structure that carries the information necessary for `map_pairwise!` computations,
 for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
 pairs of particles of the set). 
 
 The `xpositions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrive or mutate `xpositions`, retrieve the `output` or its elements,
+and you can retrieve or mutate `xpositions`, retrieve the `output` or its elements,
 and set the computation to use or not parallelization by directly accessing these
 elements.
 
-The other fileds of the structure (starting with `_`) are internal and must not 
+The other fields of the structure (starting with `_`) are internal and must not 
 be modified or accessed directly. The construction of the `ParticleSystem1` structure
 is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)` 
 auxiliary function.
@@ -52,16 +52,16 @@ $(TYPEDEF)
 
 $(TYPEDFIELDS)
 
-Structure that carries the information necessary for `foreachneighbor!` computations,
+Structure that carries the information necessary for `map_pairwise!` computations,
 for systems with two set of positions (thus, replacing the loops over `N×M` 
 pairs of particles, being `N` and `M` the number of particles of each set).
 
 The `xpositions`, `ypositions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrive or mutate positions, retrieve the `output` or its elements,
+and you can retrieve or mutate positions, retrieve the `output` or its elements,
 and set the computation to use or not parallelization by directly accessing these
 elements.
 
-The other fileds of the structure (starting with `_`) are internal and must not 
+The other fields of the structure (starting with `_`) are internal and must not 
 be modified or accessed directly. The construction of the `ParticleSystem1` structure
 is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
 auxiliary function.
@@ -153,7 +153,7 @@ julia> sys = ParticleSystem(
            output = 0.0, 
         );
 
-julia> foreachneighbor!((pair,output) -> output += pair.d2, sys)
+julia> map_pairwise!((pair,output) -> output += pair.d2, sys)
 43774.54367600001
 ```
 ## Two sets of particles
@@ -174,7 +174,7 @@ julia> sys = ParticleSystem(
            parallel = false, # use true for parallelization
         );
 
-julia> foreachneighbor!((pair,output) -> output += pair.d2, sys)
+julia> map_pairwise!((pair,output) -> output += pair.d2, sys)
 21886.196785000004
 ```
 """
@@ -318,7 +318,7 @@ CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
             output=0.0,
             output_name=:test
         )
-        @test CellListMap.foreachneighbor((pair, out) -> out += pair.d2, _sys) == 0.0
+        @test CellListMap.map_pairwise((pair, out) -> out += pair.d2, _sys) == 0.0
     end
 
     # unitcell type
@@ -432,7 +432,7 @@ output = [ A(0) for _ in 1:100 ]
 # How to copy an array of `A`
 CellListMap.copy_output(v::Vector{A}) = [ x for x in v ]
 
-# Alternativelly, in this case, one could have defined:
+# Alternatively, in this case, one could have defined:
 Base.copy(a::A) = a
 CellListMap.copy_output(v::Vector{A}) = copy(v)
 ```
@@ -548,8 +548,8 @@ to obtain a single instance of the variable with the reduced result.
 `reducer` and `reducer!` are aliases, and `reducer!` is preferred, by convention
 for mutating functions.
 
-The most commont `reducer` is the sum, and this is how it is implemented for
-`$(SupportedTypes)`. For example, when computin energies, or forces,
+The most common `reducer` is the sum, and this is how it is implemented for
+`$(SupportedTypes)`. For example, when computing energies, or forces,
 the total energy is the sum of the energies. The force on one particle is the sum of the
 forces between the particle and every other particle. Thus, the implemented reducer is
 the sum: 
@@ -570,7 +570,7 @@ reducer(x::MinimumDistance, y::MinimumDistance) = MinimumDistance(min(x.d, y.d))
 The overloading of `reducer` allows the use of parallel computations for custom, 
 complex data types, containing different types of variables, fields, or sizes.
 
-The appropriate behavior of the reducer should be carefuly inspected by the user
+The appropriate behavior of the reducer should be carefully inspected by the user
 to avoid spurious results. 
 
 # Example
@@ -600,7 +600,7 @@ julia> # Construct the system
        );
 
 julia> # Obtain the minimum distance between atoms:
-       foreachneighbor!((pair,output) -> pair.d < output.d ? MinimumDistance(pair.d) : output, sys)
+       map_pairwise!((pair,output) -> pair.d < output.d ? MinimumDistance(pair.d) : output, sys)
 MinimumDistance(2.1991993997816563)
 ```
 
@@ -714,7 +714,7 @@ same type (`OrthorhombicCell`, `TriclinicCell`) of the original `system`
 (changing the type of unit cell requires reconstructing the system).
 
 The `unitcell` can be a `N×N` matrix or a vector of dimension `N`, where
-`N` is the dimension of the sytem (2D or 3D).
+`N` is the dimension of the system (2D or 3D).
 
 This function can be used to update the system geometry in iterative schemes,
 where the size of the simulation box changes during the simulation.
@@ -1021,7 +1021,7 @@ end
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
-    foreachneighbor((pair, out) -> out += pair.d2, sys)
+    map_pairwise((pair, out) -> out += pair.d2, sys)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
         CellListMap._nbatches_map_computation(10000),
@@ -1033,7 +1033,7 @@ end
     sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     nb_before = nbatches(sys)
     sys.xpositions .= rand(SVector{3,Float64}, 1000)
-    foreachneighbor((pair, out) -> out += pair.d2, sys)
+    map_pairwise((pair, out) -> out += pair.d2, sys)
     @test nbatches(sys) == nb_before
 
     # ParticleSystem1: manually set nbatches are not overridden on resize
@@ -1043,7 +1043,7 @@ end
     x = rand(SVector{3,Float64}, 10000)
     resize!(sys.xpositions, length(x))
     sys.xpositions .= x
-    foreachneighbor((pair, out) -> out += pair.d2, sys)
+    map_pairwise((pair, out) -> out += pair.d2, sys)
     @test nbatches(sys) == (2, 3)
 
     # ParticleSystem2: nbatches updates when particle count changes
@@ -1056,7 +1056,7 @@ end
     sys.xpositions .= x
     resize!(sys.ypositions, length(y))
     sys.ypositions .= y
-    foreachneighbor((pair, out) -> out += pair.d2, sys)
+    map_pairwise((pair, out) -> out += pair.d2, sys)
     # For CellListPair, nbatches is determined by the large set
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
@@ -1066,7 +1066,7 @@ end
 end
 
 """
-    foreachneighbor!(
+    map_pairwise!(
         f::Function, system::AbstractParticleSystem; 
         show_progress = true, update_lists = true
     )
@@ -1088,7 +1088,7 @@ end
 
 Thread-safety is taken care automatically in parallel executions.
 
-`foreachneighbor` is an alias to `foreachneighbor!` for syntax consistency
+`map_pairwise` is an alias to `map_pairwise!` for syntax consistency
 when the `output` variable is immutable.
 
 If `update_lists` is `false`, the cell lists will not be recomputed,
@@ -1108,12 +1108,12 @@ julia> sys = ParticleSystem(
            output = 0.0
            );
 
-julia> foreachneighbor((pair, output) -> output += 1 / (1 + pair.d), sys)
+julia> map_pairwise((pair, output) -> output += 1 / (1 + pair.d), sys)
 1870.0274887950268
 ```
 
 """
-function foreachneighbor!(
+function map_pairwise!(
     f::F,
     sys::AbstractParticleSystem;
     update_lists::Bool=true,
@@ -1121,7 +1121,7 @@ function foreachneighbor!(
 ) where {F<:Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded)
     UpdateParticleSystem!(sys, update_lists)
-    sys.output = CellListMap.foreachneighbor!(
+    sys.output = CellListMap.map_pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded=sys._output_threaded,
         parallel=sys.parallel,
@@ -1142,9 +1142,9 @@ end
     y = rand(SVector{3,Float64}, 100)
     p = ParticleSystem(positions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.positions .= x
-    @test_throws ArgumentError foreachneighbor((pair, out) -> out += pair.d2, p)
+    @test_throws ArgumentError map_pairwise((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
-    @test foreachneighbor((pair, out) -> out += pair.d2, p) > 0.0
+    @test map_pairwise((pair, out) -> out += pair.d2, p) > 0.0
     # 2-set system
     x = rand(SVector{3,Float64}, 100)
     x[50] = SVector(1.1, NaN, 1.1)
@@ -1155,10 +1155,10 @@ end
     @test_throws ArgumentError ParticleSystem(xpositions=y, ypositions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.xpositions .= x
-    @test_throws ArgumentError foreachneighbor((pair, out) -> out += pair.d2, p)
+    @test_throws ArgumentError map_pairwise((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
     p.ypositions .= x
-    @test_throws ArgumentError foreachneighbor((pair, out) -> out += pair.d2, p)
+    @test_throws ArgumentError map_pairwise((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions=copy(y), ypositions=copy(y), cutoff=0.1, unitcell=[1, 1, 1], output=0.0, validate_coordinates=nothing)
-    @test foreachneighbor((pair, out) -> out += pair.d2, p) > 0.0
+    @test map_pairwise((pair, out) -> out += pair.d2, p) > 0.0
 end

@@ -98,7 +98,7 @@ system = ParticleSystem(
     output_name = :energy_and_forces
 );
 
-foreachneighbor!(energy_and_forces!, system);
+map_pairwise!(energy_and_forces!, system);
 ```
 
 The output can be seen with the aliases of the `system.output` variable:

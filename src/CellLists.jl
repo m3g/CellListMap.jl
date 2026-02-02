@@ -33,9 +33,9 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 
 Structure to define the number of batches used in the parallel splitting of the calculations
-of the cell list construction and of the `foreachneighbor` computation. It is initialized with
+of the cell list construction and of the `map_pairwise` computation. It is initialized with
 a standard heuristic that returns at most the number of threads, but may return a smaller
-number if the system is small. The two parameters can be tunned for optimal performance of each
+number if the system is small. The two parameters can be tuned for optimal performance of each
 step of the calculation (cell list construction and mapping of interactions). The construction
 of the cell lists require a larger number of particles for threading to be effective, Thus
 by default the system size that allows multi-threading is greater for this part of the calculation.  
@@ -144,7 +144,7 @@ Base.@kwdef mutable struct CellList{N,T}
     cells::Vector{Cell{N,T}} = Cell{N,T}[]
     " Number of batches for the parallel calculations. "
     nbatches::NumberOfBatches = zero(NumberOfBatches)
-    " Auxiliar array to store projected particles. "
+    " Auxiliary array to store projected particles. "
     projected_particles::Vector{Vector{ProjectedParticle{N,T}}} =
         Vector{Vector{ProjectedParticle{N,T}}}(undef, 0)
 end
@@ -186,7 +186,7 @@ end
 Set the default number of batches for the construction of the cell lists, 
 and mapping computations. This is of course heuristic, and may not be the best choice for
 every problem. See the parameter `nbatches` of the construction of the cell lists for 
-tunning this.
+tuning this.
 
 =#
 function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; parallel=true) where {N,T}
@@ -324,7 +324,7 @@ nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
         x = rand(SVector{3,Float64}, 10000)
         resize!(sys.xpositions, length(x))
         sys.xpositions .= x
-        foreachneighbor((pair, out) -> out += pair.d2, sys)
+        map_pairwise((pair, out) -> out += pair.d2, sys)
         @test nbatches(sys) == (8, 10)
     else
         @warn "Test not run because it is invalid for this number of threads"
@@ -539,7 +539,7 @@ Function that will initialize a `CellList` structure from scratch, given a vecto
 or particle coordinates (a vector of vectors, typically of static vectors)
 and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
 systems, the number of parallel batches is equal to the number of threads, but it can
-be tunned for optimal performance in some cases.
+be tuned for optimal performance in some cases.
 
 ## Example
 
@@ -573,7 +573,7 @@ end
     CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterpreted input. The first dimension of the 
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
@@ -668,7 +668,7 @@ end
     CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterpreted input. The first dimension of the 
 matrices must be the dimension of the points (`2` or `3`).
 
 =#
@@ -751,7 +751,7 @@ end
     ) where {N,T}
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterpreted input. The first dimension of the 
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
@@ -806,7 +806,7 @@ CellList{3, Float64}
 
 ```
 
-To illustrate the expected ammount of allocations, which are a consequence
+To illustrate the expected amount of allocations, which are a consequence
 of thread spawning only:
 
 ```julia-repl
@@ -900,7 +900,7 @@ end
     ) where {N,T}
 
 Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterpreted input. The first dimension of the 
 matrix must be the dimension of the points (`2` or `3`).
 
 =#
@@ -1222,7 +1222,7 @@ end
     ) where {UnitCellType,N}
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterpreted input. The first dimension of the 
 matrices must be the dimension of the points (`2` or `3`).
 
 =#
@@ -1338,7 +1338,7 @@ end
     ) where {UnitCellType,N}
 
 Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterprted input. The first dimension of the 
+equivalent function with the reinterpreted input. The first dimension of the 
 matrices must be the dimension of the points (`2` or `3`).
 
 =#

@@ -34,7 +34,7 @@ function gravitational_potential(;N=100_000,parallel=true,x=nothing)
     end
 
     # Run pairwise computation
-    u = foreachneighbor(
+    u = map_pairwise(
         (pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass),
         0.0,box,cl,
         parallel=parallel

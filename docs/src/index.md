@@ -44,7 +44,9 @@ of the particles is roughly homogeneous. For highly heterogeneous systems distan
 ## Quick start: computing neighbor lists
 
 The simplest use case of `CellListMap` is to compute the list of neighboring particles within a cutoff distance.
-This is provided by the `neighborlist` function:
+This can be implemented as a particular usage case of `CellListMap`, but given its generality it is provided as an independent interface: the `neighborlist` function:
+
+An example of the application of the `neighborlist` function follows:
 
 ```julia-repl
 julia> using CellListMap
@@ -62,7 +64,7 @@ julia> neighborlist(x, 0.05) # cutoff of 0.05
 
 Each element of the list is a tuple `(i, j, d)` containing the indices of the particles and their distance.
 
-For periodic boundary conditions, provide the unit cell:
+`CellListMap` supports general periodic boundary conditions, by providing the unitcell as vector (for orthorhombic systems) or a unitcell matrix (for general triclinic systems):
 
 ```julia-repl
 julia> neighborlist(x, 0.05; unitcell=[1,1,1]) # periodic box of side 1
@@ -73,11 +75,27 @@ julia> neighborlist(x, 0.05; unitcell=[1,1,1]) # periodic box of side 1
 
 See the [Neighbor lists](@ref) section for more details, including in-place computations for iterative workflows.
 
+!!! note
+    The downside of explicitly computing neighbor lists is that it implies storing the list of neighbors. This can be memory consuming and slow in situations where a property can be computed by iterating over the neighbors without materializing the neighbor lists. `CellListMap` is designed to provide this alternative.
+
 ## General pairwise computations
 
-For more general pairwise computations (energies, forces, etc.), the `ParticleSystem` interface provides
-a flexible way to define custom functions that are applied to all pairs of particles within the cutoff.
-See the [ParticleSystem interface](@ref) section for details.
+For more general pairwise computations (energies, forces, etc.) without the materialization of the neighbor lists, the `ParticleSystem` interface provides a flexible way to define custom functions that are applied to all pairs of particles within the cutoff, and reducing an output value. See the [ParticleSystem interface](@ref) section for details.
+
+A concise example is the computation of the sum of the inverse of the distance between particles:
+
+```julia-repl
+julia> using CellListMap
+
+julia> x = rand(3, 10_000); # 10,000 particles in 3D
+
+julia> sys = ParticleSystem(positions=x, cutoff=0.05, unitcell=[1,1,1], output=0.0)
+
+julia> map_pairwise((pair, u) -> u += 1/pair.d, sys)
+792925.6234732079
+```
+
+Note that in the above example the `map_pairwise` method is actually performing a `map_pairwise` operation, where the output value `u` is summed up over all neighboring pairs of particles. 
 
 ## Installation
 

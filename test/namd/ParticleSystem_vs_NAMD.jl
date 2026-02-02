@@ -42,7 +42,7 @@
             output=0.0,
             lcell=lcell,
         )
-        u = foreachneighbor(
+        u = map_pairwise(
             (pair, u) -> lj_NE(pair.d2, u),
             system,
         )
@@ -116,7 +116,7 @@
         cutoff=10.0,
         output=0.0,
     )
-    u = foreachneighbor!(
+    u = map_pairwise!(
         (pair, u) -> lj_NE(pair.d2, u),
         system,
     )
@@ -130,7 +130,7 @@
     # Update coordinates and unit cell of ParticleSystem
     system.xpositions .= copy_to_svector(coordinates)
     update_unitcell!(system, unit_cell)
-    u = foreachneighbor!((pair, u) -> lj_NE(pair.d2, u), system)
+    u = map_pairwise!((pair, u) -> lj_NE(pair.d2, u), system)
     @test u ≈ correct
     
     # Same thing with a different lcell
@@ -201,7 +201,7 @@
         output=0.0,
         lcell=lcell,
     )
-    u = foreachneighbor!((pair, u) -> lj_NE(pair.d2, u), system)
+    u = map_pairwise!((pair, u) -> lj_NE(pair.d2, u), system)
     @test u ≈ correct
     
     coordinates = getcoor("$dir/o2.dcd")
@@ -209,7 +209,7 @@
     correct = 1093.7225407797744
     system.xpositions .= copy_to_svector(coordinates)
     update_unitcell!(system, unit_cell)
-    u = foreachneighbor!((pair, u) -> lj_NE(pair.d2, u), system)
+    u = map_pairwise!((pair, u) -> lj_NE(pair.d2, u), system)
     @test u ≈ correct
 
 end
