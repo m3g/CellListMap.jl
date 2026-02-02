@@ -4,7 +4,7 @@ If the `pairwise!` function will compute energy and/or forces in an iterative pr
 
 ## Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` field of the system. The `xpositions` array is a `Vector` of `SVector` (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `ParticleSystem` structure must be updated independently of updates in the original array of coordinates.
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` (and/or `ypositions`) field of the system. These position arrays are `Vector`s of `SVector`s (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `ParticleSystem` structure must be updated independently of updates in the original array of coordinates.
 
 Let us exemplify the interface with the computation of forces:
 
@@ -65,7 +65,7 @@ julia> pairwise!(update_forces!, system)
  [20.27985502389337, -193.77607810950286, -155.28968519541544]
 ```
 
-In this case, if the `output` is not resized, a `BoundsError:` is
+In this case, if the `output` is not resized, a `BoundsError` is
 be obtained, because updates of forces at unavailable positions will
 be attempted.
 

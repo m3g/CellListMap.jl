@@ -14,24 +14,25 @@ function f(pair, output)
 end
 ```
 
-where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2` and `d`.  
+where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2` and `d`, which here we
+extract from the object using [destructuring syntax](https://docs.julialang.org/en/v1/manual/functions/#Property-destructuring). 
 
-`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, and `output` is the variable to be computed.
+`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
 
 !!! info
     #### Details of the mapped function interface
 
-    The `pair` input of the function contains the  
-    data that the user may use to update the `output` variable.
+    The `pair` input of the function contains the  data that the user may use to update the `output` variable.
+    The `NeighborPair` object contains fields `x`, `y`, `i`, `j`, `d2` and the lazily computed `d`, meaning:
 
     |  Input/Output |  Type   |  Meaning   |
     |:----------------:|:-------:|:-----------|
-    | `pair.x`              |  `SVector`   |  The coordinates of particle `i` of the pair.  |
-    | `pair.y`              |  `SVector`   |  The coordinates of particle `j` of the pair (minimum-image relative to `x`).  |
-    | `pair.i`              |  `Int`       |  Index of first particle in the original array of coordinates. |
-    | `pair.j`              |  `Int`       |  Index of second particle in the original array of coordinates. |
-    | `pair.d2`             |  `<:Real`    |  Squared distance between the particles. |
-    | `pair.d`             |  `<:Real`    |  Squared distance between the particles (computed lazily). |
+    | `x`              |  `SVector`   |  The coordinates of particle `i` of the pair.  |
+    | `y`              |  `SVector`   |  The coordinates of particle `j` of the pair (minimum-image relative to `x`).  |
+    | `i`              |  `Int`       |  Index of first particle in the original array of coordinates. |
+    | `j`              |  `Int`       |  Index of second particle in the original array of coordinates. |
+    | `d2`             |  `<:Real`    |  Squared distance between the particles. |
+    | `d`             |  `<:Real`    |  Squared distance between the particles (computed lazily). |
     | `output`         |  user defined   |  the name of the variable to be updated.  |
 
     **Notes:** `x` and `y` may be 2D or 3D vectors, depending on the dimension of the system. The type of
@@ -53,7 +54,7 @@ function energy(pair, u)
     return u
 end
 ```
-and this function is passed directly to `pairwise`:
+and this function is passed directly to `pairwise!`:
 ```julia
 u = pairwise!(energy, system)
 ```
@@ -71,7 +72,7 @@ u = pairwise!((pair, u) -> energy(pair, u, masses), system)
 ```
 
 Here we reinforce the fact that the `energy` functions defined above compute the contribution to the energy of the interaction of *a single* pair
-of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `pairwise` call.
+of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `pairwise!` call.
 
 !!! note
     The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as an arrays of forces.

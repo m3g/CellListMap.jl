@@ -204,7 +204,7 @@ import CellListMap.wrap_relative_to
 # Function that updates the forces, for potential of the form:
 # if d < cutoff k*(d^2-cutoff^2)^2 else 0.0 with k = 10^6
 function update_forces!(pair, forces, cutoff)
-    (i, j, x, y, d2) = pair
+    (;i, j, x, y, d2) = pair
     r = y - x
     dudr = 10^6 * 4 * r * (d2 - cutoff^2)
     forces[i] += dudr
