@@ -13,21 +13,9 @@ using Base: @lock # not exported in 1.6
 using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
 export NeighborPair
-export pairwise!, pairwise
+export pairwise!
 
 
-# name holder
-function pairwise! end
-
-"""
-    pairwise!(args...;kargs...) = pairwise!(args...;kargs...)
-
-is an alias for `pairwise!` which is defined for two reasons: first, if the output of the function is immutable, it may be
-clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the
-bang as a valid character.
-
-"""
-const pairwise = pairwise!
 
 include("./neighborpair.jl")
 include("./linearalgebra.jl")
