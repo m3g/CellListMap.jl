@@ -77,11 +77,11 @@ function reducer(x::EnergyAndForces, y::EnergyAndForces)
 end
 # Function that updates energy and forces for each pair
 function energy_and_forces!(pair, output::EnergyAndForces)
-    d = pair.d
+    (; i, j, x, y, d2, d) = pair
     output.energy += 1/d
-    df = (1/pair.d2)*(1/d)*(pair.y - pair.x)
-    output.forces[pair.i] += df
-    output.forces[pair.j] -= df
+    df = (1/d2)*(1/d)*(y - x)
+    output.forces[i] += df
+    output.forces[j] -= df
     return output
 end
 # Initialize system
@@ -112,8 +112,8 @@ struct MinimumDistance
     d::Float64
 end
 # Function that updates the minimum distance found
-function minimum_distance(i, j, d2, md)
-    d = sqrt(d2)
+function minimum_distance(pair, md)
+    (; i, j, d) = pair
     if d < md.d
         md = MinimumDistance(i, j, d)
     end
@@ -135,10 +135,8 @@ system = ParticleSystem(
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
 )
-# Function following the required interface of the mapped function
-get_md(pair, md) = minimum_distance(pair.i, pair.j, pair.d2, md)
 # Compute the minimum distance
-foreachneighbor(get_md, system)
+foreachneighbor(minimum_distance, system)
 ```
 
 In the above example, the function is used such that cell lists are constructed for both
@@ -174,7 +172,7 @@ having to update the cell lists:
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},100);
 
-julia> foreachneighbor(get_md, xpositions, ysystem)
+julia> foreachneighbor(minimum_distance, xpositions, ysystem)
 MinimumDistance(67, 580, 0.008423693268450603)
 ```
 
@@ -206,10 +204,11 @@ import CellListMap.wrap_relative_to
 # Function that updates the forces, for potential of the form:
 # if d < cutoff k*(d^2-cutoff^2)^2 else 0.0 with k = 10^6
 function update_forces!(pair, forces, cutoff)
-    r = pair.y - pair.x
-    dudr = 10^6 * 4 * r * (pair.d2 - cutoff^2)
-    forces[pair.i] += dudr
-    forces[pair.j] -= dudr
+    (i, j, x, y, d2) = pair
+    r = y - x
+    dudr = 10^6 * 4 * r * (d2 - cutoff^2)
+    forces[i] += dudr
+    forces[j] -= dudr
     return forces
 end
 # Function that initializes the system: it is preferable to initialize

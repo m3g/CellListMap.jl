@@ -76,11 +76,11 @@ possible buffers of the first argument of the reducer (in this case, `x`).
 Now we can proceed as before, defining a function that updates the output variable appropriately:
 ```julia
 function energy_and_forces!(pair, output::EnergyAndForces)
-    d = pair.d
+    (; i, j, x, y, d2, d) = pair
     output.energy += 1/d
-    df = (1/pair.d2)*(1/d)*(pair.y - pair.x)
-    output.forces[pair.i] += df
-    output.forces[pair.j] -= df
+    df = (1/d2)*(1/d)*(y - x)
+    output.forces[i] += df
+    output.forces[j] -= df
     return output
 end
 ```

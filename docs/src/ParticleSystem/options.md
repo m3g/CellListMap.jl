@@ -9,10 +9,7 @@ The use of parallel computations can be tunned on and of by the `system.parallel
 For example, using 6 cores (12 threads) for the calculation of the minimum-distance example:
 
 ```julia-repl
-julia> get_md(pair, md) = minimum_distance(pair.i, pair.j, pair.d2, md)
-get_md (generic function with 1 method)
-
-julia> f(system) = foreachneighbor(get_md, system)
+julia> f(system) = foreachneighbor(minimum_distance, system)
 f (generic function with 1 method)
 
 julia> Threads.nthreads()
@@ -56,7 +53,7 @@ julia> system = ParticleSystem(
                   output_name = :minimum_distance,
                );
 
-julia> foreachneighbor(get_md, system; show_progress = true)
+julia> foreachneighbor(minimum_distance, system; show_progress = true)
 Progress:  24%|██████████▏                               |  ETA: 0:00:29
 ```
 
