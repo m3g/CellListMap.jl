@@ -67,7 +67,10 @@ julia> system = ParticleSystem(
 And finally we can obtain the minimum distance between the sets:
 
 ```julia-repl
-julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+julia> get_md(pair, md) = minimum_distance(pair.i, pair.j, pair.d2, md)
+get_md (generic function with 1 method)
+
+julia> foreachneighbor(get_md, system)
 MinimumDistance(276, 617, 0.006009804808785543)
 ```
 
@@ -81,7 +84,7 @@ The two-set interface above builds cell lists for both sets. There are situation
    only for the smaller set and iterate over the larger set directly.
 
 For these cases, construct a `ParticleSystem` for the *reference* set (the one whose cell list you want to keep),
-then pass the *other* set as a plain array to `map_pairwise`:
+then pass the *other* set as a plain array to `foreachneighbor`:
 
 ```julia-repl
 julia> # Build the system only for ypositions (the reference set)
@@ -97,7 +100,7 @@ julia> ysystem = ParticleSystem(
 julia> # Compute interactions between xpositions and the cell list in ysystem.
        # Note: xpositions is passed as a plain array, before the system argument.
 
-julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), xpositions, ysystem)
+julia> foreachneighbor(get_md, xpositions, ysystem)
 MinimumDistance(67, 580, 0.008423693268450603)
 ```
 
@@ -106,7 +109,7 @@ When `xpositions` changes, the cell list in `ysystem` does not need to be rebuil
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64}, 100);  # new positions
 
-julia> map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), xpositions, ysystem; update_lists=false)
+julia> foreachneighbor(get_md, xpositions, ysystem; update_lists=false)
 MinimumDistance(42, 310, 0.005182736498125341)
 ```
 
@@ -114,7 +117,7 @@ The `update_lists=false` keyword skips updating the cell list of `ysystem`, sinc
 If `ysystem.positions` itself changed, use `update_lists=true` (the default).
 
 !!! compat
-    The single-set cross-interaction interface (`map_pairwise(f, x, system)`) was introduced in v0.10.0.
+    The single-set cross-interaction interface (`foreachneighbor(f, x, system)`) was introduced in v0.10.0.
 
 ## Benchmarking of cross-interaction alternatives
 
@@ -133,7 +136,7 @@ function two_set_celllist(xpositions, ypositions)
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
 )
-    return map_pairwise(get_md, system)
+    return foreachneighbor(get_md, system)
 end
 # Second alternative: compute cell lists for one set
 function one_set_celllist(xpositions, ypositions)
@@ -144,7 +147,7 @@ function one_set_celllist(xpositions, ypositions)
        output = MinimumDistance(0,0,+Inf),
        output_name = :minimum_distance,
 )
-    return map_pairwise(get_md, xpositions, system)
+    return foreachneighbor(get_md, xpositions, system)
 end
 ```
 

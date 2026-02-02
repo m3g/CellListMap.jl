@@ -197,7 +197,7 @@ julia> sys = ParticleSystem(positions=rand(SVector{3,Float64}, 1000), unitcell=[
 
 julia> y = rand(SVector{3,Float64}, 100);
 
-julia> f(pair, output) = output + pair.d;
+julia> f(pair, output) = output + pair.d2;
 
 julia> @ballocated foreachneighbor(\$f, \$y, \$sys; update_lists=false) samples=1 evals=1
 0

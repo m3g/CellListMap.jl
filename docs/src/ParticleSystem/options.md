@@ -9,7 +9,10 @@ The use of parallel computations can be tunned on and of by the `system.parallel
 For example, using 6 cores (12 threads) for the calculation of the minimum-distance example:
 
 ```julia-repl
-julia> f(system) = map_pairwise((x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system)
+julia> get_md(pair, md) = minimum_distance(pair.i, pair.j, pair.d2, md)
+get_md (generic function with 1 method)
+
+julia> f(system) = foreachneighbor(get_md, system)
 f (generic function with 1 method)
 
 julia> Threads.nthreads()
@@ -33,7 +36,7 @@ MinimumDistance(783, 497, 0.007213710914619913)
 ## Displaying a progress bar
 
 Displaying a progress bar: for very long runs, the user might want to see the progress
-of the computation. Use the `show_progress` keyword parameter of the `map_pairwise!`
+of the computation. Use the `show_progress` keyword parameter of the `foreachneighbor!`
 function for that.
 
 For example, we execute the computation above, but with much more
@@ -53,10 +56,7 @@ julia> system = ParticleSystem(
                   output_name = :minimum_distance,
                );
 
-julia> map_pairwise(
-           (x,y,i,j,d2,md) -> minimum_distance(i,j,d2,md), system;
-           show_progress = true
-       )
+julia> foreachneighbor(get_md, system; show_progress = true)
 Progress:  24%|██████████▏                               |  ETA: 0:00:29
 ```
 
@@ -121,14 +121,14 @@ and will not change when the number of particles changes.
 ## Avoid cell list updating
 
 To compute different properties without recomputing cell lists, use `update_lists=false` in
-the call of `map_pairwise` methods, for example,
+the call of `foreachneighbor` methods, for example,
 ```julia
 using CellListMap, StaticArrays
 system = ParticleSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
 # First call, will compute the cell lists
-map_pairwise((x,y,i,j,d2,u) -> u += d2, system)
+foreachneighbor!((pair, u) -> u += pair.d2, system)
 # Second run: do not update the cell lists but compute a different property
-map_pairwise((x,y,i,j,d2,u) -> u += sqrt(d2), system; update_lists = false)
+foreachneighbor!((pair, u) -> u += pair.d, system; update_lists = false)
 ```
 in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
 (requires version 0.8.9).
@@ -167,7 +167,7 @@ larger values of `lcell` may improve the performance. To be tested by the user.
 
 Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and `N` is the number of particles. For example:
 
-```jldoctest; filter = r"\d+" => ""
+```jldoctest; filter = r"(\d+|CellListMap\.)" => ""
 julia> using CellListMap
 
 julia> system = ParticleSystem(
@@ -178,13 +178,13 @@ julia> system = ParticleSystem(
            output=0.0,
        )
 ParticleSystem2{output} of dimension 2, composed of:
-    Box{CellListMap.OrthorhombicCell, 2}
+    Box{OrthorhombicCell, 2}
       unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
       cutoff = 0.1
       number of computing cells on each dimension = [13, 13]
       computing cell sizes = [0.1, 0.1] (lcell: 1)
       Total number of cells = 169
-    CellListMap.CellListPair{2, Float64}
+    CellListPair{2, Float64}
        70 cells with real particles of the smallest set.
        85 cells with real particles of the largest set.
     Parallelization auxiliary data set for 4 batch(es).

@@ -246,7 +246,7 @@ end
 
 import Base: getproperty, propertynames
 getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
-getproperty(sys::AbstractParticleSystem, s::Val{S}) where {S} = getfield(sys, S)
+getproperty(sys::AbstractParticleSystem, ::Val{S}) where {S} = getfield(sys, S)
 # public properties
 getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
 getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
@@ -802,7 +802,7 @@ This function can be used to update the system geometry in iterative schemes.
 Here we initialize a particle system with a cutoff of `8.0` and then update
 the cutoff to `10.0`. 
 
-```jldoctest ; filter = r" +Parallelization.*" => ""
+```jldoctest ; filter = r"( +Parallelization.*|CellListMap[.])" => ""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(read_pdb(CellListMap.argon_pdb_file));

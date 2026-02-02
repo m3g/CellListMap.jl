@@ -156,10 +156,10 @@ and the mapping is performed with the stripped coordinates, but passing the valu
 julia> using LinearAlgebra: norm_sqr
 
 result = foreachneighbor!(
-           (xᵢ,xⱼ,i,j,d2,sum_sqr) -> begin
-               x1 = x_input[i]
-               x2 = CellListMap.wrap_relative_to(x_input[j],x1,unitcell)
-               sum_sqr += norm_sqr(x2-x1)
+           (pair, sum_sqr) -> begin
+               x1 = x_input[pair.i]
+               x2 = CellListMap.wrap_relative_to(x_input[pair.j], x1, unitcell)
+               sum_sqr += norm_sqr(x2 - x1)
                return sum_sqr
            end, 
            result, box, cl
@@ -167,7 +167,7 @@ result = foreachneighbor!(
 13.14 ± 0.061
 ```
 
-In the function above, the `xᵢ` and `xⱼ` coordinates, which correspond to the coordinates in `x_input[i]` and `x_input[j]`, but already wrapped relative to each other, are ignored, because they don't carry the uncertainties. We use only the indexes `i` and `j` to recompute the relative position of the particles according to the periodic boundary conditions (using the `CellListMap.wrap_relative_to` function) and their (squared) distance. Since the `x_input`  array carries the uncertainties, the computation of `sum_sqr` will propagate them.   
+In the function above, the `pair.x` and `pair.y` coordinates, which correspond to the coordinates in `x_input[pair.i]` and `x_input[pair.j]`, but already wrapped relative to each other, are ignored, because they don't carry the uncertainties. We use only the indexes `pair.i` and `pair.j` to recompute the relative position of the particles according to the periodic boundary conditions (using the `CellListMap.wrap_relative_to` function) and their (squared) distance. Since the `x_input`  array carries the uncertainties, the computation of `sum_sqr` will propagate them.   
 
 !!! note
     All these computations should be performed inside the scope of a function for optimal performance. The examples here can be followed by copying and pasting the code into the REPL, but this is not the recommended practice for critical code. The strategy of bypassing the internal computations of `CellListMap` may be useful for improving performance even if the previous and simpler method is possible. 

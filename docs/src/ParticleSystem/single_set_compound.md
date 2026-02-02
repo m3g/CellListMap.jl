@@ -75,12 +75,12 @@ possible buffers of the first argument of the reducer (in this case, `x`).
 
 Now we can proceed as before, defining a function that updates the output variable appropriately:
 ```julia
-function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
-    d = sqrt(d2)
+function energy_and_forces!(pair, output::EnergyAndForces)
+    d = pair.d
     output.energy += 1/d
-    df = (1/d2)*(1/d)*(y - x)
-    output.forces[i] += df
-    output.forces[j] -= df
+    df = (1/pair.d2)*(1/d)*(pair.y - pair.x)
+    output.forces[pair.i] += df
+    output.forces[pair.j] -= df
     return output
 end
 ```
@@ -98,7 +98,7 @@ system = ParticleSystem(
     output_name = :energy_and_forces
 );
 
-map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), system);
+foreachneighbor!(energy_and_forces!, system);
 ```
 
 The output can be seen with the aliases of the `system.output` variable:

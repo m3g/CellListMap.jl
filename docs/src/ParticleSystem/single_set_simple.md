@@ -49,10 +49,10 @@ Following the example above, let us compute the forces between the particles. We
 
 ```julia
 function update_forces!(pair, forces)
-    d = pair.d
-    df = (1/pair.d2)*(1/d)*(pair.y - pair.x)
-    forces[pair.i] += df
-    forces[pair.j] -= df
+    (; i, j, x, y, d2, d) = pair
+    df = (1/d2)*(1/d)*(y - x)
+    forces[i] += df
+    forces[j] -= df
     return forces
 end
 ```
@@ -85,7 +85,7 @@ julia> system.forces
  [0.0, 0.0, 0.0]
 ```
 
-A call to `map_pairwise!` with the appropriate function definition will update the forces:
+A call to `foreachneighbor!` with the appropriate function definition will update the forces:
 ```julia-repl
 foreachneighbor!((pair, forces) -> update_forces!(pair, forces), system)
 100-element Vector{SVector{3, Float64}}:

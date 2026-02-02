@@ -5,14 +5,6 @@
     and may change without notice between versions. They are documented here for
     reference and for developers who need to understand the internal workings of the package.
 
-The internal interface provides direct access to the `Box` and `CellList` data structures.
-For most use cases, the [ParticleSystem interface](@ref) is recommended instead.
-
-To use the internal interface, load the package as usual:
-```julia
-using CellListMap
-```
-
 ## Examples
 
 The full code of the examples described here is available at the [examples](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/) directory.
@@ -29,7 +21,7 @@ The full code of the examples described here is available at the [examples](http
 Computing the mean difference in `x` position between random particles. The closure is used to remove the indexes and the distance of the particles from the parameters of the input function, as they are not needed in this case.
 
 ```julia
-using CellListMap
+using CellListMap: Box, CellList
 
 # System properties
 N = 100_000
@@ -79,7 +71,7 @@ foreachneighbor!(
     hist, box, cl
 )
 ```
-Note that, since `hist` is mutable, there is no need to assign the output of `map_pairwise!` to it.
+Note that, since `hist` is mutable, there is no need to assign the output of `foreachneighbor!` to it.
 
 The example above can be run with `CellListMap.Examples.distance_histogram()` and is available in the
 [distance_histogram.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl) file.
@@ -115,7 +107,8 @@ In the following example, we update a force vector of for all particles.
 const mass = rand(N)
 
 # Function to be evaluated for each pair: update force vector
-function calc_forces!(x,y,i,j,d2,mass,forces)
+function calc_forces!(pair,forces, mass)
+    (; i, j, x, y, d2) = pair
     G = 9.8*mass[i]*mass[j]/d2
     d = sqrt(d2)
     df = (G/d)*(x - y)
@@ -129,7 +122,7 @@ forces = [ zeros(SVector{3,Float64}) for i in 1:N ]
 
 # Run pairwise computation
 foreachneighbor!(
-    (pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces),
+    (pair, forces) -> calc_forces!(pair, forces, mass),
     forces, box, cl
 )
 
@@ -161,7 +154,7 @@ y = [ SVector{3,Float64}(sides .* rand(3)) for i in 1:N2 ]
 cl = CellList(x,y,box)
 
 # Function that keeps the minimum distance
-f(i,j,d2,mind) = d2 < mind[3] ? (i,j,d2) : mind
+f(pair, mind) = pair.d2 < mind[3] ? (pair.i,pair.j,pair.d2) : mind
 
 # We have to define our own reduce function here
 function reduce_mind(output,output_threaded)
@@ -178,10 +171,7 @@ end
 mind = ( 0, 0, +Inf )
 
 # Run pairwise computation
-mind = foreachneighbor(
-    (pair, mind) -> f(pair.i, pair.j, pair.d2, mind),
-    mind, box, cl; reduce=reduce_mind
-)
+mind = foreachneighbor(f, mind, box, cl; reduce=reduce_mind)
 ```
 
 The example above can be run with `CellListMap.Examples.nearest_neighbor()` and is available in the
@@ -196,8 +186,8 @@ The empty `pairs` output array will be split in one vector for each thread, and 
 
 ```julia
 # Function to be evaluated for each pair: push pair
-function push_pair!(i,j,d2,pairs)
-    d = sqrt(d2)
+function push_pair!(pair,pairs)
+    (;i, j, d) = pair
     push!(pairs,(i,j,d))
     return pairs
 end
@@ -214,11 +204,7 @@ end
 pairs = Tuple{Int,Int,Float64}[]
 
 # Run pairwise computation
-foreachneighbor!(
-    (pair, pairs) -> push_pair!(pair.i, pair.j, pair.d2, pairs),
-    pairs, box, cl,
-    reduce=reduce_pairs
-)
+foreachneighbor!(push_pair!, pairs, box, cl, reduce=reduce_pairs)
 ```
 
 The full example can be run with `CellListMap.Examples.neighborlist()`, available in the file
@@ -350,7 +336,7 @@ The parallel execution requires the splitting of the computation among tasks.
 
 To allow general output types, the approach of `CellListMap` is to copy the output variable the number of times necessary for each parallel task to update an independent output variables, which are reduced at the end. This, of course, requires some additional memory, particularly if the output being updated is formed by arrays. These copies can be preallocated, and custom reduction functions can be defined.
 
-To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `map_pairwise!` function.
+To control these steps, set manually the `output_threaded` and `reduce` optional input parameters of the `foreachneighbor!` function.
 
 By default, we define:
 ```julia
@@ -372,12 +358,9 @@ end
 
 ### Custom reduction functions
 
-In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `map_pairwise!`:
+In some cases, as in the [Nearest neighbor](#nearest-neighbor) example, the output is a tuple and reduction consists in keeping the output from each thread having the minimum value for the distance. Thus, the reduction operation is not a simple sum over the elements of each threaded output. We can, therefore, overwrite the default reduction method, by passing the reduction function as the `reduce` parameter of `foreachneighbor!`:
 ```julia
-mind = map_pairwise!(
-    (x,y,i,j,d2,mind) -> f(i,j,d2,mind), mind,box,cl;
-    reduce=reduce_mind
-)
+mind = foreachneighbor!(f, mind,box,cl; reduce=reduce_mind)
 ```
 where here the `reduce` function is set to be the custom function that keeps the tuple associated to the minimum distance obtained between threads:
 ```julia
@@ -520,7 +503,7 @@ for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
     UpdateCellList!(x,box,cl,aux) # modifies cl
-    map_pairwise!(...)
+    foreachneighbor!(...)
 end
 ```
 
@@ -532,7 +515,7 @@ for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
     UpdateCellList!(x,y,box,cl,aux) # modifies cl
-    map_pairwise(...)
+    foreachneighbor(...)
 end
 ```
 
@@ -543,12 +526,12 @@ By passing the `aux` auxiliary structure, the `UpdateCellList!` functions will o
 
 ### Preallocating threaded output auxiliary arrays
 
-On parallel runs, note that `output_threaded` is, by default, initialized on the call to `map_pairwise!`. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:
+On parallel runs, note that `output_threaded` is, by default, initialized on the call to `foreachneighbor!`. Thus, if the calculation must be run multiple times (for example, for several steps of a trajectory), it is probably a good idea to preallocate the threaded output, particularly if it is a large array. For example, the arrays of forces should be created only once, and reset to zero after each use:
 ```julia
 forces = zeros(SVector{3,Float64},N)
 forces_threaded = [ deepcopy(forces) for i in 1:nbatches(cl) ]
 for i in 1:nsteps
-    map_pairwise!(f, forces, box, cl, output_threaded=forces_threaded)
+    foreachneighbor!(f, forces, box, cl, output_threaded=forces_threaded)
     # work with the final forces vector
     ...
     # Reset forces_threaded
@@ -565,7 +548,7 @@ The partition of the space into cells is dependent on a parameter `lcell` which 
 ```julia
 box = Box(x,box,lcell=2)
 cl = CellList(x,box)
-map_pairwise!(...)
+foreachneighbor!(...)
 ```
 This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is `lcell=1`, because in `CellListMap` implements a method to avoid spurious computations of distances on top of the cell lists, but for very dense systems, or for very large cutoffs (meaning, for situations in which the number of particles per cell may be very large), a greater `lcell` may provide a better performance. It is unlikely that `lcell > 3` is useful in any practical situation. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The performance can be tested using the progress meter, as explained below.
 
@@ -583,7 +566,7 @@ As a rough guide, `lcell > 1` is only worthwhile if the number of particles per 
 
 For long-running computations, the user might want to see the progress. A progress meter can be turned on with the `show_progress` option. For example:
 ```julia
-map_pairwise!(f,output,box,cl,show_progress=true)
+foreachneighbor!(f,output,box,cl,show_progress=true)
 ```
 will print something like:
 ```julia-repl
@@ -626,7 +609,7 @@ CellList{3, Float64}
   99 cells with real particles.
   162 particles in computing box, including images.
 
-julia> map_pairwise!((x,y,i,j,d2,n) -> n += 1, 0, box, cl) # count neighbors
+julia> foreachneighbor!((pair,n) -> n += 1, 0, box, cl) # count neighbors
 23
 ```
 

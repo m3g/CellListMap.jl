@@ -18,7 +18,7 @@ system = ParticleSystem(
     output = 0.0,
     output_name = :energy
 )
-map_pairwise!((x,y,i,j,d2,energy) -> energy += 1 / sqrt(d2), system)
+foreachneighbor!((pair, energy) -> energy += 1 / pair.d, system)
 ```
 
 ## Force computation
@@ -37,14 +37,14 @@ system = ParticleSystem(
     output = similar(positions),
     output_name = :forces
 )
-function update_forces!(x,y,i,j,d2,forces)
-    d = sqrt(d2)
+function update_forces!(pair, forces)
+    (; x, y, i, j, d2, d) = pair
     df = (1/d2)*(1/d)*(y - x)
     forces[i] += df
     forces[j] -= df
     return forces
 end
-map_pairwise!((x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces), system)
+foreachneighbor!(update_forces!, system)
 ```
 
 ## Energy and forces
@@ -76,12 +76,12 @@ function reducer(x::EnergyAndForces, y::EnergyAndForces)
     return EnergyAndForces(e_tot, x.forces)
 end
 # Function that updates energy and forces for each pair
-function energy_and_forces!(x,y,i,j,d2,output::EnergyAndForces)
-    d = sqrt(d2)
+function energy_and_forces!(pair, output::EnergyAndForces)
+    d = pair.d
     output.energy += 1/d
-    df = (1/d2)*(1/d)*(y - x)
-    output.forces[i] += df
-    output.forces[j] -= df
+    df = (1/pair.d2)*(1/d)*(pair.y - pair.x)
+    output.forces[pair.i] += df
+    output.forces[pair.j] -= df
     return output
 end
 # Initialize system
@@ -94,7 +94,7 @@ system = ParticleSystem(
     output_name = :energy_and_forces
 )
 # Compute energy and forces
-map_pairwise((x,y,i,j,d2,output) -> energy_and_forces!(x,y,i,j,d2,output), system)
+foreachneighbor(energy_and_forces!, system)
 ```
 
 ## Two sets of particles
@@ -136,9 +136,9 @@ system = ParticleSystem(
        output_name = :minimum_distance,
 )
 # Function following the required interface of the mapped function
-get_md(_, _, i, j, d2, md) = minimum_distance(i, j, d2, md)
+get_md(pair, md) = minimum_distance(pair.i, pair.j, pair.d2, md)
 # Compute the minimum distance
-map_pairwise(get_md, system)
+foreachneighbor(get_md, system)
 ```
 
 In the above example, the function is used such that cell lists are constructed for both
@@ -164,8 +164,8 @@ ysystem = ParticleSystem(
        output_name = :minimum_distance,
 )
 # obtain the minimum distance between xpositions and the cell list in system
-# Note the additional `xpositions` parameter in the call to map_pairwise.
-map_pairwise(get_md, xpositions, ysystem)
+# Note the additional `xpositions` parameter in the call to foreachneighbor.
+foreachneighbor(get_md, xpositions, ysystem)
 ```
 
 Additionally, if the `xpositions` are updated, we can obtain compute the function relative to `ysystem` without
@@ -174,7 +174,7 @@ having to update the cell lists:
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},100);
 
-julia> map_pairwise(get_md, xpositions, ysystem)
+julia> foreachneighbor(get_md, xpositions, ysystem)
 MinimumDistance(67, 580, 0.008423693268450603)
 ```
 
@@ -205,11 +205,11 @@ using CellListMap
 import CellListMap.wrap_relative_to
 # Function that updates the forces, for potential of the form:
 # if d < cutoff k*(d^2-cutoff^2)^2 else 0.0 with k = 10^6
-function update_forces!(x, y, i, j, d2, forces, cutoff)
-    r = y - x
-    dudr = 10^6 * 4 * r * (d2 - cutoff^2)
-    forces[i] += dudr
-    forces[j] -= dudr
+function update_forces!(pair, forces, cutoff)
+    r = pair.y - pair.x
+    dudr = 10^6 * 4 * r * (pair.d2 - cutoff^2)
+    forces[pair.i] += dudr
+    forces[pair.j] -= dudr
     return forces
 end
 # Function that initializes the system: it is preferable to initialize
@@ -237,8 +237,8 @@ function simulate(system=init_system(); nsteps::Int=100, isave=1)
     trajectory = typeof(system.positions)[]
     for step in 1:nsteps
         # compute forces at this step
-        map_pairwise!(
-            (x,y,i,j,d2,forces) -> update_forces!(x,y,i,j,d2,forces,system.cutoff),
+        foreachneighbor!(
+            (pair, forces) -> update_forces!(pair, forces, system.cutoff),
             system
         )
         # Update positions and velocities

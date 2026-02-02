@@ -48,11 +48,11 @@ struct NeighborPair{N,T,T2}
     y::SVector{N,T}
     d2::T2
 end
+Base.getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))
+Base.getproperty(p::NeighborPair, ::Val{S}) where {S} = getfield(p, S)
 # Lazy computation of the distance
-@inline function Base.getproperty(p::NeighborPair, s::Symbol)
-    s === :d && return sqrt(getfield(p, :d2))
-    return getfield(p, s)
-end
+Base.getproperty(p::NeighborPair, ::Val{:d}) = sqrt(getfield(p, :d2))
+# Property names
 Base.propertynames(::NeighborPair) = (:i, :j, :x, :y, :d, :d2)
 
 # name holder
