@@ -420,7 +420,11 @@ function limits(
     return Limits(xymax .- xymin)
 end
 
-function limits(x::AbstractMatrix, y::AbstractMatrix; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
+function limits(
+    x::AbstractMatrix,
+    y::AbstractMatrix;
+    validate_coordinates::Union{Nothing,Function}=_validate_coordinates
+)
     N = size(x, 1)
     M = size(y, 1)
     N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
