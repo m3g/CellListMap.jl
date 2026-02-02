@@ -891,6 +891,8 @@ end
 
 end
 
+
+
 @testitem "list buffer reduction" begin
     using CellListMap
     using StaticArrays
@@ -903,7 +905,6 @@ end
     list1 = neighborlist!(system)
     @test length(list1) == 0
 end
-
 
 #
 # some auxiliary functions for testing neighbor lists
