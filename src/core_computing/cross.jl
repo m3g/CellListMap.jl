@@ -149,7 +149,7 @@ end
     map_pairwise!(f::Function, x::AbstractVector{<:AbstractVector}, sys::ParticleSystem1; kargs...)
     map_pairwise!(f::Function, x::AbstractMatrix, sys::ParticleSystem1; kargs...)
 
-Evaluate function f for pairs in two independent sets of particles, where the `sys::ParicleSystem1` object
+Evaluate function f for pairs in two independent sets of particles, where the `sys::ParticleSystem1` object
 contains the previously computed cell lists of one set of particles, and the second set is given by the
 array of positions `x`.
 
