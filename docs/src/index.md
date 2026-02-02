@@ -5,9 +5,10 @@
 The package provides an interface to compute a generic function for each pair of particles closer 
 than a cutoff, using general periodic boundary conditions. Parallel and serial implementations can be used. 
 
-## Overview
+## The naive double loop
 
 `CellListMap` is a package that implements a fast scheme for computing properties of systems of particles in 2 or 3 dimensions, within a cutoff. In brief, it is designed to replace double loops running over the pairs of particles of a system. Naively, a loop over all pair of particles is written as:
+
 ```julia
 for i in 1:N
     for j in i+1:N
@@ -96,6 +97,22 @@ julia> pairwise!((pair, u) -> u += 1/pair.d, sys)
 ```
 
 Note that in the above example the `pairwise` method is actually performing a `pairwise` operation, where the output value `u` is summed up over all neighboring pairs of particles. 
+
+If you are familiar with Julia, the `do` syntax also provides a readable format for the `pairwise!` application:
+```julia-repl
+julia> pairwise!(sys) do pair, u 
+    u += 1/pair.d
+end
+792925.6234732079
+```
+
+The `pairwise!` method mutates the `sys.output` field, which stores the result of the computation:
+```julia-repl
+julia> sys.output
+777632.9459487279
+```
+
+Using initial values, customizing the field name, computing general compound properties, and mapping functions to disjoint sets of particles is possible. 
 
 ## Installation
 
