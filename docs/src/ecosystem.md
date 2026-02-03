@@ -153,13 +153,11 @@ julia> result = measurement(0.,0.)
 and the mapping is performed with the stripped coordinates, but passing the values with uncertainties to the mapped function, which will perform the computation on the pairs with those values:
 
 ```julia-repl
-julia> using LinearAlgebra: norm_sqr
-
 result = pairwise!(
            (pair, sum_sqr) -> begin
                x1 = x_input[pair.i]
                x2 = CellListMap.wrap_relative_to(x_input[pair.j], x1, unitcell)
-               sum_sqr += norm_sqr(x2 - x1)
+               sum_sqr += sum(abs2, x2 - x1)
                return sum_sqr
            end, 
            result, box, cl

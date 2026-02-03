@@ -12,37 +12,43 @@ using Base.Threads: nthreads, @spawn
 using Base: @lock # not exported in 1.6
 using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
+# Exported names of ParticleSystem interface
+export ParticleSystem
 export NeighborPair
 export pairwise!
+export update_cutoff!
+export update_unitcell!
+export resize_output!
+@compat public copy_output, reset_output!, reset_output, reducer, reducer!
+@compat public wrap_relative_to
 
+# Specific for neighborlist interface
+export InPlaceNeighborList
+export update!
+export neighborlist, neighborlist!
 
-
-include("./neighborpair.jl")
-include("./linearalgebra.jl")
-include("./show.jl")
-include("./Box.jl")
-include("./CellLists.jl")
-include("./CellOperations.jl")
-include("./ParticleSystem.jl")
+include("./API/neighborpair.jl")
+include("./internals/linearalgebra.jl")
+include("./internals/show.jl")
+include("./internals/Box.jl")
+include("./internals/CellLists.jl")
+include("./internals/CellOperations.jl")
+include("./API/ParticleSystem.jl")
 
 # Core-computing infraestructure
-include("./core_computing/auxiliary_functions.jl")
-include("./core_computing/vicinal_cells.jl")
-include("./core_computing/self.jl")
-include("./core_computing/cross.jl")
+include("./internals/auxiliary_functions.jl")
+include("./internals/vicinal_cells.jl")
+include("./internals/self.jl")
+include("./internals/cross.jl")
 
-# Utils
-include("./neighborlists.jl")
-
-#
-# Test and example functions
-#
-const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
-include("./examples/examples.jl")
-include("./testing.jl")
+# Neighborlists
+include("./API/neighborlists.jl")
 
 # Precompilation tools
-include("precompile.jl")
+include("./internals/precompile.jl")
+
+# Test file used in some doc strings and example blocs
+const argon_pdb_file = joinpath("$(@__DIR__ )/../test/applications/gromacs/argon/cubic.pdb")
 
 end # module
 

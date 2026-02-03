@@ -45,7 +45,7 @@ avg_dx = normalization * pairwise!(
 )
 ```
 
-The example above can be run with `CellListMap.Examples.average_displacement()` and is available in the
+The example above can be run with `Examples.average_displacement()` and is available in the
 [average_displacement.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/average_displacement.jl) file.
 
 ### Histogram of distances
@@ -73,7 +73,7 @@ pairwise!(
 ```
 Note that, since `hist` is mutable, there is no need to assign the output of `pairwise!` to it.
 
-The example above can be run with `CellListMap.Examples.distance_histogram()` and is available in the
+The example above can be run with `Examples.distance_histogram()` and is available in the
 [distance_histogram.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/distance_histogram.jl) file.
 
 ### Gravitational potential
@@ -95,7 +95,7 @@ end
 u = pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, mass, u), 0.0, box, cl)
 ```
 
-The example above can be run with `CellListMap.Examples.gravitational_potential()` and is available in the
+The example above can be run with `Examples.gravitational_potential()` and is available in the
 [gravitational_potential.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_potential.jl) file.
 
 ### Gravitational force
@@ -128,7 +128,7 @@ pairwise!(
 
 ```
 
-The example above can be run with `CellListMap.Examples.gravitational_force()` and is available in the
+The example above can be run with `Examples.gravitational_force()` and is available in the
 [gravitational_force.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/gravitational_force.jl) file.
 
 !!! note
@@ -174,14 +174,14 @@ mind = ( 0, 0, +Inf )
 mind = pairwise!(f, mind, box, cl; reduce=reduce_mind)
 ```
 
-The example above can be run with `CellListMap.Examples.nearest_neighbor()` and is available in the
+The example above can be run with `Examples.nearest_neighbor()` and is available in the
 [nearest_neighbor.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor.jl) file.
 
-The example `CellListMap.Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods.
+The example `Examples.nearest_neighbor_nopbc()` of [nearest\_neighbor\_nopbc.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/nearest_neighbor_nopbc.jl) describes a similar problem but *without* periodic boundary conditions. Depending on the distribution of points and size it is a faster method than usual ball-tree methods.
 
 ### Implementing Neighbor lists
 
-The implementation of the `CellLIstMap.neighborlist` (see [Neighbor lists](@ref)) is as follows:
+The implementation of the `CellListMap.neighborlist` (see [Neighbor lists](@ref)) is as follows:
 The empty `pairs` output array will be split in one vector for each thread, and reduced with a custom reduction function.
 
 ```julia
@@ -207,7 +207,7 @@ pairs = Tuple{Int,Int,Float64}[]
 pairwise!(push_pair!, pairs, box, cl, reduce=reduce_pairs)
 ```
 
-The full example can be run with `CellListMap.Examples.neighborlist()`, available in the file
+The full example can be run with `Examples.neighborlist()`, available in the file
 [neighborlist.jl](https://github.com/m3g/CellListMap.jl/blob/main/src/examples/neighborlist.jl).
 
 ## Periodic boundary conditions
@@ -386,7 +386,7 @@ The construction of the cell list is harder to parallelize, because assigning ea
 
 At the same time, the homogeneity of the computation of the mapped function may be fast or not, homogeneous or not. These characteristics affect the optimal workload splitting strategy. For very large systems, or systems for which the function to be computed is not homogeneous in time, it may be interesting to split the workload in many tasks as possible, such that slow tasks do not dominate the final computational time.
 
-Both the above considerations can be used to tunning the `nbatches` parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations.
+Both the above considerations can be used to tuning the `nbatches` parameter of the cell list. This parameter is initialized from a tuple of integers, defining the number of batches that will be used for constructing the cell lists and for the mapping of the computations.
 
 By default, the number of batches for the computation of the cell lists is smaller than `nthreads()` if the number of particles per cell is small. The default value is defined by the internal function `CellListMap._nbatches_build_cell_lists(cl::CellList)`.
 
@@ -395,7 +395,7 @@ The values assumed for each number of batches can bee seen by printing the `nbat
 julia> Threads.nthreads()
 64
 
-julia> x, box = CellListMap.xatomic(10^4) # random set with atomic density of water
+julia> x, box = xatomic(10^4) # random set with atomic density of water
 
 julia> cl = CellList(x,box);
 
@@ -422,7 +422,7 @@ NumberOfBatches
   Number of batches for cell list construction: 1
   Number of batches for function mapping: 4
 ```
-fine tunning of the performance for a specific problem can be obtained by adjusting this parameter.
+fine tuning of the performance for a specific problem can be obtained by adjusting this parameter.
 
 If the number of batches is set as zero for any of the two options, the default value is retained. For example:
 
@@ -484,7 +484,7 @@ julia> cl = CellList(x, box, nbatches=(2, 4)); # fixed mode
 julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches unchanged
 ```
 
-## Performance tunning and additional options
+## Performance tuning and additional options
 
 - [Preallocating the cell lists and cell list auxiliary arrays](@ref)
 - [Preallocating threaded output auxiliary arrays](@ref)
@@ -621,6 +621,6 @@ CollapsedDocStrings = true
 
 ```@autodocs
 Modules = [CellListMap]
-Pages = ["Box.jl", "CellLists.jl", "CellOperations.jl", "./core_computing/self.jl", "./core_computing/cross.jl"]
+Pages = ["Box.jl", "CellLists.jl", "CellOperations.jl", "self.jl", "cross.jl"]
 Order = [:type, :function]
 ```
