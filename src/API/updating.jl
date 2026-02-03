@@ -4,13 +4,14 @@
 Resizes the output array and the auxiliary output arrays used
 for multithreading, if the number of particles of the system changed.
 
-This function must be implemented by the user if the output variable is a 
-vector whose length is dependent on the number of particles. For example,
-if the output is a vector of forces acting on each particle, the output
-vector must be resized if the number of particles changes. 
+The function will error if `Base.resize!` is not defined for the 
+type of `system.output`. In this case, a `Base.resize!` method
+must be implemented by the user. 
 
-This function *must* be used in that case, to guarantee that the 
-auxiliary arrays used for multi-threading are resized accordingly. 
+!!! warn
+    This function *must* be used whenever the output is dependent on
+    the number of particles, and that changes, because it adjust the
+    size of the copies of the output variable used for multi-threading.
 
 """
 function resize_output!(sys::AbstractParticleSystem, n::Int)

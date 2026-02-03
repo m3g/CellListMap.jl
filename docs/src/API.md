@@ -9,7 +9,8 @@ CollapsedDocStrings = true
 ### Simple neighborlists
 
 ```@docs
-neighborlist
+neighborlist(::Any, ::Any)
+neighborlist(::Any, ::Any, ::Any)
 ```
 
 ### In-place neighborlists
@@ -32,7 +33,8 @@ ParticleSystem
 ### The parwise! methods
 
 ```@docs
-pairwise!
+pairwise!(::F, ::CellListMap.AbstractParticleSystem) where {F<:Function} 
+pairwise!(::F, ::AbstractVecOrMat, ::CellListMap.ParticleSystem1) where {F<:Function}
 ```
 
 ### Updating systems

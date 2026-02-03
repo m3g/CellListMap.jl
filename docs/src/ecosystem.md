@@ -37,7 +37,7 @@ system = ParticleSystem(
     cutoff = 0.8u"nm",
     unitcell = [2.1,2.1,2.1]u"nm",
     output = 0.0u"nm^2",
-    output_name = :sum_sqr
+    output_name = :sumsqr
 )
 pairwise!((pair, out) -> out += pair.d2, system)
 ```
@@ -68,14 +68,14 @@ julia> x = rand(3,1000)
 The key here is allow all the types of the parameters to follow the type propagation of the elements of `x` inside the differentiation routine. The function we define to compute the derivative is, then:
 
 ```julia-repl
-julia> function sum_sqr(x, sides, cutoff)
+julia> function sumsqr(x, sides, cutoff)
            sys = ParticleSystem(
                positions=x,
                unitcell=eltype(x).(sides),
                cutoff=eltype(x).(cutoff),
                output=zero(eltype(x))
            )
-           return  pairwise!((pair, sum_sqr) -> sum_sqr += pair.d2, sys)
+           return  pairwise!((pair, sumsqr) -> sumsqr += pair.d2, sys)
        end
 ```
 
@@ -84,14 +84,14 @@ Note that we convert `cutoff` and `sides`  to the same type of the input `x`  of
 ```julia-repl
 julia> cutoff = 0.1; sides = [1,1,1];
 
-julia> sum_sqr(x,sides,cutoff)
+julia> sumsqr(x,sides,cutoff)
 12.897650398753228
 ```
 
 but the conversion is required to allow the differentiation to take place:
 
 ```julia-repl
-julia> ForwardDiff.gradient(x -> sum_sqr(x,sides,cutoff),x)
+julia> ForwardDiff.gradient(x -> sumsqr(x,sides,cutoff),x)
 3×1000 Matrix{Float64}:
  -0.132567   0.029865  -0.101301  …   0.249267    0.0486424  -0.0400487
   0.122421   0.207495  -0.184366     -0.201648   -0.105031    0.218342
@@ -105,67 +105,57 @@ Propagating uncertainties through the `Measurements`  and other similar packages
 In cases like this, it is better to bypass all the internals of `CellListMap`  and provide the data to the function that computes pairwise properties directly as a closure. For example:
 
 A vector of particles with uncertainties in their coordinates can be created with: 
-```julia-repl
-julia> using StaticArrays 
+```@example measurements
+using CellListMap
+using Measurements
+using StaticArrays
+using LinearAlgebra: norm
 
-julia> x_input = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for j in 1:1000 ]
-1000-element Vector{SVector{3, Measurement{Float64}}}:
- [0.1658 ± 0.003, 0.9951 ± 0.0054, 0.5067 ± 0.0035]
- [0.2295 ± 0.0074, 0.2987 ± 0.0021, 0.42828 ± 0.00099]
- ⋮
- [0.1362 ± 0.0034, 0.2219 ± 0.0048, 0.2119 ± 0.0072]
- [0.2521 ± 0.0038, 0.4988 ± 0.00013, 0.856046 ± 4.3e-5]
+x_input = [ SVector{3}(measurement(rand(),0.01*rand()) for i in 1:3) for j in 1:1000 ]
 ```
 
-The variables within the `CellListMap` functions will be stripped from the uncertainties. We do:
+The variables within the `CellListMap` functions will be stripped from the uncertainties, and the `ParticleSystem` will be built from these coordinates:
 
-```julia-repl
-julia> unitcell = [1,1,1]
-
-julia> cutoff = 0.1; box = Box(unitcell,cutoff);
-
-julia> x_strip = [ getproperty.(v,:val) for v in x_input ]
-1000-element Vector{SVector{3, Float64}}:
- [0.08441931492362276, 0.9911530546181084, 0.07408559584648788]
- [0.12084764467339837, 0.8284551316333133, 0.9021906852432111]
- ⋮
- [0.2418752113326077, 0.4429225751775432, 0.13576355747772784]
- [0.24440380524702654, 0.07148275176890073, 0.26722687487212315]
+```@example measurements
+x_strip = [ getproperty.(v,:val) for v in x_input ]
 ```
 
-The cell list is built with the stripped values:
-
-```julia-repl
-julia> cl = CellList(x_strip,box)
-CellList{3, Float64}
-  1000 real particles.
-  637 cells with real particles.
-  1695 particles in computing box, including images.
+```@example measurements
+sys = ParticleSystem(
+    positions=x_strip,
+    unitcell=[1,1,1],
+    cutoff=0.1,
+    output=0.0
+)
 ```
 
-The result is initialized with the proper type,
-
-```julia-repl
-julia> result = measurement(0.,0.)
-0.0 ± 0.0
+This would be result of the sum of distances:
+```@example measurements
+pairwise!((pair, sumd) -> sumd += pair.d, sys)
 ```
 
-and the mapping is performed with the stripped coordinates, but passing the values with uncertainties to the mapped function, which will perform the computation on the pairs with those values:
+To compute the same result but propagating the uncertainties, the computation for each pair has to capture the coordinates with uncertainties. To be tread-safe, then, one has to manually guarantee that the sum of squares cannot occur concurrently. Here, then, we introduce a lock: 
 
-```julia-repl
-result = pairwise!(
-           (pair, sum_sqr) -> begin
-               x1 = x_input[pair.i]
-               x2 = CellListMap.wrap_relative_to(x_input[pair.j], x1, unitcell)
-               sum_sqr += sum(abs2, x2 - x1)
-               return sum_sqr
-           end, 
-           result, box, cl
-       )
-13.14 ± 0.061
+```@example measurements
+function sumd_with_uncertainties(sys, x_input)
+    lk = ReentrantLock()
+    sumd = measurement(0.,0.)
+    pairwise!(
+        (pair, _) -> begin
+            (; i, j) = pair
+            x1 = x_input[i]
+            x2 = CellListMap.wrap_relative_to(x_input[j], x1, sys.unitcell)
+            @lock lk sumd += norm(x2 - x1)
+            return 0.0 # not used
+        end, 
+        sys
+    )
+    return sumd
+end
+sumd_with_uncertainties(sys, x_input)
 ```
 
-In the function above, the `pair.x` and `pair.y` coordinates, which correspond to the coordinates in `x_input[pair.i]` and `x_input[pair.j]`, but already wrapped relative to each other, are ignored, because they don't carry the uncertainties. We use only the indexes `pair.i` and `pair.j` to recompute the relative position of the particles according to the periodic boundary conditions (using the `CellListMap.wrap_relative_to` function) and their (squared) distance. Since the `x_input`  array carries the uncertainties, the computation of `sum_sqr` will propagate them.   
+In the function above, the `pair.x` and `pair.y` coordinates, which correspond to the coordinates in `x_input[pair.i]` and `x_input[pair.j]`, but already wrapped relative to each other, are ignored, because they don't carry the uncertainties. We use only the indexes `pair.i` and `pair.j` to recompute the relative position of the particles according to the periodic boundary conditions (using the `CellListMap.wrap_relative_to` function) and their (squared) distance. Since the `x_input`  array carries the uncertainties, the computation of `sumsqr` will propagate them.   
 
 !!! note
     All these computations should be performed inside the scope of a function for optimal performance. The examples here can be followed by copying and pasting the code into the REPL, but this is not the recommended practice for critical code. The strategy of bypassing the internal computations of `CellListMap` may be useful for improving performance even if the previous and simpler method is possible. 

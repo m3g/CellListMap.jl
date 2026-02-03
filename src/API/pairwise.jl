@@ -80,13 +80,13 @@ contains the previously computed cell lists of one set of particles, and the sec
 array of positions `x`.
 
 This function can be advantageous over computing the interactions with `CellListPair`, because here the
-cell lists are only computed for one set. This is advantageous in two situations:
+cell lists are only computed for one set. This may be advantageous in two situations:
 
-    1. The second set of particles is not changing, and the first set is changing. Thus, the cell lists
-       of the second set can be computed only once.
-    2. One of the sets is much smaller than the other. In this case, computing the cell lists of the largest
-       set might be too expensive. Construct the `ParticleSystem` object for the smallest set, and use this
-       function to compute the interactions with the largest set.
+1. The second set of particles is not changing, and the first set is changing. Thus, the cell lists
+   of the second set can be computed only once.
+2. One of the sets is much smaller than the other. In this case, computing the cell lists of the largest
+   set might be too expensive. Construct the `ParticleSystem` object for the smallest set, and use this
+   function to compute the interactions with the largest set.
 
 ## Keyword arguments:
 

@@ -47,6 +47,11 @@ julia> push!(system.xpositions, SVector(0.5, 0.5, 0.5))
     the calculation being performed. Use the `resize_output!` function
     (do **not** use `Base.resize!` on your output array directly).
 
+    In the case of compound outputs (custom output structures) like that
+    of the [Computing both energy and forces](@ref) example, calling `resize_output!` will
+    return an error and require the user to define `Base.resize!` for the
+    custom type.
+
 If the `output` array has to be resized, that has to be done
 with the  `resize_output!` function, which will keep the consistency
 of the auxiliary multi-threading buffers. This is, for instance, the case
