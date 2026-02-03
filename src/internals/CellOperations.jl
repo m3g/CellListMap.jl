@@ -1,4 +1,3 @@
-
 #= 
 
 Function that validates the coordinates. 
@@ -7,16 +6,19 @@ Function that validates the coordinates.
 function _validate_coordinates(x)
     for (i, v) in enumerate(x)
         if any(isnan, v) || any(ismissing, v)
-            throw(ArgumentError("""\n
+            throw(
+                ArgumentError(
+                    """\n
 
-                Invalid coordinates found: $v for particle of index $i.
+                        Invalid coordinates found: $v for particle of index $i.
 
-            """))
+                    """
+                )
+            )
         end
     end
     return nothing
 end
-
 
 
 #=
@@ -52,7 +54,7 @@ julia> wrap_cell_fraction(x,unit_cell_matrix)
 
 =#
 @inline function wrap_cell_fraction(x::AbstractVector{T}, unit_cell_matrix::AbstractMatrix) where {T}
-    # Division by `oneunit` is to support Unitful quantities. 
+    # Division by `oneunit` is to support Unitful quantities.
     # this workaround works here because the units cancel.
     # see: https://github.com/PainterQubits/Unitful.jl/issues/46
     x_stripped = x ./ oneunit(T)
@@ -99,12 +101,12 @@ end
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`. 
 
 =#
-@inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
+@inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N, N, T}) where {N, T}
     invu = inv(oneunit(T))
     unit_cell_matrix = invu * unit_cell_matrix
     x_f = wrap_cell_fraction(invu * x, unit_cell_matrix)
     xref_f = wrap_cell_fraction(invu * xref, unit_cell_matrix)
-    xw = wrap_relative_to(x_f, xref_f, SVector{N,eltype(x_f)}(ntuple(i -> 1, Val(N))))
+    xw = wrap_relative_to(x_f, xref_f, SVector{N, eltype(x_f)}(ntuple(i -> 1, Val(N))))
     return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
 
@@ -133,8 +135,8 @@ Translate vector `x` according to the `unit_cell_matrix` lattice vectors and the
 provided.
 
 =#
-@inline translation_image(x::SVector{N,T}, unit_cell_matrix, indices) where {N,T} =
-    x + unit_cell_matrix * SVector{N,Int}(ntuple(i -> indices[i], Val(N)))
+@inline translation_image(x::SVector{N, T}, unit_cell_matrix, indices) where {N, T} =
+    x + unit_cell_matrix * SVector{N, Int}(ntuple(i -> indices[i], Val(N)))
 
 #=
     translation_image(x::AbstractVector{<:AbstractVector},unit_cell_matrix,indices)
@@ -201,13 +203,14 @@ julia> CellListMap.replicate_system!(x,box,(0:0,-1:1))
 
 =#
 function replicate_system!(
-    x::AbstractVector{SVector{N,T}},
-    unit_cell_matrix::AbstractMatrix,
-    ranges::Tuple
-) where {N,T}
+        x::AbstractVector{SVector{N, T}},
+        unit_cell_matrix::AbstractMatrix,
+        ranges::Tuple
+    ) where {N, T}
     length(ranges) == N || throw(DimensionMismatch("Tuple of ranges must have the same dimension as the vectors: $N"))
     i0 = ntuple(i -> 0, Val(N))
-    imgs = Iterators.filter(!isequal(i0),
+    imgs = Iterators.filter(
+        !isequal(i0),
         Iterators.product(ranges...)
     )
     x0 = copy(x)
@@ -222,7 +225,7 @@ end
 # resized in-place.
 function replicate_system(x::AbstractMatrix{T}, cell, ranges) where {T}
     N = size(x, 1)
-    x_re = [SVector{N,T}(ntuple(i -> x[i, j], Val(N))) for j in axes(x, 2)]
+    x_re = [SVector{N, T}(ntuple(i -> x[i, j], Val(N))) for j in axes(x, 2)]
     replicate_system!(x_re, cell, ranges)
     x = Matrix(reinterpret(reshape, Float64, x_re))
     return x
@@ -237,7 +240,7 @@ Given the linear index of the cell in the cell list, returns the cartesian indic
 of the cell (for arbitrary dimension N).
 
 =#
-@inline cell_cartesian_indices(nc::SVector{N,Int}, i1D) where {N} =
+@inline cell_cartesian_indices(nc::SVector{N, Int}, i1D) where {N} =
     CartesianIndices(ntuple(i -> nc[i], Val(N)))[i1D]
 
 #=
@@ -248,7 +251,7 @@ of the cell (for arbitrary dimension N).
 Returns the index of the cell, in the 1D representation, from its cartesian coordinates. 
 
 =#
-@inline cell_linear_index(nc::SVector{N,Int}, indices) where {N} =
+@inline cell_linear_index(nc::SVector{N, Int}, indices) where {N} =
     LinearIndices(ntuple(i -> nc[i], Val(N)))[ntuple(i -> indices[i], Val(N))...]
 
 #
@@ -258,8 +261,8 @@ function _minmax(x::AbstractVector{<:AbstractVector})
     length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from empty coordinates vector."))
     N = size(x[begin], 1)
     T = eltype(x[begin])
-    xmin = fill(typemax(T), MVector{N,T})
-    xmax = fill(typemin(T), MVector{N,T})
+    xmin = fill(typemax(T), MVector{N, T})
+    xmax = fill(typemin(T), MVector{N, T})
     for v in x
         @. xmin = min(xmin, v)
         @. xmax = max(xmax, v)
@@ -280,16 +283,16 @@ by passing a function that takes the coordinates as input and throws an error if
 are invalid.
 
 =#
-function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
+function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
     isnothing(validate_coordinates) || validate_coordinates(x)
     xmin, xmax = _minmax(x)
     return Limits(xmax .- xmin)
 end
 
-function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing,Function}=_validate_coordinates)
+function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
     N = size(x, 1)
     (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
-    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
     return limits(x_re; validate_coordinates)
 end
 
@@ -307,10 +310,10 @@ are invalid.
 
 =#
 function limits(
-    x::AbstractVector{<:AbstractVector},
-    y::AbstractVector{<:AbstractVector};
-    validate_coordinates::Union{Nothing,Function}=_validate_coordinates
-)
+        x::AbstractVector{<:AbstractVector},
+        y::AbstractVector{<:AbstractVector};
+        validate_coordinates::Union{Nothing, Function} = _validate_coordinates
+    )
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     xmin, xmax = _minmax(x)
@@ -321,16 +324,16 @@ function limits(
 end
 
 function limits(
-    x::AbstractMatrix,
-    y::AbstractMatrix;
-    validate_coordinates::Union{Nothing,Function}=_validate_coordinates
-)
+        x::AbstractMatrix,
+        y::AbstractMatrix;
+        validate_coordinates::Union{Nothing, Function} = _validate_coordinates
+    )
     N = size(x, 1)
     M = size(y, 1)
     N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
     (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
-    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
-    y_re = reinterpret(reshape, SVector{N,eltype(y)}, y)
+    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
+    y_re = reinterpret(reshape, SVector{N, eltype(y)}, y)
     return limits(x_re, y_re; validate_coordinates)
 end
 
@@ -402,7 +405,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
 
     # Find rotation that aligns a with x
     a1 = normalize(a)
-    v = SVector(0, a1[z], -a1[y]) # a1 × i 
+    v = SVector(0, a1[z], -a1[y]) # a1 × i
     if norm_sqr(v) ≈ 0
         R1 = one(m)
     else
@@ -443,7 +446,7 @@ function cell_limits(m::AbstractMatrix{T}) where {T}
     vertices = cell_vertices(m)
     xmin = MVector(vertices[begin])
     xmax = MVector(vertices[begin])
-    for v in @view(vertices[begin+1:end])
+    for v in @view(vertices[(begin + 1):end])
         for j in eachindex(v)
             xmin[j] = min(xmin[j], v[j])
             xmax[j] = max(xmax[j], v[j])
@@ -459,7 +462,7 @@ Function that returns the vertices of a unit cell in 2D or 3D, given the unit ce
 
 =#
 function cell_vertices(m::AbstractMatrix)
-    if size(m) == (2, 2)
+    return if size(m) == (2, 2)
         x = _cell_vertices2D(m)
     elseif size(m) == (3, 3)
         x = _cell_vertices3D(m)
@@ -469,14 +472,14 @@ function cell_vertices(m::AbstractMatrix)
 end
 
 @views function _cell_vertices2D(m::AbstractMatrix{T}) where {T}
-    S = SVector{2,T}
-    x = SVector{4,S}(S(zero(T), zero(T)), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
+    S = SVector{2, T}
+    x = SVector{4, S}(S(zero(T), zero(T)), S(m[:, 1]), S(m[:, 1]) + S(m[:, 2]), S(m[:, 2]))
     return x
 end
 
 @views function _cell_vertices3D(m::AbstractMatrix{T}) where {T}
-    S = SVector{3,T}
-    x = SVector{8,S}(
+    S = SVector{3, T}
+    x = SVector{8, S}(
         S(zero(T), zero(T), zero(T)),
         S(m[:, 1]),
         S(m[:, 1]) + S(m[:, 2]),

@@ -6,8 +6,8 @@ using CellListMap
 #    Base.active_repl.options.iocontext[:displaysize] = (9, 80)
 #); recursive=true)
 makedocs(
-    modules=[CellListMap],
-    sitename="CellListMap.jl",
+    modules = [CellListMap],
+    sitename = "CellListMap.jl",
     pages = [
         "Overview" => "index.md",
         "Neighbor lists" => "neighborlists.md",
@@ -29,6 +29,6 @@ deploydocs(
     repo = "github.com/m3g/CellListMap.jl.git",
     target = "build",
     branch = "gh-pages",
-    devbranch = "main", 
-    versions = ["stable" => "v^", "v#.#" ],
+    devbranch = "main",
+    versions = ["stable" => "v^", "v#.#"],
 )

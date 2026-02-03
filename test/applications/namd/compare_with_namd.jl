@@ -15,12 +15,12 @@
         traj = redirect_stdout(() -> Chemfiles.Trajectory(file), devnull)
         frame = Chemfiles.read_step(traj, 0)
         Chemfiles.close(traj)
-        return reinterpret(reshape, SVector{3,Float64}, Chemfiles.positions(frame))
+        return reinterpret(reshape, SVector{3, Float64}, Chemfiles.positions(frame))
     end
 
     function test_newcl(file, unit_cell, correct, lcell)
         coordinates = getcoor(file)
-        box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+        box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
         cl = CellListMap.CellList(coordinates, box)
         u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
         if !(u ≈ correct)
@@ -32,12 +32,12 @@
     end
 
     # The following function was copied from VMD's pbcset.tcl pbc_vmd2 namd function.
-    # the result is the transpose of the Chemfiles.matrix(unit_cell) function. 
+    # the result is the transpose of the Chemfiles.matrix(unit_cell) function.
     # Nevertheless, neither of those appear to be useful in reconstructing the correct
     # coordinates from the lengths and angles reported in the DCD file. By the way,
     # not even VMD wraps the coordinates of this box correctly, so I'm unsure if we can
-    # do something about that. Maybe we cannot really support trajectory analysis of 
-    # triclinic cells if the simulation was saved in DCD format. 
+    # do something about that. Maybe we cannot really support trajectory analysis of
+    # triclinic cells if the simulation was saved in DCD format.
     function convert_DCD_unitcell(a, b, c, α, β, γ)
         cosBC = cosd(α)
         cosAC = cosd(β)
@@ -95,9 +95,13 @@
     @test test_newcl("$dir/o4.dcd", unit_cell, correct, lcell)
 
     #! format off
-    unit_cell = transpose([70.7107    0.0  0.0
-                           35.3553 61.2372 0.0
-                           35.3553 20.4124 57.735])
+    unit_cell = transpose(
+        [
+            70.7107    0.0  0.0
+            35.3553 61.2372 0.0
+            35.3553 20.4124 57.735
+        ]
+    )
     #! format on
     correct = 1765.1389457850137
     @test test_newcl("$dir/o5.dcd", unit_cell, correct, lcell)
@@ -135,7 +139,7 @@
                   0.0  0.0 50.0]
     #! format: on
     correct = 32230.01699504111
-    box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.CellList(coordinates, box)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
@@ -143,7 +147,7 @@
     coordinates = getcoor("$dir/o2.dcd")
     unit_cell = [80.0, 70.0, 50.0]
     correct = 1093.7225407797744
-    box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
@@ -157,7 +161,7 @@
                   0.0 40.0 80.0]
     #! format: on
     correct = -116.53213607052128
-    box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl, aux)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
@@ -178,9 +182,11 @@
 
     # Orthorhombic but rotated
 
-    unit_cell = [50.0 0.0 50.0
+    unit_cell = [
+        50.0 0.0 50.0
         50.0 50.0 0.0
-        0.0 50.0 50.0]
+        0.0 50.0 50.0
+    ]
     correct = 1724.3195067566828
     @test test_newcl("$dir/o3.dcd", unit_cell, correct, lcell)
 
@@ -233,7 +239,7 @@
                    0.0  0.0 50.0 ]
     #! format: on
     correct = 32230.01699504111
-    box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.CellList(coordinates, box)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
@@ -241,7 +247,7 @@
     coordinates = getcoor("$dir/o2.dcd")
     unit_cell = [80.0, 70.0, 50.0]
     correct = 1093.7225407797744
-    box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
@@ -255,7 +261,7 @@
                   0.0 40.0 80.0]
     #! format: on
     correct = -116.53213607052128
-    box = CellListMap.Box(unit_cell, 10.0, lcell=lcell)
+    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl, aux)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct

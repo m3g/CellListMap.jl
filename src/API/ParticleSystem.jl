@@ -1,11 +1,9 @@
-
-
-# Types of variables that have support for multi-threading without having 
+# Types of variables that have support for multi-threading without having
 # to explicit add methods to copy_output, reset_output!, and reducer functions.
-const SupportedTypes = Union{Number,SVector,FieldVector}
+const SupportedTypes = Union{Number, SVector, FieldVector}
 
 # Supported types for coordinates
-const SupportedCoordinatesTypes = Union{Nothing,AbstractVector{<:AbstractVector},AbstractMatrix}
+const SupportedCoordinatesTypes = Union{Nothing, AbstractVector{<:AbstractVector}, AbstractMatrix}
 
 # Abstract type only for cleaner dispatch
 abstract type AbstractParticleSystem{OutputName} end
@@ -31,7 +29,7 @@ is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)`
 auxiliary function.
 
 """
-mutable struct ParticleSystem1{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
+mutable struct ParticleSystem1{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
     xpositions::V
     output::O
     _box::B
@@ -63,7 +61,7 @@ is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, o
 auxiliary function.
 
 """
-mutable struct ParticleSystem2{OutputName,V,O,B,C,A,VC} <: AbstractParticleSystem{OutputName}
+mutable struct ParticleSystem2{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
     xpositions::V
     ypositions::V
     output::O
@@ -74,8 +72,8 @@ mutable struct ParticleSystem2{OutputName,V,O,B,C,A,VC} <: AbstractParticleSyste
     parallel::Bool
     validate_coordinates::VC
 end
-ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
-    ParticleSystem2{OutputName,V,O,B,C,A,VC}(vx, vy, o, b, c, vo, a, p, vc)
+ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
+    ParticleSystem2{OutputName, V, O, B, C, A, VC}(vx, vy, o, b, c, vo, a, p, vc)
 
 """
     ParticleSystem(;
@@ -180,18 +178,18 @@ julia> pairwise!((pair,output) -> output += pair.d2, sys)
 ```
 """
 function ParticleSystem(;
-    positions::SupportedCoordinatesTypes=nothing,
-    xpositions::SupportedCoordinatesTypes=nothing,
-    ypositions::SupportedCoordinatesTypes=nothing,
-    unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
-    cutoff::Number,
-    output::Any,
-    output_name::Symbol=:output,
-    parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0),
-    lcell=1,
-    validate_coordinates::Union{Nothing,Function}=_validate_coordinates,
-)
+        positions::SupportedCoordinatesTypes = nothing,
+        xpositions::SupportedCoordinatesTypes = nothing,
+        ypositions::SupportedCoordinatesTypes = nothing,
+        unitcell::Union{AbstractVecOrMat, Nothing} = nothing,
+        cutoff::Number,
+        output::Any,
+        output_name::Symbol = :output,
+        parallel::Bool = true,
+        nbatches::Tuple{Int, Int} = (0, 0),
+        lcell = 1,
+        validate_coordinates::Union{Nothing, Function} = _validate_coordinates,
+    )
     # Set xpositions if positions was set
     if (isnothing(positions) && isnothing(xpositions)) || (!isnothing(positions) && !isnothing(xpositions))
         throw(ArgumentError("Either `positions` OR `xpositions` must be defined."))
@@ -205,7 +203,7 @@ function ParticleSystem(;
             if !(dim in (2, 3))
                 throw(DimensionMismatch("Matrix of coordinates must have 2 or 3 rows, one for each dimension, got size: $(size(input_array))"))
             end
-            input_array = reinterpret(reshape, SVector{dim,eltype(input_array)}, input_array)
+            input_array = reinterpret(reshape, SVector{dim, eltype(input_array)}, input_array)
         end
         if !isnothing(unitcell)
             DIM = if eltype(input_array) <: SVector
@@ -226,20 +224,20 @@ function ParticleSystem(;
     # Single set of positions
     if isnothing(ypositions)
         unitcell = isnothing(unitcell) ? limits(xpositions; validate_coordinates) : unitcell
-        _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
+        _box = CellListMap.Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellListMap.CellList(xpositions, _box; parallel, nbatches, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
-        output = _reset_all_output!(output, _output_threaded; reset=false)
+        output = _reset_all_output!(output, _output_threaded; reset = false)
         sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
         # Two sets of positions
     else
         unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
-        _box = CellListMap.Box(unitcell, cutoff, lcell=lcell)
+        _box = CellListMap.Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, validate_coordinates)
         _aux = CellListMap.AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
-        output = _reset_all_output!(output, _output_threaded; reset=false)
+        output = _reset_all_output!(output, _output_threaded; reset = false)
         sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
     end
     return sys
@@ -276,8 +274,8 @@ Returns the type of a unitcell from the `ParticleSystem` structure.
 =#
 CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
 
-ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName,V,O,B,C,A,VC} =
-    ParticleSystem1{OutputName,V,O,B,C,A,VC}(v, o, b, c, vo, a, p, vc)
+ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
+    ParticleSystem1{OutputName, V, O, B, C, A, VC}(v, o, b, c, vo, a, p, vc)
 getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 getproperty(sys::ParticleSystem2, ::Val{:positions}) = getfield(sys, :xpositions)
 
@@ -291,7 +289,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputNa
     println(io)
     show(io_sub, mime, sys._cell_list)
     print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
-    print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+    return print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputName}) where {OutputName}
@@ -303,7 +301,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputNa
     println(io)
     show(io_sub, mime, sys._cell_list)
     print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
-    print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+    return print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
 end
 
 #
@@ -342,18 +340,22 @@ CellListMap.copy_output(v::Vector{T}) where {T<:CustomType} = deepcopy(v)
 
 """
 function copy_output(x)
-    throw(ArgumentError("""\n
-        No method matching `copy_output($(typeof(x)))`
+    throw(
+        ArgumentError(
+            """\n
+                No method matching `copy_output($(typeof(x)))`
 
-        Please implement a method 
-       
-        CellListMap.copy_output(x::$(typeof(x)))
+                Please implement a method 
+               
+                CellListMap.copy_output(x::$(typeof(x)))
 
-        with an appropriate way to copy the required output variable. Many times just
-        defining `CellListMap.copy_output(x::$(typeof(x))) = deepcopy(x)` is ok. 
-    """))
+                with an appropriate way to copy the required output variable. Many times just
+                defining `CellListMap.copy_output(x::$(typeof(x))) = deepcopy(x)` is ok. 
+            """
+        )
+    )
 end
-copy_output(x::T) where {T<:SupportedTypes} = copy(x)
+copy_output(x::T) where {T <: SupportedTypes} = copy(x)
 copy_output(x::AbstractVecOrMat{T}) where {T} = T[copy_output(el) for el in x]
 
 """
@@ -399,20 +401,24 @@ See the `reducer` help entry for a complete example of how to use `reset_output`
 
 """
 function reset_output!(x)
-    throw(ArgumentError("""\n
-        No method matching `reset_output!($(typeof(x)))`
+    throw(
+        ArgumentError(
+            """\n
+                No method matching `reset_output!($(typeof(x)))`
 
-        Please add a method 
-        
-        CellListMap.reset_output!(x::$(typeof(x)))
-        
-        with the appropriate way to reset (zero) the data of the output variables.
+                Please add a method 
+                
+                CellListMap.reset_output!(x::$(typeof(x)))
+                
+                with the appropriate way to reset (zero) the data of the output variables.
 
-        The reset_output! methods **must** return the output variable to
-        conform with the interface, even if the variable is mutable. 
-    """))
+                The reset_output! methods **must** return the output variable to
+                conform with the interface, even if the variable is mutable. 
+            """
+        )
+    )
 end
-reset_output!(x::T) where {T<:SupportedTypes} = zero(x)
+reset_output!(x::T) where {T <: SupportedTypes} = zero(x)
 function reset_output!(x::AbstractVecOrMat{T}) where {T}
     for i in eachindex(x)
         x[i] = reset_output!(x[i])
@@ -427,7 +433,7 @@ Function that resets the output variable and the threaded copies of it.
 
 =#
 function _reset_all_output!(output, output_threaded; reset::Bool)
-    if reset 
+    if reset
         output = reset_output!(output)
     end
     for i in eachindex(output_threaded)
@@ -503,19 +509,23 @@ MinimumDistance(2.1991993997816563)
 
 """
 function reducer!(x, y)
-    throw(ArgumentError("""\n
-        No method matching `reducer!($(typeof(x)),$(typeof(y)))`
+    throw(
+        ArgumentError(
+            """\n
+                No method matching `reducer!($(typeof(x)),$(typeof(y)))`
 
-        Please implement a method 
-        
-        CellListMap.reducer(x::$(typeof(x)),y::$(typeof(y)))
-        
-        with the appropriate way to combine two instances of the type (summing, keeping
-        the minimum, etc), such that threaded computations can be reduced.
+                Please implement a method 
+                
+                CellListMap.reducer(x::$(typeof(x)),y::$(typeof(y)))
+                
+                with the appropriate way to combine two instances of the type (summing, keeping
+                the minimum, etc), such that threaded computations can be reduced.
 
-    """))
+            """
+        )
+    )
 end
-reducer!(x::T, y::T) where {T<:SupportedTypes} = +(x, y)
+reducer!(x::T, y::T) where {T <: SupportedTypes} = +(x, y)
 const reducer = reducer!
 
 #=
@@ -553,10 +563,10 @@ function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}
     return output
 end
 function reduce_output!(
-    reducer::Function,
-    output::AbstractVecOrMat{T},
-    output_threaded::Vector{<:AbstractVecOrMat{T}}
-) where {T}
+        reducer::Function,
+        output::AbstractVecOrMat{T},
+        output_threaded::Vector{<:AbstractVecOrMat{T}}
+    ) where {T}
     output = reset_output!(output)
     for ibatch in eachindex(output_threaded)
         for i in eachindex(output, output_threaded[ibatch])
@@ -642,10 +652,14 @@ ParticleSystem1{output} of dimension 3, composed of:
 """
 function update_unitcell!(sys, unitcell)
     if unitcelltype(sys) == NonPeriodicCell
-        throw(ArgumentError("""\n
-            Manual updating of the unit cell of non-periodic systems is not allowed.
+        throw(
+            ArgumentError(
+                """\n
+                    Manual updating of the unit cell of non-periodic systems is not allowed.
 
-        """))
+                """
+            )
+        )
     end
     sys._box = update_box(sys._box; unitcell)
     return sys
@@ -724,7 +738,7 @@ get_computing_box(sys::AbstractParticleSystem) = sys._box.computing_box
 Updates the cell lists for periodic systems.
 
 =#
-function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
+function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
     if update_lists
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
@@ -735,12 +749,12 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
             sys._box,
             sys._cell_list,
             sys._aux;
-            parallel=sys.parallel,
-            validate_coordinates=sys.validate_coordinates,
+            parallel = sys.parallel,
+            validate_coordinates = sys.validate_coordinates,
         )
         if n_particles_changed
             _old_nbatches = nbatches(sys)
-            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel=sys.parallel)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
             _new_nbatches = nbatches(sys)
             if _old_nbatches != _new_nbatches
                 sys._aux = CellListMap.AuxThreaded(sys._cell_list)
@@ -751,25 +765,25 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool=true)
     return sys
 end
 
-function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool=true)
+function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
     if update_lists
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end
         n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
-                              (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
+            (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
         sys._cell_list = CellListMap.UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
             sys._box,
             sys._cell_list,
             sys._aux;
-            parallel=sys.parallel,
-            validate_coordinates=sys.validate_coordinates,
+            parallel = sys.parallel,
+            validate_coordinates = sys.validate_coordinates,
         )
         if n_particles_changed
             _old_nbatches = nbatches(sys)
-            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel=sys.parallel)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
             _new_nbatches = nbatches(sys)
             if _old_nbatches != _new_nbatches
                 sys._aux = CellListMap.AuxThreaded(sys._cell_list)
@@ -836,20 +850,20 @@ julia> pairwise!((pair, output) -> output += 1 / (1 + pair.d), sys)
 
 """
 function pairwise!(
-    f::F,
-    sys::AbstractParticleSystem;
-    update_lists::Bool=true,
-    show_progress::Bool=false,
-    reset::Bool=true,
-) where {F<:Function}
+        f::F,
+        sys::AbstractParticleSystem;
+        update_lists::Bool = true,
+        show_progress::Bool = false,
+        reset::Bool = true,
+    ) where {F <: Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
     UpdateParticleSystem!(sys, update_lists)
     sys.output = CellListMap.pairwise!(
         f, sys.output, sys._box, sys._cell_list;
-        output_threaded=sys._output_threaded,
-        parallel=sys.parallel,
-        reduce=(output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
-        show_progress=show_progress
+        output_threaded = sys._output_threaded,
+        parallel = sys.parallel,
+        reduce = (output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
+        show_progress = show_progress
     )
     return sys.output
 end
@@ -904,16 +918,16 @@ julia> pairwise!((pair, output) -> output + pair.d, z, sys; update_lists=false) 
 
 """
 function pairwise!(
-    f::F, x::AbstractVecOrMat, sys::ParticleSystem1;
-    show_progress::Bool=false, update_lists::Bool=true, reset::Bool=true,
-) where {F<:Function}
+        f::F, x::AbstractVecOrMat, sys::ParticleSystem1;
+        show_progress::Bool = false, update_lists::Bool = true, reset::Bool = true,
+    ) where {F <: Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
     UpdateParticleSystem!(sys, update_lists)
     sys.output = pairwise!(
         f, sys.output, sys._box, x, sys._cell_list;
-        output_threaded=sys._output_threaded,
-        reduce=(output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
-        parallel=sys.parallel, show_progress,
+        output_threaded = sys._output_threaded,
+        reduce = (output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
+        parallel = sys.parallel, show_progress,
     )
     return sys.output
 end

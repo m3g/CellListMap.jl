@@ -41,22 +41,22 @@ end
 @testitem "Update box with Limits" begin
     using CellListMap
     r = [[1.0, 1.0, 1.0]]
-    system = InPlaceNeighborList(x=r, cutoff=3.0, parallel=false)
+    system = InPlaceNeighborList(x = r, cutoff = 3.0, parallel = false)
     list = neighborlist!(system)
     update!(system, r)
-    @test list == Tuple{Int64,Int64,Float64}[]
+    @test list == Tuple{Int64, Int64, Float64}[]
     r = [[1.0, 1.0, 1.0], [10.0, 1.0, 1.0], [3.0, 1.0, 1.0]]
     update!(system, r)
     list = neighborlist!(system)
     @test list == [(1, 3, 2.0)]
     r = [[7, 10, 10], [18, 10, 10]]
-    system = InPlaceNeighborList(x=r, cutoff=3.0, parallel=false)
+    system = InPlaceNeighborList(x = r, cutoff = 3.0, parallel = false)
     list = neighborlist!(system)
-    @test list == Tuple{Int64,Int64,Float64}[]
+    @test list == Tuple{Int64, Int64, Float64}[]
     r = [[10.89658911843461, 3.709237933444153, 10.0], [13.894156281793144, 11.054172259416013, 10.0]]
     update!(system, r)
     list = neighborlist!(system)
-    @test list == Tuple{Int64,Int64,Float64}[]
+    @test list == Tuple{Int64, Int64, Float64}[]
 end
 
 @testitem "Stable Box update" setup = [AllocTest] begin
@@ -78,42 +78,42 @@ end
     box = CellListMap.Box([10, 10, 10], 1)
     @test typeof(box.cutoff) == Float64
     @test eltype(box.input_unit_cell.matrix) == Float64
-    box = CellListMap.Box([10.f0, 10.f0, 10.f0], 1)
+    box = CellListMap.Box([10.0f0, 10.0f0, 10.0f0], 1)
     @test typeof(box.cutoff) == Float32
     @test eltype(box.input_unit_cell.matrix) == Float32
 
     # update with tuples
     box = CellListMap.Box([1, 1, 1], 0.1)
-    a = @ballocated CellListMap.update_box($box; unitcell=(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
+    a = @ballocated CellListMap.update_box($box; unitcell = (2, 2, 2), cutoff = 0.2) evals = 1 samples = 1
     @test a == Allocs(0)
-    new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
+    new_box = CellListMap.update_box(box; unitcell = (2, 2, 2), cutoff = 0.2)
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
     # update with SVector
     box = CellListMap.Box([1, 1, 1], 0.1)
-    a = @ballocated CellListMap.update_box($box; unitcell=SVector(2, 2, 2), cutoff=0.2) evals = 1 samples = 1
+    a = @ballocated CellListMap.update_box($box; unitcell = SVector(2, 2, 2), cutoff = 0.2) evals = 1 samples = 1
     @test a == Allocs(0)
-    new_box = CellListMap.update_box(box; unitcell=(2, 2, 2), cutoff=0.2)
+    new_box = CellListMap.update_box(box; unitcell = (2, 2, 2), cutoff = 0.2)
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
     # update with Limits
-    x = rand(SVector{3,Float64}, 1000)
+    x = rand(SVector{3, Float64}, 1000)
     box = CellListMap.Box(CellListMap.limits(x), 0.1)
-    new_x = rand(SVector{3,Float64}, 1500)
-    a = @ballocated CellListMap.update_box($box; unitcell=$(CellListMap.limits(new_x)), cutoff=0.2) evals = 1 samples = 1
+    new_x = rand(SVector{3, Float64}, 1500)
+    a = @ballocated CellListMap.update_box($box; unitcell = $(CellListMap.limits(new_x)), cutoff = 0.2) evals = 1 samples = 1
     @test a == Allocs(0)
-    new_box = CellListMap.update_box(box; unitcell=CellListMap.limits(new_x), cutoff=0.2)
+    new_box = CellListMap.update_box(box; unitcell = CellListMap.limits(new_x), cutoff = 0.2)
     @test new_box.cutoff == 0.2
     @test diag(new_box.input_unit_cell.matrix) ≈ CellListMap.limits(new_x).limits .+ 2.1 * 0.2
 
     # Update with SMatrix
     box = CellListMap.Box([1 0 0; 0 1 0; 0 0 1], 0.1)
-    new_matrix = SMatrix{3,3,Float64,9}(2, 0, 0, 0, 2, 0, 0, 0, 2)
-    a = @ballocated CellListMap.update_box($box; unitcell=$new_matrix, cutoff=0.2) evals = 1 samples = 1
+    new_matrix = SMatrix{3, 3, Float64, 9}(2, 0, 0, 0, 2, 0, 0, 0, 2)
+    a = @ballocated CellListMap.update_box($box; unitcell = $new_matrix, cutoff = 0.2) evals = 1 samples = 1
     @test a == Allocs(0)
-    new_box = CellListMap.update_box(box; unitcell=new_matrix, cutoff=0.2)
+    new_box = CellListMap.update_box(box; unitcell = new_matrix, cutoff = 0.2)
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 

@@ -1,4 +1,4 @@
-@testitem "BasicForParticleSystem" setup=[Testing] begin
+@testitem "BasicForParticleSystem" setup = [Testing] begin
 
     using StaticArrays
     using CellListMap
@@ -16,12 +16,12 @@
 
     # Some simple disjoint set properties
     system = ParticleSystem(
-        xpositions=x,
-        ypositions=y,
-        cutoff=cutoff,
-        unitcell=sides,
-        output=0.0,
-        output_name=:gravitational_potential
+        xpositions = x,
+        ypositions = y,
+        cutoff = cutoff,
+        unitcell = sides,
+        output = 0.0,
+        output_name = :gravitational_potential
     )
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(sides, cutoff))
     system.parallel = false
@@ -33,10 +33,10 @@
 
     # Same but for non-periodic systems
     system = ParticleSystem(
-        xpositions=x,
-        ypositions=y,
-        cutoff=cutoff,
-        output=0.0,
+        xpositions = x,
+        ypositions = y,
+        cutoff = cutoff,
+        output = 0.0,
     )
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(CellListMap.limits(x, y), cutoff))
     system.parallel = false
@@ -52,11 +52,11 @@
         ymat[:, i] .= y[i]
     end
     system = ParticleSystem(
-        xpositions=xmat,
-        ypositions=ymat,
-        cutoff=cutoff,
-        unitcell=sides,
-        output=0.0,
+        xpositions = xmat,
+        ypositions = ymat,
+        cutoff = cutoff,
+        unitcell = sides,
+        output = 0.0,
     )
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(sides, cutoff))
     system.parallel = false
@@ -66,12 +66,12 @@
 
     # Check different lcell
     system = ParticleSystem(
-        xpositions=x,
-        ypositions=y,
-        cutoff=cutoff,
-        unitcell=sides,
-        output=0.0,
-        lcell=3,
+        xpositions = x,
+        ypositions = y,
+        cutoff = cutoff,
+        unitcell = sides,
+        output = 0.0,
+        lcell = 3,
     )
     system.parallel = false
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
@@ -80,28 +80,28 @@
 
     # Test updating of the data on disjoint sets works fine
     for arrays in [
-            # static vectors, length(x) > length(y)
-            [rand(SVector{2,Float64}, 1000), rand(SVector{2,Float64}, 100)],
-            # static vectors, length(x) < length(y)
-            [rand(SVector{2,Float64}, 100), rand(SVector{2,Float64}, 1000)],
-            # standard vectors, length(x) > length(y)
-            [[rand(2) for _ in 1:1000], [rand(2) for _ in 1:100]], # with standard vectors
-            # standard vectors, length(x) < length(y)
-            [[rand(2) for _ in 1:100], [rand(2) for _ in 1:1000]], # with standard vectors
-            # matrices, length(x) > length(y)
-            [rand(2, 1000), rand(2, 100)],
-            # matrices, length(x) < length(y)
-            [rand(2, 100), rand(2, 1000)], # with standard vectors
-        ], unitcell in [[1, 1], nothing]
+                # static vectors, length(x) > length(y)
+                [rand(SVector{2, Float64}, 1000), rand(SVector{2, Float64}, 100)],
+                # static vectors, length(x) < length(y)
+                [rand(SVector{2, Float64}, 100), rand(SVector{2, Float64}, 1000)],
+                # standard vectors, length(x) > length(y)
+                [[rand(2) for _ in 1:1000], [rand(2) for _ in 1:100]], # with standard vectors
+                # standard vectors, length(x) < length(y)
+                [[rand(2) for _ in 1:100], [rand(2) for _ in 1:1000]], # with standard vectors
+                # matrices, length(x) > length(y)
+                [rand(2, 1000), rand(2, 100)],
+                # matrices, length(x) < length(y)
+                [rand(2, 100), rand(2, 1000)], # with standard vectors
+            ], unitcell in [[1, 1], nothing]
         local x = arrays[1]
         local y = arrays[2]
         local system
         system = ParticleSystem(
-            xpositions=x,
-            ypositions=y,
-            cutoff=0.1,
-            output=0.0,
-            unitcell=unitcell,
+            xpositions = x,
+            ypositions = y,
+            cutoff = 0.1,
+            output = 0.0,
+            unitcell = unitcell,
         )
         uc = isnothing(unitcell) ? CellListMap.limits(x, y) : [1, 1]
         box = CellListMap.Box(uc, 0.1)
@@ -109,7 +109,7 @@
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
         if x isa AbstractVector
-            x = rand(SVector{2,Float64}, length(x) + 100)
+            x = rand(SVector{2, Float64}, length(x) + 100)
             resize!(system.xpositions, length(x))
         else
             # Cannot resize the matrices, so this interface is more limited
@@ -121,7 +121,7 @@
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         if y isa AbstractVector
-            y = rand(SVector{2,Float64}, length(y) + 100)
+            y = rand(SVector{2, Float64}, length(y) + 100)
             resize!(system.ypositions, length(y))
         else
             y = rand(2, size(y, 2))
@@ -137,45 +137,45 @@
     # when the dimension of the unitcell does not match that of SVectors
     # of the input array
     @test_throws DimensionMismatch ParticleSystem(
-        positions=rand(SVector{3,Float64}, 100),
-        unitcell=[1, 1],
-        cutoff=0.1,
-        output=0.0,
+        positions = rand(SVector{3, Float64}, 100),
+        unitcell = [1, 1],
+        cutoff = 0.1,
+        output = 0.0,
     )
     sys = ParticleSystem(
-        positions=rand(SVector{3,Float64}, 100),
-        unitcell=[1, 1, 1],
-        cutoff=0.1,
-        output=0.0,
+        positions = rand(SVector{3, Float64}, 100),
+        unitcell = [1, 1, 1],
+        cutoff = 0.1,
+        output = 0.0,
     )
     @test size(sys.unitcell) == (3, 3)
 
 end
 
-@testitem "ParticleSystem - resize output" setup=[Testing] begin
+@testitem "ParticleSystem - resize output" setup = [Testing] begin
     using StaticArrays
     using CellListMap
-    function force(x, y, i, j, d2, f) 
-        fxy = (x - y) / d2 
+    function force(x, y, i, j, d2, f)
+        fxy = (x - y) / d2
         f[i] -= fxy
         f[j] += fxy
         return f
     end
-    x = rand(SVector{3,Float64}, 100)
-    sides = [1,1,1]
+    x = rand(SVector{3, Float64}, 100)
+    sides = [1, 1, 1]
     cutoff = 0.1
     sys = ParticleSystem(
-        positions=x,
-        unitcell=sides,
-        cutoff=cutoff,
-        output=zero(x),
+        positions = x,
+        unitcell = sides,
+        cutoff = cutoff,
+        output = zero(x),
         output_name = :force
     )
     naive = map_naive!(force, zero(x), x, CellListMap.Box(sides, cutoff))
     pairwise!((pair, f) -> force(pair.x, pair.y, pair.i, pair.j, pair.d2, f), sys)
     @test sys.force ≈ naive
     resize!(x, 120)
-    x[101:end] .= rand(SVector{3,Float64}, 20)
+    x[101:end] .= rand(SVector{3, Float64}, 20)
     naive = map_naive!(force, zero(x), x, CellListMap.Box(sides, cutoff))
     resize_output!(sys, 120)
     pairwise!((pair, f) -> force(pair.x, pair.y, pair.i, pair.j, pair.d2, f), sys)
@@ -195,16 +195,16 @@ end
         #
         # one set systems
         #
-        x = rand(SVector{3,Float64}, 100)
+        x = rand(SVector{3, Float64}, 100)
         uc = isnothing(unitcell) ? CellListMap.limits(x) : unitcell
         box = CellListMap.Box(uc, 0.1)
         cl = CellListMap.CellList(x, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system = ParticleSystem(xpositions=x, cutoff=0.1, output=0.0, unitcell=unitcell)
+        system = ParticleSystem(xpositions = x, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
         # Compute a different property, without updating lists
         r = CellListMap.pairwise!((pair, r) -> r += pair.d, 0.0, box, cl)
-        @test r ≈ pairwise!((pair, r) -> r += pair.d, system; update_lists=false)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d, system; update_lists = false)
 
         #
         # two-set systems
@@ -213,159 +213,161 @@ end
         #
         # x is smaller
         #
-        x = rand(SVector{3,Float64}, 100)
-        y = rand(SVector{3,Float64}, 1000)
+        x = rand(SVector{3, Float64}, 100)
+        y = rand(SVector{3, Float64}, 1000)
 
         uc = isnothing(unitcell) ? CellListMap.limits(x, y) : unitcell
         box = CellListMap.Box(uc, 0.1)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell)
+        system = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # change x coordinates
-        x = rand(SVector{3,Float64}, 100)
+        x = rand(SVector{3, Float64}, 100)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         # increase x size
-        x = rand(SVector{3,Float64}, 200)
+        x = rand(SVector{3, Float64}, 200)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.xpositions, length(x))
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         #
         # x is greater
         #
-        x = rand(SVector{3,Float64}, 1000)
-        y = rand(SVector{3,Float64}, 100)
+        x = rand(SVector{3, Float64}, 1000)
+        y = rand(SVector{3, Float64}, 100)
 
         uc = isnothing(unitcell) ? CellListMap.limits(x, y) : unitcell
         box = CellListMap.Box(uc, 0.1)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system = ParticleSystem(xpositions=x, ypositions=y, cutoff=0.1, output=0.0, unitcell=unitcell)
+        system = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # change x coordinates
-        x = rand(SVector{3,Float64}, 1000)
+        x = rand(SVector{3, Float64}, 1000)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         # increase x size
-        x = rand(SVector{3,Float64}, 1100)
+        x = rand(SVector{3, Float64}, 1100)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.xpositions, length(x))
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         # change y coordinates
-        y = rand(SVector{3,Float64}, 100)
+        y = rand(SVector{3, Float64}, 100)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.ypositions .= y
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         # increase y size
-        y = rand(SVector{3,Float64}, 110)
+        y = rand(SVector{3, Float64}, 110)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.ypositions, length(y))
         system.ypositions .= y
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         # increase y size beyond x size
-        y = rand(SVector{3,Float64}, 1300)
+        y = rand(SVector{3, Float64}, 1300)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.ypositions, length(y))
         system.ypositions .= y
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists=true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
 
         # compute a different property, without updating lists
-        r = CellListMap.pairwise!((pair, r) -> r += 2*pair.d2, 0.0, box, cl)
-        @test r ≈ pairwise!((pair, r) -> r += 2*pair.d2, system; update_lists=false)
+        r = CellListMap.pairwise!((pair, r) -> r += 2 * pair.d2, 0.0, box, cl)
+        @test r ≈ pairwise!((pair, r) -> r += 2 * pair.d2, system; update_lists = false)
 
     end
 end
 
-@testitem "cross_x_vs_sys" setup=[Testing] begin
+@testitem "cross_x_vs_sys" setup = [Testing] begin
     using CellListMap
     using StaticArrays
 
     f(_, _, _, _, d2, out) = out += d2
     f(pair::NeighborPair, out) = out += pair.d2
     cutoff = 0.1
-    for uc in (nothing, [1,1,1], [1 0.2 0; 0.2 1.0 0; 0 0 1 ]), parallel in (false, true)
-        x = rand(SVector{3,Float64}, 100)
+    for uc in (nothing, [1, 1, 1], [1 0.2 0; 0.2 1.0 0; 0 0 1 ]), parallel in (false, true)
+        x = rand(SVector{3, Float64}, 100)
         # y smaller than x
-        y = rand(SVector{3,Float64}, 10)
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x,y) : uc, cutoff)
+        y = rand(SVector{3, Float64}, 10)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
-        sys = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=false)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=true)
+        sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = false)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
 
         # Update x positions
-        sys.xpositions .= rand(SVector{3,Float64}, 100)
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x,y) : uc, cutoff)
+        sys.xpositions .= rand(SVector{3, Float64}, 100)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=true)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
 
         # Matrices as inputs
         xmat = stack(x)
         ymat = stack(y)
-        sys = ParticleSystem(xpositions=xmat, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
-        @test naive ≈ pairwise!(f, ymat, sys; update_lists=false)
-        @test naive ≈ pairwise!(f, ymat, sys; update_lists=true)
+        sys = ParticleSystem(xpositions = xmat, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
+        @test naive ≈ pairwise!(f, ymat, sys; update_lists = false)
+        @test naive ≈ pairwise!(f, ymat, sys; update_lists = true)
 
         # y greater than x, and possibly spanning a region outside the box of x
-        y = 2 .* rand(SVector{3,Float64}, 100)
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x,y) : uc, cutoff)
+        y = 2 .* rand(SVector{3, Float64}, 100)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
-        sys = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=false)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=true)
+        sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = false)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
 
         # here y is completely outside the range of x, thus without PBCs, this is zero
-        y = rand(SVector{3,Float64}, 10) .+ Ref(SVector(10.0, 10.0, 10.0))
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x,y) : uc, cutoff)
+        y = rand(SVector{3, Float64}, 10) .+ Ref(SVector(10.0, 10.0, 10.0))
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
-        sys = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, unitcell=uc, parallel=parallel)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=false)
-        @test naive ≈ pairwise!(f, y, sys; update_lists=true)
+        sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = false)
+        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
     end
 
     # Test if output_threaded was not provided
-    x = rand(SVector{3,Float64}, 100)
-    y = rand(SVector{3,Float64}, 10)
-    box = CellListMap.Box([1,1,1], cutoff)
+    x = rand(SVector{3, Float64}, 100)
+    y = rand(SVector{3, Float64}, 10)
+    box = CellListMap.Box([1, 1, 1], cutoff)
     cl = CellListMap.CellList(x, box)
     naive = map_naive!(f, 0.0, x, y, box)
-    @test naive ≈ pairwise!(f, 0.0, box, y, cl; output_threaded=nothing, parallel=true)
+    @test naive ≈ pairwise!(f, 0.0, box, y, cl; output_threaded = nothing, parallel = true)
 
 end
 
 
-@testitem "ParticleSystem parallelization" setup=[Testing] begin
+@testitem "ParticleSystem parallelization" setup = [Testing] begin
 
     using Test
     using StaticArrays
     using CellListMap
 
     if Threads.nthreads() == 1
-        println("""
+        println(
+            """
 
-             WARNING: Ideally, run a multi-threaded test to check the parallel versions.
+                 WARNING: Ideally, run a multi-threaded test to check the parallel versions.
 
-        """)
+            """
+        )
     end
 
     # Function to be evaluated for each pair: sum of displacements on x
@@ -376,42 +378,42 @@ end
     naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
 
     # Check if changing lcell breaks something
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=1)
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, lcell = 1)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=3)
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, lcell = 3)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, lcell=5)
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, lcell = 5)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(3, 5))
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, nbatches = (3, 5))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 1))
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, nbatches = (1, 1))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(1, 7))
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, nbatches = (1, 7))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(7, 1))
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, nbatches = (7, 1))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(13, 17))
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, nbatches = (13, 17))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, unitcell=sides, cutoff=cutoff, output=0.0, nbatches=(4, 16))
+    system = ParticleSystem(xpositions = x, unitcell = sides, cutoff = cutoff, output = 0.0, nbatches = (4, 16))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
 
     # non-periodic system
     box = CellListMap.Box(CellListMap.limits(x), cutoff)
     naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=1)
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, lcell = 1)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, lcell=3)
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, lcell = 3)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(3, 5))
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, nbatches = (3, 5))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, output=0.0, nbatches=(1, 1))
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, nbatches = (1, 1))
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
 
 end
 
-@testitem "ParticleSystem updating lists" setup=[Testing] begin
+@testitem "ParticleSystem updating lists" setup = [Testing] begin
 
     using Test
     using StaticArrays
@@ -423,10 +425,10 @@ end
 
     # Initialize auxiliary linked lists
     system = ParticleSystem(
-        xpositions=x,
-        cutoff=cutoff,
-        unitcell=sides,
-        output=0.0,
+        xpositions = x,
+        cutoff = cutoff,
+        unitcell = sides,
+        output = 0.0,
     )
 
     # Function to be evaluated for each pair: sum of displacements on x
@@ -439,8 +441,8 @@ end
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
 
     # Orthorhombic cell
-    new_x = copy(x) .+ [rand(SVector{3,Float64}) for _ in 1:N]
-    new_sides = sides + rand(SVector{3,Float64})
+    new_x = copy(x) .+ [rand(SVector{3, Float64}) for _ in 1:N]
+    new_sides = sides + rand(SVector{3, Float64})
     new_cutoff = cutoff + rand()
     new_box = CellListMap.Box(new_sides, new_cutoff)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
@@ -472,12 +474,12 @@ end
     unitcell = [250 0 10; 10 250 0; 0 0 250]
     new_box = CellListMap.Box(unitcell, cutoff)
     new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
-    new_val = CellListMap.pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel=true)
+    new_val = CellListMap.pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true)
     system = ParticleSystem(
-        xpositions=system.xpositions,
-        unitcell=unitcell,
-        cutoff=cutoff,
-        output=0.0,
+        xpositions = system.xpositions,
+        unitcell = unitcell,
+        cutoff = cutoff,
+        output = 0.0,
     )
     system.parallel = false
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
@@ -505,11 +507,11 @@ end
     #
     new_box = CellListMap.Box(CellListMap.limits(new_x), cutoff)
     new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
-    new_val = CellListMap.pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel=true)
+    new_val = CellListMap.pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true)
     system = ParticleSystem(
-        xpositions=system.xpositions,
-        cutoff=cutoff,
-        output=0.0,
+        xpositions = system.xpositions,
+        cutoff = cutoff,
+        output = 0.0,
     )
     system.parallel = false
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
@@ -531,7 +533,7 @@ end
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
 end
 
-@testitem "ParticleSystem applications" setup=[Testing] begin
+@testitem "ParticleSystem applications" setup = [Testing] begin
 
     using Test
     using StaticArrays
@@ -550,7 +552,7 @@ end
         return hist
     end
     naive = map_naive!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), zeros(Int, 10), x, box)
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=zeros(Int, 10))
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, unitcell = sides, output = zeros(Int, 10))
     @test naive == pairwise!((pair, hist) -> build_histogram!(pair.d2, hist), system)
 
     # Function to be evaluated for each pair: gravitational potential
@@ -562,12 +564,12 @@ end
     end
     mass = rand(N)
     naive = CellListMap.pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl)
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=0.0)
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, unitcell = sides, output = 0.0)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
 
     # Check the functionality of computing a different function from the same coordinates (new_coordinates=false)
     naive = CellListMap.pairwise!((pair, u) -> u += pair.d2, 0.0, box, cl)
-    @test pairwise!((pair, u) -> u += pair.d2, system; update_lists=false) ≈ naive
+    @test pairwise!((pair, u) -> u += pair.d2, system; update_lists = false) ≈ naive
 
     # Function to be evaluated for each pair: gravitational force
     function calc_forces!(x, y, i, j, d2, mass, forces)
@@ -579,9 +581,9 @@ end
         forces[j] = forces[j] + df
         return forces
     end
-    forces = [zeros(SVector{3,Float64}) for i in 1:N]
+    forces = [zeros(SVector{3, Float64}) for i in 1:N]
     naive = CellListMap.pairwise!((pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces), copy(forces), box, cl)
-    system = ParticleSystem(xpositions=x, cutoff=cutoff, unitcell=sides, output=forces)
+    system = ParticleSystem(xpositions = x, cutoff = cutoff, unitcell = sides, output = forces)
     @test pairwise!((pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces), system) ≈ naive
 
 end

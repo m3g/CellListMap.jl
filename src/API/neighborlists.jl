@@ -1,11 +1,9 @@
-
-
 #
 # Wrapper of the list of neighbors, that allows in-place updating of the lists
 #
 mutable struct NeighborList{T}
     n::Int
-    list::Vector{Tuple{Int,Int,T}}
+    list::Vector{Tuple{Int, Int, T}}
 end
 
 import Base: push!, empty!, resize!, copy
@@ -42,7 +40,7 @@ function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborLis
     list = resize!(list, npairs)
     @sync for it in eachindex(list_threaded)
         lt = list_threaded[it]
-        range = ranges[it]-lt.n+1:ranges[it]
+        range = (ranges[it] - lt.n + 1):ranges[it]
         @spawn list.list[range] .= @view(lt.list[1:lt.n])
     end
     return list
@@ -59,7 +57,7 @@ Structure that containst the system information for neighborlist computations. A
 $(TYPEDFIELDS)
 
 =#
-mutable struct InPlaceNeighborList{B,C,A,NB<:NeighborList}
+mutable struct InPlaceNeighborList{B, C, A, NB <: NeighborList}
     box::B
     cl::C
     aux::A
@@ -155,14 +153,14 @@ julia> @time neighborlist!(system);
 
 """
 function InPlaceNeighborList(;
-    x::AbstractVecOrMat,
-    y::Union{AbstractVecOrMat,Nothing}=nothing,
-    cutoff,
-    unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
-    parallel::Bool=true,
-    show_progress::Bool=false,
-    nbatches=(0, 0)
-)
+        x::AbstractVecOrMat,
+        y::Union{AbstractVecOrMat, Nothing} = nothing,
+        cutoff,
+        unitcell::Union{AbstractVecOrMat, Nothing} = nothing,
+        parallel::Bool = true,
+        show_progress::Bool = false,
+        nbatches = (0, 0)
+    )
     T = cutoff isa Integer ? Float64 : eltype(cutoff)
     if isnothing(y)
         if isnothing(unitcell)
@@ -179,7 +177,7 @@ function InPlaceNeighborList(;
         cl = CellList(x, y, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     end
-    nb = NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[])
+    nb = NeighborList{T}(0, Vector{Tuple{Int, Int, T}}[])
     nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl, :map)]
     return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
 end
@@ -223,17 +221,17 @@ julia> neighborlist!(system)
 
 """
 function update!(
-    system::InPlaceNeighborList{<:Box{UnitCellType},C},
-    x::AbstractVecOrMat;
-    cutoff=nothing, unitcell=nothing
-) where {UnitCellType,C<:CellList}
+        system::InPlaceNeighborList{<:Box{UnitCellType}, C},
+        x::AbstractVecOrMat;
+        cutoff = nothing, unitcell = nothing
+    ) where {UnitCellType, C <: CellList}
     if UnitCellType == NonPeriodicCell
         isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
-        system.box = update_box(system.box; unitcell=limits(x), cutoff=cutoff)
+        system.box = update_box(system.box; unitcell = limits(x), cutoff = cutoff)
     else
-        system.box = update_box(system.box; unitcell=unitcell, cutoff=cutoff)
+        system.box = update_box(system.box; unitcell = unitcell, cutoff = cutoff)
     end
-    system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel=system.parallel)
+    system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel = system.parallel)
     return system
 end
 
@@ -241,18 +239,18 @@ end
 # update system for cross-computations
 #
 function update!(
-    system::InPlaceNeighborList{<:Box{UnitCellType},C},
-    x::AbstractVecOrMat,
-    y::AbstractVecOrMat;
-    cutoff=nothing, unitcell=nothing
-) where {UnitCellType,C<:CellListPair}
+        system::InPlaceNeighborList{<:Box{UnitCellType}, C},
+        x::AbstractVecOrMat,
+        y::AbstractVecOrMat;
+        cutoff = nothing, unitcell = nothing
+    ) where {UnitCellType, C <: CellListPair}
     if UnitCellType == NonPeriodicCell
         isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
-        system.box = update_box(system.box; unitcell=limits(x, y), cutoff=cutoff)
+        system.box = update_box(system.box; unitcell = limits(x, y), cutoff = cutoff)
     else
-        system.box = update_box(system.box; unitcell=unitcell, cutoff=cutoff)
+        system.box = update_box(system.box; unitcell = unitcell, cutoff = cutoff)
     end
-    system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel=system.parallel)
+    system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel = system.parallel)
     return system
 end
 
@@ -260,7 +258,7 @@ function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
     _print(io, "InPlaceNeighborList with types: \n")
     _print(io, typeof(system.cl), "\n")
     _print(io, typeof(system.box), "\n")
-    _print(io, "Current list buffer size: $(length(system.nb.list))")
+    return _print(io, "Current list buffer size: $(length(system.nb.list))")
 end
 
 function neighborlist!(system::InPlaceNeighborList)
@@ -273,10 +271,10 @@ function neighborlist!(system::InPlaceNeighborList)
     pairwise!(
         (pair, nb) -> push_pair!(pair.i, pair.j, pair.d2, nb),
         system.nb, system.box, system.cl,
-        reduce=reduce_lists,
-        parallel=system.parallel,
-        output_threaded=system.nb_threaded,
-        show_progress=system.show_progress
+        reduce = reduce_lists,
+        parallel = system.parallel,
+        output_threaded = system.nb_threaded,
+        show_progress = system.show_progress
     )
     # need to resize here to return the correct number of pairs for serial runs
     # (this resizing is redundant for parallel runs, since it occurs at the reduction function
@@ -363,12 +361,12 @@ julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
 
 """
 function neighborlist(
-    x, cutoff;
-    unitcell=nothing,
-    parallel=true,
-    show_progress=false,
-    nbatches=(0, 0)
-)
+        x, cutoff;
+        unitcell = nothing,
+        parallel = true,
+        show_progress = false,
+        nbatches = (0, 0)
+    )
     system = InPlaceNeighborList(; x, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end
@@ -459,12 +457,12 @@ julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parall
 
 """
 function neighborlist(
-    x, y, cutoff;
-    unitcell=nothing,
-    parallel=true,
-    show_progress=false,
-    nbatches=(0, 0)
-)
+        x, y, cutoff;
+        unitcell = nothing,
+        parallel = true,
+        show_progress = false,
+        nbatches = (0, 0)
+    )
     system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, nbatches)
     return neighborlist!(system)
 end

@@ -13,30 +13,30 @@ end
 # Function that initializes the system: it is preferrable to initialize
 # the system outside the function that performs the simulation, because
 # the system (data)type is defined on initialization. Initializing it outside
-# the simulation function avoids possible type-instabilities. 
-function init_system(;N::Int=200)
-    Vec2D = SVector{2,Float64}
+# the simulation function avoids possible type-instabilities.
+function init_system(; N::Int = 200)
+    Vec2D = SVector{2, Float64}
     positions = rand(Vec2D, N)
     unitcell = [1.0, 1.0]
     cutoff = 0.1
     system = ParticleSystem(
-        positions=positions,
-        cutoff=cutoff,
-        unitcell=unitcell,
-        output=similar(positions),
-        output_name=:forces,
+        positions = positions,
+        cutoff = cutoff,
+        unitcell = unitcell,
+        output = similar(positions),
+        output_name = :forces,
     )
     return system
 end
-function simulate(system=init_system(); nsteps::Int=100, isave=1)
+function simulate(system = init_system(); nsteps::Int = 100, isave = 1)
     # initial velocities
     velocities = [ randn(eltype(system.positions)) for _ in 1:length(system.positions) ]
-    dt = 1e-3
+    dt = 1.0e-3
     trajectory = typeof(system.positions)[]
     for step in 1:nsteps
         # compute forces at this step
         pairwise!(
-            (pair,forces) -> update_forces!(pair.x,pair.y,pair.i,pair.j,pair.d2,forces,system.cutoff),
+            (pair, forces) -> update_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, forces, system.cutoff),
             system
         )
         # Update positions and velocities
@@ -65,11 +65,11 @@ function animate(trajectory)
     anim = @animate for step in trajectory
         scatter(
             Tuple.(step),
-            label=nothing,
-            lims=(-0.5, 0.5),
-            aspect_ratio=1,
-            framestyle=:box,
+            label = nothing,
+            lims = (-0.5, 0.5),
+            aspect_ratio = 1,
+            framestyle = :box,
         )
     end
-    gif(anim, "simulation.gif", fps=10)
+    return gif(anim, "simulation.gif", fps = 10)
 end

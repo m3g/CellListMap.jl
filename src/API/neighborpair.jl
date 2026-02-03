@@ -13,11 +13,11 @@ within the cutoff distance.
 - `d2::T2`: squared Euclidean distance between the particles.
 
 """
-struct NeighborPair{N,T,T2}
+struct NeighborPair{N, T, T2}
     i::Int
     j::Int
-    x::SVector{N,T}
-    y::SVector{N,T}
+    x::SVector{N, T}
+    y::SVector{N, T}
     d2::T2
 end
 Base.getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))

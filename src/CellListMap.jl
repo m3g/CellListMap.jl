@@ -48,9 +48,6 @@ include("./API/neighborlists.jl")
 include("./internals/precompile.jl")
 
 # Test file used in some doc strings and example blocs
-const argon_pdb_file = joinpath("$(@__DIR__ )/../test/applications/gromacs/argon/cubic.pdb")
+const argon_pdb_file = joinpath("$(@__DIR__)/../test/applications/gromacs/argon/cubic.pdb")
 
 end # module
-
-
-

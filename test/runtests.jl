@@ -27,5 +27,3 @@ include("$(@__DIR__)/applications/gromacs/compare_with_gromacs.jl")
 include("$(@__DIR__)/applications/namd/compare_with_namd.jl")
 include("$(@__DIR__)/applications/namd/ParticleSystem_vs_NAMD.jl")
 include("$(@__DIR__)/API/test_show.jl")
-
-

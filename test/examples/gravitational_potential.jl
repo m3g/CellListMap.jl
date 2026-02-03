@@ -7,27 +7,27 @@ import Random
 # has a different mass. In this case, the closure is used to pass the masses to the
 # function that computes the potential.
 #
-function gravitational_potential(;N=100_000,parallel=true,x=nothing)
+function gravitational_potential(; N = 100_000, parallel = true, x = nothing)
 
     # Number of particles, sides and cutoff
-    sides = @SVector [250,250,250]
-    cutoff = 10.
+    sides = @SVector [250, 250, 250]
+    cutoff = 10.0
     box = CellListMap.Box(sides, cutoff)
 
     # Particle positions
     Random.seed!(321)
-    if x === nothing 
-        x = [ sides .* rand(SVector{3,Float64}) for i in 1:N ]
+    if x === nothing
+        x = [ sides .* rand(SVector{3, Float64}) for i in 1:N ]
     end
 
     # Initialize auxiliary linked lists
-    cl = CellListMap.CellList(x, box, parallel=parallel)
+    cl = CellListMap.CellList(x, box, parallel = parallel)
 
     # masses
     mass = [ 5 * x[i][1] for i in 1:N ]
 
     # Function to be evaluated for each pair: build distance histogram
-    function potential(i, j, d2, u, mass) 
+    function potential(i, j, d2, u, mass)
         d = sqrt(d2)
         u = u - 9.8 * mass[i] * mass[j] / d
         return u
@@ -36,8 +36,8 @@ function gravitational_potential(;N=100_000,parallel=true,x=nothing)
     # Run pairwise computation
     u = pairwise!(
         (pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass),
-        0.0,box,cl,
-        parallel=parallel
+        0.0, box, cl,
+        parallel = parallel
     )
 
     return u

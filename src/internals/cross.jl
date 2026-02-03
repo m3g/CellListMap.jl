@@ -5,35 +5,36 @@ Evaluate function f for pairs in two independent sets of particles, for which th
 object was constructed.
 
 =#
-function pairwise!(f::F1, output, box::Box, cl::CellListPair{N,T};
-    # Parallelization options
-    parallel::Bool=true,
-    output_threaded=nothing,
-    reduce::F2=reduce,
-    show_progress::Bool=false
-) where {F1,F2,N,T} # F1, F2 Needed for specialization for these functions
+function pairwise!(
+        f::F1, output, box::Box, cl::CellListPair{N, T};
+        # Parallelization options
+        parallel::Bool = true,
+        output_threaded = nothing,
+        reduce::F2 = reduce,
+        show_progress::Bool = false
+    ) where {F1, F2, N, T} # F1, F2 Needed for specialization for these functions
     fswap(pair, output) = f(NeighborPair(pair.j, pair.i, pair.y, pair.x, pair.d2), output)
     if !cl.swap
         if parallel
             output = pairwise_parallel!(
                 f, output, box, cl;
-                output_threaded=output_threaded,
-                reduce=reduce,
-                show_progress=show_progress
+                output_threaded = output_threaded,
+                reduce = reduce,
+                show_progress = show_progress
             )
         else
-            output = pairwise_serial!(f, output, box, cl, show_progress=show_progress)
+            output = pairwise_serial!(f, output, box, cl, show_progress = show_progress)
         end
     else
         if parallel
             output = pairwise_parallel!(
                 fswap, output, box, cl;
-                output_threaded=output_threaded,
-                reduce=reduce,
-                show_progress=show_progress
+                output_threaded = output_threaded,
+                reduce = reduce,
+                show_progress = show_progress
             )
         else
-            output = pairwise_serial!(fswap, output, box, cl, show_progress=show_progress)
+            output = pairwise_serial!(fswap, output, box, cl, show_progress = show_progress)
         end
     end
     return output
@@ -43,11 +44,11 @@ end
 # Serial version for cross-interaction computations
 #
 function pairwise_serial!(
-    f::F, output, box::Box, cl::CellListPair;
-    show_progress::Bool=false
-) where {F<:Function}
+        f::F, output, box::Box, cl::CellListPair;
+        show_progress::Bool = false
+    ) where {F <: Function}
     @unpack n_cells_with_real_particles = cl.small_set
-    p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
+    p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     ibatch = 1
     for i in 1:n_cells_with_real_particles
         cellᵢ = cl.small_set.cells[cl.small_set.cell_indices_real[i]]
@@ -66,6 +67,7 @@ function batch(f::F, ibatch, cell_indices, output_threaded, box, cl::CellListPai
         output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
         _next!(p)
     end
+    return
 end
 
 # Note: the reason why in the next loop @spawn if followed by interpolated variables
@@ -73,18 +75,18 @@ end
 # by the macro. This may not be needed in the future, if the corresponding issue is solved.
 # See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
 function pairwise_parallel!(
-    f::F1, output, box::Box, cl::CellListPair{N,T};
-    output_threaded=nothing,
-    reduce::F2=reduce,
-    show_progress::Bool=false
-) where {F1,F2,N,T}
+        f::F1, output, box::Box, cl::CellListPair{N, T};
+        output_threaded = nothing,
+        reduce::F2 = reduce,
+        show_progress::Bool = false
+    ) where {F1, F2, N, T}
     _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for i in 1:_nbatches]
     end
     @unpack n_cells_with_real_particles = cl.small_set
-    p = show_progress ? Progress(n_cells_with_real_particles, dt=1) : nothing
-    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n=_nbatches, split=RoundRobin()))
+    p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
+    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
@@ -94,13 +96,13 @@ end
 # The interactions do not skip the i>=j in any type of cell.
 #
 function inner_loop!(
-    f::F,
-    box,
-    cellᵢ,
-    cl::CellListPair{N,T},
-    output,
-    ibatch
-) where {F<:Function,N,T}
+        f::F,
+        box,
+        cellᵢ,
+        cl::CellListPair{N, T},
+        output,
+        ibatch
+    ) where {F <: Function, N, T}
     @unpack cutoff_sqr, inv_rotation, nc = box
     jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index)
     if cl.large_set.cell_indices[jc_linear] != 0
@@ -123,7 +125,7 @@ end
 # Providing two cells for this function indicates that this is a cross-interaction, thus we need
 # to loop over all pairs of particles.
 #
-function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cell, output) where {F<:Function}
+function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cell, output) where {F <: Function}
     @unpack cutoff_sqr, inv_rotation = box
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
@@ -148,44 +150,45 @@ end
 # the fact that it is not used and initialized with `nothing`.
 #
 function _serial_pairwise_x_vs_sys!(
-    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T};
-    show_progress::Bool=false,
-) where {F1<:Function,N,T}
-    p = show_progress ? Progress(length(x), dt=1) : nothing
+        f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N, T};
+        show_progress::Bool = false,
+    ) where {F1 <: Function, N, T}
+    p = show_progress ? Progress(length(x), dt = 1) : nothing
     for i in eachindex(x)
-        xs = SVector{N,T}(x[i])
+        xs = SVector{N, T}(x[i])
         output = single_particle_vs_list!(f, output, box, i, xs, cl)
         _next!(p)
     end
     return output
 end
 
-function _batch_x_vs_sys!(f::F, x, x_atom_indices, ibatch, output_threaded, box, cl, p) where {F<:Function}
+function _batch_x_vs_sys!(f::F, x, x_atom_indices, ibatch, output_threaded, box, cl, p) where {F <: Function}
     for i in x_atom_indices
         output_threaded[ibatch] = single_particle_vs_list!(f, output_threaded[ibatch], box, i, x[i], cl)
         _next!(p)
     end
+    return
 end
 
 function _parallel_pairwise_x_vs_sys!(
-    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T};
-    show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
-) where {F1<:Function,F2<:Function,N,T}
+        f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N, T};
+        show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
+    ) where {F1 <: Function, F2 <: Function, N, T}
     _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for _ in 1:_nbatches]
     end
-    p = show_progress ? Progress(length(x), dt=1) : nothing
-    @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n=_nbatches, split=Consecutive()))
+    p = show_progress ? Progress(length(x), dt = 1) : nothing
+    @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n = _nbatches, split = Consecutive()))
         @spawn _batch_x_vs_sys!($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
     end
     return reduce(output, output_threaded)
 end
 
 function pairwise!(
-    f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N,T};
-    parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
-) where {F1<:Function,F2<:Function,N,T}
+        f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N, T};
+        parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
+    ) where {F1 <: Function, F2 <: Function, N, T}
     output = if parallel
         _parallel_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress, output_threaded, reduce)
     else
@@ -195,19 +198,19 @@ function pairwise!(
 end
 
 function pairwise!(
-    f::F1, output, box::Box, x::AbstractMatrix, cl::CellList{N};
-    parallel::Bool=true, show_progress::Bool=false, output_threaded=nothing, reduce::F2=reduce,
-) where {N,F1<:Function,F2<:Function}
+        f::F1, output, box::Box, x::AbstractMatrix, cl::CellList{N};
+        parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
+    ) where {N, F1 <: Function, F2 <: Function}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N,eltype(x)}, x)
+    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
     return pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
 end
 
 function single_particle_vs_list!(
-    f::F, output, box::Box{<:PeriodicCellType},
-    i::Integer, x::SVector{N,T},
-    cl::CellList{N,T};
-) where {F,N,T}
+        f::F, output, box::Box{<:PeriodicCellType},
+        i::Integer, x::SVector{N, T},
+        cl::CellList{N, T}
+    ) where {F, N, T}
     @unpack nc, cutoff_sqr, inv_rotation = box
     xpᵢ = box.rotation * wrap_to_first(x, box.input_unit_cell.matrix)
     ic = particle_cell(xpᵢ, box)
@@ -234,10 +237,10 @@ function single_particle_vs_list!(
 end
 
 function single_particle_vs_list!(
-    f::F, output, box::Box{NonPeriodicCell},
-    i::Integer, x::SVector{N,T},
-    cl::CellList{N,T};
-) where {F,N,T}
+        f::F, output, box::Box{NonPeriodicCell},
+        i::Integer, x::SVector{N, T},
+        cl::CellList{N, T}
+    ) where {F, N, T}
     @unpack nc, cutoff_sqr, inv_rotation = box
     xpᵢ = x
     ic = particle_cell(xpᵢ, box)

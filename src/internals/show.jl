@@ -3,7 +3,7 @@
 #
 
 # Adapt round to adhere with units
-_uround(x) = round(x / oneunit(x); digits=2) * oneunit(x)
+_uround(x) = round(x / oneunit(x); digits = 2) * oneunit(x)
 
 # Get identiation from parent struct in printing
 # see: https://discourse.julialang.org/t/show-nested-struct/85298/3?u=lmiq

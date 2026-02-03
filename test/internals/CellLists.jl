@@ -3,24 +3,24 @@
     x = rand(3, 100)
     y = rand(3, 10)
     box = CellListMap.Box([1, 1, 1], 0.1)
-    cl = CellListMap.CellList(x, box; nbatches=(2, 4))
+    cl = CellListMap.CellList(x, box; nbatches = (2, 4))
     @test CellListMap.nbatches(cl) == (2, 4)
     @test CellListMap.nbatches(cl, :build) == 2
     @test CellListMap.nbatches(cl, :map) == 4
-    cl = CellListMap.CellList(x, y, box; nbatches=(2, 4))
+    cl = CellListMap.CellList(x, y, box; nbatches = (2, 4))
     @test CellListMap.nbatches(cl) == (2, 4)
     @test CellListMap.nbatches(cl, :build) == 2
     @test CellListMap.nbatches(cl, :map) == 4
     cl = CellListMap.CellList(x, y, box)
     @test CellListMap.nbatches(cl.small_set) == CellListMap.nbatches(cl.large_set)
-    cl = CellListMap.CellList(x, box; nbatches=(2, 4), parallel=false)
+    cl = CellListMap.CellList(x, box; nbatches = (2, 4), parallel = false)
     @test CellListMap.nbatches(cl) == (1, 1)
     # The automatic set of number of batches for this small system:
     if Threads.nthreads() == 10
-        x = rand(SVector{3,Float64}, 10)
-        sys = ParticleSystem(positions=x, cutoff=0.1, unitcell=[1, 1, 1], output=0.0)
+        x = rand(SVector{3, Float64}, 10)
+        sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
         @test CellListMap.nbatches(sys) == (8, 4)
-        x = rand(SVector{3,Float64}, 10000)
+        x = rand(SVector{3, Float64}, 10000)
         resize!(sys.xpositions, length(x))
         sys.xpositions .= x
         pairwise!((pair, out) -> out += pair.d2, sys)
@@ -34,11 +34,11 @@ end
     using CellListMap, StaticArrays
     # 3-arg UpdateCellList! (without preallocated aux) should update nbatches
     # when the number of particles changes
-    x = rand(SVector{3,Float64}, 2)
+    x = rand(SVector{3, Float64}, 2)
     box = CellListMap.Box([1, 1, 1], 0.1)
     cl = CellListMap.CellList(x, box)
     nb_initial = CellListMap.nbatches(cl)
-    x = rand(SVector{3,Float64}, 10000)
+    x = rand(SVector{3, Float64}, 10000)
     cl = CellListMap.UpdateCellList!(x, box, cl)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
@@ -46,17 +46,17 @@ end
     )
     @test CellListMap.nbatches(cl) == expected
     # nbatches should not change when particle count is unchanged
-    x .= rand(SVector{3,Float64}, 10000)
+    x .= rand(SVector{3, Float64}, 10000)
     cl = CellListMap.UpdateCellList!(x, box, cl)
     @test CellListMap.nbatches(cl) == expected
 end
 
 @testitem "nbatches symbol variants, show, and CellListPair" begin
     using CellListMap, StaticArrays
-    x = rand(SVector{3,Float64}, 100)
-    y = rand(SVector{3,Float64}, 50)
+    x = rand(SVector{3, Float64}, 100)
+    y = rand(SVector{3, Float64}, 50)
     box = CellListMap.Box([1, 1, 1], 0.1)
-    cl = CellListMap.CellList(x, box; nbatches=(2, 4))
+    cl = CellListMap.CellList(x, box; nbatches = (2, 4))
     # Full symbol names
     @test CellListMap.nbatches(cl, :map_computation) == 4
     @test CellListMap.nbatches(cl, :build_cell_lists) == 2
@@ -82,30 +82,30 @@ end
 
 @testitem "UpdateCellList! for CellListPair" begin
     using CellListMap, StaticArrays
-    x = rand(SVector{3,Float64}, 100)
-    y = rand(SVector{3,Float64}, 50)
+    x = rand(SVector{3, Float64}, 100)
+    y = rand(SVector{3, Float64}, 50)
     box = CellListMap.Box([1, 1, 1], 0.1)
     cl = CellListMap.CellList(x, y, box)
     # 3-arg update, serial path
-    x2 = rand(SVector{3,Float64}, 100)
-    y2 = rand(SVector{3,Float64}, 50)
-    cl = CellListMap.UpdateCellList!(x2, y2, box, cl; parallel=false)
+    x2 = rand(SVector{3, Float64}, 100)
+    y2 = rand(SVector{3, Float64}, 50)
+    cl = CellListMap.UpdateCellList!(x2, y2, box, cl; parallel = false)
     @test cl.small_set.n_real_particles == 50
     @test cl.large_set.n_real_particles == 100
     # 3-arg update, parallel path
-    x3 = rand(SVector{3,Float64}, 100)
-    y3 = rand(SVector{3,Float64}, 50)
-    cl = CellListMap.UpdateCellList!(x3, y3, box, cl; parallel=true)
+    x3 = rand(SVector{3, Float64}, 100)
+    y3 = rand(SVector{3, Float64}, 50)
+    cl = CellListMap.UpdateCellList!(x3, y3, box, cl; parallel = true)
     @test cl.small_set.n_real_particles == 50
     @test cl.large_set.n_real_particles == 100
 end
 
 @testitem "celllists - validate coordinates" begin
     using StaticArrays
-    x = rand(SVector{3,Float64}, 100)
+    x = rand(SVector{3, Float64}, 100)
     x[50] = SVector(1.0, NaN, 1.0)
     box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
-    y = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3, Float64}, 100)
     @test_throws ArgumentError CellListMap.CellList(x, box)
     cl = CellListMap.CellList(y, box)
     @test_throws ArgumentError CellListMap.UpdateCellList!(x, box, cl)

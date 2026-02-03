@@ -8,14 +8,14 @@ end
     using StaticArrays
     using Unitful
     for (x, y, xy, yx) in [
-        ([15.0, 13.0], [4.0, 2.0], [5.0, 3.0], [14.0, 12.0]),
-        ([-7.0, -6.0], [1.0, 2.0], [3.0, 4.0], [-9.0, -8.0]),
-    ]
+            ([15.0, 13.0], [4.0, 2.0], [5.0, 3.0], [14.0, 12.0]),
+            ([-7.0, -6.0], [1.0, 2.0], [3.0, 4.0], [-9.0, -8.0]),
+        ]
         # triclinic cells: unitcell is a matrix
-        unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)
+        unit_cell_matrix = SMatrix{2, 2}(10.0, 0.0, 0.0, 10.0)
         @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy
         @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx
-        unit_cell_matrix = SMatrix{2,2}(-10.0, 0.0, 0.0, -10.0)
+        unit_cell_matrix = SMatrix{2, 2}(-10.0, 0.0, 0.0, -10.0)
         @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ xy
         @test CellListMap.wrap_relative_to(y, x, unit_cell_matrix) ≈ yx
         # orthorhombic cells: sides is a vector
@@ -29,7 +29,7 @@ end
     # test unit propagations
     x = [15.0, 13.0]u"nm"
     y = [4.0, 2.0]u"nm"
-    unit_cell_matrix = SMatrix{2,2}(10.0, 0.0, 0.0, 10.0)u"nm"
+    unit_cell_matrix = SMatrix{2, 2}(10.0, 0.0, 0.0, 10.0)u"nm"
     @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]u"nm"
     unit_cell_matrix = [10.0, 10.0]u"nm"
     @test CellListMap.wrap_relative_to(x, y, unit_cell_matrix) ≈ [5.0, 3.0]u"nm"
@@ -49,16 +49,16 @@ end
 @testitem "replicate system" begin
     using StaticArrays
     unitcell = [10.0 0.0; 0.0 10.0]
-    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
     CellListMap.replicate_system!(x, unitcell, (1, 0))
     @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 1.0], [12.0, 2.0], [13.0, 3.0]]
-    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
     CellListMap.replicate_system!(x, unitcell, (1, 1))
     @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0]]
-    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
     CellListMap.replicate_system!(x, unitcell, (0, 1))
     @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [1.0, 11.0], [2.0, 12.0], [3.0, 13.0]]
-    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
     CellListMap.replicate_system!(x, unitcell, (-1, -1))
     @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0]]
     # with a matrix input
@@ -66,7 +66,7 @@ end
     y = CellListMap.replicate_system(x, unitcell, (1, 0))
     @test y ≈ [1.0 2.0 3.0 11.0 12.0 13.0; 1.0 2.0 3.0 1.0 2.0 3.0]
     # throw error if dimensions do not match
-    x = SVector{2,Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
     @test_throws DimensionMismatch CellListMap.replicate_system!(x, unitcell, (1, 0, 1))
 end
 
@@ -97,9 +97,9 @@ end
 @testitem "limits - invalid coordinates" begin
     using CellListMap
     using StaticArrays: SVector
-    x = rand(SVector{3,Float64}, 100)
+    x = rand(SVector{3, Float64}, 100)
     x[50] = SVector(1.0, NaN, 1.0)
-    y = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3, Float64}, 100)
     @test_throws ArgumentError CellListMap.limits(x)
     @test_throws ArgumentError CellListMap.limits(x, y)
     @test_throws ArgumentError CellListMap.limits(y, x)
@@ -111,7 +111,7 @@ end
     @test_throws ArgumentError CellListMap.limits(y, x)
 end
 
-@testitem "align_cell" setup=[TestingNeighborLists] begin
+@testitem "align_cell" setup = [TestingNeighborLists] begin
     import CellListMap: align_cell
     using StaticArrays
     using LinearAlgebra
@@ -153,7 +153,7 @@ end
         mr = R * m
         ma, Ra = align_cell(mr)
         @test ma[:, 1] ≈ m[:, 1]
-        @test cross([1, 0, 0], cross(ma[:, 2], ma[:, 3])) ≈ zeros(3) atol = 1e-10
+        @test cross([1, 0, 0], cross(ma[:, 2], ma[:, 3])) ≈ zeros(3) atol = 1.0e-10
     end
 
     # throw error if not 2D or 3D
@@ -171,7 +171,7 @@ end
 
     mr, _ = align_cell(m)
     cl = cell_limits(mr)
-    @test cl[1] ≈ [0.0, 0.0] atol = 1e-10
+    @test cl[1] ≈ [0.0, 0.0] atol = 1.0e-10
     @test cl[2] ≈ [20.12461179749811, 6.708203932499369]
 
     m = [10 5; 0 10]
@@ -202,37 +202,45 @@ end
     import CellListMap: cell_vertices
     m = [1 0; 0 1]
     @test all(
-        isapprox.(cell_vertices(m), [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]], atol=1e-6)
+        isapprox.(cell_vertices(m), [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]], atol = 1.0e-6)
     )
     m = [1 0.5; 0 1]
     @test all(
-        isapprox.(cell_vertices(m), [[0.0, 0.0], [1.0, 0.0], [1.5, 1.0], [0.5, 1.0]], atol=1e-6)
+        isapprox.(cell_vertices(m), [[0.0, 0.0], [1.0, 0.0], [1.5, 1.0], [0.5, 1.0]], atol = 1.0e-6)
     )
     m = [1 0 0; 0 1 0; 0 0 1]
     @test all(
-        isapprox.(cell_vertices(m),
-            [[0, 0, 0],
+        isapprox.(
+            cell_vertices(m),
+            [
+                [0, 0, 0],
                 [1, 0, 0],
                 [1, 1, 0],
                 [0, 1, 0],
                 [1, 0, 1],
                 [0, 0, 1],
                 [0, 1, 1],
-                [1, 1, 1]],
-            atol=1e-6)
+                [1, 1, 1],
+            ],
+            atol = 1.0e-6
+        )
     )
     m = [1 0.5 0; 0 1 0; 0 0 1]
     @test all(
-        isapprox.(cell_vertices(m),
-            [[0.0, 0.0, 0.0],
+        isapprox.(
+            cell_vertices(m),
+            [
+                [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
                 [1.5, 1.0, 0.0],
                 [0.5, 1.0, 0.0],
                 [1.0, 0.0, 1.0],
                 [0.0, 0.0, 1.0],
                 [0.5, 1.0, 1.0],
-                [1.5, 1.0, 1.0]],
-            atol=1e-6)
+                [1.5, 1.0, 1.0],
+            ],
+            atol = 1.0e-6
+        )
     )
     # throw error if not 2D or 3D
     @test_throws ArgumentError cell_vertices(rand(4, 4))

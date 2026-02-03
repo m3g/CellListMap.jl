@@ -37,7 +37,7 @@ julia> output
 
 =#
 reduce(output::T, output_threaded::Vector{T}) where {T} = sum(output_threaded)
-function reduce(output::T, output_threaded::Vector{T}) where {T<:AbstractArray}
+function reduce(output::T, output_threaded::Vector{T}) where {T <: AbstractArray}
     for ibatch in eachindex(output_threaded)
         @. output += output_threaded[ibatch]
     end
@@ -45,22 +45,26 @@ function reduce(output::T, output_threaded::Vector{T}) where {T<:AbstractArray}
 end
 function reduce(output, output_threaded)
     T = typeof(output)
-    throw(ArgumentError("""\n
-    No method matching reduce(::$(typeof(output)),::$(typeof(output_threaded)))
+    throw(
+        ArgumentError(
+            """\n
+            No method matching reduce(::$(typeof(output)),::$(typeof(output_threaded)))
 
-    Please provide a method that appropriately reduces a `Vector{$T}`, with
-    the signature:
+            Please provide a method that appropriately reduces a `Vector{$T}`, with
+            the signature:
 
-    ```
-    custom_reduce(output::$T, output_threaded::Vector{$T})
-    ```
+            ```
+            custom_reduce(output::$T, output_threaded::Vector{$T})
+            ```
 
-    The reduction function **must** return the `output` variable, even 
-    if it is mutable.  
+            The reduction function **must** return the `output` variable, even 
+            if it is mutable.  
 
-    See: https://m3g.github.io/CellListMap.jl/stable/parallelization/#Custom-reduction-functions
+            See: https://m3g.github.io/CellListMap.jl/stable/parallelization/#Custom-reduction-functions
 
-    """))
+            """
+        )
+    )
 end
 
 #
@@ -108,9 +112,9 @@ to be within the cutoff distance of any point of the other cell.
 
 =#
 function project_particles!(
-    projected_particles, cellⱼ, cellᵢ,
-    Δc, Δc_norm, box::Box{UnitCellType,N}
-) where {UnitCellType,N}
+        projected_particles, cellⱼ, cellᵢ,
+        Δc, Δc_norm, box::Box{UnitCellType, N}
+    ) where {UnitCellType, N}
     if box.lcell == 1
         margin = box.cutoff + Δc_norm / 2 # half of the distance between centers
     else
@@ -128,4 +132,3 @@ function project_particles!(
     pp = @view(projected_particles[1:iproj])
     return pp
 end
-
