@@ -21,7 +21,7 @@ makedocs(
         "Public Interface" => "API.md",
         #"From Python" => "python.md",
         "Citation" => "citation.md",
-        "Internals" => "Internals.md",
+        #"Internals" => "Internals.md",
     ]
 )
 deploydocs(
