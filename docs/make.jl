@@ -19,7 +19,7 @@ makedocs(
         "Unitcell requirements" => "unitcell.md",
         "Ecosystem integration" => "ecosystem.md",
         "Public Interface" => "API.md",
-        "From Python" => "python.md",
+        #"From Python" => "python.md",
         "Citation" => "citation.md",
         "Internals" => "Internals.md",
     ]
