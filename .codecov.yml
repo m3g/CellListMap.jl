@@ -1,7 +1,5 @@
 # sample regex patterns
 ignore:
     - "test/"
-    - "src/testing.jl"
-    - "src/precompile.jl"
-    - "src/examples/"
+    - "src/internals/precompile.jl"
   

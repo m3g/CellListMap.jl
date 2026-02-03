@@ -1,0 +1,244 @@
+# Types of variables that have support for multi-threading without having
+# to explicit add methods to copy_output, reset_output!, and reducer functions.
+const SupportedTypes = Union{Number, SVector, FieldVector}
+
+# Supported types for coordinates
+const SupportedCoordinatesTypes = Union{Nothing, AbstractVector{<:AbstractVector}, AbstractMatrix}
+
+# Abstract type only for cleaner dispatch
+abstract type AbstractParticleSystem{OutputName} end
+
+#=
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+Structure that carries the information necessary for `pairwise!` computations,
+for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
+pairs of particles of the set). 
+
+The `xpositions`, `output`, and `parallel` fields are considered part of the API,
+and you can retrieve or mutate `xpositions`, retrieve the `output` or its elements,
+and set the computation to use or not parallelization by directly accessing these
+elements.
+
+The other fields of the structure (starting with `_`) are internal and must not 
+be modified or accessed directly. The construction of the `ParticleSystem1` structure
+is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)` 
+auxiliary function.
+
+=#
+mutable struct ParticleSystem1{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
+    xpositions::V
+    output::O
+    _box::B
+    _cell_list::C
+    _output_threaded::Vector{O}
+    _aux::A
+    parallel::Bool
+    validate_coordinates::VC
+end
+
+#=
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+Structure that carries the information necessary for `pairwise!` computations,
+for systems with two set of positions (thus, replacing the loops over `N×M` 
+pairs of particles, being `N` and `M` the number of particles of each set).
+
+The `xpositions`, `ypositions`, `output`, and `parallel` fields are considered part of the API,
+and you can retrieve or mutate positions, retrieve the `output` or its elements,
+and set the computation to use or not parallelization by directly accessing these
+elements.
+
+The other fields of the structure (starting with `_`) are internal and must not 
+be modified or accessed directly. The construction of the `ParticleSystem1` structure
+is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
+auxiliary function.
+
+=#
+mutable struct ParticleSystem2{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
+    xpositions::V
+    ypositions::V
+    output::O
+    _box::B
+    _cell_list::C
+    _output_threaded::Vector{O}
+    _aux::A
+    parallel::Bool
+    validate_coordinates::VC
+end
+ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
+    ParticleSystem2{OutputName, V, O, B, C, A, VC}(vx, vy, o, b, c, vo, a, p, vc)
+
+#=
+    unitcelltype(sys::AbstractParticleSystem)
+
+Returns the type of a unitcell from the `ParticleSystem` structure.
+
+=#
+CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
+
+ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
+    ParticleSystem1{OutputName, V, O, B, C, A, VC}(v, o, b, c, vo, a, p, vc)
+getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
+getproperty(sys::ParticleSystem2, ::Val{:positions}) = getfield(sys, :xpositions)
+
+import Base.show
+function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputName}) where {OutputName}
+    indent = get(io, :indent, 0)
+    io_sub = IOContext(io, :indent => indent + 4)
+    N = size(sys.unitcell, 1)
+    println(io, "ParticleSystem1{$OutputName} of dimension $N, composed of:")
+    show(IOContext(io, :indent => indent + 4), mime, sys._box)
+    println(io)
+    show(io_sub, mime, sys._cell_list)
+    print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
+    return print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputName}) where {OutputName}
+    indent = get(io, :indent, 0)
+    io_sub = IOContext(io, :indent => indent + 4)
+    N = size(sys.unitcell, 1)
+    println(io, "ParticleSystem2{$OutputName} of dimension $N, composed of:")
+    show(IOContext(io, :indent => indent + 4), mime, sys._box)
+    println(io)
+    show(io_sub, mime, sys._cell_list)
+    print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
+    return print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+end
+
+#=
+    _reset_all_output!(output, output_threaded)
+
+Function that resets the output variable and the threaded copies of it.
+
+=#
+function _reset_all_output!(output, output_threaded; reset::Bool)
+    if reset
+        output = reset_output!(output)
+    end
+    for i in eachindex(output_threaded)
+        output_threaded[i] = reset_output!(output_threaded[i])
+    end
+    return output
+end
+
+#=
+    reduce_output!(reducer::Function, output, output_threaded)
+
+# Extended help
+
+Function that defines how to reduce the vector of `output` variables, after a threaded
+computation. This function is implemented for `output` variables that are numbers, 
+and vectors or arrays of number of static arrays, as the sum of the values of the 
+threaded computations, which is the most common application, found in computing
+forces, energies, etc. 
+
+It may be interesting to implement custom `CellListMap.reduce_output!` function for other types 
+of output variables, considering:
+
+- The arguments of the function must be the return `output` value and a vector 
+  `output_threaded` of `output` variables, which is created (automatically) by copying
+  the output the number of times necessary for the multi-threaded computation. 
+
+- The function *must* return the `output` variable, independently of it being mutable
+  or immutable.
+
+`reduce_output` is an alias to `reduce_output!` that can be used for consistency if the `output`
+variable is immutable.
+
+```
+
+=#
+function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}) where {T}
+    for ibatch in eachindex(output_threaded)
+        output = reducer(output, output_threaded[ibatch])
+    end
+    return output
+end
+function reduce_output!(
+        reducer::Function,
+        output::AbstractVecOrMat{T},
+        output_threaded::Vector{<:AbstractVecOrMat{T}}
+    ) where {T}
+    output = reset_output!(output)
+    for ibatch in eachindex(output_threaded)
+        for i in eachindex(output, output_threaded[ibatch])
+            output[i] = reducer(output[i], output_threaded[ibatch][i])
+        end
+    end
+    return output
+end
+
+#=
+    UpdateParticleSystem!
+
+Updates the cell lists for periodic systems.
+
+=#
+function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
+    if update_lists
+        if unitcelltype(sys) == NonPeriodicCell
+            sys._box = Box(limits(sys.xpositions), sys.cutoff)
+        end
+        n_particles_changed = length(sys.xpositions) != sys._cell_list.n_real_particles
+        sys._cell_list = CellListMap.UpdateCellList!(
+            sys.xpositions,
+            sys._box,
+            sys._cell_list,
+            sys._aux;
+            parallel = sys.parallel,
+            validate_coordinates = sys.validate_coordinates,
+        )
+        if n_particles_changed
+            _old_nbatches = nbatches(sys)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
+            _new_nbatches = nbatches(sys)
+            if _old_nbatches != _new_nbatches
+                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+            end
+        end
+    end
+    return sys
+end
+
+function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
+    if update_lists
+        if unitcelltype(sys) == NonPeriodicCell
+            sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
+        end
+        n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
+            (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
+        sys._cell_list = CellListMap.UpdateCellList!(
+            sys.xpositions,
+            sys.ypositions,
+            sys._box,
+            sys._cell_list,
+            sys._aux;
+            parallel = sys.parallel,
+            validate_coordinates = sys.validate_coordinates,
+        )
+        if n_particles_changed
+            _old_nbatches = nbatches(sys)
+            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
+            _new_nbatches = nbatches(sys)
+            if _old_nbatches != _new_nbatches
+                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+            end
+        end
+    end
+    return sys
+end
+
+# Return the number of batches for ParticleSystems
+nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
+nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
+

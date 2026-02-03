@@ -199,18 +199,3 @@ Additional optional parameters can be used in a `neighborlist` call:
 | `show_progress` | `Bool` | `false` |  turns on and off progress bar | 
 | `nbatches` | `Tuple{Int,Int}` | `(0,0)` |  Number of batches used in parallelization (see [here](@ref Number-of-batches)) | 
 
-
-## Docstrings
-
-```@meta
-CollapsedDocStrings = true
-```
-
-```@autodocs
-Modules = [CellListMap]
-Pages = ["neighborlists.jl"]
-Order = [:function, :type]
-```
-
-
-

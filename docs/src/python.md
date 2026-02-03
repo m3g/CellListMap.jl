@@ -335,9 +335,9 @@ The function to be mapped, however, has to be defined in Julia, using `seval`. F
 
 ```python
 In [43]: jl.seval("""  
-    ...: function histogram(x,y,i,j,d2,hist) 
+    ...: function histogram(pair, hist) 
     ...:     cutoff = 0.05 
-    ...:     dc = sqrt(d2)/cutoff # in [0,1] 
+    ...:     dc = pair.d/cutoff # in [0,1] 
     ...:     ibin = floor(Int,dc*10) + 1 # in [0,10] 
     ...:     hist[ibin] += 1 
     ...:     return hist 
@@ -352,10 +352,10 @@ We can initialize the output variable (the histogram) using a regular `numpy` ar
 In [45]: hist = np.zeros(10)
 ```
 
-and call the `map_pairwise` function to obtain the histogram of the distances within the `cutoff`:
+and call the `pairwise` function to obtain the histogram of the distances within the `cutoff`:
 
 ```python
-In [46]: jl.map_pairwise(jl.histogram, hist, box, cl)
+In [46]: jl.pairwise!(jl.histogram, hist, box, cl)
 Out[46]: 
 10-element PythonCall.PyArray{Float64, 1, true, true, Float64}:
  153344.0
@@ -369,6 +369,8 @@ Out[46]:
       2.6189312e7
       3.0583808e7
 ```
+
+Note that the function receives a `NeighborPair` object (`pair`) with fields `pair.i`, `pair.j`, `pair.x`, `pair.y`, `pair.d2`, and a lazily-computed `pair.d` for the distance.
 
 With this interface, however, it is not possible to pass additional parameters to the mapped function, and thus the additional parameters have to defined inside the called function (as the `cutoff` in the current example). This is not ideal, for example, for computing accelerations, which depend on the masses of the particles. In this case, currently, either just use Julia from start and closures, or use the `neighborlist`  function to obtain the list of neighbors to then compute whatever property is desired from the list of pairs, although this is suboptimal in terms of performance.  
 

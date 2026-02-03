@@ -12,58 +12,51 @@ using Base.Threads: nthreads, @spawn
 using Base: @lock # not exported in 1.6
 using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
-export Box
-export CellList, UpdateCellList!
-export map_pairwise!, map_pairwise
-export limits
-export TriclinicCell
-export OrthorhombicCell
-export NonPeriodicCell
-export unitcelltype
-export nbatches
+# Exported names of ParticleSystem interface
+export ParticleSystem
+export NeighborPair
+export pairwise!
+export update_cutoff!
+export update_unitcell!
+export resize_output!
+@compat public copy_output, reset_output!, reset_output, reducer, reducer!
+@compat public wrap_relative_to, get_computing_box
 
-# Testing file
-const argon_pdb_file = joinpath("$(@__DIR__ )/../test/gromacs/argon/cubic.pdb")
+# Specific for neighborlist interface
+export InPlaceNeighborList
+export update!
+export neighborlist, neighborlist!
 
-# name holder  
-function map_pairwise! end
+# NeighborPair structure
+include("./API/NeighborPair.jl")
 
-"""
-    map_pairwise(args...;kargs...) = map_pairwise!(args...;kargs...)
+# Core-computing 
+include("./internals/linearalgebra.jl")
+include("./internals/show.jl")
+include("./internals/Box.jl")
+include("./internals/CellLists.jl")
+include("./internals/CellOperations.jl")
+include("./internals/auxiliary_functions.jl")
+include("./internals/vicinal_cells.jl")
+include("./internals/self.jl")
+include("./internals/cross.jl")
 
-is an alias for `map_pairwise!` which is defined for two reasons: first, if the output of the funciton is immutable, it may be 
-clearer to call this version, from a coding perspective. Second, the python interface through `juliacall` does not accept the 
-bang as a valid character. 
+# ParticleSystem interface
+include("./internals/ParticleSystem.jl")
+include("./API/ParticleSystem.jl")
+include("./API/parallel_custom.jl")
+include("./API/updating.jl")
+include("./API/pairwise.jl")
+include("./API/get_computing_box.jl")
 
-"""
-const map_pairwise = map_pairwise!
-
-include("./linearalgebra.jl")
-include("./show.jl")
-include("./Box.jl")
-include("./CellLists.jl")
-include("./CellOperations.jl")
-include("./ParticleSystem.jl")
-
-# Core-computing infraestructure
-include("./core_computing/auxiliary_functions.jl")
-include("./core_computing/vicinal_cells.jl")
-include("./core_computing/self.jl")
-include("./core_computing/cross.jl")
-
-# Utils
-include("./neighborlists.jl")
-
-#
-# Test and example functions
-#
-include("./examples/examples.jl")
-include("./testing.jl")
+# Neighborlists
+include("./internals/neighborlist.jl")
+include("./API/neighborlist.jl")
 
 # Precompilation tools
-include("precompile.jl")
+include("./internals/precompile.jl")
+
+# Test file used in some doc strings and example blocs
+const argon_pdb_file = joinpath("$(@__DIR__)/../test/applications/gromacs/argon/cubic.pdb")
 
 end # module
-
-
-

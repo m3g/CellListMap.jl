@@ -1,0 +1,190 @@
+"""
+    ParticleSystem(;
+        xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
+        #or
+        xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
+        ypositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},
+        # and
+        unitcell::Union{Nothing,AbstractVecOrMat} = nothing,
+        cutoff::Number,
+        output::Any;
+        output_name::Symbol,
+        parallel::Bool=true,
+        nbatches::Tuple{Int,Int}=(0, 0),
+        validate_coordinates::Union{Nothing,Function}=_validate_coordinates
+    )
+
+Constructor of the `ParticleSystem` type given the positions of the particles.
+
+- Positions can be provided as vectors of 2D or 3D vectors 
+  (preferentially static vectors from `StaticArrays`), or as 
+  (2,N) or (3,N) matrices (v0.8.28 is required for matrices).
+
+- If only the `xpositions` array is provided, a single set of coordinates 
+  is considered, and the computation will be mapped for the `N(N-1)` 
+  pairs of this set. 
+
+- If the `xpositions` and `ypositions` arrays of coordinates are provided, 
+  the computation will be mapped to the `N×M` pairs of particles, 
+  being `N` and `M` the number of particles of each set of coordinates.
+
+The unit cell (either a vector for `Orthorhombic` cells or a 
+full unit cell matrix for `Triclinic` cells - where columns contain
+the lattice vectors), the cutoff used for the
+construction of the cell lists and the output variable of the calculations.
+If unitcell == nothing, the system is considered not-periodic, in which
+case artificial periodic boundaries will be built such that images 
+are farther from each other than the cutoff.
+
+!!! note
+    The `output` value is the initial value of the output. Tipicaly this is 
+    set to `zero(typeof(output))`. In subsequent call to `pairwise!`, 
+    the initial value can be optionally reset to `zero(typeof(output))`.
+
+`output_name` can be set to a symbol that best identifies the output variable.
+For instance, if `output_name=:forces`, the forces can be retrieved from the
+structure using the `system.forces` notation.
+
+The `parallel` and `nbatches` flags control the parallelization scheme of
+computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
+By default the parallelization is turned on and `nbatches` is set with heuristics
+that may provide good efficiency in most cases. 
+
+The `validate_coordinates` function can be used to validate the coordinates
+before the construction of the system. If `nothing`, no validation is performed.
+By default the validation checks if the coordinates are not missing or NaN. 
+
+# Example
+
+In these examples, we compute the sum of the squared distances between
+the particles that are within the cutoff:
+
+## Single set of particles
+
+```jldoctest ;filter = r"(\\d*)\\.(\\d)\\d+" => s"\\1.\\2"
+julia> using CellListMap
+
+julia> using PDBTools: read_pdb, coor
+
+julia> positions = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia> sys = ParticleSystem(
+           xpositions = positions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+        );
+
+julia> pairwise!((pair,output) -> output += pair.d2, sys)
+43774.54367600001
+```
+## Two sets of particles
+
+```jldoctest ;filter = r"(\\d*)\\.(\\d{2})\\d+" => s"\\1.\\2"
+julia> using CellListMap, PDBTools
+
+julia> xpositions = coor(read_pdb(CellListMap.argon_pdb_file))[1:50];
+
+julia> ypositions = coor(read_pdb(CellListMap.argon_pdb_file))[51:100];
+
+julia> sys = ParticleSystem(
+           xpositions = xpositions, 
+           ypositions = ypositions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+           parallel = false, # use true for parallelization
+        );
+
+julia> pairwise!((pair,output) -> output += pair.d2, sys)
+21886.196785000004
+```
+"""
+function ParticleSystem(;
+        positions::SupportedCoordinatesTypes = nothing,
+        xpositions::SupportedCoordinatesTypes = nothing,
+        ypositions::SupportedCoordinatesTypes = nothing,
+        unitcell::Union{AbstractVecOrMat, Nothing} = nothing,
+        cutoff::Number,
+        output::Any,
+        output_name::Symbol = :output,
+        parallel::Bool = true,
+        nbatches::Tuple{Int, Int} = (0, 0),
+        lcell = 1,
+        validate_coordinates::Union{Nothing, Function} = _validate_coordinates,
+    )
+    # Set xpositions if positions was set
+    if (isnothing(positions) && isnothing(xpositions)) || (!isnothing(positions) && !isnothing(xpositions))
+        throw(ArgumentError("Either `positions` OR `xpositions` must be defined."))
+    end
+    xpositions = isnothing(positions) ? xpositions : positions
+    # Check for simple input argument errors
+    for input_array in (xpositions, ypositions)
+        isnothing(input_array) && break
+        if input_array isa AbstractMatrix
+            dim = size(input_array, 1)
+            if !(dim in (2, 3))
+                throw(DimensionMismatch("Matrix of coordinates must have 2 or 3 rows, one for each dimension, got size: $(size(input_array))"))
+            end
+            input_array = reinterpret(reshape, SVector{dim, eltype(input_array)}, input_array)
+        end
+        if !isnothing(unitcell)
+            DIM = if eltype(input_array) <: SVector
+                length(eltype(input_array))
+            else
+                if length(input_array) == 0
+                    # If the array is empty, we cannot determine the dimension, so we assume it is the same as the unit cell
+                    size(unitcell, 1)
+                else
+                    length(input_array[1])
+                end
+            end
+            if DIM != size(unitcell, 1)
+                throw(DimensionMismatch("Dimension of the unit cell ($(size(unitcell, 1))) must match the dimension of the coordinates ($(length(eltype(input_array))))"))
+            end
+        end
+    end
+    # Single set of positions
+    if isnothing(ypositions)
+        unitcell = isnothing(unitcell) ? limits(xpositions; validate_coordinates) : unitcell
+        _box = CellListMap.Box(unitcell, cutoff, lcell = lcell)
+        _cell_list = CellListMap.CellList(xpositions, _box; parallel, nbatches, validate_coordinates)
+        _aux = CellListMap.AuxThreaded(_cell_list)
+        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
+        output = _reset_all_output!(output, _output_threaded; reset = false)
+        sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
+        # Two sets of positions
+    else
+        unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
+        _box = CellListMap.Box(unitcell, cutoff, lcell = lcell)
+        _cell_list = CellListMap.CellList(xpositions, ypositions, _box; parallel, nbatches, validate_coordinates)
+        _aux = CellListMap.AuxThreaded(_cell_list)
+        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
+        output = _reset_all_output!(output, _output_threaded; reset = false)
+        sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
+    end
+    return sys
+end
+
+import Base: getproperty, propertynames
+getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
+getproperty(sys::AbstractParticleSystem, ::Val{S}) where {S} = getfield(sys, S)
+# public properties
+getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
+getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
+getproperty(sys::AbstractParticleSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
+propertynames(::AbstractParticleSystem{OutputName}) where {OutputName} =
+    (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, OutputName)
+
+import Base: setproperty!
+# public properties
+setproperty!(sys::AbstractParticleSystem, s::Symbol, x) = setproperty!(sys, Val(s), x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:unitcell}, x) = update_unitcell!(sys, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:cutoff}, x) = update_cutoff!(sys, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
+# private properties
+setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_aux}, x) = setfield!(sys, :_aux, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:_output_threaded}, x) = setfield!(sys, :_output_threaded, x)
