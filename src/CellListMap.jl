@@ -20,29 +20,38 @@ export update_cutoff!
 export update_unitcell!
 export resize_output!
 @compat public copy_output, reset_output!, reset_output, reducer, reducer!
-@compat public wrap_relative_to
+@compat public wrap_relative_to, get_computing_box
 
 # Specific for neighborlist interface
 export InPlaceNeighborList
 export update!
 export neighborlist, neighborlist!
 
-include("./API/neighborpair.jl")
+# NeighborPair structure
+include("./API/NeighborPair.jl")
+
+# Core-computing 
 include("./internals/linearalgebra.jl")
 include("./internals/show.jl")
 include("./internals/Box.jl")
 include("./internals/CellLists.jl")
 include("./internals/CellOperations.jl")
-include("./API/ParticleSystem.jl")
-
-# Core-computing infraestructure
 include("./internals/auxiliary_functions.jl")
 include("./internals/vicinal_cells.jl")
 include("./internals/self.jl")
 include("./internals/cross.jl")
 
+# ParticleSystem interface
+include("./internals/ParticleSystem.jl")
+include("./API/ParticleSystem.jl")
+include("./API/parallel_custom.jl")
+include("./API/updating.jl")
+include("./API/pairwise.jl")
+include("./API/get_computing_box.jl")
+
 # Neighborlists
-include("./API/neighborlists.jl")
+include("./internals/neighborlist.jl")
+include("./API/neighborlist.jl")
 
 # Precompilation tools
 include("./internals/precompile.jl")

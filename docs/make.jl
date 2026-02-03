@@ -1,10 +1,8 @@
 import Pkg; Pkg.add("Documenter")
 using Documenter
 using CellListMap
-#DocMeta.setdocmeta!(CellListMap, :DocTestSetup, :(
-#    #using CellListMap
-#    Base.active_repl.options.iocontext[:displaysize] = (9, 80)
-#); recursive=true)
+ENV["LINES"] = 10
+ENV["COLUMNS"] = 120
 makedocs(
     modules = [CellListMap],
     sitename = "CellListMap.jl",
@@ -20,6 +18,7 @@ makedocs(
         "Complete examples" => "ParticleSystem/examples.md",
         "Unitcell requirements" => "unitcell.md",
         "Ecosystem integration" => "ecosystem.md",
+        "Public Interface" => "API.md",
         "From Python" => "python.md",
         "Citation" => "citation.md",
         "Internals" => "Internals.md",

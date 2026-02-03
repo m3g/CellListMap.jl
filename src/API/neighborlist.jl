@@ -1,51 +1,3 @@
-#
-# Wrapper of the list of neighbors, that allows in-place updating of the lists
-#
-mutable struct NeighborList{T}
-    n::Int
-    list::Vector{Tuple{Int, Int, T}}
-end
-
-import Base: push!, empty!, resize!, copy
-empty!(x::NeighborList) = x.n = 0
-function push!(x::NeighborList, pair)
-    x.n += 1
-    if x.n > length(x.list)
-        push!(x.list, pair)
-    else
-        x.list[x.n] = pair
-    end
-    return x
-end
-function resize!(x::NeighborList, n::Int)
-    x.n = n
-    resize!(x.list, n)
-    return x
-end
-copy(x::NeighborList{T}) where {T} = NeighborList{T}(x.n, copy(x.list))
-
-# Function adds pair to the list
-function push_pair!(i, j, d2, list::NeighborList)
-    d = sqrt(d2)
-    push!(list, (i, j, d))
-    return list
-end
-
-# We have to define our own reduce function here (for the parallel version)
-# this reduction can be dum assynchronously on a preallocated array
-function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborList{T}}) where {T}
-    ranges = cumsum(nb.n for nb in list_threaded)
-    npairs = ranges[end]
-    # need to resize here for the case where length(list) < npairs
-    list = resize!(list, npairs)
-    @sync for it in eachindex(list_threaded)
-        lt = list_threaded[it]
-        range = (ranges[it] - lt.n + 1):ranges[it]
-        @spawn list.list[range] .= @view(lt.list[1:lt.n])
-    end
-    return list
-end
-
 #=
 
 $(TYPEDEF)
@@ -261,6 +213,45 @@ function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
     return _print(io, "Current list buffer size: $(length(system.nb.list))")
 end
 
+"""
+    neighborlist(system::InPlaceNeighborList)
+
+Computes the neighbor list in-place, given a `InPlaceNeighborList` system.
+
+## Example
+
+In the following example, we compute the neighbor list of a set of random
+particles, and then we change the coordinates and recompute the neighbor list
+without reallocations (or with minimal allocations if run in parallel):
+
+```julia-repl
+julia> using CellListMap, StaticArrays
+
+julia> x = rand(SVector{3,Float64}, 10^4);
+
+julia> system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false);
+
+julia> neighborlist!(system)
+210034-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 2669, 0.04444346517920411)
+ (1, 8475, 0.02554075837438248)
+ ⋮
+ (9463, 5955, 0.08698158178214915)
+ (9463, 2308, 0.09482635540291776)
+
+julia> x .= rand(SVector{3,Float64}, 10^4); # change coordinates
+
+julia> @time neighborlist!(system; parallel=false)
+  0.007978 seconds
+209418-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 1253, 0.09420839394144173)
+ (1, 2048, 0.01448095691254145)
+ ⋮
+ (9728, 6367, 0.08204145034963985)
+ (9728, 2594, 0.06536277710826768)
+```
+
+"""
 function neighborlist!(system::InPlaceNeighborList)
     # Empty lists and auxiliary threaded arrays
     empty!(system.nb)

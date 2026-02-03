@@ -45,11 +45,6 @@ extract from the object using [destructuring syntax](https://docs.julialang.org/
 
     The `output` variable **must** be returned by the function, being it mutable or immutable.
 
-```@autodocs
-Modules = [CellListMap]
-Pages = ["neighborpair.jl"]
-```
-
 ### Basic examples
 
 For example, computing the energy, as the sum of the inverse of the distance between particles, can be done with a function like:
@@ -98,15 +93,3 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
           vectors correspond to the *columns* of the matrix.
         - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters.
-
-## Docstrings
-
-```@meta
-CollapsedDocStrings = true
-```
-
-```@autodocs
-Modules = [CellListMap]
-Pages = ["ParticleSystem.jl"]
-Order = [:function, :type]
-```

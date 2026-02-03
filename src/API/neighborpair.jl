@@ -1,8 +1,7 @@
 """
     NeighborPair{N,T,T2}
 
-Structure that holds the information of a pair of particles that are neighbors
-within the cutoff distance.
+Structure that holds the information of a pair of particles that are neighbors within the cutoff distance.
 
 ## Fields accessed by the user:
 - `i::Int`: index of the first particle in the original array of coordinates.
@@ -20,9 +19,11 @@ struct NeighborPair{N, T, T2}
     y::SVector{N, T}
     d2::T2
 end
-Base.getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))
-Base.getproperty(p::NeighborPair, ::Val{S}) where {S} = getfield(p, S)
+
+import Base: getproperty, propertynames
+getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))
+getproperty(p::NeighborPair, ::Val{S}) where {S} = getfield(p, S)
 # Lazy computation of the distance
-Base.getproperty(p::NeighborPair, ::Val{:d}) = sqrt(getfield(p, :d2))
+getproperty(p::NeighborPair, ::Val{:d}) = sqrt(getfield(p, :d2))
 # Property names
-Base.propertynames(::NeighborPair) = (:i, :j, :x, :y, :d, :d2)
+propertynames(::NeighborPair) = (:i, :j, :x, :y, :d, :d2)

@@ -93,14 +93,12 @@ julia> wrap_to_first(x,unit_cell_matrix)
     return unit_cell_matrix * p
 end
 
-#=
+"""
     wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
-
-# Extended help
 
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`. 
 
-=#
+"""
 @inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N, N, T}) where {N, T}
     invu = inv(oneunit(T))
     unit_cell_matrix = invu * unit_cell_matrix
@@ -110,13 +108,13 @@ Wraps the coordinates of point `x` such that it is the minimum image relative to
     return oneunit(T) * unit_cell_matrix * (xw - xref_f) + xref
 end
 
-#=
+"""
     wrap_relative_to(x,xref,sides::AbstractVector)
 
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`,
 for an Orthorhombic cell of which only the sides are provided.
 
-=#
+"""
 @inline function wrap_relative_to(x, xref, sides::AbstractVector)
     lengths = abs.(sides)
     xw = mod.(x - xref, lengths)
