@@ -21,6 +21,7 @@ makedocs(
         "Public Interface" => "API.md",
         #"From Python" => "python.md",
         "Citation" => "citation.md",
+        "Migrating from 0.9" => "migrating.md",
         #"Internals" => "Internals.md",
     ]
 )
