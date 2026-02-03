@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Public Interface · CellListMap.jl</title><meta name="title" content="Public Interface · CellListMap.jl"/><meta property="og:title" content="Public Interface · CellListMap.jl"/><meta property="twitter:title" content="Public Interface · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img class="docs-light-only" src="../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../neighborlists/">Neighbor lists</a></li><li><a class="tocitem" href="../ParticleSystem/introduction/">ParticleSystem</a></li><li><a class="tocitem" href="../ParticleSystem/single_set_simple/">Single set: Simple outputs</a></li><li><a class="tocitem" href="../ParticleSystem/single_set_compound/">Single set: Compound outputs</a></li><li><a class="tocitem" href="../ParticleSystem/two_sets/">Two sets of particles</a></li><li><a class="tocitem" href="../ParticleSystem/updating/">Updating the system</a></li><li><a class="tocitem" href="../ParticleSystem/options/">Options</a></li><li><a class="tocitem" href="../ParticleSystem/examples/">Complete examples</a></li><li><a class="tocitem" href="../unitcell/">Unitcell requirements</a></li><li><a class="tocitem" href="../ecosystem/">Ecosystem integration</a></li><li class="is-active"><a class="tocitem" href>Public Interface</a><ul class="internal"><li><a class="tocitem" href="#Neighborlist-interface"><span>Neighborlist interface</span></a></li><li><a class="tocitem" href="#ParticleSystems"><span>ParticleSystems</span></a></li></ul></li><li><a class="tocitem" href="../citation/">Citation</a></li><li><a class="tocitem" href="../migrating/">Migrating from 0.9</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Public Interface</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Public Interface</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/API.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Application-interface"><a class="docs-heading-anchor" href="#Application-interface">Application interface</a><a id="Application-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Application-interface" title="Permalink"></a></h1><h2 id="Neighborlist-interface"><a class="docs-heading-anchor" href="#Neighborlist-interface">Neighborlist interface</a><a id="Neighborlist-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Neighborlist-interface" title="Permalink"></a></h2><h3 id="Simple-neighborlists"><a class="docs-heading-anchor" href="#Simple-neighborlists">Simple neighborlists</a><a id="Simple-neighborlists-1"></a><a class="docs-heading-anchor-permalink" href="#Simple-neighborlists" title="Permalink"></a></h3><article><details class="docstring"><summary id="CellListMap.neighborlist-Tuple{Any, Any}"><a class="docstring-binding" href="#CellListMap.neighborlist-Tuple{Any, Any}"><code>CellListMap.neighborlist</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)</code></pre><p>Computes the list of pairs of particles in <code>x</code> which are closer to each other than <code>cutoff</code>. If the keyword parameter <code>unitcell</code> is provided (as a vector of sides or a general unit cell matrix, periodic boundary conditions are considered). </p><div class="admonition is-info" id="Note-6a0eedf001a6268a"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-6a0eedf001a6268a" title="Permalink"></a></header><div class="admonition-body"><p>The order of the pairs in the output of <code>neighborlist</code> is not guaranteed, and may change, in particular, in parallel runs.</p></div></div><p><strong>Example</strong></p><p>Compute the neighborlist between within a set Argon atoms, considering the system non-periodic (do not provide a <code>unitcell</code>):</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia&gt; neighborlist(x, 8.0; parallel=false)
+857-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 20, 3.1637795264669006)
+ (1, 61, 4.088651646755291)
+ (1, 67, 5.939772435456664)
+ ⋮
+ (78, 88, 7.0061163797598445)
+ (88, 54, 7.933654063435483)</code></pre><p>And now, considering the system periodic:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia&gt; neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+1143-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 7, 3.3638756414119397)
+ (1, 20, 3.163779526466901)
+ (1, 47, 6.243868666689442)
+ ⋮
+ (68, 38, 7.409287768713663)
+ (68, 90, 7.8758006026725464)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/neighborlist.jl#L277-L325">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.neighborlist-Tuple{Any, Any, Any}"><a class="docstring-binding" href="#CellListMap.neighborlist-Tuple{Any, Any, Any}"><code>CellListMap.neighborlist</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">neighborlist(
+    x, y, cutoff; 
+    unitcell=nothing, 
+    parallel=true, 
+    show_progress=false, 
+    nbatches=(0,0)
+)</code></pre><p>Computes the list of pairs of particles of <code>x</code> which are closer than <code>r</code> to the particles of <code>y</code>. </p><div class="admonition is-info" id="Note-1f6082cbd7d28f2b"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-1f6082cbd7d28f2b" title="Permalink"></a></header><div class="admonition-body"><p>The order of the pairs in the output of <code>neighborlist!</code> is not guaranteed, and may change, in particular, in parallel runs.</p></div></div><p><strong>Examples</strong></p><p>Compute the neighborlist between two sets of Argon atoms, considering the system non-periodic (do not provide a <code>unitcell</code>):</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(read_pdb(CellListMap.argon_pdb_file, &quot;index &lt;= 50&quot;));
+
+julia&gt; y = coor(read_pdb(CellListMap.argon_pdb_file, &quot;index &gt; 50&quot;));
+
+julia&gt; CellListMap.neighborlist(x, y, 8.0; parallel=false)
+439-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 11, 4.088651646755291)
+ (1, 17, 5.939772435456664)
+ (1, 30, 2.4572288423012236)
+ ⋮
+ (46, 48, 4.9269093987894745)
+ (46, 1, 7.99947286297016)</code></pre><p>Now, considering the system periodic:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(read_pdb(CellListMap.argon_pdb_file, &quot;index &lt;= 50&quot;));
+
+julia&gt; y = coor(read_pdb(CellListMap.argon_pdb_file, &quot;index &gt; 50&quot;));
+
+julia&gt; CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+584-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 13, 7.0177634180502215)
+ (1, 24, 7.97689645513632)
+ (1, 29, 3.177029085967527)
+ ⋮
+ (18, 10, 6.9654396670725)
+ (18, 37, 6.222988130894417)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/neighborlist.jl#L337-L393">source</a></section></details></article><h3 id="In-place-neighborlists"><a class="docs-heading-anchor" href="#In-place-neighborlists">In-place neighborlists</a><a id="In-place-neighborlists-1"></a><a class="docs-heading-anchor-permalink" href="#In-place-neighborlists" title="Permalink"></a></h3><article><details class="docstring"><summary id="CellListMap.InPlaceNeighborList"><a class="docstring-binding" href="#CellListMap.InPlaceNeighborList"><code>CellListMap.InPlaceNeighborList</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">InPlaceNeighborList(;
+    x::AbstractVecOrMat,
+    y::Union{AbstractVecOrMat,Nothing}=nothing,
+    cutoff::T,
+    unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
+    parallel::Bool=true,
+    show_progress::Bool=false,
+) where {T}</code></pre><p>Function that initializes the <code>InPlaceNeighborList</code> structure, to be used for in-place computation of neighbor lists.</p><ul><li>If only <code>x</code> is provided, the neighbor list of the set is computed. </li><li>If <code>x</code> and <code>y</code> are provided, the neighbor list between the sets is computed.</li><li>If <code>unitcell</code> is provided, periodic boundary conditions will be used. The <code>unitcell</code> can be a vector of Orthorhombic box sides, or an actual unitcell matrix for general cells. </li><li>If <code>unicell</code> is not provide (value <code>nothing</code>), no periodic boundary conditions will be considered. </li></ul><p><strong>Examples</strong></p><p>Here the neighborlist structure is constructed for the first time, and used to compute the neighbor lists with the mutating <code>neighborlist!</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; x = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]) 
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{OrthorhombicCell, 3, Float64, Float64, 9}
+Current list buffer size: 0
+
+julia&gt; neighborlist!(system)
+210034-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 357, 0.09922225615002134)
+ (1, 488, 0.043487074695938925)
+ (1, 2209, 0.017779967072139684)
+ ⋮
+ (9596, 1653, 0.0897570322108541)
+ (9596, 7927, 0.0898266280344037)</code></pre><p>The coordinates of the system, its unitcell, or the cutoff can be changed with the <code>update!</code> function. If the number of pairs of the list does not change  significantly, the new calculation is minimally allocating, or non-allocating  at all, in particular if the computation is run without parallelization:</p><div class="admonition is-info" id="Note-1f6082cbd7d28f2b"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-1f6082cbd7d28f2b" title="Permalink"></a></header><div class="admonition-body"><p>The order of the pairs in the output of <code>neighborlist!</code> is not guaranteed, and may change, in particular, in parallel runs.</p></div></div><p>If the structure is used repeatedly for similar systems, the allocations will vanish, except for minor allocations used in the threading computation (if a  non-parallel computation is executed, the allocations will vanish completely):</p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.008004 seconds (228 allocations: 16.728 MiB)
+
+julia&gt; update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.024811 seconds (167 allocations: 7.887 MiB)
+
+julia&gt; update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.005213 seconds (164 allocations: 1.439 MiB)
+
+julia&gt; update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
+
+julia&gt; @time neighborlist!(system);
+  0.005276 seconds (162 allocations: 15.359 KiB)
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/neighborlist.jl#L22-L106">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.update!"><a class="docstring-binding" href="#CellListMap.update!"><code>CellListMap.update!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">update!(system::InPlaceNeighborList, x::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
+update!(system::InPlaceNeighborList, x::AbstractVecOrMat, y::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)</code></pre><p>Updates a <code>InPlaceNeighborList</code> system, by updating the coordinates, cutoff, and unitcell.</p><p><strong>Examples</strong></p><p><strong>For self-pairs computations</strong></p><pre><code class="language-julia-repl hljs">julia&gt; x = rand(SVector{3,Float64}, 10^3);
+
+julia&gt; system = InPlaceNeighborList(x=x; cutoff=0.1)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{NonPeriodicCell, 3, Float64, Float64, 9}
+Current list buffer size: 0
+
+julia&gt; neighborlist!(system);
+
+julia&gt; new_x = rand(SVector{3,Float64}, 10^3);
+
+julia&gt; update!(system, new_x; cutoff = 0.05)
+InPlaceNeighborList with types: 
+CellList{3, Float64}
+Box{NonPeriodicCell, 3, Float64, Float64, 9}
+Current list buffer size: 1826
+
+julia&gt; neighborlist!(system)
+224-element Vector{Tuple{Int64, Int64, Float64}}:
+ (25, 486, 0.03897345036790646)
+ ⋮
+ (723, 533, 0.04795768478723409)
+ (868, 920, 0.042087156715720137)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/neighborlist.jl#L137-L174">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.neighborlist!"><a class="docstring-binding" href="#CellListMap.neighborlist!"><code>CellListMap.neighborlist!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">neighborlist(system::InPlaceNeighborList)</code></pre><p>Computes the neighbor list in-place, given a <code>InPlaceNeighborList</code> system.</p><p><strong>Example</strong></p><p>In the following example, we compute the neighbor list of a set of random particles, and then we change the coordinates and recompute the neighbor list without reallocations (or with minimal allocations if run in parallel):</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; x = rand(SVector{3,Float64}, 10^4);
+
+julia&gt; system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false);
+
+julia&gt; neighborlist!(system)
+210034-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 2669, 0.04444346517920411)
+ (1, 8475, 0.02554075837438248)
+ ⋮
+ (9463, 5955, 0.08698158178214915)
+ (9463, 2308, 0.09482635540291776)
+
+julia&gt; x .= rand(SVector{3,Float64}, 10^4); # change coordinates
+
+julia&gt; @time neighborlist!(system; parallel=false)
+  0.007978 seconds
+209418-element Vector{Tuple{Int64, Int64, Float64}}:
+ (1, 1253, 0.09420839394144173)
+ (1, 2048, 0.01448095691254145)
+ ⋮
+ (9728, 6367, 0.08204145034963985)
+ (9728, 2594, 0.06536277710826768)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/neighborlist.jl#L216-L254">source</a></section></details></article><h2 id="ParticleSystems"><a class="docs-heading-anchor" href="#ParticleSystems">ParticleSystems</a><a id="ParticleSystems-1"></a><a class="docs-heading-anchor-permalink" href="#ParticleSystems" title="Permalink"></a></h2><h3 id="Structures"><a class="docs-heading-anchor" href="#Structures">Structures</a><a id="Structures-1"></a><a class="docs-heading-anchor-permalink" href="#Structures" title="Permalink"></a></h3><article><details class="docstring"><summary id="CellListMap.NeighborPair"><a class="docstring-binding" href="#CellListMap.NeighborPair"><code>CellListMap.NeighborPair</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">NeighborPair{N,T,T2}</code></pre><p>Structure that holds the information of a pair of particles that are neighbors within the cutoff distance.</p><p><strong>Fields accessed by the user:</strong></p><ul><li><code>i::Int</code>: index of the first particle in the original array of coordinates.</li><li><code>j::Int</code>: index of the second particle in the original array of coordinates.</li><li><code>x::SVector{N,T}</code>: coordinates of the first particle (minimum-image adjusted).</li><li><code>y::SVector{N,T}</code>: coordinates of the second particle (minimum-image adjusted).</li><li><code>d::T</code>: Euclidean distance between the particles (computed lazily).</li><li><code>d2::T2</code>: squared Euclidean distance between the particles.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/NeighborPair.jl#L1-L14">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.ParticleSystem"><a class="docstring-binding" href="#CellListMap.ParticleSystem"><code>CellListMap.ParticleSystem</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">ParticleSystem(;
+    xpositions::Union{AbstractVector{&lt;:AbstractVector},AbstractMatrix},
+    #or
+    xpositions::Union{AbstractVector{&lt;:AbstractVector},AbstractMatrix},
+    ypositions::Union{AbstractVector{&lt;:AbstractVector},AbstractMatrix},
+    # and
+    unitcell::Union{Nothing,AbstractVecOrMat} = nothing,
+    cutoff::Number,
+    output::Any;
+    output_name::Symbol,
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0, 0),
+    validate_coordinates::Union{Nothing,Function}=_validate_coordinates
+)</code></pre><p>Constructor of the <code>ParticleSystem</code> type given the positions of the particles.</p><ul><li><p>Positions can be provided as vectors of 2D or 3D vectors  (preferentially static vectors from <code>StaticArrays</code>), or as  (2,N) or (3,N) matrices (v0.8.28 is required for matrices).</p></li><li><p>If only the <code>xpositions</code> array is provided, a single set of coordinates  is considered, and the computation will be mapped for the <code>N(N-1)</code>  pairs of this set. </p></li><li><p>If the <code>xpositions</code> and <code>ypositions</code> arrays of coordinates are provided,  the computation will be mapped to the <code>N×M</code> pairs of particles,  being <code>N</code> and <code>M</code> the number of particles of each set of coordinates.</p></li></ul><p>The unit cell (either a vector for <code>Orthorhombic</code> cells or a  full unit cell matrix for <code>Triclinic</code> cells - where columns contain the lattice vectors), the cutoff used for the construction of the cell lists and the output variable of the calculations. If unitcell == nothing, the system is considered not-periodic, in which case artificial periodic boundaries will be built such that images  are farther from each other than the cutoff.</p><div class="admonition is-info" id="Note-cda5c69644414389"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-cda5c69644414389" title="Permalink"></a></header><div class="admonition-body"><p>The <code>output</code> value is the initial value of the output. Tipicaly this is  set to <code>zero(typeof(output))</code>. In subsequent call to <code>pairwise!</code>,  the initial value can be optionally reset to <code>zero(typeof(output))</code>.</p></div></div><p><code>output_name</code> can be set to a symbol that best identifies the output variable. For instance, if <code>output_name=:forces</code>, the forces can be retrieved from the structure using the <code>system.forces</code> notation.</p><p>The <code>parallel</code> and <code>nbatches</code> flags control the parallelization scheme of computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)). By default the parallelization is turned on and <code>nbatches</code> is set with heuristics that may provide good efficiency in most cases. </p><p>The <code>validate_coordinates</code> function can be used to validate the coordinates before the construction of the system. If <code>nothing</code>, no validation is performed. By default the validation checks if the coordinates are not missing or NaN. </p><p><strong>Example</strong></p><p>In these examples, we compute the sum of the squared distances between the particles that are within the cutoff:</p><p><strong>Single set of particles</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap
+
+julia&gt; using PDBTools: read_pdb, coor
+
+julia&gt; positions = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia&gt; sys = ParticleSystem(
+           xpositions = positions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+        );
+
+julia&gt; pairwise!((pair,output) -&gt; output += pair.d2, sys)
+43774.54367600001</code></pre><p><strong>Two sets of particles</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; xpositions = coor(read_pdb(CellListMap.argon_pdb_file))[1:50];
+
+julia&gt; ypositions = coor(read_pdb(CellListMap.argon_pdb_file))[51:100];
+
+julia&gt; sys = ParticleSystem(
+           xpositions = xpositions, 
+           ypositions = ypositions, 
+           unitcell = [21.0, 21.0, 21.0],
+           cutoff = 8.0, 
+           output = 0.0, 
+           parallel = false, # use true for parallelization
+        );
+
+julia&gt; pairwise!((pair,output) -&gt; output += pair.d2, sys)
+21886.196785000004</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/ParticleSystem.jl#L1-L102">source</a></section></details></article><h3 id="The-parwise!-methods"><a class="docs-heading-anchor" href="#The-parwise!-methods">The parwise! methods</a><a id="The-parwise!-methods-1"></a><a class="docs-heading-anchor-permalink" href="#The-parwise!-methods" title="Permalink"></a></h3><article><details class="docstring"><summary id="CellListMap.pairwise!-Union{Tuple{F}, Tuple{F, CellListMap.AbstractParticleSystem}} where F&lt;:Function"><a class="docstring-binding" href="#CellListMap.pairwise!-Union{Tuple{F}, Tuple{F, CellListMap.AbstractParticleSystem}} where F&lt;:Function"><code>CellListMap.pairwise!</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">pairwise!(
+    f::Function, system::AbstractParticleSystem; 
+    show_progress=true, update_lists=true, reset=true,
+)</code></pre><p>Function that maps the <code>f</code> function into all pairs of particles of <code>system</code> that are found to be within the <code>cutoff</code>. </p><p>The function <code>f</code> receives a <code>NeighborPair</code> struct and the output:</p><pre><code class="nohighlight hljs">function f(pair, output)
+    # pair.i, pair.j: indices of the particles
+    # pair.x, pair.y: coordinates (minimum-image adjusted)
+    # pair.d: distance between particles
+    # pair.d2: squared distance
+    # update output
+    return output
+end</code></pre><p>Thread-safety is taken care automatically in parallel executions.</p><p><code>pairwise</code> is an alias to <code>pairwise!</code> for syntax consistency when the <code>output</code> variable is immutable.</p><p>If <code>update_lists</code> is <code>false</code>, the cell lists will not be recomputed, this may be useful for computing a different function from the same coordinates.</p><p>If <code>reset</code> is set to <code>false</code>, the value of <code>system.output</code> will not be set to <code>zero(typeof(system.output))</code> before the new accumulation.</p><p><strong>Example</strong></p><p>In this example we compute the sum of <code>1/(1+d)</code> where <code>d</code> is the distance between particles of a set, for <code>d &lt; cutoff</code>. </p><pre><code class="language-julia-repl hljs">julia&gt; sys = ParticleSystem(
+           xpositions = rand(SVector{3,Float64},1000), 
+           unitcell=[1,1,1], 
+           cutoff = 0.1, 
+           output = 0.0
+           );
+
+julia&gt; pairwise!((pair, output) -&gt; output += 1 / (1 + pair.d), sys)
+1870.0274887950268</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/pairwise.jl#L1-L51">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.pairwise!-Union{Tuple{F}, Tuple{F, AbstractVecOrMat, CellListMap.ParticleSystem1}} where F&lt;:Function"><a class="docstring-binding" href="#CellListMap.pairwise!-Union{Tuple{F}, Tuple{F, AbstractVecOrMat, CellListMap.ParticleSystem1}} where F&lt;:Function"><code>CellListMap.pairwise!</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">pairwise!(f::Function, x::AbstractVector{&lt;:AbstractVector}, sys::ParticleSystem1; kargs...)
+pairwise!(f::Function, x::AbstractMatrix, sys::ParticleSystem1; kargs...)</code></pre><p>Evaluate function f for pairs in two independent sets of particles, where the <code>sys::ParticleSystem1</code> object contains the previously computed cell lists of one set of particles, and the second set is given by the array of positions <code>x</code>.</p><p>This function can be advantageous over computing the interactions with <code>CellListPair</code>, because here the cell lists are only computed for one set. This may be advantageous in two situations:</p><ol><li>The second set of particles is not changing, and the first set is changing. Thus, the cell lists of the second set can be computed only once.</li><li>One of the sets is much smaller than the other. In this case, computing the cell lists of the largest set might be too expensive. Construct the <code>ParticleSystem</code> object for the smallest set, and use this function to compute the interactions with the largest set.</li></ol><p><strong>Keyword arguments:</strong></p><ul><li><code>show_progress::Bool=false</code>: Show progress bar.</li><li><code>update_lists::Bool=true</code>: Update the cell lists or not. If the positions of the <code>ParticleSystem1</code> object  have not changed, it is not necessary to update the cell lists.</li><li><code>reset::Bool=true</code>: If set to <code>false</code> the value of <code>sys.output</code> will not be set to <code>zero(typeof(sys.output)</code>,  and the result will be accumulated</li></ul><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; x = rand(SVector{3,Float64}, 1000);
+
+julia&gt; sys = ParticleSystem(positions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0);
+
+julia&gt; y = rand(SVector{3,Float64}, 100);
+
+julia&gt; pairwise!((pair, output) -&gt; output + pair.d, y, sys; update_lists=false) # Compute the sum of the distances of x and y
+31.121496300032163
+
+julia&gt; z = rand(SVector{3,Float64}, 200);
+
+julia&gt; pairwise!((pair, output) -&gt; output + pair.d, z, sys; update_lists=false) # Compute the sum of the distances x and z
+63.57860511891242</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/pairwise.jl#L74-L119">source</a></section></details></article><h3 id="Updating-systems"><a class="docs-heading-anchor" href="#Updating-systems">Updating systems</a><a id="Updating-systems-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-systems" title="Permalink"></a></h3><article><details class="docstring"><summary id="CellListMap.update_cutoff!"><a class="docstring-binding" href="#CellListMap.update_cutoff!"><code>CellListMap.update_cutoff!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">update_cutoff!(system, cutoff)</code></pre><p>Function to update the <code>cutoff</code>` of the system. </p><p>This function can be used to update the system geometry in iterative schemes.</p><p><strong>Example</strong></p><p>Here we initialize a particle system with a cutoff of <code>8.0</code> and then update the cutoff to <code>10.0</code>. </p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; x = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia&gt; sys = ParticleSystem(
+           xpositions = x,
+           unitcell=[21.0,21.0,21.0],
+           cutoff = 8.0,
+           output = 0.0
+       );
+
+julia&gt; update_cutoff!(sys, 10.0)
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
+      cutoff = 10.0
+      number of computing cells on each dimension = [5, 5, 5]
+      computing cell sizes = [10.5, 10.5, 10.5] (lcell: 1)
+      Total number of cells = 125
+    CellListMap.CellList{3, Float64}
+      100 real particles.
+      8 cells with real particles.
+      800 particles in computing box, including images.
+    Parallelization auxiliary data set for 4 batch(es).
+    Type of output variable (output): Float64</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/updating.jl#L91-L130">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.update_unitcell!"><a class="docstring-binding" href="#CellListMap.update_unitcell!"><code>CellListMap.update_unitcell!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">update_unitcell!(system, unitcell)</code></pre><p>Function to update the unit cell of the system. The <code>unicell</code> must be of the  same type (<code>OrthorhombicCell</code>, <code>TriclinicCell</code>) of the original <code>system</code>  (changing the type of unit cell requires reconstructing the system).</p><p>The <code>unitcell</code> can be a <code>N×N</code> matrix or a vector of dimension <code>N</code>, where <code>N</code> is the dimension of the system (2D or 3D).</p><p>This function can be used to update the system geometry in iterative schemes, where the size of the simulation box changes during the simulation.</p><div class="admonition is-info" id="Note-bc0d0d2e91802ec9"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-bc0d0d2e91802ec9" title="Permalink"></a></header><div class="admonition-body"><p>Manual updating of the unit cell of non-periodic systems is not allowed.</p></div></div><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays, PDBTools
+
+julia&gt; xpositions = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia&gt; sys = ParticleSystem(
+           xpositions = xpositions,
+           unitcell=[21,21,21],
+           cutoff = 8.0,
+           output = 0.0
+       );
+
+julia&gt; update_unitcell!(sys, [30.0, 30.0, 30.0])
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{CellListMap.OrthorhombicCell, 3}
+      unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
+      cutoff = 8.0
+      number of computing cells on each dimension = [6, 6, 6]
+      computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+      Total number of cells = 216
+    CellListMap.CellList{3, Float64}
+      100 real particles.
+      8 cells with real particles.
+      800 particles in computing box, including images.
+    Parallelization auxiliary data set for 4 batch(es).
+    Type of output variable (output): Float64
+</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/updating.jl#L28-L75">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.resize_output!"><a class="docstring-binding" href="#CellListMap.resize_output!"><code>CellListMap.resize_output!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">resize_output!(sys::AbstractParticleSystem, n::Int)</code></pre><p>Resizes the output array and the auxiliary output arrays used for multithreading, if the number of particles of the system changed.</p><p>The function will error if <code>Base.resize!</code> is not defined for the  type of <code>system.output</code>. In this case, a <code>Base.resize!</code> method must be implemented by the user. </p><div class="admonition is-category-warn" id="Warn-253e533df8b34f1a"><header class="admonition-header">Warn<a class="admonition-anchor" href="#Warn-253e533df8b34f1a" title="Permalink"></a></header><div class="admonition-body"><p>This function <em>must</em> be used whenever the output is dependent on the number of particles, and that changes, because it adjust the size of the copies of the output variable used for multi-threading.</p></div></div></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/updating.jl#L1-L16">source</a></section></details></article><h3 id="Custom-parallel-reduction"><a class="docs-heading-anchor" href="#Custom-parallel-reduction">Custom parallel reduction</a><a id="Custom-parallel-reduction-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-parallel-reduction" title="Permalink"></a></h3><p>These are public, but not exported.</p><article><details class="docstring"><summary id="CellListMap.copy_output"><a class="docstring-binding" href="#CellListMap.copy_output"><code>CellListMap.copy_output</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">copy_output(x)</code></pre><p>Defines how the <code>output</code> variable is copied. Identical to <code>Base.copy(x)</code> and implemented for the types in <code>Union{Number, StaticArraysCore.FieldVector, StaticArraysCore.SVector}</code>.</p><p>Other custom output types must have their <code>copy_output</code> method implemented.</p><p><strong>Example</strong></p><pre><code class="language-julia hljs">using CellListMap
+# Custom data type
+struct A x::Int end
+# Custom output type (array of A)
+output = [ A(0) for _ in 1:100 ]
+# How to copy an array of `A`
+CellListMap.copy_output(v::Vector{A}) = [ x for x in v ]
+
+# Alternatively, in this case, one could have defined:
+Base.copy(a::A) = a
+CellListMap.copy_output(v::Vector{A}) = copy(v)</code></pre><p>The user must guarantee that the copy is independent of the original array. For many custom types it is possible to define </p><pre><code class="nohighlight hljs">CellListMap.copy_output(v::Vector{T}) where {T&lt;:CustomType} = deepcopy(v)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/parallel_custom.jl#L6-L36">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.reset_output!"><a class="docstring-binding" href="#CellListMap.reset_output!"><code>CellListMap.reset_output!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">reset_output(x)
+reset_output!(x)</code></pre><p>Function that defines how to reset (or zero) the <code>output</code> variable. For <code>Union{Number, StaticArraysCore.FieldVector, StaticArraysCore.SVector}</code> it is  implemented as <code>zero(x)</code>.</p><p>Other custom output types must have their <code>reset_output!</code> method implemented. </p><p>The function <em>must</em> return the variable itself. If it is immutable, a new instante of the variable must be created, with the reset value. </p><div class="admonition is-info" id="Note-4ff6e32006250151"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-4ff6e32006250151" title="Permalink"></a></header><div class="admonition-body"><p>By default, if <code>reset_output!</code> is defined for one element type, <code>reset_output!</code> is defined for arrays of that type by calling <code>reset_output!</code> for each element of the array.  The user must overload the <code>reset_output!</code>  function for the custom type array if that is not the desired behavior.</p></div></div><p><code>reset_output</code> and <code>reset_output!</code> are aliases, and by convention <code>reset_output!</code> is preferred for mutable types.</p><p><strong>Example</strong></p><p>In this example, we define a <code>reset_output</code> function that will set to <code>+Inf</code> the minimum distance between particles (not always resetting means zeroing).</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap
+
+julia&gt; struct MinimumDistance d::Float64 end
+
+julia&gt; CellListMap.reset_output(x::MinimumDistance) = MinimumDistance(+Inf)
+
+julia&gt; x = MinimumDistance(1.0)
+MinimumDistance(1.0)
+
+julia&gt; CellListMap.reset_output(x)
+MinimumDistance(Inf)</code></pre><p>See the <code>reducer</code> help entry for a complete example of how to use <code>reset_output</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/parallel_custom.jl#L56-L97">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.reducer!"><a class="docstring-binding" href="#CellListMap.reducer!"><code>CellListMap.reducer!</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">reducer(x,y)
+reducer!(x,y)</code></pre><p>Defines how to reduce (combine, or merge) to variables computed in parallel to obtain a single instance of the variable with the reduced result. </p><p><code>reducer</code> and <code>reducer!</code> are aliases, and <code>reducer!</code> is preferred, by convention for mutating functions.</p><p>The most common <code>reducer</code> is the sum, and this is how it is implemented for <code>Union{Number, StaticArraysCore.FieldVector, StaticArraysCore.SVector}</code>. For example, when computing energies, or forces, the total energy is the sum of the energies. The force on one particle is the sum of the forces between the particle and every other particle. Thus, the implemented reducer is the sum: </p><pre><code class="nohighlight hljs">reducer(x,y) = +(x,y)</code></pre><p>However, in  many cases, reduction must be done differently. For instance, if the minimum distance between particles is to be computed, it is interesting to define a custom type and associated reducer. For example:</p><pre><code class="nohighlight hljs">struct MinimumDistance d::Float64 end
+reducer(x::MinimumDistance, y::MinimumDistance) = MinimumDistance(min(x.d, y.d))</code></pre><p>The overloading of <code>reducer</code> allows the use of parallel computations for custom,  complex data types, containing different types of variables, fields, or sizes.</p><p>The appropriate behavior of the reducer should be carefully inspected by the user to avoid spurious results. </p><p><strong>Example</strong></p><p>In this example we show how to obtain the minimum distance among argon atoms in a simulation box.</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, PDBTools
+
+julia&gt; positions = coor(read_pdb(CellListMap.argon_pdb_file));
+
+julia&gt; struct MinimumDistance d::Float64 end # Custom output type
+
+julia&gt; CellListMap.copy_output(d::MinimumDistance) = MinimumDistance(d.d) # Custom copy function for `Out`
+
+julia&gt; CellListMap.reset_output(d::MinimumDistance) = MinimumDistance(+Inf) # How to reset an array with elements of type `MinimumDistance`
+
+julia&gt; CellListMap.reducer(md1::MinimumDistance, md2::MinimumDistance) = MinimumDistance(min(md1.d, md2.d)) # Custom reduction function
+
+julia&gt; # Construct the system
+       sys = ParticleSystem(;
+           positions = positions,
+           unitcell = [21,21,21],
+           cutoff = 8.0,
+           output = MinimumDistance(+Inf),
+       );
+
+julia&gt; # Obtain the minimum distance between atoms:
+       pairwise!((pair,output) -&gt; pair.d &lt; output.d ? MinimumDistance(pair.d) : output, sys)
+MinimumDistance(2.1991993997816563)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/parallel_custom.jl#L125-L191">source</a></section></details></article><h3 id="Auxiliary-functions"><a class="docs-heading-anchor" href="#Auxiliary-functions">Auxiliary functions</a><a id="Auxiliary-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Auxiliary-functions" title="Permalink"></a></h3><p>These are public, but not exported.</p><article><details class="docstring"><summary id="CellListMap.wrap_relative_to"><a class="docstring-binding" href="#CellListMap.wrap_relative_to"><code>CellListMap.wrap_relative_to</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}</code></pre><p>Wraps the coordinates of point <code>x</code> such that it is the minimum image relative to <code>xref</code>. </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/internals/CellOperations.jl#L96-L101">source</a></section><section><div><pre><code class="language-julia hljs">wrap_relative_to(x,xref,sides::AbstractVector)</code></pre><p>Wraps the coordinates of point <code>x</code> such that it is the minimum image relative to <code>xref</code>, for an Orthorhombic cell of which only the sides are provided.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/internals/CellOperations.jl#L111-L117">source</a></section></details></article><article><details class="docstring"><summary id="CellListMap.get_computing_box"><a class="docstring-binding" href="#CellListMap.get_computing_box"><code>CellListMap.get_computing_box</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">get_computing_box(sys::AbstractParticleSystem)</code></pre><p>Retrieves the computing box of the system. The computing box is large enough to contain all coordinates of the particles, plus the cutoff.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/CellListMap.jl/blob/c08965717c901f72980c97df71d39a77584b9ce9/src/API/get_computing_box.jl#L4-L10">source</a></section></details></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ecosystem/">« Ecosystem integration</a><a class="docs-footer-nextpage" href="../citation/">Citation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 3 February 2026 23:34">Tuesday 3 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Updating the system · CellListMap.jl</title><meta name="title" content="Updating the system · CellListMap.jl"/><meta property="og:title" content="Updating the system · CellListMap.jl"/><meta property="twitter:title" content="Updating the system · CellListMap.jl"/><meta name="description" content="Documentation for CellListMap.jl."/><meta property="og:description" content="Documentation for CellListMap.jl."/><meta property="twitter:description" content="Documentation for CellListMap.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img class="docs-light-only" src="../../assets/logo.svg" alt="CellListMap.jl logo"/><img class="docs-dark-only" src="../../assets/logo-dark.svg" alt="CellListMap.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">CellListMap.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Overview</a></li><li><a class="tocitem" href="../../neighborlists/">Neighbor lists</a></li><li><a class="tocitem" href="../introduction/">ParticleSystem</a></li><li><a class="tocitem" href="../single_set_simple/">Single set: Simple outputs</a></li><li><a class="tocitem" href="../single_set_compound/">Single set: Compound outputs</a></li><li><a class="tocitem" href="../two_sets/">Two sets of particles</a></li><li class="is-active"><a class="tocitem" href>Updating the system</a><ul class="internal"><li><a class="tocitem" href="#Updating-coordinates"><span>Updating coordinates</span></a></li><li><a class="tocitem" href="#Updating-the-unit-cell"><span>Updating the unit cell</span></a></li><li><a class="tocitem" href="#Updating-the-cutoff"><span>Updating the cutoff</span></a></li></ul></li><li><a class="tocitem" href="../options/">Options</a></li><li><a class="tocitem" href="../examples/">Complete examples</a></li><li><a class="tocitem" href="../../unitcell/">Unitcell requirements</a></li><li><a class="tocitem" href="../../ecosystem/">Ecosystem integration</a></li><li><a class="tocitem" href="../../API/">Public Interface</a></li><li><a class="tocitem" href="../../citation/">Citation</a></li><li><a class="tocitem" href="../../migrating/">Migrating from 0.9</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Updating the system</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Updating the system</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/CellListMap.jl/blob/main/docs/src/ParticleSystem/updating.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Updating-the-system"><a class="docs-heading-anchor" href="#Updating-the-system">Updating the system</a><a id="Updating-the-system-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-the-system" title="Permalink"></a></h1><p>If the <code>pairwise!</code> function will compute energy and/or forces in an iterative procedure (a simulation, for instance), we need to update the coordinates, and perhaps the unit cell and the cutoff.</p><h2 id="Updating-coordinates"><a class="docs-heading-anchor" href="#Updating-coordinates">Updating coordinates</a><a id="Updating-coordinates-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-coordinates" title="Permalink"></a></h2><p>The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the <code>xpositions</code> (and/or <code>ypositions</code>) field of the system. These position arrays are <code>Vector</code>s of <code>SVector</code>s (from <code>StaticArrays</code>), with coordinates copied from the input array provided. Thus, the coordinates in the <code>ParticleSystem</code> structure must be updated independently of updates in the original array of coordinates.</p><p>Let us exemplify the interface with the computation of forces:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; positions = rand(SVector{3,Float64}, 1000);
+
+julia&gt; system = ParticleSystem(
+           xpositions = positions,
+           unitcell=[1,1,1],
+           cutoff = 0.1,
+           output = similar(positions),
+           output_name = :forces
+       );
+
+julia&gt; system.xpositions[1]
+3-element SVector{3, Float64} with indices SOneTo(3):
+ 0.6391290709055079
+ 0.43679325975360894
+ 0.8231829019768698
+
+julia&gt; system.xpositions[1] = zeros(SVector{3,Float64})
+3-element SVector{3, Float64} with indices SOneTo(3):
+ 0.0
+ 0.0
+ 0.0
+
+julia&gt; push!(system.xpositions, SVector(0.5, 0.5, 0.5))
+1001-element Vector{SVector{3, Float64}}:
+ [0.0, 0.0, 0.0]
+ [0.5491373098208292, 0.23899915605319244, 0.49058287555218516]
+ ⋮
+ [0.4700394061063937, 0.5440026379397457, 0.7411235688716618]
+ [0.5, 0.5, 0.5]</code></pre><div class="admonition is-warning" id="Warning-8b2436119522453e"><header class="admonition-header">Warning<a class="admonition-anchor" href="#Warning-8b2436119522453e" title="Permalink"></a></header><div class="admonition-body"><p>The <code>output</code> variable may have to be resized accordingly, depending on the calculation being performed. Use the <code>resize_output!</code> function (do <strong>not</strong> use <code>Base.resize!</code> on your output array directly).</p><p>In the case of compound outputs (custom output structures) like that of the <a href="../single_set_compound/#Computing-both-energy-and-forces">Computing both energy and forces</a> example, calling <code>resize_output!</code> will return an error and require the user to define <code>Base.resize!</code> for the custom type.</p></div></div><p>If the <code>output</code> array has to be resized, that has to be done with the  <code>resize_output!</code> function, which will keep the consistency of the auxiliary multi-threading buffers. This is, for instance, the case in the example of computation of forces, as the <code>forces</code> array must be of the same length as the array of positions:</p><pre><code class="language-julia-repl hljs">julia&gt; resize_output!(system, length(system.xpositions));
+
+julia&gt; pairwise!(update_forces!, system)
+1001-element Vector{SVector{3, Float64}}:
+ [756.2076075886971, -335.1637545330828, 541.8627090466914]
+ [-173.02442398784672, -178.782819965489, 4.570607952876692]
+ ⋮
+ [-722.5400961501635, 182.65287417718935, 380.0394926753039]
+ [20.27985502389337, -193.77607810950286, -155.28968519541544]</code></pre><p>In this case, if the <code>output</code> is not resized, a <code>BoundsError</code> is be obtained, because updates of forces at unavailable positions will be attempted.</p><h2 id="Updating-the-unit-cell"><a class="docs-heading-anchor" href="#Updating-the-unit-cell">Updating the unit cell</a><a id="Updating-the-unit-cell-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-the-unit-cell" title="Permalink"></a></h2><p>The unit cell can be updated to new dimensions at any moment, with the <code>update_unitcell!</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; system = ParticleSystem(;
+           positions=rand(SVector{3,Float64}, 1000),
+           unitcell=[1.0, 1.0, 1.0],
+           cutoff=0.1,
+           output = 0.0,
+        );
+
+julia&gt; update_unitcell!(system, SVector(1.2, 1.2, 1.2))
+ParticleSystem1 of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 1.2, 0.0, 0.0; 0.0, 1.2, 0.0; 0.0, 0.0, 1.2 ]
+      cutoff = 0.1
+      number of computing cells on each dimension = [13, 13, 13]
+      computing cell sizes = [0.11, 0.11, 0.11] (lcell: 1)
+      Total number of cells = 2197
+    CellListMap.CellList{3, Float64}
+      1000 real particles.
+      623 cells with real particles.
+      1719 particles in computing box, including images.
+    Parallelization auxiliary data set for:
+      Number of batches for cell list construction: 8
+      Number of batches for function mapping: 12
+    Type of output variable (forces): Vector{SVector{3, Float64}}
+</code></pre><div class="admonition is-info" id="Note-9c821daa908d7cf6"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-9c821daa908d7cf6" title="Permalink"></a></header><div class="admonition-body"><ul><li><p>The unit cell can be set initially using a vector or a unit cell matrix. If a vector is provided the system is considered Orthorhombic, if a matrix is provided, a Triclinic system is built. Unit cells updates must preserve the system type.</p></li><li><p>The unit cell of non-periodic systems (initialized with <code>nothing</code>) cannot be updated manually.</p></li><li><p>It is recommended (but not mandatory) to use static arrays (or Tuples) to update the unitcell, as in this case the update will be non-allocating.</p></li></ul></div></div><h2 id="Updating-the-cutoff"><a class="docs-heading-anchor" href="#Updating-the-cutoff">Updating the cutoff</a><a id="Updating-the-cutoff-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-the-cutoff" title="Permalink"></a></h2><p>The cutoff can also be updated, using the <code>update_cutoff!</code> function:</p><pre><code class="language-julia-repl hljs">julia&gt; using CellListMap, StaticArrays
+
+julia&gt; system = ParticleSystem(;
+           positions=rand(SVector{3,Float64}, 1000),
+           unitcell=[1.0, 1.0, 1.0],
+           cutoff=0.1,
+           output = 0.0,
+        );
+
+julia&gt; update_cutoff!(system, 0.2)
+ParticleSystem1{output} of dimension 3, composed of:
+    Box{OrthorhombicCell, 3}
+      unit cell matrix = [ 1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0 ]
+      cutoff = 0.2
+      number of computing cells on each dimension = [8, 8, 8]
+      computing cell sizes = [0.2, 0.2, 0.2] (lcell: 1)
+      Total number of cells = 512
+    CellList{3, Float64}
+      1000 real particles.
+      636 cells with real particles.
+      1738 particles in computing box, including images.
+    Parallelization auxiliary data set for 8 batch(es).
+    Type of output variable (output): Float64
+</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../two_sets/">« Two sets of particles</a><a class="docs-footer-nextpage" href="../options/">Options »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 3 February 2026 23:34">Tuesday 3 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
