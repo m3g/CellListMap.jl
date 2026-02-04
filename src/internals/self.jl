@@ -41,7 +41,7 @@ function _pairwise!(
             show_progress = show_progress
         )
     else
-        output = pairwise_serial!(f, output, box, cl, show_progress = show_progress)
+        output = _pairwise_serial!(f, output, box, cl, show_progress = show_progress)
     end
     return output
 end
@@ -49,7 +49,7 @@ end
 #
 # Serial version for self-pairwise computations
 #
-function pairwise_serial!(
+function _pairwise_serial!(
         f::F, output, box::Box, cl::CellList{N, T};
         show_progress::Bool = false
     ) where {F, N, T}

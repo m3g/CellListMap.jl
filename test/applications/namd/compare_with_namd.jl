@@ -22,7 +22,7 @@
         coordinates = getcoor(file)
         box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
         cl = CellListMap.CellList(coordinates, box)
-        u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+        u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
         if !(u ≈ correct)
             @show (u, correct)
             return false
@@ -141,7 +141,7 @@
     correct = 32230.01699504111
     box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.CellList(coordinates, box)
-    u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
     coordinates = getcoor("$dir/o2.dcd")
@@ -149,7 +149,7 @@
     correct = 1093.7225407797744
     box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl)
-    u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
     # Test preallocated AuxThreaded struct
@@ -163,7 +163,7 @@
     correct = -116.53213607052128
     box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl, aux)
-    u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
     # Same thing with a different lcell
@@ -241,7 +241,7 @@
     correct = 32230.01699504111
     box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.CellList(coordinates, box)
-    u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
     coordinates = getcoor("$dir/o2.dcd")
@@ -249,7 +249,7 @@
     correct = 1093.7225407797744
     box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl)
-    u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
     # Test preallocated AuxThreaded struct
@@ -263,7 +263,7 @@
     correct = -116.53213607052128
     box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
     cl = CellListMap.UpdateCellList!(coordinates, box, cl, aux)
-    u = pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
 end

@@ -58,7 +58,7 @@ function pairwise_velocities(
 
     # Needs this to stabilize the type of velocities and hist, probably
     function barrier!(f!, velocities, rbins, hist, box, cl, reduce_hist, parallel)
-        pairwise!(
+        CellListMap._pairwise!(
             (pair, hist) -> f!(pair.x, pair.y, pair.i, pair.j, pair.d2, hist, velocities, rbins),
             hist, box, cl,
             reduce = reduce_hist,

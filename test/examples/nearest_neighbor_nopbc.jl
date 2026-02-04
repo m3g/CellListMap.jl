@@ -54,7 +54,7 @@ function nearest_neighbor_nopbc(; N1 = 1_500, N2 = 1_500_000, parallel = true, x
     mind = (0, 0, +Inf)
 
     # Run pairwise computation
-    mind = pairwise!(
+    mind = CellListMap._pairwise!(
         (pair, mind) -> f(pair.i, pair.j, pair.d2, mind),
         mind, box, cl; reduce = reduce_mind, parallel = parallel
     )

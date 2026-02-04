@@ -34,7 +34,7 @@ function _pairwise!(
                 show_progress = show_progress
             )
         else
-            output = pairwise_serial!(fswap, output, box, cl, show_progress = show_progress)
+            output = _pairwise_serial!(fswap, output, box, cl, show_progress = show_progress)
         end
     end
     return output
@@ -43,7 +43,7 @@ end
 #
 # Serial version for cross-interaction computations
 #
-function pairwise_serial!(
+function _pairwise_serial!(
         f::F, output, box::Box, cl::CellListPair;
         show_progress::Bool = false
     ) where {F <: Function}

@@ -109,7 +109,7 @@ for computing purposes.
     end
 
     test_map2(box, cl; parallel = true) =
-        pairwise!(
+        CellListMap._pairwise!(
         (pair, s) -> begin
             s += 1
         end,
@@ -132,7 +132,7 @@ for computing purposes.
         end
     end
 
-    test_map(box, cl; parallel = true) = pairwise!((pair, s) -> s += 1 / pair.d2, 0.0, box, cl, parallel = parallel)
+    test_map(box, cl; parallel = true) = CellListMap._pairwise!((pair, s) -> s += 1 / pair.d2, 0.0, box, cl, parallel = parallel)
     test_naive(x, box) = map_naive!((x, y, i, j, d2, s) -> s += 1 / d2, 0.0, x, box)
     function simple_test(x, box; parallel = true)
         cl = CellListMap.CellList(x, box, parallel = parallel)
@@ -574,7 +574,7 @@ This function creates a plot of the computing cell, in three dimensions.
             box = CellListMap.Box(matrix, cutoff; lcell = lcell)
             naive = map_naive!((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, x, box)
             cl = CellListMap.CellList(x, box)
-            clmap = pairwise!((pair, out) -> g(pair.i, pair.j, pair.d2, box.cutoff, out), 0, box, cl)
+            clmap = CellListMap._pairwise!((pair, out) -> g(pair.i, pair.j, pair.d2, box.cutoff, out), 0, box, cl)
             if naive != clmap
                 return x, box
             end

@@ -54,7 +54,7 @@ function packmol(; parallel = false, sides = [46.4, 31.5, 18.7], tol = 2.0, Unit
 
     function u_pack(x, box::CellListMap.Box, cl::CellListMap.CellList)
         cl = CellListMap.UpdateCellList!(x, box, cl, parallel = false)
-        u = pairwise!(
+        u = CellListMap._pairwise!(
             (pair, u) -> begin
                 u += (sqrt(pair.d2) - box.cutoff)^2 # objective function
                 return u

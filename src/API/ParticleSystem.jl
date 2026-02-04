@@ -150,7 +150,7 @@ function ParticleSystem(;
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(xpositions, _box; parallel, nbatches, validate_coordinates)
         _aux = AuxThreaded(_cell_list)
-        _output_threaded = [copy_output(output) for _ in 1:nbatches(_cell_list, :map)]
+        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         output = _reset_all_output!(output, _output_threaded; reset = false)
         sys = ParticleSystem1{output_name}(xpositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
         # Two sets of positions
@@ -159,7 +159,7 @@ function ParticleSystem(;
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(xpositions, ypositions, _box; parallel, nbatches, validate_coordinates)
         _aux = AuxThreaded(_cell_list)
-        _output_threaded = [copy_output(output) for _ in 1:nbatches(_cell_list, :map)]
+        _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         output = _reset_all_output!(output, _output_threaded; reset = false)
         sys = ParticleSystem2{output_name}(xpositions, ypositions, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
     end
