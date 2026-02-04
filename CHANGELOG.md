@@ -21,13 +21,17 @@ Version 0.10.0-DEV
 - ![BREAKING][badge-breaking] The `autoswap` function was removed, in favor of the new `pairwise!(f, x, sys)` method. It not available anymore in for `neighborlist` functions. 
 - ![BREAKING][badge-breaking] The python interface was currently discontinued.
 
-Version 0.9.16
+Version 0.9.17
 --------------
 - ![ENHANCEMENT][badge-enhancement] Improve scaling when two sets of particles are used.
 - ![ENHANCEMENT][badge-enhancement] Automatic updating of the number of batches if the number of particles change.
 - ![INFO][badge-info] Some code simplification and add comments to code. Fix documentation typos.
 - ![INFO][badge-info] Drop support for Julia 1.9 (requires 1.10)
 - ![INFO][badge-info] The `autoswap` option was deprecated, and does not have any effect now. Kept for backwards compatibility. 
+
+Version 0.9.16
+--------------
+- ![INFO][badge-info] This version was broken and was replaced by 0.9.17.
 
 Version 0.9.15
 --------------
