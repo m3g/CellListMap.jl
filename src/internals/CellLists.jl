@@ -314,6 +314,13 @@ be considered by each thread on parallel construction.
 @with_kw struct AuxThreaded{N, T}
     idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef, 0)
     lists::Vector{CellList{N, T}} = Vector{CellList{N, T}}(undef, 0)
+    # Accumulators for parallel UpdateCellList! — indexed by cell linear_index.
+    # total_np: atomic accumulator for particle count; reused as write_pos scratch.
+    # contains_real_flags: atomic-or accumulator (0/1) for contains_real.
+    total_np::Vector{Int} = Int[]
+    contains_real_flags::Vector{Int} = Int[]
+    # Pre-allocated per-batch write-offset vectors (avoids per-call allocation).
+    thread_cell_offsets::Vector{Vector{Int}} = Vector{Vector{Int}}(undef, 0)
 end
 function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreaded)
     _println(io, typeof(aux))
@@ -361,7 +368,10 @@ function AuxThreaded(cl::CellList{N, T}) where {N, T}
     _nbatches = nbatches(cl, :build)
     aux = AuxThreaded{N, T}(
         idxs = Vector{UnitRange{Int}}(undef, _nbatches),
-        lists = Vector{CellList{N, T}}(undef, _nbatches)
+        lists = Vector{CellList{N, T}}(undef, _nbatches),
+        total_np = zeros(Int, cl.number_of_cells),
+        contains_real_flags = zeros(Int, cl.number_of_cells),
+        thread_cell_offsets = [Int[] for _ in 1:_nbatches],
     )
     # If the calculation is not parallel, no need to initialize this
     _nbatches == 1 && return aux
@@ -806,96 +816,131 @@ function UpdateCellList!(
             end
         end
 
-        # Phase 2: serial scan — build cl cell structure and count total
-        # particles per cell.  No particle data is copied here; this is
-        # O(total cells across all threads), not O(total particles).
+        # Phase 2: Parallel cell count accumulation using per-batch sparse storage.
         cl.n_real_particles = length(x)
+        number_of_cells = cl.number_of_cells
+        if length(aux.total_np) < number_of_cells
+            resize!(aux.total_np, number_of_cells)
+            resize!(aux.contains_real_flags, number_of_cells)
+        end
+        fill!(aux.total_np, 0)
+        fill!(aux.contains_real_flags, 0)
+        
+        # Parallel phase: each batch writes its per-cell data to aux.total_np
+        # using its cells' linear indices. Since different batches may touch
+        # the same cell, we use atomic adds.
+        @sync for ibatch in eachindex(aux.lists)
+            @spawn begin
+                list = aux.lists[ibatch]
+                resize!(aux.thread_cell_offsets[ibatch], list.n_cells_with_particles)
+                for icell in 1:list.n_cells_with_particles
+                    aux_cell = list.cells[icell]
+                    li = aux_cell.linear_index
+                    # Non-atomic write to per-batch offset storage
+                    aux.thread_cell_offsets[ibatch][icell] = aux_cell.n_particles
+                    # Atomic add to total count (cells are spread across linear index space,
+                    # so contention is low for uniformly distributed particles)
+                    ptr = pointer(aux.total_np) + (li - 1) * sizeof(Int)
+                    while true
+                        old_val = unsafe_load(ptr)
+                        _, success = Core.Intrinsics.atomic_pointerreplace(ptr, old_val, old_val + aux_cell.n_particles, :sequentially_consistent, :sequentially_consistent)
+                        success && break
+                    end
+                    # Atomic max for contains_real (2 = has real)
+                    if aux_cell.contains_real
+                        ptr_cr = pointer(aux.contains_real_flags) + (li - 1) * sizeof(Int)
+                        while true
+                            old_val = unsafe_load(ptr_cr)
+                            old_val >= 2 && break
+                            _, success = Core.Intrinsics.atomic_pointerreplace(ptr_cr, old_val, 2, :sequentially_consistent, :sequentially_consistent)
+                            success && break
+                        end
+                    end
+                end
+            end
+        end
+        
+        # Serial sum of n_particles
         for ibatch in eachindex(aux.lists)
             cl.n_particles += aux.lists[ibatch].n_particles
-            for icell in 1:aux.lists[ibatch].n_cells_with_particles
-                aux_cell = aux.lists[ibatch].cells[icell]
-                linear_index = aux_cell.linear_index
-                cell_index = cl.cell_indices[linear_index]
-                if cell_index == 0
-                    # First thread to see this cell — initialize it in cl
-                    cl.n_cells_with_particles += 1
-                    cell_index = cl.n_cells_with_particles
-                    cl.cell_indices[linear_index] = cell_index
-                    if cell_index > length(cl.cells)
-                        push!(cl.cells, Cell{N, T}(
-                            linear_index = linear_index,
-                            cartesian_index = aux_cell.cartesian_index,
-                            center = aux_cell.center,
-                            contains_real = aux_cell.contains_real,
-                            n_particles = aux_cell.n_particles,
-                            particles = Vector{ParticleWithIndex{N, T}}(undef, 0),
-                        ))
-                    else
-                        cell = cl.cells[cell_index]
-                        @set! cell.linear_index = linear_index
-                        @set! cell.cartesian_index = aux_cell.cartesian_index
-                        @set! cell.center = aux_cell.center
-                        @set! cell.contains_real = aux_cell.contains_real
-                        @set! cell.n_particles = aux_cell.n_particles
-                        cl.cells[cell_index] = cell
-                    end
-                    if aux_cell.contains_real
-                        cl.n_cells_with_real_particles += 1
-                        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                            push!(cl.cell_indices_real, cell_index)
-                        else
-                            cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
-                        end
-                    end
+        end
+        
+        # Cell initialization: scan total_np for non-zero entries
+        # Compute geometry from linear_index using box dimensions
+        nc = box.nc
+        for li in 1:number_of_cells
+            aux.total_np[li] == 0 && continue
+            cl.n_cells_with_particles += 1
+            cl.cell_indices[li] = cl.n_cells_with_particles
+            cell_index = cl.n_cells_with_particles
+            cartesian_idx = cell_cartesian_indices(nc, li)
+            center = cell_center(cartesian_idx, box)
+            if cell_index > length(cl.cells)
+                push!(cl.cells, Cell{N, T}(
+                    linear_index = li,
+                    cartesian_index = cartesian_idx,
+                    center = center,
+                    contains_real = false,
+                    n_particles = 0,
+                    particles = Vector{ParticleWithIndex{N, T}}(undef, 0),
+                ))
+            else
+                cell = cl.cells[cell_index]
+                @set! cell.linear_index = li
+                @set! cell.cartesian_index = cartesian_idx
+                @set! cell.center = center
+                @set! cell.contains_real = false
+                @set! cell.n_particles = 0
+                cl.cells[cell_index] = cell
+            end
+        end
+
+        # Phase 2b: Finalise cells and pre-size particle vectors - O(n_cells_with_particles)
+        for i in 1:cl.n_cells_with_particles
+            li = cl.cells[i].linear_index
+            np = aux.total_np[li]
+            if np > length(cl.cells[i].particles)
+                resize!(cl.cells[i].particles, np)
+            end
+            cell = cl.cells[i]
+            @set! cell.n_particles = np
+            @set! cell.contains_real = (aux.contains_real_flags[li] == 2)  # 2 = has real particles
+            cl.cells[i] = cell
+            if cell.contains_real
+                cl.n_cells_with_real_particles += 1
+                if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
+                    push!(cl.cell_indices_real, i)
                 else
-                    # Cell already seen — accumulate particle count
-                    cell = cl.cells[cell_index]
-                    @set! cell.n_particles += aux_cell.n_particles
-                    if !cell.contains_real && aux_cell.contains_real
-                        @set! cell.contains_real = true
-                        cl.n_cells_with_real_particles += 1
-                        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                            push!(cl.cell_indices_real, cell_index)
-                        else
-                            cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
-                        end
-                    end
-                    cl.cells[cell_index] = cell
+                    cl.cell_indices_real[cl.n_cells_with_real_particles] = i
                 end
             end
         end
 
-        # Phase 3: pre-size each cell's particle vector to the final count,
-        # and compute the per-thread write offset for each cell so that the
-        # parallel scatter below can place particles into non-overlapping
-        # regions with no synchronisation.
-        thread_cell_offsets = [Vector{Int}(undef, aux.lists[ibatch].n_cells_with_particles)
-                               for ibatch in eachindex(aux.lists)]
-        write_pos = zeros(Int, cl.n_cells_with_particles)
-        for i in 1:cl.n_cells_with_particles
-            np = cl.cells[i].n_particles
-            if np > length(cl.cells[i].particles)
-                resize!(cl.cells[i].particles, np)
-            end
-        end
+        # Phase 3: Compute offsets serially, then scatter in parallel.
+        # Serial offset computation: O(n_cell_batch_pairs) simple integer ops.
+        # thread_cell_offsets[ibatch][icell] = offset within the cell for this batch
+        fill!(aux.total_np, 0)  # Reuse as running offset counter
         for ibatch in eachindex(aux.lists)
-            for icell in 1:aux.lists[ibatch].n_cells_with_particles
-                target_cell_idx = cl.cell_indices[aux.lists[ibatch].cells[icell].linear_index]
-                thread_cell_offsets[ibatch][icell] = write_pos[target_cell_idx]
-                write_pos[target_cell_idx] += aux.lists[ibatch].cells[icell].n_particles
+            list = aux.lists[ibatch]
+            for icell in 1:list.n_cells_with_particles
+                aux_cell = list.cells[icell]
+                li = aux_cell.linear_index
+                # Store the offset for this batch-cell pair
+                aux.thread_cell_offsets[ibatch][icell] = aux.total_np[li]
+                aux.total_np[li] += aux_cell.n_particles
             end
         end
-
-        # Phase 4: parallel scatter — each thread copies its particles into
-        # the pre-allocated slots.  Offsets are disjoint, so no locking is
-        # needed.
+        
+        # Parallel scatter: each batch copies its particles using pre-computed offsets
         @sync for ibatch in eachindex(aux.lists)
             @spawn begin
-                for icell in 1:aux.lists[ibatch].n_cells_with_particles
-                    aux_cell = aux.lists[ibatch].cells[icell]
-                    target_cell_idx = cl.cell_indices[aux_cell.linear_index]
+                list = aux.lists[ibatch]
+                for icell in 1:list.n_cells_with_particles
+                    aux_cell = list.cells[icell]
+                    li = aux_cell.linear_index
+                    target_cell_idx = cl.cell_indices[li]
                     particles_dst = cl.cells[target_cell_idx].particles
-                    offset = thread_cell_offsets[ibatch][icell]
+                    offset = aux.thread_cell_offsets[ibatch][icell]
                     for ip in 1:aux_cell.n_particles
                         particles_dst[offset + ip] = aux_cell.particles[ip]
                     end

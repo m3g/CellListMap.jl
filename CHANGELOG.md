@@ -14,6 +14,7 @@ Version 0.10.0-DEV
 --------------
 - ![FEATURE][badge-feature] `pairwise!(f, x, sys)` maps `f` to the pairs of the particles defined in vector `x` to the cell list defined in `sys` (to reuse the same cell list for cross-computations with different set of particles).
 - ![FEATURE][badge-feature] `pairwise!(; reset=[true(default)/false]`: the optional `reset` keyword of `pairwise!`, when set to `false`, avoids resetting the initial value of `output` to `zero(typeof(output))`.
+- ![ENHANCEMENT][badge-enhancement] Improve scaling of cell list construction and updating. 
 - ![BREAKING][badge-breaking] `map_pairwise!` was renamed to `pairwise!`. 
 - ![BREAKING][badge-breaking] `pairwise`, without the `!` was removed, to stress the fact that the function always mutates the `output` field of the `ParticleSystem` object. 
 - ![BREAKING][badge-breaking] The initial value of `output` is not set to `zero(typeof(output))` by default, but retains the given value. Resetting occurs on the call to `pairwise!` by default, and can be skipped with `reset=false`. 
