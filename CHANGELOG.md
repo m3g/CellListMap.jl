@@ -20,6 +20,7 @@ Version 0.10.0-DEV
 - ![BREAKING][badge-breaking] The previous "lower level interface" is now internal and not exported or public anymore.
 - ![BREAKING][badge-breaking] The `autoswap` function was removed, in favor of the new `pairwise!(f, x, sys)` method. It not available anymore in for `neighborlist` functions. 
 - ![BREAKING][badge-breaking] The python interface was currently discontinued.
+- ![INFO][badge-info] Renamed internal methods of `pairwise!` to `_pairwise!` to improve error messages. 
 
 Version 0.9.17
 --------------
