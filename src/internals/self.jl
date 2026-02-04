@@ -131,7 +131,7 @@ function inner_loop!(
         jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
         if cl.cell_indices[jc_linear] != 0
             cellⱼ = cl.cells[cl.cell_indices[jc_linear]]
-            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl, output, ibatch; skip = true)
+            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl, output, ibatch, Val(true))
         end
     end
     return output
@@ -149,13 +149,14 @@ function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cel
     for i in 1:(cell.n_particles - 1)
         @inbounds pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
+        xpᵢ_rot = inv_rotation * xpᵢ
         for j in (i + 1):cell.n_particles
             @inbounds pⱼ = cell.particles[j]
-            (pᵢ.real | pⱼ.real) || continue # voltar
+            (pᵢ.real | pⱼ.real) || continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)
             end
         end
@@ -169,15 +170,16 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
     # loop over all pairs, skip when i >= j, skip if neither particle is real
     for i in 1:cell.n_particles
         @inbounds pᵢ = cell.particles[i]
-        xpᵢ = pᵢ.coordinates
         pᵢ.real || continue
+        xpᵢ = pᵢ.coordinates
+        xpᵢ_rot = inv_rotation * xpᵢ
         for j in 1:cell.n_particles
             @inbounds pⱼ = cell.particles[j]
             (pᵢ.index >= pⱼ.index) && continue
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)
             end
         end

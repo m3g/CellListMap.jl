@@ -86,7 +86,7 @@ elements with values satisfying `by(el)`. Returns the number of elements
 that satisfy the condition.
 
 =#
-function partition!(by, x::AbstractVector)
+@inline function partition!(by, x::AbstractVector)
     iswap = 1
     @inbounds for i in eachindex(x)
         if by(x[i])

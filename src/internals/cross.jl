@@ -129,14 +129,15 @@ function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cel
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
-        xpᵢ = pᵢ.coordinates
         pᵢ.real || continue
+        xpᵢ = pᵢ.coordinates
+        xpᵢ_rot = inv_rotation * xpᵢ
         for j in 1:cellⱼ.n_particles
             @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
             d2 = norm_sqr(xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)
             end
         end
