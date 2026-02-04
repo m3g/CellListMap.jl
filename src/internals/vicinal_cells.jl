@@ -19,7 +19,7 @@ end
 # allows to never compute repeated interactions anyway.
 #
 function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output; skip = nothing) where {F <: Function}
-    @unpack cutoff, cutoff_sqr, inv_rotation = box
+    (; cutoff, cutoff_sqr, inv_rotation) = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
@@ -46,7 +46,7 @@ end
 # Here skip determines if the interactions are self or cross, in such a way
 # that, for self-computations, we need to skip the interactions when i >= j.
 function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, output; skip = nothing) where {F <: Function}
-    @unpack cutoff, cutoff_sqr, inv_rotation = box
+    (; cutoff, cutoff_sqr, inv_rotation) = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]

@@ -47,7 +47,7 @@ function _pairwise_serial!(
         f::F, output, box::Box, cl::CellListPair;
         show_progress::Bool = false
     ) where {F <: Function}
-    @unpack n_cells_with_real_particles = cl.small_set
+    (; n_cells_with_real_particles) = cl.small_set
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     ibatch = 1
     for i in 1:n_cells_with_real_particles
@@ -84,7 +84,7 @@ function _pairwise_parallel!(
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for i in 1:_nbatches]
     end
-    @unpack n_cells_with_real_particles = cl.small_set
+    (; n_cells_with_real_particles) = cl.small_set
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
@@ -103,7 +103,7 @@ function inner_loop!(
         output,
         ibatch
     ) where {F <: Function, N, T}
-    @unpack cutoff_sqr, inv_rotation, nc = box
+    (; cutoff_sqr, inv_rotation, nc) = box
     jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index)
     if cl.large_set.cell_indices[jc_linear] != 0
         cellⱼ = cl.large_set.cells[cl.large_set.cell_indices[jc_linear]]
@@ -126,7 +126,7 @@ end
 # to loop over all pairs of particles.
 #
 function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cell, output) where {F <: Function}
-    @unpack cutoff_sqr, inv_rotation = box
+    (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
@@ -211,7 +211,7 @@ function single_particle_vs_list!(
         i::Integer, x::SVector{N, T},
         cl::CellList{N, T}
     ) where {F, N, T}
-    @unpack nc, cutoff_sqr, inv_rotation = box
+    (; nc, cutoff_sqr, inv_rotation) = box
     xpᵢ = box.rotation * wrap_to_first(x, box.input_unit_cell.matrix)
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)
@@ -241,7 +241,7 @@ function single_particle_vs_list!(
         i::Integer, x::SVector{N, T},
         cl::CellList{N, T}
     ) where {F, N, T}
-    @unpack nc, cutoff_sqr, inv_rotation = box
+    (; nc, cutoff_sqr, inv_rotation) = box
     xpᵢ = x
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)

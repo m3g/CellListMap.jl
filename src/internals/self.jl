@@ -53,7 +53,7 @@ function _pairwise_serial!(
         f::F, output, box::Box, cl::CellList{N, T};
         show_progress::Bool = false
     ) where {F, N, T}
-    @unpack n_cells_with_real_particles = cl
+    (; n_cells_with_real_particles) = cl
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     ibatch = 1
     for i in 1:n_cells_with_real_particles
@@ -90,7 +90,7 @@ function _pairwise_parallel!(
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for i in 1:_nbatches]
     end
-    @unpack n_cells_with_real_particles = cl
+    (; n_cells_with_real_particles) = cl
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
@@ -125,7 +125,7 @@ function inner_loop!(
         output,
         ibatch
     ) where {F <: Function, NC <: Function, N, T}
-    @unpack cutoff_sqr, inv_rotation, nc = box
+    (; cutoff_sqr, inv_rotation, nc) = box
     output = _current_cell_interactions!(box, f, cellᵢ, output)
     for jcell in _neighbor_cells(box)
         jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
@@ -144,7 +144,7 @@ end
 # Call with single cell: this implies that this is a self-computation, and thus we loop over the
 # upper triangle only in the case of the Orthorhombic cell
 function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cell, output) where {F <: Function}
-    @unpack cutoff_sqr, inv_rotation = box
+    (; cutoff_sqr, inv_rotation) = box
     # loop over list of non-repeated particles of cell ic.
     for i in 1:(cell.n_particles - 1)
         @inbounds pᵢ = cell.particles[i]
@@ -165,7 +165,7 @@ end
 
 # And loop over all pairs but skipping when i >= j when the box is triclinic
 function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output) where {F <: Function}
-    @unpack cutoff_sqr, inv_rotation = box
+    (; cutoff_sqr, inv_rotation) = box
     # loop over all pairs, skip when i >= j, skip if neither particle is real
     for i in 1:cell.n_particles
         @inbounds pᵢ = cell.particles[i]

@@ -311,7 +311,7 @@ Auxiliary structure to carry threaded lists and ranges of particles to
 be considered by each thread on parallel construction. 
 
 =#
-@with_kw struct AuxThreaded{N, T}
+Base.@kwdef struct AuxThreaded{N, T}
     idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef, 0)
     lists::Vector{CellList{N, T}} = Vector{CellList{N, T}}(undef, 0)
     # Accumulators for parallel UpdateCellList! — indexed by cell linear_index.
@@ -327,7 +327,7 @@ function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreaded)
     return _print(io, " Auxiliary arrays for nbatches = ", length(aux.lists))
 end
 
-@with_kw struct AuxThreadedPair{N, T}
+Base.@kwdef struct AuxThreadedPair{N, T}
     small_set::AuxThreaded{N, T}
     large_set::AuxThreaded{N, T}
 end
