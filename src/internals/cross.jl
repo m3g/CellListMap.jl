@@ -5,7 +5,7 @@ Evaluate function f for pairs in two independent sets of particles, for which th
 object was constructed.
 
 =#
-function pairwise!(
+function _pairwise!(
         f::F1, output, box::Box, cl::CellListPair{N, T};
         # Parallelization options
         parallel::Bool = true,
@@ -16,25 +16,25 @@ function pairwise!(
     fswap(pair, output) = f(NeighborPair(pair.j, pair.i, pair.y, pair.x, pair.d2), output)
     if !cl.swap
         if parallel
-            output = pairwise_parallel!(
+            output = _pairwise_parallel!(
                 f, output, box, cl;
                 output_threaded = output_threaded,
                 reduce = reduce,
                 show_progress = show_progress
             )
         else
-            output = pairwise_serial!(f, output, box, cl, show_progress = show_progress)
+            output = _pairwise_serial!(f, output, box, cl, show_progress = show_progress)
         end
     else
         if parallel
-            output = pairwise_parallel!(
+            output = _pairwise_parallel!(
                 fswap, output, box, cl;
                 output_threaded = output_threaded,
                 reduce = reduce,
                 show_progress = show_progress
             )
         else
-            output = pairwise_serial!(fswap, output, box, cl, show_progress = show_progress)
+            output = _pairwise_serial!(fswap, output, box, cl, show_progress = show_progress)
         end
     end
     return output
@@ -43,7 +43,7 @@ end
 #
 # Serial version for cross-interaction computations
 #
-function pairwise_serial!(
+function _pairwise_serial!(
         f::F, output, box::Box, cl::CellListPair;
         show_progress::Bool = false
     ) where {F <: Function}
@@ -74,7 +74,7 @@ end
 # is to avoid allocations caused by the capturing of variables by the closures created
 # by the macro. This may not be needed in the future, if the corresponding issue is solved.
 # See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
-function pairwise_parallel!(
+function _pairwise_parallel!(
         f::F1, output, box::Box, cl::CellListPair{N, T};
         output_threaded = nothing,
         reduce::F2 = reduce,
@@ -185,7 +185,7 @@ function _parallel_pairwise_x_vs_sys!(
     return reduce(output, output_threaded)
 end
 
-function pairwise!(
+function _pairwise!(
         f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N, T};
         parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
     ) where {F1 <: Function, F2 <: Function, N, T}
@@ -197,13 +197,13 @@ function pairwise!(
     return output
 end
 
-function pairwise!(
+function _pairwise!(
         f::F1, output, box::Box, x::AbstractMatrix, cl::CellList{N};
         parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
     ) where {N, F1 <: Function, F2 <: Function}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    return pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
+    return _pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
 end
 
 function single_particle_vs_list!(

@@ -25,7 +25,7 @@
         unitcell, coordinates = getcoor(file)
         box = CellListMap.Box(unitcell, cutoff, lcell = lcell)
         cl = CellListMap.CellList(coordinates, box)
-        u = pairwise!((pair, u) -> lj_Argon_Gromacs(pair.d2, u), 0.0, box, cl)
+        u = CellListMap._pairwise!((pair, u) -> lj_Argon_Gromacs(pair.d2, u), 0.0, box, cl)
         return u
     end
 

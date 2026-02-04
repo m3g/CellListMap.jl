@@ -25,7 +25,7 @@ Where `pair` is a `NeighborPair` struct with fields:
 The function must return the updated `output` variable.
 
 =#
-function pairwise!(
+function _pairwise!(
         f::F, output, box::Box, cl::CellList;
         # Parallelization options
         parallel::Bool = true,
@@ -34,14 +34,14 @@ function pairwise!(
         show_progress::Bool = false,
     ) where {F} # Needed for specialization for this function (avoids some allocations)
     if parallel
-        output = pairwise_parallel!(
+        output = _pairwise_parallel!(
             f, output, box, cl;
             output_threaded = output_threaded,
             reduce = reduce,
             show_progress = show_progress
         )
     else
-        output = pairwise_serial!(f, output, box, cl, show_progress = show_progress)
+        output = _pairwise_serial!(f, output, box, cl, show_progress = show_progress)
     end
     return output
 end
@@ -49,7 +49,7 @@ end
 #
 # Serial version for self-pairwise computations
 #
-function pairwise_serial!(
+function _pairwise_serial!(
         f::F, output, box::Box, cl::CellList{N, T};
         show_progress::Bool = false
     ) where {F, N, T}
@@ -80,7 +80,7 @@ end
 # is to avoid allocations caused by the capturing of variables by the closures created
 # by the macro. This may not be needed in the future, if the corresponding issue is solved.
 # See: https://discourse.julialang.org/t/type-instability-because-of-threads-boxing-variables/78395
-function pairwise_parallel!(
+function _pairwise_parallel!(
         f::F1, output, box::Box, cl::CellList{N, T};
         output_threaded = nothing,
         reduce::F2 = reduce,

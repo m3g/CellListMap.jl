@@ -259,7 +259,7 @@ function neighborlist!(system::InPlaceNeighborList)
         empty!(system.nb_threaded[i])
     end
     # Compute the neighbor lists
-    pairwise!(
+    _pairwise!(
         (pair, nb) -> push_pair!(pair.i, pair.j, pair.d2, nb),
         system.nb, system.box, system.cl,
         reduce = reduce_lists,

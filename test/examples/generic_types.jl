@@ -76,7 +76,7 @@ function sumsq_measurements(x_input, sides, cutoff; parallel = false)
 
     # And instead of using the `x` and `y` coordinates provided by the
     # interface, we close over the `x_input` and `box` for the calculations.
-    s = pairwise!(
+    s = CellListMap._pairwise!(
         (pair, s) -> sum_sqr_pair(pair.i, pair.j, s, x_input, box),
         s, box, cl, parallel = parallel
     )

@@ -58,7 +58,7 @@ function pairwise!(
     ) where {F <: Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
     UpdateParticleSystem!(sys, update_lists)
-    sys.output = CellListMap.pairwise!(
+    sys.output = _pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded = sys._output_threaded,
         parallel = sys.parallel,
@@ -123,7 +123,7 @@ function pairwise!(
     ) where {F <: Function}
     sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
     UpdateParticleSystem!(sys, update_lists)
-    sys.output = pairwise!(
+    sys.output = _pairwise!(
         f, sys.output, sys._box, x, sys._cell_list;
         output_threaded = sys._output_threaded,
         reduce = (output, output_threaded) -> reduce_output!(reducer, output, output_threaded),

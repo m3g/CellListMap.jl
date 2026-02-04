@@ -81,7 +81,7 @@ ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A,
 Returns the type of a unitcell from the `ParticleSystem` structure.
 
 =#
-CellListMap.unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
+unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
 
 ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
     ParticleSystem1{OutputName, V, O, B, C, A, VC}(v, o, b, c, vo, a, p, vc)
@@ -188,7 +188,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
         end
         n_particles_changed = length(sys.xpositions) != sys._cell_list.n_real_particles
-        sys._cell_list = CellListMap.UpdateCellList!(
+        sys._cell_list = UpdateCellList!(
             sys.xpositions,
             sys._box,
             sys._cell_list,
@@ -201,7 +201,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
             sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
             _new_nbatches = nbatches(sys)
             if _old_nbatches != _new_nbatches
-                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._aux = AuxThreaded(sys._cell_list)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
@@ -216,7 +216,7 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
         end
         n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
             (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
-        sys._cell_list = CellListMap.UpdateCellList!(
+        sys._cell_list = UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
             sys._box,
@@ -230,7 +230,7 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
             sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
             _new_nbatches = nbatches(sys)
             if _old_nbatches != _new_nbatches
-                sys._aux = CellListMap.AuxThreaded(sys._cell_list)
+                sys._aux = AuxThreaded(sys._cell_list)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
