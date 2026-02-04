@@ -19,12 +19,12 @@
     if Threads.nthreads() == 10
         x = rand(SVector{3, Float64}, 10)
         sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
-        @test CellListMap.nbatches(sys) == (8, 4)
+        @test CellListMap.nbatches(sys) == (4, 4)
         x = rand(SVector{3, Float64}, 10000)
         resize!(sys.xpositions, length(x))
         sys.xpositions .= x
         pairwise!((pair, out) -> out += pair.d2, sys)
-        @test CellListMap.nbatches(sys) == (8, 10)
+        @test CellListMap.nbatches(sys) == (10, 10)
     else
         @warn "Test not run because it is invalid for this number of threads, requires Threads.nthreads() = 10"
     end

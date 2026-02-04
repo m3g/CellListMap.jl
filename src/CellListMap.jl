@@ -4,7 +4,6 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using TestItems: @testitem, @testmodule
 using Compat: @compat
 using ProgressMeter: Progress, next!
-using Parameters: @unpack, @with_kw
 using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector
 using Setfield: @set!
 using LinearAlgebra: cross, diagm, I

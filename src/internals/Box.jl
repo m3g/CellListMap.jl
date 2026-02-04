@@ -416,7 +416,7 @@ if the cells have sides of length `box.cell_size`. `N` can be
 
 =#
 function neighbor_cells_forward(box::Box{UnitCellType, 3}) where {UnitCellType}
-    @unpack lcell = box
+    (; lcell) = box
     nb = Iterators.flatten(
         (
             CartesianIndices((1:lcell, -lcell:lcell, -lcell:lcell)),
@@ -428,7 +428,7 @@ function neighbor_cells_forward(box::Box{UnitCellType, 3}) where {UnitCellType}
 end
 
 function neighbor_cells_forward(box::Box{UnitCellType, 2}) where {UnitCellType}
-    @unpack lcell = box
+    (; lcell) = box
     nb = Iterators.flatten(
         (
             CartesianIndices((1:lcell, -lcell:lcell)),
@@ -448,7 +448,7 @@ cells of a cell where the computing cell index is `box.lcell`.
 
 =#
 function neighbor_cells(box::Box{UnitCellType, N}) where {UnitCellType, N}
-    @unpack lcell = box
+    (; lcell) = box
     return Iterators.filter(
         !isequal(CartesianIndex(ntuple(i -> 0, Val(N)))),
         CartesianIndices(ntuple(i -> -lcell:lcell, Val(N)))
@@ -464,7 +464,7 @@ Returns an iterator over all neighbor cells, including the center one.
 
 =#
 function current_and_neighbor_cells(box::Box{UnitCellType, N}) where {UnitCellType, N}
-    @unpack lcell = box
+    (; lcell) = box
     return CartesianIndices(ntuple(i -> -lcell:lcell, Val(N)))
 end
 
