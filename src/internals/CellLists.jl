@@ -213,15 +213,20 @@ _nbatches_map_computation(n::Int) = _nbatches_default(n)
 
 function update_number_of_batches!(
         cl::CellListPair{N, T},
-        _nbatches::NumberOfBatches = cl.ref_list.nbatches;
+        _nbatches::Union{NumberOfBatches, Nothing} = nothing;
         parallel = true
     ) where {N, T}
     # For CellListPair, compute nbatches independently for each set
     # Build: based on each set's particle count
     # Map: based on product of particle counts for cross-interactions
+    # If _nbatches is nothing (default), use auto=(true, true) for proper recalculation
+    # Otherwise, respect user-specified values
+    if isnothing(_nbatches)
+        _nbatches = NumberOfBatches((true, true), (0, 0))
+    end
     auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
     n_build_ref = last(_nbatches.build_cell_lists)
-    n_build_target = last(_nbatches.build_cell_lists)
+    n_build_target = last(cl.target_list.nbatches.build_cell_lists)
     n_map = last(_nbatches.map_computation)
 
     if !parallel
@@ -238,9 +243,12 @@ function update_number_of_batches!(
             n_total = cl.ref_list.n_real_particles * cl.target_list.n_real_particles
             n_map = _nbatches_map_computation(n_total)
         end
-        # Use (false, false) for auto to prevent recalculation in the individual update_number_of_batches! calls
-        nbatches_ref = NumberOfBatches((false, false), (n_build_ref, n_map))
-        nbatches_target = NumberOfBatches((false, false), (n_build_target, n_map))
+        # Pass computed values to individual lists
+        # For map, we disable auto to prevent individual lists from recalculating based on their own
+        # particle counts. Map for CellListPair should always be based on the product, which we compute above.
+        # Build auto is preserved so it can be recalculated if needed.
+        nbatches_ref = NumberOfBatches((first(auto), false), (n_build_ref, n_map))
+        nbatches_target = NumberOfBatches((first(auto), false), (n_build_target, n_map))
     end
 
     ref_list = update_number_of_batches!(cl.ref_list, nbatches_ref; parallel)

@@ -12,7 +12,8 @@
     @test CellListMap.nbatches(cl, :build) == 2
     @test CellListMap.nbatches(cl, :map) == 4
     cl = CellListMap.CellList(x, y, box)
-    @test CellListMap.nbatches(cl.ref_list) == CellListMap.nbatches(cl.target_list)
+    # For CellListPair, build batches are independent, but map batches should match
+    @test CellListMap.nbatches(cl.ref_list, :map) == CellListMap.nbatches(cl.target_list, :map)
     cl = CellListMap.CellList(x, box; nbatches = (2, 4), parallel = false)
     @test CellListMap.nbatches(cl) == (1, 1)
     # The automatic set of number of batches for this small system:

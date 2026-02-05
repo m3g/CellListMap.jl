@@ -274,10 +274,11 @@ end
     resize!(sys.ypositions, length(y))
     sys.ypositions .= y
     pairwise!((pair, out) -> out += pair.d2, sys)
-    # For CellListPair, nbatches is determined by the large set
+    # For CellListPair, nbatches(sys) returns ref_list (x) nbatches
+    # Build: based on ref_list particle count, Map: based on product
     expected = (
-        CellListMap._nbatches_build_cell_lists(10000),
-        CellListMap._nbatches_map_computation(10000),
+        CellListMap._nbatches_build_cell_lists(5000),
+        CellListMap._nbatches_map_computation(5000 * 10000),
     )
     @test CellListMap.nbatches(sys) == expected
 end
