@@ -21,8 +21,6 @@ struct ParticleWithIndex{N, T}
     real::Bool
     coordinates::SVector{N, T}
 end
-Base.zero(::Type{ParticleWithIndex{N, T}}) where {N, T} =
-    ParticleWithIndex{N, T}(0, false, zeros(SVector{N, T}))
 
 #=
 
@@ -80,17 +78,6 @@ function Cell{N, T}(cartesian_index::CartesianIndex, box::Box; sizehint::Int = 0
         cartesian_index = cartesian_index,
         center = cell_center(cartesian_index, box),
         particles = Vector{ParticleWithIndex{N, T}}(undef, sizehint)
-    )
-end
-
-function copy_cell(cell::Cell{N, T}) where {N, T}
-    return Cell{N, T}(
-        linear_index = cell.linear_index,
-        cartesian_index = cell.cartesian_index,
-        center = cell.center,
-        contains_real = cell.contains_real,
-        n_particles = cell.n_particles,
-        particles = ParticleWithIndex{N, T}[p for p in cell.particles]
     )
 end
 
@@ -1015,124 +1002,6 @@ function add_particles!(x, box, ishift, cl::CellList{N, T}) where {N, T}
     return cl
 end
 
-# define method for the ParticleWithIndex type
-out_of_computing_box(p::ParticleWithIndex, box::Box) = out_of_computing_box(p.coordinates, box)
-
-#=
-    copydata!(cell1::Cell,cell2::Cell)
-
-# Extended help
-
-Copies the data from `cell2` to `cell1`, meaning that particles are
-copied element-wise from `cell2` to `cell1`, with the `particles` array
-of `cell1` being resized (increased) if necessary.
-
-=#
-function copydata!(cell1::Cell, cell2::Cell)
-    @set! cell1.linear_index = cell2.linear_index
-    @set! cell1.cartesian_index = cell2.cartesian_index
-    @set! cell1.center = cell2.center
-    @set! cell1.n_particles = cell2.n_particles
-    @set! cell1.contains_real = cell2.contains_real
-    for ip in 1:cell2.n_particles
-        p = cell2.particles[ip]
-        if ip > length(cell1.particles)
-            push!(cell1.particles, p)
-        else
-            cell1.particles[ip] = p
-        end
-    end
-    return cell1
-end
-
-#=
-    append_particles!(cell1::Cell,cell2::Cell)
-
-# Extended help
-
-Add the particles of `cell2` to `cell1`, updating the cell data and, if necessary,
-resizing (increasing) the `particles` array of `cell1`
-
-=#
-function append_particles!(cell1::Cell, cell2::Cell)
-    if cell2.contains_real
-        @set! cell1.contains_real = true
-    end
-    n_particles_old = cell1.n_particles
-    @set! cell1.n_particles += cell2.n_particles
-    if cell1.n_particles > length(cell1.particles)
-        resize!(cell1.particles, cell1.n_particles)
-    end
-    for ip in 1:cell2.n_particles
-        cell1.particles[n_particles_old + ip] = cell2.particles[ip]
-    end
-    return cell1
-end
-
-#=
-    merge_cell_lists!(cl::CellList,aux::CellList)
-
-# Extended help
-
-Merges an auxiliary `aux` cell list to `cl`, and returns the modified `cl`. Used to
-merge cell lists computed in parallel threads.
-
-=#
-function merge_cell_lists!(cl::CellList, aux::CellList)
-    # One should never get here if the lists do not share the same # computing box
-    if cl.number_of_cells != aux.number_of_cells
-        throw(
-            ArgumentError(
-                """\n
-                    Cell lists must have the same number of cells to be merged.
-                    Got inconsistent number of cells: $(cl.number_of_cells) and $(aux.number_of_cells).
-
-                """
-            )
-        )
-    end
-    cl.n_particles += aux.n_particles
-    cl.n_real_particles += aux.n_real_particles
-    for icell in 1:aux.n_cells_with_particles
-        aux_cell = aux.cells[icell]
-        linear_index = aux_cell.linear_index
-        cell_index = cl.cell_indices[linear_index]
-        # If cell was yet not initialized in merge, push it to the list
-        if cell_index == 0
-            cl.n_cells_with_particles += 1
-            cell_index = cl.n_cells_with_particles
-            cl.cell_indices[linear_index] = cell_index
-            if cell_index > length(cl.cells)
-                push!(cl.cells, copy_cell(aux_cell))
-            else
-                cl.cells[cell_index] = copydata!(cl.cells[cell_index], aux_cell)
-            end
-            if aux_cell.contains_real
-                cl.n_cells_with_real_particles += 1
-                if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                    push!(cl.cell_indices_real, cell_index)
-                else
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
-                end
-            end
-            # Append particles to initialized cells
-        else
-            # If the previous cell didn't contain real particles, but the current one
-            # does, update the list information
-            if !cl.cells[cell_index].contains_real && aux_cell.contains_real
-                cl.n_cells_with_real_particles += 1
-                if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                    push!(cl.cell_indices_real, cell_index)
-                else
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
-                end
-            end
-            cl.cells[cell_index] = append_particles!(cl.cells[cell_index], aux_cell)
-        end
-    end
-    return cl
-end
-
 # Deal with corner cases where a real particle is found in the exact bundary of real box.
 # This cannot happen because then running over the neighboring boxes can cause an
 # invalid access to an index of a cell.
@@ -1436,12 +1305,3 @@ function UpdateCellList!(
     y_re = reinterpret(reshape, SVector{N, eltype(y)}, y)
     return UpdateCellList!(x_re, y_re, box, cl_pair, aux; kargs...)
 end
-
-#=
-    particles_per_cell(cl)
-
-Returns the average number of real particles per computing cell.
-
-=#
-particles_per_cell(cl::CellList) = cl.n_real_particles / cl.number_of_cells
-particles_per_cell(cl::CellListPair) = particles_per_cell(cl.small_set) + particle_cell(cl.large_set)

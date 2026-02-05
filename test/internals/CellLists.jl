@@ -127,3 +127,50 @@ end
     @test_throws ArgumentError CellListMap.UpdateCellList!(x, y, box, cl)
     @test_throws ArgumentError CellListMap.UpdateCellList!(y, x, box, cl)
 end
+
+@testitem "CellList dimension mismatch error" begin
+    using CellListMap, StaticArrays
+    # 3D positions with 2D box should throw DimensionMismatch
+    x = rand(SVector{3,Float64}, 100)
+    box = CellListMap.Box([1.0, 1.0], 0.1)
+    @test_throws DimensionMismatch CellListMap.CellList(x, box)
+    # 2D positions with 3D box should throw DimensionMismatch
+    x = rand(SVector{2,Float64}, 100)
+    box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
+    @test_throws DimensionMismatch CellListMap.CellList(x, box)
+    # Matrix input: 3 rows (3D) with 2D box
+    x = rand(3, 100)
+    box = CellListMap.Box([1.0, 1.0], 0.1)
+    @test_throws DimensionMismatch CellListMap.CellList(x, box)
+end
+
+@testitem "real_particle_border_case" begin
+    using CellListMap, StaticArrays
+    # Test that particles at exact boundaries are handled correctly
+    # The function adjusts cell indices at the boundary cells (lcell and nc - lcell + 1)
+    
+    # Create a box where we can control the boundary conditions
+    box = CellListMap.Box([1.0, 1.0, 1.0], 0.1, lcell=1)
+    
+    # Test lower boundary case: particle at cell index == lcell should be moved to lcell + 1
+    cartesian_index = CartesianIndex(box.lcell, box.lcell + 1, box.lcell + 2)
+    result = CellListMap.real_particle_border_case(cartesian_index, box)
+    @test result[1] == box.lcell + 1  # was at lcell, moved to lcell + 1
+    @test result[2] == box.lcell + 1  # unchanged
+    @test result[3] == box.lcell + 2  # unchanged
+    
+    # Test upper boundary case: particle at cell index == nc - lcell + 1 should be moved to nc - lcell
+    upper_boundary = box.nc[1] - box.lcell + 1
+    cartesian_index = CartesianIndex(upper_boundary, box.lcell + 1, box.lcell + 2)
+    result = CellListMap.real_particle_border_case(cartesian_index, box)
+    @test result[1] == upper_boundary - 1  # was at upper boundary, moved down
+    @test result[2] == box.lcell + 1       # unchanged
+    @test result[3] == box.lcell + 2       # unchanged
+    
+    # Test both boundaries in different dimensions
+    cartesian_index = CartesianIndex(box.lcell, box.nc[2] - box.lcell + 1, box.lcell + 5)
+    result = CellListMap.real_particle_border_case(cartesian_index, box)
+    @test result[1] == box.lcell + 1                # lower boundary adjusted
+    @test result[2] == box.nc[2] - box.lcell        # upper boundary adjusted
+    @test result[3] == box.lcell + 5                # unchanged (not at boundary)
+end
