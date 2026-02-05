@@ -56,5 +56,3 @@ mutable struct ParticleSystem2{OutputName, V, O, B, C, A, VC} <: AbstractParticl
 end
 ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
     ParticleSystem2{OutputName, V, O, B, C, A, VC}(vx, vy, o, b, c, vo, a, p, vc)
-
-

@@ -3,9 +3,9 @@
     using StaticArrays
 
     if VERSION >= v"1.11"
-        @test Base.ispublic(CellListMap.AbstractParticleSystem)
-        @test Base.ispublic(CellListMap.ParticleSystem1)
-        @test Base.ispublic(CellListMap.ParticleSystem2)
+        @test Base.ispublic(CellListMap, :AbstractParticleSystem)
+        @test Base.ispublic(CellListMap, :ParticleSystem1)
+        @test Base.ispublic(CellListMap, :ParticleSystem2)
     end
 
     sys = ParticleSystem(

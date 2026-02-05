@@ -26,6 +26,7 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Renamed internal methods of `pairwise!` to `_pairwise!` to improve error messages. 
 - ![INFO][badge-info] Remove custom linear algebra code, use Base methods.
 - ![INFO][badge-info] Remove deprecated code, improve code coverage.
+- ![INFO][badge-info] Remove internal coordinate swapping by size.
 
 Version 0.9.17
 --------------

@@ -1,6 +1,3 @@
-
-
-
 """
     ParticleSystem(;
         xpositions::Union{AbstractVector{<:AbstractVector},AbstractMatrix},

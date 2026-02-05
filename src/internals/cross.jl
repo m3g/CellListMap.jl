@@ -13,29 +13,15 @@ function _pairwise!(
         reduce::F2 = reduce,
         show_progress::Bool = false
     ) where {F1, F2, N, T} # F1, F2 Needed for specialization for these functions
-    fswap(pair, output) = f(NeighborPair(pair.j, pair.i, pair.y, pair.x, pair.d2), output)
-    if !cl.swap
-        if parallel
-            output = _pairwise_parallel!(
-                f, output, box, cl;
-                output_threaded = output_threaded,
-                reduce = reduce,
-                show_progress = show_progress
-            )
-        else
-            output = _pairwise_serial!(f, output, box, cl, show_progress = show_progress)
-        end
+    if parallel
+        output = _pairwise_parallel!(
+            f, output, box, cl;
+            output_threaded = output_threaded,
+            reduce = reduce,
+            show_progress = show_progress
+        )
     else
-        if parallel
-            output = _pairwise_parallel!(
-                fswap, output, box, cl;
-                output_threaded = output_threaded,
-                reduce = reduce,
-                show_progress = show_progress
-            )
-        else
-            output = _pairwise_serial!(fswap, output, box, cl, show_progress = show_progress)
-        end
+        output = _pairwise_serial!(f, output, box, cl, show_progress = show_progress)
     end
     return output
 end
@@ -47,11 +33,11 @@ function _pairwise_serial!(
         f::F, output, box::Box, cl::CellListPair;
         show_progress::Bool = false
     ) where {F <: Function}
-    (; n_cells_with_real_particles) = cl.small_set
+    (; n_cells_with_real_particles) = cl.ref_list
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     ibatch = 1
     for i in 1:n_cells_with_real_particles
-        cellᵢ = cl.small_set.cells[cl.small_set.cell_indices_real[i]]
+        cellᵢ = cl.ref_list.cells[cl.ref_list.cell_indices_real[i]]
         output = inner_loop!(f, box, cellᵢ, cl, output, ibatch)
         _next!(p)
     end
@@ -63,7 +49,7 @@ end
 #
 function batch(f::F, ibatch, cell_indices, output_threaded, box, cl::CellListPair, p) where {F}
     for i in cell_indices
-        cellᵢ = cl.small_set.cells[cl.small_set.cell_indices_real[i]]
+        cellᵢ = cl.ref_list.cells[cl.ref_list.cell_indices_real[i]]
         output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
         _next!(p)
     end
@@ -84,7 +70,7 @@ function _pairwise_parallel!(
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for i in 1:_nbatches]
     end
-    (; n_cells_with_real_particles) = cl.small_set
+    (; n_cells_with_real_particles) = cl.ref_list
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
     @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
@@ -105,15 +91,15 @@ function inner_loop!(
     ) where {F <: Function, N, T}
     (; cutoff_sqr, inv_rotation, nc) = box
     jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index)
-    if cl.large_set.cell_indices[jc_linear] != 0
-        cellⱼ = cl.large_set.cells[cl.large_set.cell_indices[jc_linear]]
+    if cl.target_list.cell_indices[jc_linear] != 0
+        cellⱼ = cl.target_list.cells[cl.target_list.cell_indices[jc_linear]]
         output = _current_cell_interactions!(box, f, cellᵢ, cellⱼ, output)
     end
     for jcell in neighbor_cells(box)
         jc_linear = cell_linear_index(nc, cellᵢ.cartesian_index + jcell)
-        if cl.large_set.cell_indices[jc_linear] != 0
-            cellⱼ = cl.large_set.cells[cl.large_set.cell_indices[jc_linear]]
-            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl.large_set, output, ibatch)
+        if cl.target_list.cell_indices[jc_linear] != 0
+            cellⱼ = cl.target_list.cells[cl.target_list.cell_indices[jc_linear]]
+            output = _vicinal_cell_interactions!(f, box, cellᵢ, cellⱼ, cl.target_list, output, ibatch)
         end
     end
     return output

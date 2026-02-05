@@ -144,8 +144,8 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end
-        n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
-            (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
+        n_particles_changed = (length(sys.xpositions) != sys._cell_list.ref_list.n_real_particles) ||
+            (length(sys.ypositions) != sys._cell_list.target_list.n_real_particles)
         sys._cell_list = UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
@@ -170,4 +170,4 @@ end
 
 # Return the number of batches for ParticleSystems
 nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
-nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
+nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.ref_list)
