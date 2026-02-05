@@ -21,8 +21,6 @@ struct ParticleWithIndex{N, T}
     real::Bool
     coordinates::SVector{N, T}
 end
-Base.zero(::Type{ParticleWithIndex{N, T}}) where {N, T} =
-    ParticleWithIndex{N, T}(0, false, zeros(SVector{N, T}))
 
 #=
 
