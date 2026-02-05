@@ -29,7 +29,7 @@ export neighborlist, neighborlist!
 # NeighborPair structure
 include("./API/NeighborPair.jl")
 
-# Core-computing 
+# Core-computing
 include("./internals/show.jl")
 include("./internals/Box.jl")
 include("./internals/CellLists.jl")

@@ -421,7 +421,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
         R2 = one(m)
     else
         a = x
-        b = sqrt(sum(abs2,m[:, 2]) - x^2)
+        b = sqrt(sum(abs2, m[:, 2]) - x^2)
         sinθ = -z * b / (y^2 + z^2)
         cosθ = sqrt(1 - sinθ^2)
         #! format: off

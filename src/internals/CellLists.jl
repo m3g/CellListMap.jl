@@ -825,7 +825,7 @@ function UpdateCellList!(
         end
         fill!(aux.total_np, 0)
         fill!(aux.contains_real_flags, 0)
-        
+
         # Parallel phase: each batch writes its per-cell data to aux.total_np
         # using its cells' linear indices. Since different batches may touch
         # the same cell, we use atomic adds.
@@ -859,12 +859,12 @@ function UpdateCellList!(
                 end
             end
         end
-        
+
         # Serial sum of n_particles
         for ibatch in eachindex(aux.lists)
             cl.n_particles += aux.lists[ibatch].n_particles
         end
-        
+
         # Cell initialization: scan total_np for non-zero entries
         # Compute geometry from linear_index using box dimensions
         nc = box.nc
@@ -876,14 +876,16 @@ function UpdateCellList!(
             cartesian_idx = cell_cartesian_indices(nc, li)
             center = cell_center(cartesian_idx, box)
             if cell_index > length(cl.cells)
-                push!(cl.cells, Cell{N, T}(
-                    linear_index = li,
-                    cartesian_index = cartesian_idx,
-                    center = center,
-                    contains_real = false,
-                    n_particles = 0,
-                    particles = Vector{ParticleWithIndex{N, T}}(undef, 0),
-                ))
+                push!(
+                    cl.cells, Cell{N, T}(
+                        linear_index = li,
+                        cartesian_index = cartesian_idx,
+                        center = center,
+                        contains_real = false,
+                        n_particles = 0,
+                        particles = Vector{ParticleWithIndex{N, T}}(undef, 0),
+                    )
+                )
             else
                 cell = cl.cells[cell_index]
                 @set! cell.linear_index = li
@@ -930,7 +932,7 @@ function UpdateCellList!(
                 aux.total_np[li] += aux_cell.n_particles
             end
         end
-        
+
         # Parallel scatter: each batch copies its particles using pre-computed offsets
         @sync for ibatch in eachindex(aux.lists)
             @spawn begin
