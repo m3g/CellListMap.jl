@@ -28,6 +28,9 @@ neighborlist!
 ```@docs
 NeighborPair
 ParticleSystem
+AbstractParticleSystem
+ParticleSystem1
+ParticleSystem2
 ```
 
 ### The parwise! methods
