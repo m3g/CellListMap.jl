@@ -597,10 +597,10 @@ function check_unit_cell(unit_cell_matrix::SMatrix{2, 2, T, 4}, cutoff; printerr
     check = true
 
     i = a / norm(a)
-    bproj = sqrt(norm_sqr(b) - dot(b, i)^2)
+    bproj = sqrt(sum(abs2, b) - dot(b, i)^2)
 
     j = b / norm(b)
-    aproj = sqrt(norm_sqr(a) - dot(a, j)^2)
+    aproj = sqrt(sum(abs2, a) - dot(a, j)^2)
 
     if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
         printerr && println(

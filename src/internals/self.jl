@@ -154,7 +154,7 @@ function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cel
             @inbounds pⱼ = cell.particles[j]
             (pᵢ.real | pⱼ.real) || continue
             xpⱼ = pⱼ.coordinates
-            d2 = norm_sqr(xpᵢ - xpⱼ)
+            d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)
@@ -177,7 +177,7 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
             @inbounds pⱼ = cell.particles[j]
             (pᵢ.index >= pⱼ.index) && continue
             xpⱼ = pⱼ.coordinates
-            d2 = norm_sqr(xpᵢ - xpⱼ)
+            d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)

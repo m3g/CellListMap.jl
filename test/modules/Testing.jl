@@ -63,7 +63,7 @@ Function that uses the naive pairwise mapping algorithm, for testing.
             xᵢ = x[i]
             for j in (i + 1):length(x)
                 xⱼ = CellListMap.wrap_relative_to(x[j], xᵢ, input_unit_cell.matrix)
-                d2 = CellListMap.norm_sqr(xᵢ - xⱼ)
+                d2 = sum(abs2, xᵢ - xⱼ)
                 if d2 <= cutoff_sqr
                     output = f(xᵢ, xⱼ, i, j, d2, output)
                 end
@@ -78,7 +78,7 @@ Function that uses the naive pairwise mapping algorithm, for testing.
             xᵢ = x[i]
             for j in eachindex(y)
                 yⱼ = CellListMap.wrap_relative_to(y[j], xᵢ, input_unit_cell.matrix)
-                d2 = CellListMap.norm_sqr(xᵢ - yⱼ)
+                d2 = sum(abs2, xᵢ - yⱼ)
                 if d2 <= cutoff_sqr
                     output = f(xᵢ, yⱼ, i, j, d2, output)
                 end
