@@ -3,7 +3,6 @@ using ForwardDiff
 using Unitful
 using Measurements
 using StaticArrays
-using LinearAlgebra: norm_sqr
 
 #
 # This function computes the sum of the squared distances of the particles
@@ -59,7 +58,7 @@ function sumsq_measurements(x_input, sides, cutoff; parallel = false)
     function sum_sqr_pair(i, j, s, x_input, box)
         xi = x_input[i]
         xj = CellListMap.wrap_relative_to(x_input[j], xi, box.input_unit_cell.matrix)
-        s += norm_sqr(xi - xj)
+        s += sum(abs2, xi - xj)
         return s
     end
 

@@ -390,7 +390,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
     m = inv(oneunit(T)) * m
     x, y, z = 1, 2, 3
     # Choose a and b to be the largest lattice vectors, in order
-    n = SVector{3}(norm_sqr(v) for v in eachcol(m))
+    n = SVector{3}(sum(abs2, v) for v in eachcol(m))
     combinations = ((1, 2, 3), (1, 3, 2), (2, 1, 3), (2, 3, 1), (3, 1, 2), (3, 2, 1))
     local a, b, c, axis_on_x
     for (i, j, k) in combinations
@@ -402,9 +402,9 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
     end
 
     # Find rotation that aligns a with x
-    a1 = normalize(a)
+    a1 = a ./ norm(a)
     v = SVector(0, a1[z], -a1[y]) # a1 × i
-    if norm_sqr(v) ≈ 0
+    if sum(abs2, v) ≈ 0
         R1 = one(m)
     else
         #! format: off
@@ -421,7 +421,7 @@ function _align_cell3D!(m::AbstractMatrix{T}) where {T}
         R2 = one(m)
     else
         a = x
-        b = sqrt(norm_sqr(m[:, 2]) - x^2)
+        b = sqrt(sum(abs2, m[:, 2]) - x^2)
         sinθ = -z * b / (y^2 + z^2)
         cosθ = sqrt(1 - sinθ^2)
         #! format: off

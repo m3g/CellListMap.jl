@@ -241,4 +241,3 @@ end
 # Return the number of batches for ParticleSystems
 nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
 nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
-

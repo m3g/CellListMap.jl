@@ -135,7 +135,7 @@ function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cel
         for j in 1:cellⱼ.n_particles
             @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
-            d2 = norm_sqr(xpᵢ - xpⱼ)
+            d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)
@@ -227,7 +227,7 @@ function single_particle_vs_list!(
         for j in 1:cellⱼ.n_particles
             @inbounds pⱼ = cellⱼ.particles[j]
             xpⱼ = pⱼ.coordinates
-            d2 = norm_sqr(xpᵢ - xpⱼ)
+            d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(i, pⱼ.index, inv_rotation * xpᵢ, inv_rotation * xpⱼ, d2)
                 output = f(pair, output)
@@ -262,7 +262,7 @@ function single_particle_vs_list!(
             @inbounds pⱼ = cellⱼ.particles[j]
             if pⱼ.real
                 xpⱼ = pⱼ.coordinates
-                d2 = norm_sqr(xpᵢ - xpⱼ)
+                d2 = sum(abs2, xpᵢ - xpⱼ)
                 if d2 <= cutoff_sqr
                     pair = NeighborPair(i, pⱼ.index, xpᵢ, inv_rotation * xpⱼ, d2)
                     output = f(pair, output)
