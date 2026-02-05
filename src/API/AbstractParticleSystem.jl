@@ -13,11 +13,13 @@ abstract type AbstractParticleSystem{OutputName} end
 
 """
 
-$(TYPEDEF)
+    ParticleSystem1
 
 Structure that carries the information necessary for `pairwise!` computations,
 for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
 pairs of particles of the set). Can be used to control dispatch.
+
+Use the `ParticleSystem` constructor and interface for anything else than dispatch.
 
 """
 mutable struct ParticleSystem1{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
@@ -33,7 +35,7 @@ end
 
 """
 
-$(TYPEDEF)
+    ParticleSystem2
 
 Structure that carries the information necessary for `pairwise!` computations,
 for systems with two set of positions (thus, replacing the loops over `N×M` 

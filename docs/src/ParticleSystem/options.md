@@ -164,29 +164,17 @@ larger values of `lcell` may improve the performance. To be tested by the user.
 
 Coordinates can also be provided as matrices of size `(D,N)` where `D` is the dimension (2 or 3) and `N` is the number of particles. For example:
 
-```jldoctest; filter = r"(\d+|CellListMap\.)" => ""
-julia> using CellListMap
-
-julia> system = ParticleSystem(
-           xpositions=rand(2,100),
-           ypositions=rand(2,200),
-           cutoff=0.1,
-           unitcell=[1,1],
-           output=0.0,
-       )
-ParticleSystem2{output} of dimension 2, composed of:
-    Box{OrthorhombicCell, 2}
-      unit cell matrix = [ 1.0 0.0; 0.0 1.0 ]
-      cutoff = 0.1
-      number of computing cells on each dimension = [13, 13]
-      computing cell sizes = [0.1, 0.1] (lcell: 1)
-      Total number of cells = 169
-    CellListPair{2, Float64}
-       70 cells with real particles of the smallest set.
-       85 cells with real particles of the largest set.
-    Parallelization auxiliary data set for 4 batch(es).
-    Type of output variable (output): Float64
+```@example matrices
+using CellListMap
+system = ParticleSystem(
+    xpositions=rand(2,100),
+    ypositions=rand(2,200),
+    cutoff=0.1,
+    unitcell=[1,1],
+    output=0.0,
+)
 ```
+
 !!! warning
     This interface less flexible than when the coordinates are input as vectors of vectors, because
     *the number of particles* cannot be changed, because matrices cannot be resized. Otherwise, matrices can
