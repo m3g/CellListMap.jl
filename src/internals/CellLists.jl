@@ -238,8 +238,9 @@ function update_number_of_batches!(
             n_total = cl.ref_list.n_real_particles * cl.target_list.n_real_particles
             n_map = _nbatches_map_computation(n_total)
         end
-        nbatches_ref = NumberOfBatches(auto, (n_build_ref, n_map))
-        nbatches_target = NumberOfBatches(auto, (n_build_target, n_map))
+        # Use (false, false) for auto to prevent recalculation in the individual update_number_of_batches! calls
+        nbatches_ref = NumberOfBatches((false, false), (n_build_ref, n_map))
+        nbatches_target = NumberOfBatches((false, false), (n_build_target, n_map))
     end
 
     ref_list = update_number_of_batches!(cl.ref_list, nbatches_ref; parallel)
