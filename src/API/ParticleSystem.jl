@@ -140,7 +140,7 @@ function ParticleSystem(;
                 end
             end
             if DIM != size(unitcell, 1)
-                throw(DimensionMismatch("Dimension of the unit cell ($(size(unitcell, 1))) must match the dimension of the coordinates ($(length(eltype(input_array))))"))
+                throw(DimensionMismatch("Dimension of the unit cell ($(size(unitcell, 1))) must match the dimension of the coordinates ($(size(first(input_array))[1]))"))
             end
         end
     end

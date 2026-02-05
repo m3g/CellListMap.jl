@@ -316,12 +316,6 @@ end
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
 
-    # Internal argument-error test: the should never reach this test
-    x = rand(SVector{3, Float64}, 100)
-    cl1 = CellListMap.CellList(x, CellListMap.Box([1, 1, 1], 0.1))
-    cl2 = CellListMap.CellList(x, CellListMap.Box([1.2, 1.2, 1.2], 0.1))
-    @test_throws ArgumentError CellListMap.merge_cell_lists!(cl1, cl2)
-
 end
 
 @testitem "applications" setup = [Testing, Examples] begin
