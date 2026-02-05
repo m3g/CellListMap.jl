@@ -18,6 +18,7 @@ export pairwise!
 export update_cutoff!
 export update_unitcell!
 export resize_output!
+@compat public AbstractParticleSystem, ParticleSystem1, ParticleSystem2
 @compat public copy_output, reset_output!, reset_output, reducer, reducer!
 @compat public wrap_relative_to, get_computing_box
 
@@ -40,6 +41,7 @@ include("./internals/self.jl")
 include("./internals/cross.jl")
 
 # ParticleSystem interface
+include("./API/AbstractParticleSystem.jl")
 include("./internals/ParticleSystem.jl")
 include("./API/ParticleSystem.jl")
 include("./API/parallel_custom.jl")

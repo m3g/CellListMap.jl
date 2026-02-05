@@ -5,76 +5,6 @@ const SupportedTypes = Union{Number, SVector, FieldVector}
 # Supported types for coordinates
 const SupportedCoordinatesTypes = Union{Nothing, AbstractVector{<:AbstractVector}, AbstractMatrix}
 
-# Abstract type only for cleaner dispatch
-abstract type AbstractParticleSystem{OutputName} end
-
-#=
-
-$(TYPEDEF)
-
-$(TYPEDFIELDS)
-
-Structure that carries the information necessary for `pairwise!` computations,
-for systems with one set of positions (thus, replacing the loops over `N(N-1)` 
-pairs of particles of the set). 
-
-The `xpositions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrieve or mutate `xpositions`, retrieve the `output` or its elements,
-and set the computation to use or not parallelization by directly accessing these
-elements.
-
-The other fields of the structure (starting with `_`) are internal and must not 
-be modified or accessed directly. The construction of the `ParticleSystem1` structure
-is done through the `ParticleSystem(;xpositions, unitcell, cutoff, output)` 
-auxiliary function.
-
-=#
-mutable struct ParticleSystem1{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
-    xpositions::V
-    output::O
-    _box::B
-    _cell_list::C
-    _output_threaded::Vector{O}
-    _aux::A
-    parallel::Bool
-    validate_coordinates::VC
-end
-
-#=
-
-$(TYPEDEF)
-
-$(TYPEDFIELDS)
-
-Structure that carries the information necessary for `pairwise!` computations,
-for systems with two set of positions (thus, replacing the loops over `N×M` 
-pairs of particles, being `N` and `M` the number of particles of each set).
-
-The `xpositions`, `ypositions`, `output`, and `parallel` fields are considered part of the API,
-and you can retrieve or mutate positions, retrieve the `output` or its elements,
-and set the computation to use or not parallelization by directly accessing these
-elements.
-
-The other fields of the structure (starting with `_`) are internal and must not 
-be modified or accessed directly. The construction of the `ParticleSystem1` structure
-is done through the `ParticleSystem(;xpositions, ypositions, unitcell, cutoff, output)` 
-auxiliary function.
-
-=#
-mutable struct ParticleSystem2{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
-    xpositions::V
-    ypositions::V
-    output::O
-    _box::B
-    _cell_list::C
-    _output_threaded::Vector{O}
-    _aux::A
-    parallel::Bool
-    validate_coordinates::VC
-end
-ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
-    ParticleSystem2{OutputName, V, O, B, C, A, VC}(vx, vy, o, b, c, vo, a, p, vc)
-
 #=
     unitcelltype(sys::AbstractParticleSystem)
 
@@ -214,8 +144,8 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end
-        n_particles_changed = (min(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.small_set.n_real_particles) ||
-            (max(length(sys.xpositions), length(sys.ypositions)) != sys._cell_list.large_set.n_real_particles)
+        n_particles_changed = (length(sys.xpositions) != sys._cell_list.ref_list.n_real_particles) ||
+            (length(sys.ypositions) != sys._cell_list.target_list.n_real_particles)
         sys._cell_list = UpdateCellList!(
             sys.xpositions,
             sys.ypositions,
@@ -240,4 +170,4 @@ end
 
 # Return the number of batches for ParticleSystems
 nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
-nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.small_set)
+nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.ref_list)

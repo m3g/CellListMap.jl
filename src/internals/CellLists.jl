@@ -156,15 +156,14 @@ particles for cross-computation of interactions
 
 =#
 struct CellListPair{N, T}
-    small_set::CellList{N, T}
-    large_set::CellList{N, T}
-    swap::Bool
+    ref_list::CellList{N, T}  # Reference list (iterated in outer loop)
+    target_list::CellList{N, T}  # Target list (searched for neighbors)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
     _print(io, typeof(cl), "\n")
-    _print(io, "   $(cl.small_set.n_cells_with_real_particles) cells with real particles of the smallest set.\n")
-    return _print(io, "   $(cl.large_set.n_cells_with_real_particles) cells with real particles of the largest set.")
+    _print(io, "   $(cl.ref_list.n_cells_with_real_particles) cells with real particles in reference set.\n")
+    return _print(io, "   $(cl.target_list.n_cells_with_real_particles) cells with real particles in target set.")
 end
 
 #=
@@ -214,19 +213,47 @@ _nbatches_map_computation(n::Int) = _nbatches_default(n)
 
 function update_number_of_batches!(
         cl::CellListPair{N, T},
-        _nbatches::NumberOfBatches = cl.large_set.nbatches;
+        _nbatches::Union{NumberOfBatches, Nothing} = nothing;
         parallel = true
     ) where {N, T}
-    large_set = update_number_of_batches!(cl.large_set, _nbatches; parallel)
-    return CellListPair{N, T}(
-        update_number_of_batches!(
-            cl.small_set,
-            NumberOfBatches((false, false), nbatches(large_set));
-            parallel
-        ),
-        large_set,
-        cl.swap,
-    )
+    # For CellListPair, compute nbatches independently for each set
+    # Build: based on each set's particle count
+    # Map: based on product of particle counts for cross-interactions
+    # If _nbatches is nothing (default), use auto=(true, true) for proper recalculation
+    # Otherwise, respect user-specified values
+    if isnothing(_nbatches)
+        _nbatches = NumberOfBatches((true, true), (0, 0))
+    end
+    auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
+    n_build_ref = last(_nbatches.build_cell_lists)
+    n_build_target = last(cl.target_list.nbatches.build_cell_lists)
+    n_map = last(_nbatches.map_computation)
+
+    if !parallel
+        nbatches_ref = NumberOfBatches((false, false), (1, 1))
+        nbatches_target = NumberOfBatches((false, false), (1, 1))
+    else
+        # Build: independent for each set
+        if first(auto)
+            n_build_ref = _nbatches_build_cell_lists(cl.ref_list.n_real_particles)
+            n_build_target = _nbatches_build_cell_lists(cl.target_list.n_real_particles)
+        end
+        # Map: based on product of particle counts (cross-interaction complexity)
+        if last(auto)
+            n_total = cl.ref_list.n_real_particles * cl.target_list.n_real_particles
+            n_map = _nbatches_map_computation(n_total)
+        end
+        # Pass computed values to individual lists
+        # For map, we disable auto to prevent individual lists from recalculating based on their own
+        # particle counts. Map for CellListPair should always be based on the product, which we compute above.
+        # Build auto is preserved so it can be recalculated if needed.
+        nbatches_ref = NumberOfBatches((first(auto), false), (n_build_ref, n_map))
+        nbatches_target = NumberOfBatches((first(auto), false), (n_build_target, n_map))
+    end
+
+    ref_list = update_number_of_batches!(cl.ref_list, nbatches_ref; parallel)
+    target_list = update_number_of_batches!(cl.target_list, nbatches_target; parallel)
+    return CellListPair{N, T}(ref_list, target_list)
 end
 
 #
@@ -283,8 +310,8 @@ function nbatches(cl::CellList, s::Symbol)
     end
 end
 nbatches(cl::CellList) = (nbatches(cl, :build), nbatches(cl, :map))
-nbatches(cl::CellListPair) = nbatches(cl.large_set)
-nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.large_set, s)
+nbatches(cl::CellListPair) = nbatches(cl.ref_list)
+nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.ref_list, s)
 
 #=
 
@@ -315,12 +342,12 @@ function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreaded)
 end
 
 Base.@kwdef struct AuxThreadedPair{N, T}
-    small_set::AuxThreaded{N, T}
-    large_set::AuxThreaded{N, T}
+    ref_list::AuxThreaded{N, T}
+    target_list::AuxThreaded{N, T}
 end
 function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreadedPair)
     _println(io, typeof(aux))
-    return _print(io, " Auxiliary arrays for nbatches = ", length(aux.small_set.lists))
+    return _print(io, " Auxiliary arrays for nbatches = ", length(aux.ref_list.lists))
 end
 
 """
@@ -441,7 +468,7 @@ CellList{3, Float64}
 ```
 """
 AuxThreaded(cl_pair::CellListPair) =
-    AuxThreadedPair(AuxThreaded(cl_pair.small_set), AuxThreaded(cl_pair.large_set))
+    AuxThreadedPair(AuxThreaded(cl_pair.ref_list), AuxThreaded(cl_pair.target_list))
 
 #=
     CellList(
@@ -581,12 +608,11 @@ function CellList(
         nbatches::Tuple{Int, Int} = (0, 0),
         validate_coordinates::Union{Function, Nothing} = _validate_coordinates,
     ) where {UnitCellType, N, T}
-    xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
-    small_set = CellList(xsmall, box; parallel, validate_coordinates)
-    large_set = CellList(xlarge, box; parallel, validate_coordinates)
-    cl_pair = CellListPair{N, T}(small_set, large_set, swap)
+    ref_list = CellList(x, box; parallel, validate_coordinates)
+    target_list = CellList(y, box; parallel, validate_coordinates)
+    cl_pair = CellListPair{N, T}(ref_list, target_list)
     cl_pair = set_number_of_batches!(cl_pair, nbatches; parallel)
     return cl_pair
 end
@@ -1268,12 +1294,11 @@ function UpdateCellList!(
     ) where {N, T}
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
-    xsmall, xlarge, swap = length(x) <= length(y) ? (x, y, false) : (y, x, true)
-    small_aux = isnothing(aux) ? nothing : aux.small_set
-    large_aux = isnothing(aux) ? nothing : aux.large_set
-    small_set = UpdateCellList!(xsmall, box, cl_pair.small_set, small_aux; parallel, validate_coordinates)
-    large_set = UpdateCellList!(xlarge, box, cl_pair.large_set, large_aux; parallel, validate_coordinates)
-    return CellListPair{N, T}(small_set, large_set, swap)
+    ref_aux = isnothing(aux) ? nothing : aux.ref_list
+    target_aux = isnothing(aux) ? nothing : aux.target_list
+    ref_list = UpdateCellList!(x, box, cl_pair.ref_list, ref_aux; parallel, validate_coordinates)
+    target_list = UpdateCellList!(y, box, cl_pair.target_list, target_aux; parallel, validate_coordinates)
+    return CellListPair{N, T}(ref_list, target_list)
 end
 
 #=

@@ -25,9 +25,19 @@ neighborlist!
 
 ### Structures
 
+Public and exported:
+
 ```@docs
 NeighborPair
 ParticleSystem
+```
+
+Public but not exported:
+
+```@docs
+CellListMap.AbstractParticleSystem
+CellListMap.ParticleSystem1
+CellListMap.ParticleSystem2
 ```
 
 ### The parwise! methods

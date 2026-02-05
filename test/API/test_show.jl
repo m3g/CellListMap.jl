@@ -82,8 +82,8 @@
     @test test_show(
         cl, """
             CellListMap.CellListPair{3, Float64}
-            1 cells with real particles of the smallest set.
-            1 cells with real particles of the largest set.
+            1 cells with real particles in reference set.
+            1 cells with real particles in target set.
         """;
         rep = Dict("CellListMap." => "")
     )
@@ -129,8 +129,8 @@
             computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
             Total number of cells = 1092727
             CellListMap.CellListPair{3, Float64}
-            10 cells with real particles of the smallest set.
-            97 cells with real particles of the largest set.
+            10 cells with real particles in reference set.
+            97 cells with real particles in target set.
             Parallelization auxiliary data set for 2 batch(es).
             Type of output variable (output): Float64
         """;
