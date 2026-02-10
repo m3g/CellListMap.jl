@@ -402,20 +402,22 @@ end
     end
 
     # Test 5: Verify that NeighborPair reports original (untranslated) coordinates
-    offset = SVector(-10.0, -20.0, -30.0)
-    x = [offset .+ SVector(0.5, 0.5, 0.5)]
-    y = [offset .+ SVector(0.5, 0.5, 0.55)]  # close to x[1]
-    sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = Tuple{SVector{3,Float64}, SVector{3,Float64}}[], parallel = false)
-    function collect_coords(pair::NeighborPair, out)
-        push!(out, (pair.x, pair.y))
-        return out
+    let # just to avoid warning about scope 
+        offset = SVector(-10.0, -20.0, -30.0)
+        x = [offset .+ SVector(0.5, 0.5, 0.5)]
+        y = [offset .+ SVector(0.5, 0.5, 0.55)]  # close to x[1]
+        sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = Tuple{SVector{3,Float64}, SVector{3,Float64}}[], parallel = false)
+        function collect_coords(pair::NeighborPair, out)
+            push!(out, (pair.x, pair.y))
+            return out
+        end
+        result = pairwise!(collect_coords, y, sys)
+        @test length(result) == 1
+        # pair.x should be the cross particle (y[1]) in original coordinates
+        # pair.y should be the system particle (x[1]) in original coordinates
+        @test result[1][1] ≈ y[1]
+        @test result[1][2] ≈ x[1]
     end
-    result = pairwise!(collect_coords, y, sys)
-    @test length(result) == 1
-    # pair.x should be the cross particle (y[1]) in original coordinates
-    # pair.y should be the system particle (x[1]) in original coordinates
-    @test result[1][1] ≈ y[1]
-    @test result[1][2] ≈ x[1]
 
     # Test 6: 2D NonPeriodicCell with negative coordinates
     for parallel in (false, true)
@@ -447,16 +449,18 @@ end
     end
 
     # Test 9: Matrix input with negative coordinates
-    x = [SVector(-1.0, -1.0, -1.0) .+ rand(SVector{3,Float64}) for _ in 1:100]
-    y = [SVector(-1.0, -1.0, -1.0) .+ rand(SVector{3,Float64}) for _ in 1:30]
-    ymat = stack(y)
-    box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
-    naive = map_naive!(f_sum_d2, 0.0, x, y, box)
-    sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = false)
-    @test naive ≈ pairwise!(f_sum_d2, ymat, sys)
+    let # just to avoid warning about scope 
+        x = [SVector(-1.0, -1.0, -1.0) .+ rand(SVector{3,Float64}) for _ in 1:100]
+        y = [SVector(-1.0, -1.0, -1.0) .+ rand(SVector{3,Float64}) for _ in 1:30]
+        ymat = stack(y)
+        box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
+        naive = map_naive!(f_sum_d2, 0.0, x, y, box)
+        sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = false)
+        @test naive ≈ pairwise!(f_sum_d2, ymat, sys)
+    end
 end
 
-    using Test
+@testitem "lcell and nbatches" setup=[ Testing ] begin
     using StaticArrays
     using CellListMap
 
