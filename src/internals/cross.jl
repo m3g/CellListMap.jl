@@ -228,8 +228,9 @@ function single_particle_vs_list!(
         i::Integer, x::SVector{N, T},
         cl::CellList{N, T}
     ) where {F, N, T}
-    (; nc, cutoff_sqr, inv_rotation) = box
-    xpᵢ = x
+    (; nc, cutoff_sqr) = box
+    # Translate the cross particle into the same frame used by add_particles!
+    xpᵢ = _nonperiodic_translate(x, box)
     ic = particle_cell(xpᵢ, box)
     for neighbor_cell in current_and_neighbor_cells(box)
         jc_cartesian = neighbor_cell + ic
@@ -250,7 +251,7 @@ function single_particle_vs_list!(
                 xpⱼ = pⱼ.coordinates
                 d2 = sum(abs2, xpᵢ - xpⱼ)
                 if d2 <= cutoff_sqr
-                    pair = NeighborPair(i, pⱼ.index, xpᵢ, inv_rotation * xpⱼ, d2)
+                    pair = NeighborPair(i, pⱼ.index, x, _nonperiodic_untranslate(xpⱼ, box), d2)
                     output = f(pair, output)
                 end
             end
