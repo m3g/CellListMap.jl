@@ -29,7 +29,9 @@ conditions.
 =#
 struct Limits{N, T}
     limits::SVector{N, T}
+    origin::SVector{N, T}
 end
+Limits(limits::SVector{N, T}) where {N, T} = Limits(limits, zeros(SVector{N, T}))
 
 # Set cell size from Limits, when no periodic boundary conditions are
 # used. Adding a fraction of the cutoff to the result avoids
@@ -91,7 +93,14 @@ Base.@kwdef struct Box{UnitCellType, N, T, TSQ, M, TR}
     cutoff_sqr::TSQ
     computing_box::Tuple{SVector{N, T}, SVector{N, T}}
     cell_size::SVector{N, T}
+    origin::SVector{N, T}
 end
+
+# Translation for NonPeriodicCell: shifts coordinates so that xmin maps to 0,
+# placing all coordinates in [0, extent] ⊂ [0, sides). This avoids the
+# discontinuity of modular wrapping that splits nearby particles.
+@inline _nonperiodic_translate(p, box::Box{NonPeriodicCell}) = p .- box.origin
+@inline _nonperiodic_untranslate(p, box::Box{NonPeriodicCell}) = p .+ box.origin
 
 #=
     unitcelltype(::Box{T}) where T = T
@@ -179,14 +188,15 @@ Box{OrthorhombicCell, 3}
 ```
 
 =#
-function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
+function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}; origin = nothing) where {UnitCellType}
     lcell >= 1 || throw(ArgumentError("lcell must be greater or equal to 1"))
     s = size(input_unit_cell_matrix)
     s[1] == s[2] || throw(ArgumentError("Unit cell matrix must be square."))
     T = _promote_types(input_unit_cell_matrix, cutoff)
     unit_cell_matrix = SMatrix{s[1], s[2], T, s[1] * s[2]}(input_unit_cell_matrix)
     unit_cell = UnitCell{UnitCellType, s[1], T, s[1] * s[2]}(unit_cell_matrix)
-    return _construct_box(unit_cell, lcell, T(cutoff))
+    _origin = isnothing(origin) ? zeros(SVector{s[1], T}) : SVector{s[1], T}(origin)
+    return _construct_box(unit_cell, lcell, T(cutoff); origin = _origin)
 end
 
 Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int = 1, UnitCellType = TriclinicCell) =
@@ -227,7 +237,7 @@ end
 # This function construct the box once the concrete type of the unit cell was obtained.
 # This function is useful to perform non-allocating box updates.
 #
-function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cutoff) where {UnitCellType, N, T}
+function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cutoff; origin::SVector{N, T} = zeros(SVector{N, T})) where {UnitCellType, N, T}
 
     aligned_unit_cell_matrix, rotation = _align_cell(UnitCellType, input_unit_cell.matrix)
     check_unit_cell(aligned_unit_cell_matrix, cutoff) || throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
@@ -254,7 +264,8 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cu
         cutoff = cutoff,
         cutoff_sqr = cutoff_sqr,
         computing_box = computing_box,
-        cell_size = cell_size
+        cell_size = cell_size,
+        origin = origin
     )
 end
 
@@ -316,10 +327,10 @@ Box{OrthorhombicCell, 3}
 ```
 
 =#
-function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}) where {UnitCellType}
+function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}; origin = nothing) where {UnitCellType}
     T = _promote_types(sides, cutoff)
     unit_cell_matrix = cell_matrix_from_sides(T.(sides))
-    return Box(unit_cell_matrix, T(cutoff), lcell, UnitCellType)
+    return Box(unit_cell_matrix, T(cutoff), lcell, UnitCellType; origin)
 end
 Box(sides::AbstractVector, cutoff; lcell::Int = 1, UnitCellType = OrthorhombicCell) = Box(sides, cutoff, lcell, UnitCellType)
 
@@ -362,7 +373,7 @@ Box{NonPeriodicCell, 3}
 =#
 function Box(unitcell::Limits, cutoff::T; lcell::Int = 1) where {T}
     sides = _sides_from_limits(unitcell, cutoff)
-    return Box(sides, cutoff, lcell, NonPeriodicCell)
+    return Box(sides, cutoff, lcell, NonPeriodicCell; origin = unitcell.origin)
 end
 
 # Types of input variables that are acceptable as a unitcell, to construct
@@ -401,7 +412,14 @@ function update_box(
         sides = _sides_from_limits(unitcell, _cutoff)
         UnitCell{UnitCellType, N, T, M}(cell_matrix_from_sides(sides))
     end
-    return _construct_box(_unitcell, _lcell, _cutoff)
+    _origin = if unitcell isa Limits
+        SVector{N, T}(unitcell.origin)
+    elseif isnothing(unitcell)
+        box.origin
+    else
+        zeros(SVector{N, T})
+    end
+    return _construct_box(_unitcell, _lcell, _cutoff; origin = _origin)
 end
 
 #=

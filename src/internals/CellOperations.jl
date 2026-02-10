@@ -284,7 +284,7 @@ are invalid.
 function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
     isnothing(validate_coordinates) || validate_coordinates(x)
     xmin, xmax = _minmax(x)
-    return Limits(xmax .- xmin)
+    return Limits(xmax .- xmin, xmin)
 end
 
 function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
@@ -318,7 +318,7 @@ function limits(
     ymin, ymax = _minmax(y)
     xymin = min.(xmin, ymin)
     xymax = max.(xmax, ymax)
-    return Limits(xymax .- xymin)
+    return Limits(xymax .- xymin, xymin)
 end
 
 function limits(
