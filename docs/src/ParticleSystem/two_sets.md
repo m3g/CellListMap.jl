@@ -103,17 +103,12 @@ Note: `xpositions` is passed as a plain array, before the system argument.
 pairwise!(minimum_distance, xpositions, ysystem)
 ```
 
-When `xpositions` changes, the cell list in `ysystem` does not need to be rebuilt:
+When `xpositions` changes, the cell list in `ysystem` does not need to be rebuilt, and this is handled automatically:
 
 ```@example mind
 xpositions = rand(SVector{3,Float64}, 100);  # new positions
-pairwise!(minimum_distance, xpositions, ysystem; update_lists=false)
+pairwise!(minimum_distance, xpositions, ysystem)
 ```
-
-The `update_lists=false` keyword skips updating the cell list of `ysystem`, since only `xpositions` changed. If `ysystem.positions` itself changed, use `update_lists=true` (the default).
-
-!!! compat
-    The single-set cross-interaction interface (`pairwise!(f, x, system)`) was introduced in v0.10.0.
 
 ## Benchmarking of cross-interaction alternatives
 
