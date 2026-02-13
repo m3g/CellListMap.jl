@@ -910,6 +910,9 @@ function UpdateCellList!(
         end
     end
 
+    # set updated to false, to indicate that the cell list was constructed
+    # for these coordinates.
+    x.updated[] = false
     return cl
 end
 
