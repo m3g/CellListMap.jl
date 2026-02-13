@@ -42,10 +42,20 @@ function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
     ParticleSystemPositions{N,T}(x_re, Ref(true))
 end
 
+function Base.empty!(p::ParticlePositions) 
+    p.updated[] = true
+    empty!(p.x)
+    return p
+end
+function Base.resize!(p::ParticlePositions) 
+    p.updated[] = true
+    resize!(p.x)
+    return p
+end
 Base.getindex(p::ParticleSystemPositions, i) = p.x[i]
 function Base.setindex!(p::ParticleSystemPositions{N,T}, v::SVector{N,T}, i) where {N,T}
-    p.x[i] = v
     p.updated[] = true
+    p.x[i] = v
 end
 Base.length(p::ParticleSystemPositions) = length(p.x)
 Base.iterate(p::ParticleSystemPositions, i=firstindex(p.x)) = i > length(p.x) ? nothing : (p.x[i], i + 1)
