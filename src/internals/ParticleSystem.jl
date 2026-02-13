@@ -112,8 +112,8 @@ end
 Updates the cell lists for periodic systems.
 
 =#
-function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
-    if update_lists
+function UpdateParticleSystem!(sys::ParticleSystem1)
+    if sys.xpositions.updated[]
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
         end
@@ -139,8 +139,8 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
     return sys
 end
 
-function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
-    if update_lists
+function UpdateParticleSystem!(sys::ParticleSystem2)
+    if sys.xpositions.updated[] || sys.ypositions.updated[]
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
         end

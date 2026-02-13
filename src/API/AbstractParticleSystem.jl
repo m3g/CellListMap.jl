@@ -12,6 +12,47 @@ Use the `ParticleSystem` constructor and interface for anything else than dispat
 abstract type AbstractParticleSystem{OutputName} end
 
 """
+    ParticleSystemPositions{N,T}
+
+Thin wrapper of particle coordinates, containing a `Vector{SVector{N,T}}` that carries the coordinates
+of the system and a `updated` flag, to instruct the update, or not, of the cell lists. The fields
+of `ParticleSystemPositions` are internal. Coordinates can be fetched by `getindex` and updated
+with `setindex!`, as usual arrays.
+
+ParticleSystemPositions can be initialized with vectors of vectors of coordinates, or with (M,N) matrices, 
+where M is the number of particles and N is the dimension of the system.
+
+"""
+struct ParticleSystemPositions{N,T} <: AbstractVector{T}
+    x::Vector{SVector{N,T}}
+    updated::Ref{Bool}
+end
+
+function ParticleSystemPositions(x::AbstractVector{<:AbstractVector}) 
+    M, N, T = length(x), length(first(x)), eltype(first(x))
+    x_static = Vector{SVector{N,T}}(undef, M)
+    for i in eachindex(x, x_static)
+        x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N)) 
+    end
+    ParticleSystemPositions{N,T}(x, Ref(true))
+end
+function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
+    N = size(x,1)
+    x_re = reinterpret(reshape, SVector{N, T}, x)
+    ParticleSystemPositions{N,T}(x_re, Ref(true))
+end
+
+Base.getindex(p::ParticleSystemPositions, i) = p.x[i]
+function Base.setindex!(p::ParticleSystemPositions{N,T}, v::SVector{N,T}, i) where {N,T}
+    p.x[i] = v
+    p.updated[] = true
+end
+Base.length(p::ParticleSystemPositions) = length(p.x)
+Base.iterate(p::ParticleSystemPositions, i=firstindex(p.x)) = i > length(p.x) ? nothing : (p.x[i], i + 1)
+Base.keys(p::ParticleSystemPositions) = LinearIndices(p.x)
+Base.size(p::ParticleSystemPositions) = size(p.x)
+
+"""
 
     ParticleSystem1
 

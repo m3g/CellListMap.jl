@@ -85,7 +85,13 @@ function update_unitcell!(sys, unitcell)
         )
     end
     sys._box = update_box(sys._box; unitcell)
+    _update_sys_box!(sys)
     return sys
+end
+_update_sys_box!(sys::ParticleSystem1) = sys.xpositions.updated[] = true
+function _update_sys_box!(sys::ParticleSystem2) 
+    sys.xpositions.updated[] = true
+    sys.ypositions.updated[] = true
 end
 
 """
@@ -133,12 +139,14 @@ function update_cutoff!(sys::ParticleSystem1, cutoff)
         sys._box = Box(limits(sys.xpositions), cutoff)
     end
     sys._box = update_box(sys._box; cutoff)
+    sys.xpositions.updated[] = true
     return sys
 end
 function update_cutoff!(sys::ParticleSystem2, cutoff)
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
     end
-    sys._box = update_box(sys._box; cutoff)
+    sys.xpositions.updated[] = true
+    sys.xpositions.updated[] = true
     return sys
 end

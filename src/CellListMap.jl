@@ -13,6 +13,7 @@ using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
 # Exported names of ParticleSystem interface
 export ParticleSystem
+export ParticleSystemPositions
 export NeighborPair
 export pairwise!
 export update_cutoff!
