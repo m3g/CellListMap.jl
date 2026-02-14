@@ -23,26 +23,23 @@ ParticleSystemPositions can be initialized with vectors of vectors of coordinate
 where M is the number of particles and N is the dimension of the system.
 
 """
-struct ParticleSystemPositions{N,T}
-    x::Vector{SVector{N,T}}
+struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
+    x::V
     updated::Ref{Bool}
 end
 
-function ParticleSystemPositions(x::Vector{SVector{N,T}}) where {N,T}
-    ParticleSystemPositions{N,T}(x, Ref(true))
-end
 function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
     M, N, T = length(x), length(first(x)), eltype(first(x))
     x_static = Vector{SVector{N,T}}(undef, M)
     for i in eachindex(x, x_static)
         x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N))
     end
-    ParticleSystemPositions{N,T}(x_static, Ref(true))
+    ParticleSystemPositions{N,T,typeof(x_static)}(x_static, Ref(true))
 end
 function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
     N = size(x,1)
     x_re = reinterpret(reshape, SVector{N, T}, x)
-    ParticleSystemPositions{N,T}(x_re, Ref(true))
+    ParticleSystemPositions{N,T,typeof(x_re)}(x_re, Ref(true))
 end
 
 function Base.empty!(p::ParticleSystemPositions)
@@ -61,13 +58,47 @@ function Base.setindex!(p::ParticleSystemPositions{N,T}, v::SVector{N,T}, i) whe
     p.x[i] = v
 end
 Base.length(p::ParticleSystemPositions) = length(p.x)
+Base.ndims(p::ParticleSystemPositions) = 1
+Base.ndims(::Type{<:ParticleSystemPositions}) = 1
 Base.iterate(p::ParticleSystemPositions, i=firstindex(p.x)) = i > length(p.x) ? nothing : (p.x[i], i + 1)
+Base.axes(p::ParticleSystemPositions) = axes(p.x)
 Base.keys(p::ParticleSystemPositions) = LinearIndices(p.x)
 Base.size(p::ParticleSystemPositions) = size(p.x)
 Base.firstindex(p::ParticleSystemPositions) = firstindex(p.x)
 Base.lastindex(p::ParticleSystemPositions) = lastindex(p.x)
 Base.first(p::ParticleSystemPositions) = first(p.x)
 Base.last(p::ParticleSystemPositions) = last(p.x)
+
+# Broadcast interface
+struct BroadcastParticleSystemPositions <: Broadcast.BroadcastStyle end
+Base.BroadcastStyle(::Type{<:ParticleSystemPositions}) = BroadcastParticleSystemPositions()
+Base.BroadcastStyle(::BroadcastParticleSystemPositions, ::Broadcast.DefaultArrayStyle{0}) = BroadcastParticleSystemPositions()
+Base.BroadcastStyle(::BroadcastParticleSystemPositions, ::Broadcast.DefaultArrayStyle{1}) = BroadcastParticleSystemPositions()
+Base.Broadcast.broadcastable(p::ParticleSystemPositions) = p
+
+# Out-of-place broadcast returns a plain Array
+function Base.similar(bc::Broadcast.Broadcasted{BroadcastParticleSystemPositions}, ::Type{T}, axes) where {T}
+    similar(Array{T}, axes)
+end
+
+# In-place broadcast into ParticleSystemPositions
+@inline function Base.copyto!(dest::ParticleSystemPositions, bc::Broadcast.Broadcasted)
+    dest.updated[] = true
+    @inbounds @simd for i in eachindex(dest.x)
+        dest.x[i] = bc[i]
+    end
+    return dest
+end
+function Base.copyto!(dest::ParticleSystemPositions, src::ParticleSystemPositions)
+    dest.updated[] = true
+    copyto!(dest.x, src.x)
+    return dest
+end
+
+function Base.view(p::ParticleSystemPositions{N,T}, inds...) where {N,T}
+    x_view = view(p.x, inds...)
+    ParticleSystemPositions{N,T,typeof(x_view)}(x_view, p.updated[])
+end
 function Base.show(io::IO, ::MIME"text/plain", p::ParticleSystemPositions) 
     print(io, "ParticleSystemPositions, ")
     print(io, "updated: ", p.updated[], ", with ")

@@ -198,10 +198,10 @@ end
         #
         # one set systems
         #
-        x = PSP(rand(SVector{3, Float64}, 100))
-        uc = isnothing(unitcell) ? CellListMap.limits(x) : unitcell
+        x = rand(SVector{3, Float64}, 100)
+        uc = isnothing(unitcell) ? CellListMap.limits(PSP(x)) : unitcell
         box = CellListMap.Box(uc, 0.1)
-        cl = CellListMap.CellList(x, box)
+        cl = CellListMap.CellList(PSP(x), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system = ParticleSystem(xpositions = x, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
@@ -218,27 +218,27 @@ end
         #
         # x is smaller
         #
-        x = PSP(rand(SVector{3, Float64}, 100))
-        y = PSP(rand(SVector{3, Float64}, 1000))
+        x = rand(SVector{3, Float64}, 100)
+        y = rand(SVector{3, Float64}, 1000)
 
-        uc = isnothing(unitcell) ? CellListMap.limits(x, y) : unitcell
+        uc = isnothing(unitcell) ? CellListMap.limits(PSP(x), PSP(y)) : unitcell
         box = CellListMap.Box(uc, 0.1)
-        cl = CellListMap.CellList(x, y, box)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # change x coordinates (setindex! sets updated flag automatically)
-        x = PSP(rand(SVector{3, Float64}, 100))
-        cl = CellListMap.CellList(x, y, box)
+        x = rand(SVector{3, Float64}, 100)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= x
         @test system.xpositions.updated[] == true
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase x size (resize! sets updated flag automatically)
-        x = PSP(rand(SVector{3, Float64}, 200))
-        cl = CellListMap.CellList(x, y, box)
+        x = rand(SVector{3, Float64}, 200)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.xpositions, length(x))
         system.xpositions .= x
@@ -247,49 +247,49 @@ end
         #
         # x is greater
         #
-        x = PSP(rand(SVector{3, Float64}, 1000))
-        y = PSP(rand(SVector{3, Float64}, 100))
+        x = rand(SVector{3, Float64}, 1000)
+        y = rand(SVector{3, Float64}, 100)
 
-        uc = isnothing(unitcell) ? CellListMap.limits(x, y) : unitcell
+        uc = isnothing(unitcell) ? CellListMap.limits(PSP(x), PSP(y)) : unitcell
         box = CellListMap.Box(uc, 0.1)
-        cl = CellListMap.CellList(x, y, box)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # change x coordinates
-        x = PSP(rand(SVector{3, Float64}, 1000))
-        cl = CellListMap.CellList(x, y, box)
+        x = rand(SVector{3, Float64}, 1000)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= x
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase x size
-        x = PSP(rand(SVector{3, Float64}, 1100))
-        cl = CellListMap.CellList(x, y, box)
+        x = rand(SVector{3, Float64}, 1100)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.xpositions, length(x))
         system.xpositions .= x
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # change y coordinates
-        y = PSP(rand(SVector{3, Float64}, 100))
-        cl = CellListMap.CellList(x, y, box)
+        y = rand(SVector{3, Float64}, 100)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.ypositions .= y
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase y size
-        y = PSP(rand(SVector{3, Float64}, 110))
-        cl = CellListMap.CellList(x, y, box)
+        y = rand(SVector{3, Float64}, 110)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.ypositions, length(y))
         system.ypositions .= y
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase y size beyond x size
-        y = PSP(rand(SVector{3, Float64}, 1300))
-        cl = CellListMap.CellList(x, y, box)
+        y = rand(SVector{3, Float64}, 1300)
+        cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.ypositions, length(y))
         system.ypositions .= y
