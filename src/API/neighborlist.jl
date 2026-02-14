@@ -114,19 +114,21 @@ function InPlaceNeighborList(;
         nbatches = (0, 0)
     )
     T = cutoff isa Integer ? Float64 : eltype(cutoff)
+    _x = ParticleSystemPositions(x)
     if isnothing(y)
         if isnothing(unitcell)
-            unitcell = limits(x)
+            unitcell = limits(_x)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, box; parallel, nbatches)
+        cl = CellList(_x, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     else
+        _y = ParticleSystemPositions(y)
         if isnothing(unitcell)
-            unitcell = limits(x, y)
+            unitcell = limits(_x, _y)
         end
         box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box; parallel, nbatches)
+        cl = CellList(_x, _y, box; parallel, nbatches)
         aux = AuxThreaded(cl)
     end
     nb = NeighborList{T}(0, Vector{Tuple{Int, Int, T}}[])
@@ -177,13 +179,14 @@ function update!(
         x::AbstractVecOrMat;
         cutoff = nothing, unitcell = nothing
     ) where {UnitCellType, C <: CellList}
+    _x = ParticleSystemPositions(x)
     if UnitCellType == NonPeriodicCell
         isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
-        system.box = update_box(system.box; unitcell = limits(x), cutoff = cutoff)
+        system.box = update_box(system.box; unitcell = limits(_x), cutoff = cutoff)
     else
         system.box = update_box(system.box; unitcell = unitcell, cutoff = cutoff)
     end
-    system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel = system.parallel)
+    system.cl = UpdateCellList!(_x, system.box, system.cl, system.aux, parallel = system.parallel)
     return system
 end
 
@@ -196,13 +199,15 @@ function update!(
         y::AbstractVecOrMat;
         cutoff = nothing, unitcell = nothing
     ) where {UnitCellType, C <: CellListPair}
+    _x = ParticleSystemPositions(x)
+    _y = ParticleSystemPositions(y)
     if UnitCellType == NonPeriodicCell
         isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
-        system.box = update_box(system.box; unitcell = limits(x, y), cutoff = cutoff)
+        system.box = update_box(system.box; unitcell = limits(_x, _y), cutoff = cutoff)
     else
         system.box = update_box(system.box; unitcell = unitcell, cutoff = cutoff)
     end
-    system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel = system.parallel)
+    system.cl = UpdateCellList!(_x, _y, system.box, system.cl, system.aux; parallel = system.parallel)
     return system
 end
 

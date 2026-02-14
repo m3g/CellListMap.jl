@@ -23,18 +23,21 @@ ParticleSystemPositions can be initialized with vectors of vectors of coordinate
 where M is the number of particles and N is the dimension of the system.
 
 """
-struct ParticleSystemPositions{N,T} <: AbstractVector{T}
+struct ParticleSystemPositions{N,T} <: AbstractVector{SVector{N,T}}
     x::Vector{SVector{N,T}}
     updated::Ref{Bool}
 end
 
-function ParticleSystemPositions(x::AbstractVector{<:AbstractVector}) 
+function ParticleSystemPositions(x::Vector{SVector{N,T}}) where {N,T}
+    ParticleSystemPositions{N,T}(x, Ref(true))
+end
+function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
     M, N, T = length(x), length(first(x)), eltype(first(x))
     x_static = Vector{SVector{N,T}}(undef, M)
     for i in eachindex(x, x_static)
-        x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N)) 
+        x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N))
     end
-    ParticleSystemPositions{N,T}(x, Ref(true))
+    ParticleSystemPositions{N,T}(x_static, Ref(true))
 end
 function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
     N = size(x,1)
@@ -42,14 +45,14 @@ function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
     ParticleSystemPositions{N,T}(x_re, Ref(true))
 end
 
-function Base.empty!(p::ParticlePositions) 
+function Base.empty!(p::ParticleSystemPositions)
     p.updated[] = true
     empty!(p.x)
     return p
 end
-function Base.resize!(p::ParticlePositions) 
+function Base.resize!(p::ParticleSystemPositions, n::Integer)
     p.updated[] = true
-    resize!(p.x)
+    resize!(p.x, n)
     return p
 end
 Base.getindex(p::ParticleSystemPositions, i) = p.x[i]

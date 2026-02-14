@@ -1094,8 +1094,8 @@ julia> UpdateCellList!(x,y,box,cl); # update lists
 
 =#
 function UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box,
         cl_pair::CellListPair;
         parallel::Bool = true,
@@ -1180,8 +1180,8 @@ julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
 
 =#
 function UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box,
         cl_pair::CellListPair{N, T},
         aux::Union{Nothing, AuxThreadedPair};

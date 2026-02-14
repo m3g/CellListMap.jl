@@ -1,20 +1,21 @@
 @testitem "output of nbatches" begin
     using CellListMap, StaticArrays
+    const PSP = CellListMap.ParticleSystemPositions
     x = rand(3, 100)
     y = rand(3, 10)
     box = CellListMap.Box([1, 1, 1], 0.1)
-    cl = CellListMap.CellList(x, box; nbatches = (2, 4))
+    cl = CellListMap.CellList(PSP(x), box; nbatches = (2, 4))
     @test CellListMap.nbatches(cl) == (2, 4)
     @test CellListMap.nbatches(cl, :build) == 2
     @test CellListMap.nbatches(cl, :map) == 4
-    cl = CellListMap.CellList(x, y, box; nbatches = (2, 4))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box; nbatches = (2, 4))
     @test CellListMap.nbatches(cl) == (2, 4)
     @test CellListMap.nbatches(cl, :build) == 2
     @test CellListMap.nbatches(cl, :map) == 4
-    cl = CellListMap.CellList(x, y, box)
+    cl = CellListMap.CellList(PSP(x), PSP(y), box)
     # For CellListPair, build batches are independent, but map batches should match
     @test CellListMap.nbatches(cl.ref_list, :map) == CellListMap.nbatches(cl.target_list, :map)
-    cl = CellListMap.CellList(x, box; nbatches = (2, 4), parallel = false)
+    cl = CellListMap.CellList(PSP(x), box; nbatches = (2, 4), parallel = false)
     @test CellListMap.nbatches(cl) == (1, 1)
     # The automatic set of number of batches for this small system:
     if Threads.nthreads() == 10

@@ -146,7 +146,8 @@ function update_cutoff!(sys::ParticleSystem2, cutoff)
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
     end
+    sys._box = update_box(sys._box; cutoff)
     sys.xpositions.updated[] = true
-    sys.xpositions.updated[] = true
+    sys.ypositions.updated[] = true
     return sys
 end

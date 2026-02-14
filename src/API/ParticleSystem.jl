@@ -167,8 +167,8 @@ function ParticleSystem(;
     else
         unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
-        _x = ParticleSystemPositions(x)
-        _y = ParticleSystemPositions(y)
+        _x = ParticleSystemPositions(xpositions)
+        _y = ParticleSystemPositions(ypositions)
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)
         _aux = AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]

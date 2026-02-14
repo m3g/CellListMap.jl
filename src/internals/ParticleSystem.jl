@@ -135,6 +135,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
+        sys.xpositions.updated[] = false
     end
     return sys
 end
@@ -164,6 +165,8 @@ function UpdateParticleSystem!(sys::ParticleSystem2)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
+        sys.xpositions.updated[] = false
+        sys.ypositions.updated[] = false
     end
     return sys
 end

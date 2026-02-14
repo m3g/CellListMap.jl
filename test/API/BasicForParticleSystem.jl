@@ -187,7 +187,7 @@ end
     @test sys.force ≈ naive
 end
 
-@testitem "ParticleSystem - update_lists" begin
+@testitem "ParticleSystem - automatic updating" begin
     using StaticArrays
     using CellListMap
 
@@ -202,9 +202,11 @@ end
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system = ParticleSystem(xpositions = x, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
-        # Compute a different property, without updating lists
+        # After pairwise!, the updated flag should be false
+        @test system.xpositions.updated[] == false
+        # Compute a different property from the same coordinates (lists not updated)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d, 0.0, box, cl)
-        @test r ≈ pairwise!((pair, r) -> r += pair.d, system; update_lists = false)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d, system)
 
         #
         # two-set systems
@@ -223,20 +225,21 @@ end
         system = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0, unitcell = unitcell)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
-        # change x coordinates
+        # change x coordinates (setindex! sets updated flag automatically)
         x = rand(SVector{3, Float64}, 100)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test system.xpositions.updated[] == true
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
-        # increase x size
+        # increase x size (resize! sets updated flag automatically)
         x = rand(SVector{3, Float64}, 200)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.xpositions, length(x))
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         #
         # x is greater
@@ -256,7 +259,7 @@ end
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase x size
         x = rand(SVector{3, Float64}, 1100)
@@ -264,14 +267,14 @@ end
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.xpositions, length(x))
         system.xpositions .= x
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # change y coordinates
         y = rand(SVector{3, Float64}, 100)
         cl = CellListMap.CellList(x, y, box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.ypositions .= y
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase y size
         y = rand(SVector{3, Float64}, 110)
@@ -279,7 +282,7 @@ end
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.ypositions, length(y))
         system.ypositions .= y
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         # increase y size beyond x size
         y = rand(SVector{3, Float64}, 1300)
@@ -287,11 +290,13 @@ end
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         resize!(system.ypositions, length(y))
         system.ypositions .= y
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system; update_lists = true)
+        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
-        # compute a different property, without updating lists
+        # compute a different property from the same coordinates (lists not updated automatically)
+        @test system.xpositions.updated[] == false
+        @test system.ypositions.updated[] == false
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += 2 * pair.d2, 0.0, box, cl)
-        @test r ≈ pairwise!((pair, r) -> r += 2 * pair.d2, system; update_lists = false)
+        @test r ≈ pairwise!((pair, r) -> r += 2 * pair.d2, system)
 
     end
 end
@@ -310,37 +315,41 @@ end
         box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = false)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
+        @test naive ≈ pairwise!(f, y, sys)
+        # Call again without changing positions (lists should not be updated)
+        @test naive ≈ pairwise!(f, y, sys)
 
         # Update x positions
         sys.xpositions .= rand(SVector{3, Float64}, 100)
         box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
+        @test naive ≈ pairwise!(f, y, sys)
 
         # Matrices as inputs
         xmat = stack(x)
         ymat = stack(y)
         sys = ParticleSystem(xpositions = xmat, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
-        @test naive ≈ pairwise!(f, ymat, sys; update_lists = false)
-        @test naive ≈ pairwise!(f, ymat, sys; update_lists = true)
+        @test naive ≈ pairwise!(f, ymat, sys)
+        # Call again without changing positions
+        @test naive ≈ pairwise!(f, ymat, sys)
 
         # y greater than x, and possibly spanning a region outside the box of x
         y = 2 .* rand(SVector{3, Float64}, 100)
         box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = false)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
+        @test naive ≈ pairwise!(f, y, sys)
+        # Call again without changing positions
+        @test naive ≈ pairwise!(f, y, sys)
 
         # here y is completely outside the range of x, thus without PBCs, this is zero
         y = rand(SVector{3, Float64}, 10) .+ Ref(SVector(10.0, 10.0, 10.0))
         box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = false)
-        @test naive ≈ pairwise!(f, y, sys; update_lists = true)
+        @test naive ≈ pairwise!(f, y, sys)
+        # Call again without changing positions
+        @test naive ≈ pairwise!(f, y, sys)
     end
 
     # Test if output_threaded was not provided
@@ -671,9 +680,10 @@ end
     system = ParticleSystem(xpositions = x, cutoff = cutoff, unitcell = sides, output = 0.0)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
 
-    # Check the functionality of computing a different function from the same coordinates (new_coordinates=false)
+    # Check the functionality of computing a different function from the same coordinates
+    # (after pairwise!, the updated flag is false, so cell lists are not recomputed)
     naive = CellListMap.CellListMap._pairwise!((pair, u) -> u += pair.d2, 0.0, box, cl)
-    @test pairwise!((pair, u) -> u += pair.d2, system; update_lists = false) ≈ naive
+    @test pairwise!((pair, u) -> u += pair.d2, system) ≈ naive
 
     # Function to be evaluated for each pair: gravitational force
     function calc_forces!(x, y, i, j, d2, mass, forces)
@@ -690,4 +700,112 @@ end
     system = ParticleSystem(xpositions = x, cutoff = cutoff, unitcell = sides, output = forces)
     @test pairwise!((pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces), system) ≈ naive
 
+end
+
+@testitem "ParticleSystemPositions interface" begin
+    using StaticArrays
+    using CellListMap
+
+    # Construction from vector of vectors
+    x = [rand(3) for _ in 1:10]
+    p = CellListMap.ParticleSystemPositions(x)
+    @test p isa AbstractVector
+    @test length(p) == 10
+    @test size(p) == (10,)
+    @test p.updated[] == true
+
+    # Construction from matrix
+    xmat = rand(3, 10)
+    p2 = CellListMap.ParticleSystemPositions(xmat)
+    @test length(p2) == 10
+    @test p2.updated[] == true
+
+    # getindex
+    @test p[1] isa SVector{3, Float64}
+    @test p2[1] ≈ SVector{3, Float64}(xmat[:, 1])
+
+    # setindex! sets updated flag
+    p.updated[] = false
+    p[1] = SVector(1.0, 2.0, 3.0)
+    @test p[1] == SVector(1.0, 2.0, 3.0)
+    @test p.updated[] == true
+
+    # iterate
+    count = 0
+    for _ in p
+        count += 1
+    end
+    @test count == length(p)
+
+    # keys
+    @test keys(p) == 1:10
+
+    # resize! sets updated flag and changes length
+    p.updated[] = false
+    resize!(p, 15)
+    @test length(p) == 15
+    @test p.updated[] == true
+
+    # empty! sets updated flag and clears
+    p.updated[] = false
+    empty!(p)
+    @test length(p) == 0
+    @test p.updated[] == true
+
+    # Broadcasting assignment (setindex!) sets updated flag
+    p3 = CellListMap.ParticleSystemPositions([rand(3) for _ in 1:5])
+    p3.updated[] = false
+    p3 .= [SVector(0.0, 0.0, 0.0) for _ in 1:5]
+    @test p3.updated[] == true
+    @test all(p3[i] == SVector(0.0, 0.0, 0.0) for i in 1:5)
+
+    # Integration with ParticleSystem: flag is reset after pairwise!
+    x = rand(SVector{3, Float64}, 100)
+    sys = ParticleSystem(xpositions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
+    @test sys.xpositions.updated[] == true
+    pairwise!((pair, r) -> r += pair.d2, sys)
+    @test sys.xpositions.updated[] == false
+    # Modifying a position triggers the flag
+    sys.xpositions[1] = SVector(0.5, 0.5, 0.5)
+    @test sys.xpositions.updated[] == true
+    pairwise!((pair, r) -> r += pair.d2, sys)
+    @test sys.xpositions.updated[] == false
+
+    # Integration with ParticleSystem2: both flags reset
+    x = rand(SVector{3, Float64}, 100)
+    y = rand(SVector{3, Float64}, 50)
+    sys2 = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
+    @test sys2.xpositions.updated[] == true
+    @test sys2.ypositions.updated[] == true
+    pairwise!((pair, r) -> r += pair.d2, sys2)
+    @test sys2.xpositions.updated[] == false
+    @test sys2.ypositions.updated[] == false
+    # Modifying only y triggers only y flag
+    sys2.ypositions[1] = SVector(0.5, 0.5, 0.5)
+    @test sys2.xpositions.updated[] == false
+    @test sys2.ypositions.updated[] == true
+
+    # update_unitcell! sets updated flag
+    sys.xpositions.updated[] = false
+    update_unitcell!(sys, [2, 2, 2])
+    @test sys.xpositions.updated[] == true
+
+    # update_cutoff! sets updated flag
+    sys.xpositions.updated[] = false
+    update_cutoff!(sys, 0.2)
+    @test sys.xpositions.updated[] == true
+
+    # update_cutoff! sets both flags for ParticleSystem2
+    sys2.xpositions.updated[] = false
+    sys2.ypositions.updated[] = false
+    update_cutoff!(sys2, 0.2)
+    @test sys2.xpositions.updated[] == true
+    @test sys2.ypositions.updated[] == true
+
+    # update_unitcell! sets both flags for ParticleSystem2
+    sys2.xpositions.updated[] = false
+    sys2.ypositions.updated[] = false
+    update_unitcell!(sys2, [2, 2, 2])
+    @test sys2.xpositions.updated[] == true
+    @test sys2.ypositions.updated[] == true
 end
