@@ -23,7 +23,7 @@ ParticleSystemPositions can be initialized with vectors of vectors of coordinate
 where M is the number of particles and N is the dimension of the system.
 
 """
-struct ParticleSystemPositions{N,T} <: AbstractVector{SVector{N,T}}
+struct ParticleSystemPositions{N,T}
     x::Vector{SVector{N,T}}
     updated::Ref{Bool}
 end
@@ -64,6 +64,11 @@ Base.length(p::ParticleSystemPositions) = length(p.x)
 Base.iterate(p::ParticleSystemPositions, i=firstindex(p.x)) = i > length(p.x) ? nothing : (p.x[i], i + 1)
 Base.keys(p::ParticleSystemPositions) = LinearIndices(p.x)
 Base.size(p::ParticleSystemPositions) = size(p.x)
+Base.firstindex(p::ParticleSystemPositions) = firstindex(p.x)
+Base.lastindex(p::ParticleSystemPositions) = lastindex(p.x)
+Base.first(p::ParticleSystemPositions) = first(p.x)
+Base.last(p::ParticleSystemPositions) = last(p.x)
+Base.show(p::ParticleSystemPositions, args...; kargs...) = show(p.x, args...; kargs...)
 
 """
 

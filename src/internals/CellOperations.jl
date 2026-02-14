@@ -201,7 +201,7 @@ julia> CellListMap.replicate_system!(x,box,(0:0,-1:1))
 
 =#
 function replicate_system!(
-        x::AbstractVector{SVector{N, T}},
+        x::ParticleSystemPositions{N, T},
         unit_cell_matrix::AbstractMatrix,
         ranges::Tuple
     ) where {N, T}
@@ -255,7 +255,7 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 #
 # Compute the maximum and minimum coordinates of the vectors composing the particle sets
 #
-function _minmax(x::AbstractVector{<:AbstractVector})
+function _minmax(x::ParticleSystemPositions)
     length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from empty coordinates vector."))
     N = size(x[begin], 1)
     T = eltype(x[begin])
@@ -281,17 +281,10 @@ by passing a function that takes the coordinates as input and throws an error if
 are invalid.
 
 =#
-function limits(x::AbstractVector{<:AbstractVector}; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
+function limits(x::ParticleSystemPositions; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
     isnothing(validate_coordinates) || validate_coordinates(x)
     xmin, xmax = _minmax(x)
     return Limits(xmax .- xmin, xmin)
-end
-
-function limits(x::AbstractMatrix; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
-    N = size(x, 1)
-    (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    return limits(x_re; validate_coordinates)
 end
 
 #=
@@ -308,8 +301,8 @@ are invalid.
 
 =#
 function limits(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector};
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions;
         validate_coordinates::Union{Nothing, Function} = _validate_coordinates
     )
     isnothing(validate_coordinates) || validate_coordinates(x)
@@ -319,20 +312,6 @@ function limits(
     xymin = min.(xmin, ymin)
     xymax = max.(xmax, ymax)
     return Limits(xymax .- xymin, xymin)
-end
-
-function limits(
-        x::AbstractMatrix,
-        y::AbstractMatrix;
-        validate_coordinates::Union{Nothing, Function} = _validate_coordinates
-    )
-    N = size(x, 1)
-    M = size(y, 1)
-    N == M || throw(DimensionMismatch("The first dimension of the input matrices must be equal. "))
-    (N == 2 || N == 3) || throw(DimensionMismatch("The first dimension of the matrix must be the dimension (2 or 3)"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    y_re = reinterpret(reshape, SVector{N, eltype(y)}, y)
-    return limits(x_re, y_re; validate_coordinates)
 end
 
 #=
