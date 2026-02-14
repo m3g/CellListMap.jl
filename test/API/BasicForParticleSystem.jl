@@ -117,6 +117,10 @@
             # Cannot resize the matrices, so this interface is more limited
             xp = PSP(rand(2, size(x, 2)))
         end
+        if isnothing(unitcell)
+            uc = CellListMap.limits(xp, yp)
+            box = CellListMap.Box(uc, 0.1)
+        end
         cl = CellListMap.UpdateCellList!(xp, yp, box, cl)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         system.xpositions .= xp
@@ -127,6 +131,10 @@
             resize!(system.ypositions, length(yp))
         else
             yp = PSP(rand(2, size(y, 2)))
+        end
+        if isnothing(unitcell)
+            uc = CellListMap.limits(xp, yp)
+            box = CellListMap.Box(uc, 0.1)
         end
         cl = CellListMap.UpdateCellList!(xp, yp, box, cl)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
@@ -736,11 +744,11 @@ end
     @test p.updated[] == true
 
     # iterate
-    count = 0
+    _count = 0
     for _ in p
-        count += 1
+        _count += 1
     end
-    @test count == length(p)
+    @test _count == length(p)
 
     # keys
     @test keys(p) == 1:10

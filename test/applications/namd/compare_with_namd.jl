@@ -3,6 +3,7 @@
     import Chemfiles
     using CellListMap
     using StaticArrays
+    const PSP = ParticleSystemPositions
 
     function lj_NE(d2, u)
         ε = 0.0441795
@@ -20,7 +21,6 @@
 
     function test_newcl(file, unit_cell, correct, lcell)
         coordinates = getcoor(file)
-        const PSP = CellListMap.ParticleSystemPositions
         box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
         cl = CellListMap.CellList(PSP(coordinates), box)
         u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)

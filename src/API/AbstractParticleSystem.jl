@@ -29,7 +29,7 @@ struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
 end
 
 function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
-    M, N, T = length(x), length(first(x)), eltype(first(x))
+    M, N, T = length(x), length(first(x)), eltype(eltype(x))
     x_static = Vector{SVector{N,T}}(undef, M)
     for i in eachindex(x, x_static)
         x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N))

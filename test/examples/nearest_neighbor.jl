@@ -1,6 +1,7 @@
 using CellListMap
 using StaticArrays
 import Random
+const PSP = ParticleSystemPositions
 
 #
 # In this test we compute the minimum distance between two independent sets of particles
@@ -22,7 +23,7 @@ function nearest_neighbor(; N1 = 1_500, N2 = 1_500_000, parallel = true, x = not
     end
 
     # Initialize auxiliary linked lists
-    cl = CellListMap.CellList(x, y, box, parallel = parallel)
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, parallel = parallel)
 
     # Function that keeps the minimum distance
     f(i, j, d2, mind) = d2 < mind[3] ? (i, j, d2) : mind
