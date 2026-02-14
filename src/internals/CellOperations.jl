@@ -167,6 +167,8 @@ function translation_image(x::AbstractVector{<:AbstractVector}, unit_cell_matrix
     end
     return x_new
 end
+translation_image(x::ParticleSystemPositions, unit_cell_matrix, indices) =
+    translation_image(x.x, unit_cell_matrix, indices)
 
 #=
     replicate_system!(
@@ -223,9 +225,9 @@ end
 # resized in-place.
 function replicate_system(x::AbstractMatrix{T}, cell, ranges) where {T}
     N = size(x, 1)
-    x_re = [SVector{N, T}(ntuple(i -> x[i, j], Val(N))) for j in axes(x, 2)]
+    x_re = ParticleSystemPositions([SVector{N, T}(ntuple(i -> x[i, j], Val(N))) for j in axes(x, 2)])
     replicate_system!(x_re, cell, ranges)
-    x = Matrix(reinterpret(reshape, Float64, x_re))
+    x = Matrix(reinterpret(reshape, Float64, x_re.x))
     return x
 end
 

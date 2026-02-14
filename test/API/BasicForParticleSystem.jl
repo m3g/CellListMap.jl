@@ -38,7 +38,7 @@
         cutoff = cutoff,
         output = 0.0,
     )
-    naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(CellListMap.limits(x, y), cutoff))
+    naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff))
     system.parallel = false
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
     system.parallel = true
@@ -93,8 +93,8 @@
                 # matrices, length(x) < length(y)
                 [rand(2, 100), rand(2, 1000)], # with standard vectors
             ], unitcell in [[1, 1], nothing]
-        local x = PSP(arrays[1])
-        local y = PSP(arrays[2])
+        local x = arrays[1]
+        local y = arrays[2]
         local system
         system = ParticleSystem(
             xpositions = x,
@@ -103,32 +103,34 @@
             output = 0.0,
             unitcell = unitcell,
         )
-        uc = isnothing(unitcell) ? CellListMap.limits(x, y) : [1, 1]
+        local xp = PSP(x)
+        local yp = PSP(y)
+        uc = isnothing(unitcell) ? CellListMap.limits(xp, yp) : [1, 1]
         box = CellListMap.Box(uc, 0.1)
-        cl = CellListMap.CellList(x, y, box)
+        cl = CellListMap.CellList(xp, yp, box)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
         if x isa AbstractVector
-            x = PSP(rand(SVector{2, Float64}, length(x) + 100))
-            resize!(system.xpositions, length(x))
+            xp = PSP(rand(SVector{2, Float64}, length(x) + 100))
+            resize!(system.xpositions, length(xp))
         else
             # Cannot resize the matrices, so this interface is more limited
-            x = PSP(rand(2, size(x, 2)))
+            xp = PSP(rand(2, size(x, 2)))
         end
-        cl = CellListMap.UpdateCellList!(x, y, box, cl)
+        cl = CellListMap.UpdateCellList!(xp, yp, box, cl)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system.xpositions .= x
+        system.xpositions .= xp
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
         if y isa AbstractVector
-            y = PSP(rand(SVector{2, Float64}, length(y) + 100))
-            resize!(system.ypositions, length(y))
+            yp = PSP(rand(SVector{2, Float64}, length(y) + 100))
+            resize!(system.ypositions, length(yp))
         else
-            y = PSP(rand(2, size(y, 2)))
+            yp = PSP(rand(2, size(y, 2)))
         end
-        cl = CellListMap.UpdateCellList!(x, y, box, cl)
+        cl = CellListMap.UpdateCellList!(xp, yp, box, cl)
         r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system.ypositions .= y
+        system.ypositions .= yp
         @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
 
     end
@@ -315,7 +317,7 @@ end
         x = rand(SVector{3, Float64}, 100)
         # y smaller than x
         y = rand(SVector{3, Float64}, 10)
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(PSP(x), PSP(y)) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
         @test naive ≈ pairwise!(f, y, sys)
@@ -324,7 +326,7 @@ end
 
         # Update x positions
         sys.xpositions .= rand(SVector{3, Float64}, 100)
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(PSP(x), PSP(y)) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         @test naive ≈ pairwise!(f, y, sys)
 
@@ -338,7 +340,7 @@ end
 
         # y greater than x, and possibly spanning a region outside the box of x
         y = 2 .* rand(SVector{3, Float64}, 100)
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(PSP(x), PSP(y)) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
         @test naive ≈ pairwise!(f, y, sys)
@@ -347,7 +349,7 @@ end
 
         # here y is completely outside the range of x, thus without PBCs, this is zero
         y = rand(SVector{3, Float64}, 10) .+ Ref(SVector(10.0, 10.0, 10.0))
-        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(x, y) : uc, cutoff)
+        box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(PSP(x), PSP(y)) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, unitcell = uc, parallel = parallel)
         @test naive ≈ pairwise!(f, y, sys)
@@ -359,7 +361,7 @@ end
     x = rand(SVector{3, Float64}, 100)
     y = rand(SVector{3, Float64}, 10)
     box = CellListMap.Box([1, 1, 1], cutoff)
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
     naive = map_naive!(f, 0.0, x, y, box)
     @test naive ≈ CellListMap.CellListMap._pairwise!(f, 0.0, box, y, cl; output_threaded = nothing, parallel = true)
 
@@ -378,7 +380,7 @@ end
     for parallel in (false, true)
         x = [SVector{3,Float64}(-0.1, -0.2, -0.3) .+ rand(SVector{3,Float64}) for _ in 1:200]
         y = [SVector{3,Float64}(-0.1, -0.2, -0.3) .+ rand(SVector{3,Float64}) for _ in 1:50]
-        box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
+        box = CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff)
         naive = map_naive!(f_sum_d2, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = parallel)
         result = pairwise!(f_sum_d2, y, sys)
@@ -389,7 +391,7 @@ end
     for parallel in (false, true)
         x = [SVector(-5.0, -5.0, -5.0) .+ rand(SVector{3,Float64}) for _ in 1:200]
         y = [SVector(-5.0, -5.0, -5.0) .+ rand(SVector{3,Float64}) for _ in 1:50]
-        box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
+        box = CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff)
         naive = map_naive!(f_sum_d2, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = parallel)
         @test naive ≈ pairwise!(f_sum_d2, y, sys)
@@ -399,7 +401,7 @@ end
     for parallel in (false, true)
         x = [SVector(1000.0, 1000.0, 1000.0) .+ rand(SVector{3,Float64}) for _ in 1:200]
         y = [SVector(1000.0, 1000.0, 1000.0) .+ rand(SVector{3,Float64}) for _ in 1:50]
-        box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
+        box = CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff)
         naive = map_naive!(f_sum_d2, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = parallel)
         @test naive ≈ pairwise!(f_sum_d2, y, sys)
@@ -435,7 +437,7 @@ end
     for parallel in (false, true)
         x2d = [SVector(-3.0, -3.0) .+ rand(SVector{2,Float64}) for _ in 1:200]
         y2d = [SVector(-3.0, -3.0) .+ rand(SVector{2,Float64}) for _ in 1:50]
-        box2d = CellListMap.Box(CellListMap.limits(x2d, y2d), cutoff)
+        box2d = CellListMap.Box(CellListMap.limits(PSP(x2d), PSP(y2d)), cutoff)
         naive2d = map_naive!(f_sum_d2, 0.0, x2d, y2d, box2d)
         sys2d = ParticleSystem(xpositions = x2d, cutoff = cutoff, output = 0.0, parallel = parallel)
         @test naive2d ≈ pairwise!(f_sum_d2, y2d, sys2d)
@@ -444,7 +446,7 @@ end
     # Test 7: Self-computation with NonPeriodicCell and negative coordinates (non-regression)
     for parallel in (false, true)
         x = [SVector(-2.0, -2.0, -2.0) .+ rand(SVector{3,Float64}) for _ in 1:200]
-        box = CellListMap.Box(CellListMap.limits(x), cutoff)
+        box = CellListMap.Box(CellListMap.limits(PSP(x)), cutoff)
         naive = map_naive!(f_sum_d2, 0.0, x, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = parallel)
         @test naive ≈ pairwise!(f_sum_d2, sys)
@@ -454,7 +456,7 @@ end
     for parallel in (false, true)
         x = [SVector(-0.05, 0.0, 0.0) .+ 0.01 .* rand(SVector{3,Float64}) for _ in 1:50]
         y = [SVector(0.0, 0.0, 0.0) .+ 0.01 .* rand(SVector{3,Float64}) for _ in 1:50]
-        box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
+        box = CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff)
         naive = map_naive!(f_sum_d2, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = parallel)
         @test naive ≈ pairwise!(f_sum_d2, y, sys)
@@ -465,7 +467,7 @@ end
         x = [SVector(-1.0, -1.0, -1.0) .+ rand(SVector{3,Float64}) for _ in 1:100]
         y = [SVector(-1.0, -1.0, -1.0) .+ rand(SVector{3,Float64}) for _ in 1:30]
         ymat = stack(y)
-        box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
+        box = CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff)
         naive = map_naive!(f_sum_d2, 0.0, x, y, box)
         sys = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, parallel = false)
         @test naive ≈ pairwise!(f_sum_d2, ymat, sys)
@@ -516,7 +518,7 @@ end
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
 
     # non-periodic system
-    box = CellListMap.Box(CellListMap.limits(x), cutoff)
+    box = CellListMap.Box(CellListMap.limits(PSP(x)), cutoff)
     naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
     system = ParticleSystem(xpositions = x, cutoff = cutoff, output = 0.0, lcell = 1)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
@@ -573,7 +575,7 @@ end
 
     # If the number of particles and box change
     new_x, new_box = xatomic(10^5)
-    new_cl = CellListMap.CellList(new_x, new_box)
+    new_cl = CellListMap.CellList(PSP(new_x), new_box)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
@@ -589,7 +591,7 @@ end
     #
     unitcell = [250 0 10; 10 250 0; 0 0 250]
     new_box = CellListMap.Box(unitcell, cutoff)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true)
     system = ParticleSystem(
         xpositions = system.xpositions,
@@ -607,7 +609,7 @@ end
     new_x, new_box = xatomic(10^4)
     unitcell = [250 0 10; 10 250 0; 0 0 250]
     new_box = CellListMap.Box(unitcell, cutoff)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
@@ -621,8 +623,8 @@ end
     #
     # Non-periodic system
     #
-    new_box = CellListMap.Box(CellListMap.limits(new_x), cutoff)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_box = CellListMap.Box(CellListMap.limits(PSP(new_x)), cutoff)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true)
     system = ParticleSystem(
         xpositions = system.xpositions,
@@ -637,8 +639,8 @@ end
     # If the number of particles and box change
     cutoff = cutoff + rand()
     new_x, new_box = xatomic(10^4)
-    new_box = CellListMap.Box(CellListMap.limits(new_x), cutoff)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_box = CellListMap.Box(CellListMap.limits(PSP(new_x)), cutoff)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
@@ -658,7 +660,7 @@ end
     N = 2000
     x, y, sides, cutoff = pathological_coordinates(N)
     box = CellListMap.Box(sides, cutoff)
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
 
     # Function to be evaluated for each pair: build distance histogram
     function build_histogram!(d2, hist)
@@ -712,7 +714,7 @@ end
     # Construction from vector of vectors
     x = [rand(3) for _ in 1:10]
     p = CellListMap.ParticleSystemPositions(x)
-    @test p isa AbstractVector
+    @test p isa CellListMap.ParticleSystemPositions
     @test length(p) == 10
     @test size(p) == (10,)
     @test p.updated[] == true

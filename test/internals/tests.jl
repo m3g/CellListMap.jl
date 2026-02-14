@@ -140,27 +140,27 @@ end
     naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
 
     # Check if changing lcell breaks something
-    box = CellListMap.Box(sides, cutoff, lcell = 1); cl = CellListMap.CellList(x, box)
+    box = CellListMap.Box(sides, cutoff, lcell = 1); cl = CellListMap.CellList(PSP(x), box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    box = CellListMap.Box(sides, cutoff, lcell = 2); cl = CellListMap.CellList(x, box)
+    box = CellListMap.Box(sides, cutoff, lcell = 2); cl = CellListMap.CellList(PSP(x), box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    box = CellListMap.Box(sides, cutoff, lcell = 3); cl = CellListMap.CellList(x, box)
+    box = CellListMap.Box(sides, cutoff, lcell = 3); cl = CellListMap.CellList(PSP(x), box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    box = CellListMap.Box(sides, cutoff, lcell = 5); cl = CellListMap.CellList(x, box)
+    box = CellListMap.Box(sides, cutoff, lcell = 5); cl = CellListMap.CellList(PSP(x), box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    cl = CellListMap.CellList(x, box, nbatches = (3, 5))
+    cl = CellListMap.CellList(PSP(x), box, nbatches = (3, 5))
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    cl = CellListMap.CellList(x, box, nbatches = (1, 1))
+    cl = CellListMap.CellList(PSP(x), box, nbatches = (1, 1))
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    cl = CellListMap.CellList(x, box, nbatches = (1, 7))
+    cl = CellListMap.CellList(PSP(x), box, nbatches = (1, 7))
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    cl = CellListMap.CellList(x, box, nbatches = (7, 1))
+    cl = CellListMap.CellList(PSP(x), box, nbatches = (7, 1))
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    cl = CellListMap.CellList(x, box, nbatches = (13, 17))
+    cl = CellListMap.CellList(PSP(x), box, nbatches = (13, 17))
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
-    cl = CellListMap.CellList(x, box, nbatches = (4, 16))
+    cl = CellListMap.CellList(PSP(x), box, nbatches = (4, 16))
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl, parallel = true) ≈ naive
 
 end
@@ -175,7 +175,7 @@ end
     box = CellListMap.Box(sides, cutoff)
 
     # Initialize auxiliary linked lists
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
 
     # Function to be evaluated for each pair: sum of displacements on x
     f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
@@ -190,16 +190,16 @@ end
     new_sides = sides + rand(SVector{3, Float64})
     new_cutoff = cutoff + rand()
     new_box = CellListMap.Box(new_sides, new_cutoff)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
     # If the number of particles and box change
     new_x, new_box = xatomic(10^4)
-    new_cl = CellListMap.CellList(new_x, new_box)
+    new_cl = CellListMap.CellList(PSP(new_x), new_box)
     new_x, new_box = xatomic(10^4 + 10^3)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box) # slow
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
 
@@ -212,26 +212,26 @@ end
     new_sides = sides + rand(SVector{3, Float64})
     new_cutoff = cutoff + rand()
     new_box = CellListMap.Box(new_sides, new_cutoff)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
     # If the number of particles and box change (more)
     new_x, new_box = xatomic(10^4)
-    new_cl = CellListMap.CellList(new_x, new_box)
+    new_cl = CellListMap.CellList(PSP(new_x), new_box)
     new_aux = CellListMap.AuxThreaded(new_cl)
     new_x, new_box = xatomic(10^4 + 10^3)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
     # If the number of particles and box change (less)
     new_x, new_box = xatomic(10^4)
-    new_cl = CellListMap.CellList(new_x, new_box)
+    new_cl = CellListMap.CellList(PSP(new_x), new_box)
     new_aux = CellListMap.AuxThreaded(new_cl)
     new_x, new_box = xatomic(10^4 - 10^3)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
 
@@ -245,7 +245,7 @@ end
             0   0 250
         ], cutoff
     )
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
@@ -257,7 +257,7 @@ end
             0   0 250
         ], cutoff
     )
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_x, new_box = xatomic(10^4)
     new_box = CellListMap.Box(
         [
@@ -267,7 +267,7 @@ end
         ], cutoff
     )
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
     # Using auxiliary preallocated aux arrays
@@ -278,7 +278,7 @@ end
             0   0 250
         ], cutoff
     )
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux)
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
@@ -290,7 +290,7 @@ end
             0   0 250
         ], cutoff
     )
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux)
     new_x, new_box = xatomic(10^4)
     new_box = CellListMap.Box(
         [
@@ -300,12 +300,12 @@ end
         ], cutoff
     )
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
 
     # Same as above, but with parallel=false on the update
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux; parallel = false)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux; parallel = false)
     new_x, new_box = xatomic(10^4)
     new_box = CellListMap.Box(
         [
@@ -315,7 +315,7 @@ end
         ], cutoff
     )
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
-    new_cl = CellListMap.UpdateCellList!(new_x, new_box, new_cl, new_aux; parallel = false)
+    new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl, new_aux; parallel = false)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = false) ≈ new_naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true) ≈ new_naive
 
@@ -331,7 +331,7 @@ end
     N = 2000
     x, y, sides, cutoff = pathological_coordinates(N)
     box = CellListMap.Box(sides, cutoff)
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
 
     # Function to be evaluated for each pair: build distance histogram
     function build_histogram!(d2, hist)
@@ -474,7 +474,7 @@ end
                 [SVector{2, Float64}(0.1 * i + 0.1 * j, 0.1 * j + 0.1 * j) for i in 0:5 for j in 0:5],
                 [SVector{2, Float64}(0.1 * i, 0.1 * j) for i in 0:5 for j in 0:5],
             ]
-            cl = CellListMap.CellList(x, box)
+            cl = CellListMap.CellList(PSP(x), box)
             d0 = CellListMap._pairwise!((pair, out) -> f(pair.i, pair.j, pair.d2, out), 0, box, cl)
             d1 = map_naive!((x, y, i, j, d2, out) -> f(i, j, d2, out), 0, x, box)
             @test d0 ≈ d1
@@ -503,7 +503,7 @@ end
     box = CellListMap.Box(sides, cutoff)
 
     # These particles are ~0.9 apart through PBC, should interact exactly once
-    n_cell = CellListMap._pairwise!((pair, counter) -> counter + 1, 0, box, CellListMap.CellList(x, box))
+    n_cell = CellListMap._pairwise!((pair, counter) -> counter + 1, 0, box, CellListMap.CellList(PSP(x), box))
     n_naive = map_naive!(count_interactions, 0, x, box)
 
     @test n_cell == n_naive
@@ -523,7 +523,7 @@ end
         SVector{3, Float64}(8.5, 9.0, 9.0),
     ]
 
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
     n_cell = CellListMap._pairwise!((pair, counter) -> counter + 1, 0, box, cl)
     n_naive = map_naive!(count_interactions, 0, x, box)
 
@@ -540,7 +540,7 @@ end
 
     x = [SVector{3, Float64}(rand(3) .* 20.0...) for _ in 1:50]
     box = CellListMap.Box([20.0, 20.0, 20.0], 3.0)
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
 
     pairs = CellListMap._pairwise!(
         (pair, pairs) -> begin
@@ -562,7 +562,7 @@ end
     unit_cell = [20.0 5.0 0.0; 0.0 20.0 3.0; 0.0 0.0 20.0]
     box = CellListMap.Box(unit_cell, 3.0)
     x = [SVector{3, Float64}((unit_cell * rand(3))...) for _ in 1:50]
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
 
     pairs = CellListMap._pairwise!(
         (pair, pairs) -> begin
@@ -587,7 +587,7 @@ end
         push!(x, SVector{3, Float64}(sides[1] - 0.3 * i, sides[2] - 0.3 * j, sides[3] - 0.3 * k))
     end
 
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
     n_cell = CellListMap._pairwise!((pair, counter) -> counter + 1, 0, box, cl, parallel = false)
     n_naive = map_naive!(count_interactions, 0, x, box)
 
@@ -632,7 +632,7 @@ end
             end
         end
 
-        cl = CellListMap.CellList(x, box)
+        cl = CellListMap.CellList(PSP(x), box)
 
         # Compare with naive implementation
         result_cell = CellListMap._pairwise!((pair, s) -> s + pair.d, 0.0, box, cl, parallel = false)
@@ -651,7 +651,7 @@ end
         # Generate random fractional coordinates and convert to Cartesian
         x = [SVector{3, Float64}((unit_cell * rand(3))...) for _ in 1:N]
 
-        cl = CellListMap.CellList(x, box)
+        cl = CellListMap.CellList(PSP(x), box)
 
         result_cell = CellListMap._pairwise!((pair, s) -> s + pair.d, 0.0, box, cl, parallel = false)
         result_naive = map_naive!(sum_distances_naive, 0.0, x, box)
@@ -676,7 +676,7 @@ end
     push!(x, SVector{3, Float64}(15.0, 15.0, 15.0))
     push!(x, SVector{3, Float64}(15.0, 15.0, 15.0 + cutoff - 0.001))  # Just within cutoff
 
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
 
     n_cell = CellListMap._pairwise!((pair, c) -> c + 1, 0, box, cl, parallel = false)
     n_naive = map_naive!((x, y, i, j, d2, c) -> c + 1, 0, x, box)

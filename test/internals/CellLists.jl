@@ -132,6 +132,7 @@ end
 
 @testitem "CellList dimension mismatch error" begin
     using CellListMap, StaticArrays
+    PSP = CellListMap.ParticleSystemPositions
     # 3D positions with 2D box should throw DimensionMismatch
     x = rand(SVector{3, Float64}, 100)
     box = CellListMap.Box([1.0, 1.0], 0.1)
@@ -143,7 +144,7 @@ end
     # Matrix input: 3 rows (3D) with 2D box
     x = rand(3, 100)
     box = CellListMap.Box([1.0, 1.0], 0.1)
-    @test_throws DimensionMismatch CellListMap.CellList(x, box)
+    @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
 end
 
 @testitem "real_particle_border_case" begin

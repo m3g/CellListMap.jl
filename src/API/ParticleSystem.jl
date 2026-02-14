@@ -146,29 +146,29 @@ function ParticleSystem(;
     end
     # Single set of positions
     if isnothing(ypositions)
-        unitcell = isnothing(unitcell) ? limits(xpositions; validate_coordinates) : unitcell
-        _box = Box(unitcell, cutoff, lcell = lcell)
         _x = ParticleSystemPositions(xpositions)
+        unitcell = isnothing(unitcell) ? limits(_x; validate_coordinates) : unitcell
+        _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(
-            _x, 
-            _box; parallel, 
+            _x,
+            _box; parallel,
             nbatches, validate_coordinates
         )
         _aux = AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         output = _reset_all_output!(output, _output_threaded; reset = false)
         sys = ParticleSystem1{output_name}(
-            _x, 
-            output, 
-            _box, _cell_list, _output_threaded, _aux, 
+            _x,
+            output,
+            _box, _cell_list, _output_threaded, _aux,
             parallel, validate_coordinates
         )
         # Two sets of positions
     else
-        unitcell = isnothing(unitcell) ? limits(xpositions, ypositions; validate_coordinates) : unitcell
-        _box = Box(unitcell, cutoff, lcell = lcell)
         _x = ParticleSystemPositions(xpositions)
         _y = ParticleSystemPositions(ypositions)
+        unitcell = isnothing(unitcell) ? limits(_x, _y; validate_coordinates) : unitcell
+        _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)
         _aux = AuxThreaded(_cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]

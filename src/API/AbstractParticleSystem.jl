@@ -68,6 +68,10 @@ Base.firstindex(p::ParticleSystemPositions) = firstindex(p.x)
 Base.lastindex(p::ParticleSystemPositions) = lastindex(p.x)
 Base.first(p::ParticleSystemPositions) = first(p.x)
 Base.last(p::ParticleSystemPositions) = last(p.x)
+Base.copy(p::ParticleSystemPositions{N,T,V}) where {N,T,V<:Vector} = ParticleSystemPositions{N,T,V}(copy(p.x), Ref(p.updated[]))
+Base.append!(p::ParticleSystemPositions, x) = (p.updated[] = true; append!(p.x, x); p)
+Base.similar(p::ParticleSystemPositions{N,T}) where {N,T} = ParticleSystemPositions{N,T,Vector{SVector{N,T}}}(similar(p.x), Ref(true))
+Base.eachindex(p::ParticleSystemPositions) = eachindex(p.x)
 
 # Broadcast interface
 struct BroadcastParticleSystemPositions <: Broadcast.BroadcastStyle end

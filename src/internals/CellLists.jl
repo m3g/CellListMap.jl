@@ -1192,12 +1192,14 @@ function UpdateCellList!(
     isnothing(validate_coordinates) || validate_coordinates(y)
     ref_aux = isnothing(aux) ? nothing : aux.ref_list
     target_aux = isnothing(aux) ? nothing : aux.target_list
+    ref_list = cl_pair.ref_list
+    target_list = cl_pair.target_list
     if x.updated[]
-        ref_list = UpdateCellList!(x, box, cl_pair.ref_list, ref_aux; parallel, validate_coordinates)
+        ref_list = UpdateCellList!(x, box, ref_list, ref_aux; parallel, validate_coordinates)
         x.updated[] = false
     end
     if y.updated[]
-        target_list = UpdateCellList!(y, box, cl_pair.target_list, target_aux; parallel, validate_coordinates)
+        target_list = UpdateCellList!(y, box, target_list, target_aux; parallel, validate_coordinates)
         y.updated[] = false
     end
     return CellListPair{N, T}(ref_list, target_list)
