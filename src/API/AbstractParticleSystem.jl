@@ -68,7 +68,11 @@ Base.firstindex(p::ParticleSystemPositions) = firstindex(p.x)
 Base.lastindex(p::ParticleSystemPositions) = lastindex(p.x)
 Base.first(p::ParticleSystemPositions) = first(p.x)
 Base.last(p::ParticleSystemPositions) = last(p.x)
-Base.show(p::ParticleSystemPositions, args...; kargs...) = show(p.x, args...; kargs...)
+function Base.show(io::IO, ::MIME"text/plain", p::ParticleSystemPositions) 
+    print(io, "ParticleSystemPositions, ")
+    print(io, "updated: ", p.updated[], ", with ")
+    show(IOContext(io, :title => false), MIME"text/plain"(), p.x)
+end
 
 """
 
