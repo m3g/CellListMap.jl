@@ -23,8 +23,9 @@
 
     function test_newcl(file, lcell; cutoff = 8.0)
         unitcell, coordinates = getcoor(file)
+        const PSP = CellListMap.ParticleSystemPositions
         box = CellListMap.Box(unitcell, cutoff, lcell = lcell)
-        cl = CellListMap.CellList(coordinates, box)
+        cl = CellListMap.CellList(PSP(coordinates), box)
         u = CellListMap._pairwise!((pair, u) -> lj_Argon_Gromacs(pair.d2, u), 0.0, box, cl)
         return u
     end

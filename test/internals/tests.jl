@@ -16,7 +16,8 @@
 
     # Some simple disjoint set properties
     box = CellListMap.Box(sides, cutoff, lcell = 1)
-    cl = CellListMap.CellList(x, y, box)
+    const PSP = CellListMap.ParticleSystemPositions
+    cl = CellListMap.CellList(PSP(x), PSP(y), box)
 
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, box)
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
@@ -35,28 +36,28 @@
             ymat[j, i] = y[i][j]
         end
     end
-    cl_mat = CellListMap.CellList(xmat, ymat, box)
+    cl_mat = CellListMap.CellList(PSP(xmat), PSP(ymat), box)
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl_mat, parallel = false) ≈ naive
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl_mat, parallel = true) ≈ naive
 
     # Check different lcell
     box = CellListMap.Box(sides, cutoff, lcell = 3)
-    cl = CellListMap.CellList(x, y, box)
+    cl = CellListMap.CellList(PSP(x), PSP(y), box)
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = true) ≈ naive
 
     # Test if changing the number of batches breaks anything
-    cl = CellListMap.CellList(x, y, box, nbatches = (1, 1))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, nbatches = (1, 1))
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
-    cl = CellListMap.CellList(x, y, box, nbatches = (3, 5))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, nbatches = (3, 5))
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
-    cl = CellListMap.CellList(x, y, box, nbatches = (7, 1))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, nbatches = (7, 1))
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
-    cl = CellListMap.CellList(x, y, box, nbatches = (1, 7))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, nbatches = (1, 7))
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
-    cl = CellListMap.CellList(x, y, box, nbatches = (4, 16))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, nbatches = (4, 16))
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
-    cl = CellListMap.CellList(x, y, box, nbatches = (13, 17))
+    cl = CellListMap.CellList(PSP(x), PSP(y), box, nbatches = (13, 17))
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
 
     # Test updating of the data on disjoint sets works fine
@@ -67,17 +68,18 @@
         local x = arrays[1]
         local y = arrays[2]
         local box = CellListMap.Box([1, 1], 0.1)
-        local cl = CellListMap.CellList(x, y, box)
+        local PSP = CellListMap.ParticleSystemPositions
+        local cl = CellListMap.CellList(PSP(x), PSP(y), box)
         r_naive = map_naive!((x, y, i, j, d2, r) -> r += d2, 0.0, x, y, box)
         r = CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         @test r_naive ≈ r
         x = rand(SVector{2, Float64}, 1100)
-        cl = CellListMap.UpdateCellList!(x, y, box, cl)
+        cl = CellListMap.UpdateCellList!(PSP(x), PSP(y), box, cl)
         r_naive = map_naive!((x, y, i, j, d2, r) -> r += d2, 0.0, x, y, box)
         r = CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         @test r_naive ≈ r
         y = rand(SVector{2, Float64}, 200)
-        cl = CellListMap.UpdateCellList!(x, y, box, cl)
+        cl = CellListMap.UpdateCellList!(PSP(x), PSP(y), box, cl)
         r_naive = map_naive!((x, y, i, j, d2, r) -> r += d2, 0.0, x, y, box)
         r = CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
         @test r_naive ≈ r
@@ -107,7 +109,8 @@ end
             xmat[j, i] = x[i][j]
         end
     end
-    cl_mat = CellListMap.CellList(xmat, box)
+    const PSP = CellListMap.ParticleSystemPositions
+    cl_mat = CellListMap.CellList(PSP(xmat), box)
     naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl_mat, parallel = true) ≈ naive
     @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl_mat, parallel = false) ≈ naive

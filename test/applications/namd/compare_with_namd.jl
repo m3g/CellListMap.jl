@@ -20,8 +20,9 @@
 
     function test_newcl(file, unit_cell, correct, lcell)
         coordinates = getcoor(file)
+        const PSP = CellListMap.ParticleSystemPositions
         box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-        cl = CellListMap.CellList(coordinates, box)
+        cl = CellListMap.CellList(PSP(coordinates), box)
         u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
         if !(u ≈ correct)
             @show (u, correct)

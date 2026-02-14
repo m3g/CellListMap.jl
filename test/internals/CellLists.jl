@@ -38,10 +38,10 @@ end
     # when the number of particles changes
     x = rand(SVector{3, Float64}, 2)
     box = CellListMap.Box([1, 1, 1], 0.1)
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
     nb_initial = CellListMap.nbatches(cl)
     x = rand(SVector{3, Float64}, 10000)
-    cl = CellListMap.UpdateCellList!(x, box, cl)
+    cl = CellListMap.UpdateCellList!(PSP(x), box, cl)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
         CellListMap._nbatches_map_computation(10000),
@@ -49,7 +49,7 @@ end
     @test CellListMap.nbatches(cl) == expected
     # nbatches should not change when particle count is unchanged
     x .= rand(SVector{3, Float64}, 10000)
-    cl = CellListMap.UpdateCellList!(x, box, cl)
+    cl = CellListMap.UpdateCellList!(PSP(x), box, cl)
     @test CellListMap.nbatches(cl) == expected
 end
 
@@ -58,19 +58,19 @@ end
     x = rand(SVector{3, Float64}, 100)
     y = rand(SVector{3, Float64}, 50)
     box = CellListMap.Box([1, 1, 1], 0.1)
-    cl = CellListMap.CellList(x, box; nbatches = (2, 4))
+    cl = CellListMap.CellList(PSP(x), box; nbatches = (2, 4))
     # Full symbol names
     @test CellListMap.nbatches(cl, :map_computation) == 4
     @test CellListMap.nbatches(cl, :build_cell_lists) == 2
     # show method for NumberOfBatches
     @test sprint(show, MIME"text/plain"(), cl.nbatches) !== ""
     # Auto nbatches with parallel=true (unconditional)
-    cl = CellListMap.CellList(x, box)
+    cl = CellListMap.CellList(PSP(x), box)
     nb = CellListMap.nbatches(cl)
     @test nb[1] >= 1 && nb[1] <= min(8, Threads.nthreads())
     @test nb[2] >= 1
     # nbatches on CellListPair
-    cl_pair = CellListMap.CellList(x, y, box)
+    cl_pair = CellListMap.CellList(PSP(x), PSP(y), box)
     @test CellListMap.nbatches(cl_pair) == CellListMap.nbatches(cl_pair.ref_list)
     @test CellListMap.nbatches(cl_pair, :build) == CellListMap.nbatches(cl_pair.ref_list, :build)
     @test CellListMap.nbatches(cl_pair, :map) == CellListMap.nbatches(cl_pair.ref_list, :map)
@@ -87,17 +87,17 @@ end
     x = rand(SVector{3, Float64}, 100)
     y = rand(SVector{3, Float64}, 50)
     box = CellListMap.Box([1, 1, 1], 0.1)
-    cl = CellListMap.CellList(x, y, box)
+    cl = CellListMap.CellList(PSP(x), PSP(y), box)
     # 3-arg update, serial path
     x2 = rand(SVector{3, Float64}, 100)
     y2 = rand(SVector{3, Float64}, 50)
-    cl = CellListMap.UpdateCellList!(x2, y2, box, cl; parallel = false)
+    cl = CellListMap.UpdateCellList!(PSP(x2), PSP(y2), box, cl; parallel = false)
     @test cl.ref_list.n_real_particles == 100  # x (first arg) has 100
     @test cl.target_list.n_real_particles == 50  # y (second arg) has 50
     # 3-arg update, parallel path
     x3 = rand(SVector{3, Float64}, 100)
     y3 = rand(SVector{3, Float64}, 50)
-    cl = CellListMap.UpdateCellList!(x3, y3, box, cl; parallel = true)
+    cl = CellListMap.UpdateCellList!(PSP(x3), PSP(y3), box, cl; parallel = true)
     @test cl.ref_list.n_real_particles == 100  # x (first arg) has 100
     @test cl.target_list.n_real_particles == 50  # y (second arg) has 50
 end
@@ -108,26 +108,26 @@ end
     x[50] = SVector(1.0, NaN, 1.0)
     box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
     y = rand(SVector{3, Float64}, 100)
-    @test_throws ArgumentError CellListMap.CellList(x, box)
-    cl = CellListMap.CellList(y, box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(x, box, cl)
-    @test_throws ArgumentError CellListMap.CellList(x, y, box)
-    @test_throws ArgumentError CellListMap.CellList(y, x, box)
-    cl = CellListMap.CellList(y, y, box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(x, y, box, cl)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(y, x, box, cl)
+    @test_throws ArgumentError CellListMap.CellList(PSP(x), box)
+    cl = CellListMap.CellList(PSP(y), box)
+    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), box, cl)
+    @test_throws ArgumentError CellListMap.CellList(PSP(x), PSP(y), box)
+    @test_throws ArgumentError CellListMap.CellList(PSP(y), PSP(x), box)
+    cl = CellListMap.CellList(PSP(y), PSP(y), box)
+    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), PSP(y), box, cl)
+    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(y), PSP(x), box, cl)
     x = rand(3, 100)
     x[2, 50] = NaN
     box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
     y = rand(3, 100)
-    @test_throws ArgumentError CellListMap.CellList(x, box)
-    cl = CellListMap.CellList(y, box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(x, box, cl)
-    @test_throws ArgumentError CellListMap.CellList(x, y, box)
-    @test_throws ArgumentError CellListMap.CellList(y, x, box)
-    cl = CellListMap.CellList(y, y, box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(x, y, box, cl)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(y, x, box, cl)
+    @test_throws ArgumentError CellListMap.CellList(PSP(x), box)
+    cl = CellListMap.CellList(PSP(y), box)
+    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), box, cl)
+    @test_throws ArgumentError CellListMap.CellList(PSP(x), PSP(y), box)
+    @test_throws ArgumentError CellListMap.CellList(PSP(y), PSP(x), box)
+    cl = CellListMap.CellList(PSP(y), PSP(y), box)
+    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), PSP(y), box, cl)
+    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(y), PSP(x), box, cl)
 end
 
 @testitem "CellList dimension mismatch error" begin
@@ -135,11 +135,11 @@ end
     # 3D positions with 2D box should throw DimensionMismatch
     x = rand(SVector{3, Float64}, 100)
     box = CellListMap.Box([1.0, 1.0], 0.1)
-    @test_throws DimensionMismatch CellListMap.CellList(x, box)
+    @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
     # 2D positions with 3D box should throw DimensionMismatch
     x = rand(SVector{2, Float64}, 100)
     box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
-    @test_throws DimensionMismatch CellListMap.CellList(x, box)
+    @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
     # Matrix input: 3 rows (3D) with 2D box
     x = rand(3, 100)
     box = CellListMap.Box([1.0, 1.0], 0.1)
