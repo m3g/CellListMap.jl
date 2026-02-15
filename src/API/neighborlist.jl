@@ -14,6 +14,10 @@ mutable struct InPlaceNeighborList{P}
     show_progress::Bool
 end
 
+# getters
+get_unitcell(nb::InPlaceNeighborList) = nb.sys.unitcell 
+get_cutoff(nb::InPlaceNeighborList) = nb.sys.cutoff
+
 """
     InPlaceNeighborList(;
         x::AbstractVecOrMat,

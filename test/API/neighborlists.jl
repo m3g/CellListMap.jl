@@ -1,6 +1,7 @@
 @testitem "InPlaceNeighborList vs. NearestNeighbors" setup = [TestingNeighborLists] begin
 
     using CellListMap
+    using CellListMap: get_cutoff, get_unitcell
     using NearestNeighbors
 
     for N in [2, 3]
@@ -43,68 +44,70 @@
 
 end
 
-@testitem "InPlaceNeighborLists Updates" begin
+@testitem "InPlaceNeighborLists Updates" setup=[Testing] begin
     using CellListMap
     using StaticArrays
     using LinearAlgebra: diag
-    import CellListMap: _sides_from_limits
+    using CellListMap: _sides_from_limits,
+                        get_cutoff,
+                        get_unitcell
 
     # Non-periodic systems
     x = rand(SVector{3, Float64}, 10^3)
     system = InPlaceNeighborList(x = x, cutoff = 0.1)
     update!(system, x)
-    @test system.box.cutoff == 0.1
+    @test get_cutoff(system) == 0.1
     update!(system, x; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(CellListMap.limits(x), 0.05)
+    @test get_cutoff(system) == 0.05
+    @test diag(get_unitcell(system)) == _sides_from_limits(CellListMap.limits(PSP(x)), 0.05)
 
     x = rand(SVector{3, Float64}, 10^3)
     y = rand(SVector{3, Float64}, 10^3)
     system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1)
-    @test diag(system.box.input_unit_cell.matrix) ≈ _sides_from_limits(CellListMap.limits(x, y), 0.1)
+    @test diag(get_unitcell(system)) ≈ _sides_from_limits(CellListMap.limits(PSP(x), PSP(y)), 0.1)
     x = rand(SVector{3, Float64}, 10^3)
     y = rand(SVector{3, Float64}, 10^3)
     update!(system, x, y)
-    @test system.box.cutoff == 0.1
+    @test get_cutoff(system) == 0.1
     update!(system, x, y; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) ≈ _sides_from_limits(CellListMap.limits(x, y), 0.05)
+    @test get_cutoff(system) == 0.05
+    @test diag(get_unitcell(system)) ≈ _sides_from_limits(CellListMap.limits(PSP(x), PSP(y)), 0.05)
 
     # Orthorhombic systems
     x = rand(SVector{3, Float64}, 10^3)
     system = InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1, 1, 1])
     update!(system, x)
-    @test system.box.cutoff == 0.1
+    @test get_cutoff(system) == 0.1
     update!(system, x; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
+    @test get_cutoff(system) == 0.05
     update!(system, x; cutoff = 0.05, unitcell = [2, 2, 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1, unitcell = [1, 1, 1])
     update!(system, x, y)
-    @test system.box.cutoff == 0.1
+    @test get_cutoff(system) == 0.1
     update!(system, x, y; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
+    @test get_cutoff(system) == 0.05
     update!(system, x, y; cutoff = 0.05, unitcell = [2, 2, 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     # Triclinic systems
     x = rand(SVector{3, Float64}, 10^3)
     system = InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1])
     update!(system, x)
-    @test system.box.cutoff == 0.1
+    @test get_cutoff(system) == 0.1
     update!(system, x; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
+    @test get_cutoff(system) == 0.05
     update!(system, x; cutoff = 0.05, unitcell = [2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
     system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1])
     update!(system, x, y)
-    @test system.box.cutoff == 0.1
+    @test get_cutoff(system) == 0.1
     update!(system, x, y; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
+    @test get_cutoff(system) == 0.05
     update!(system, x, y; cutoff = 0.05, unitcell = [2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
 end
 
