@@ -29,17 +29,27 @@ struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
 end
 
 function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
-    M, N, T = length(x), length(first(x)), eltype(eltype(x))
+    M = length(x)
+    N, T = if M > 0
+        length(first(x)), eltype(first(x))
+    else
+        # This will error for empty vectors of non-fixed-size element vectors
+        length(eltype(x)), eltype(eltype(x))
+    end
     x_static = Vector{SVector{N,T}}(undef, M)
     for i in eachindex(x, x_static)
         x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N))
     end
     ParticleSystemPositions{N,T,typeof(x_static)}(x_static, Ref(true))
 end
+
 function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
-    N = size(x,1)
-    x_re = reinterpret(reshape, SVector{N, T}, x)
-    ParticleSystemPositions{N,T,typeof(x_re)}(x_re, Ref(true))
+    N, M = size(x)
+    xv = Vector{SVector{N,T}}(undef, M)
+    for i in eachindex(xv)
+        xv[i] = SVector{N,T}(@view(x[:,i]))
+    end
+    ParticleSystemPositions{N,T,typeof(xv)}(xv, Ref(true))
 end
 
 function Base.empty!(p::ParticleSystemPositions)

@@ -135,8 +135,14 @@ Promotes the types of the unit cell matrix (or sides) and cutoff to floats if on
 returns the minimum float type necessary. 
 
 =#
-function _promote_types(cell, cutoff)
-    input_type = promote_type(eltype(cell), typeof(cutoff))
+function _promote_types(unitcell, cutoff)
+    input_type = if isnothing(unitcell)
+        typeof(cutoff)
+    elseif isnothing(cutoff)
+        typeof(unitcell)
+    else
+        promote_type(eltype(unitcell), typeof(cutoff))
+    end
     float_type = input_type == Int ? Float64 : input_type
     return float_type
 end

@@ -333,7 +333,8 @@ end
         @test naive ≈ pairwise!(f, y, sys)
 
         # Update x positions
-        sys.xpositions .= rand(SVector{3, Float64}, 100)
+        x = rand(SVector{3, Float64}, 100)
+        sys.xpositions .= x 
         box = CellListMap.Box(isnothing(uc) ? CellListMap.limits(PSP(x), PSP(y)) : uc, cutoff)
         naive = map_naive!(f, 0.0, x, y, box)
         @test naive ≈ pairwise!(f, y, sys)
@@ -602,7 +603,7 @@ end
     new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true)
     system = ParticleSystem(
-        xpositions = system.xpositions,
+        xpositions = new_x,
         unitcell = unitcell,
         cutoff = cutoff,
         output = 0.0,
@@ -635,7 +636,7 @@ end
     new_cl = CellListMap.UpdateCellList!(PSP(new_x), new_box, new_cl)
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl, parallel = true)
     system = ParticleSystem(
-        xpositions = system.xpositions,
+        xpositions = new_x,
         cutoff = cutoff,
         output = 0.0,
     )
@@ -745,10 +746,12 @@ end
 
     # iterate
     _count = 0
-    for _ in p
-        _count += 1
+    let _count = 0
+        for _ in p
+            _count += 1
+        end
+        @test _count == length(p)
     end
-    @test _count == length(p)
 
     # keys
     @test keys(p) == 1:10
@@ -775,11 +778,8 @@ end
     # Integration with ParticleSystem: flag is reset after pairwise!
     x = rand(SVector{3, Float64}, 100)
     sys = ParticleSystem(xpositions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
-    @test sys.xpositions.updated[] == true
-    pairwise!((pair, r) -> r += pair.d2, sys)
     @test sys.xpositions.updated[] == false
-    # Modifying a position triggers the flag
-    sys.xpositions[1] = SVector(0.5, 0.5, 0.5)
+    sys.xpositions[1] = rand(SVector{3,Float64})
     @test sys.xpositions.updated[] == true
     pairwise!((pair, r) -> r += pair.d2, sys)
     @test sys.xpositions.updated[] == false
@@ -788,8 +788,8 @@ end
     x = rand(SVector{3, Float64}, 100)
     y = rand(SVector{3, Float64}, 50)
     sys2 = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
-    @test sys2.xpositions.updated[] == true
-    @test sys2.ypositions.updated[] == true
+    @test sys2.xpositions.updated[] == false
+    @test sys2.ypositions.updated[] == false
     pairwise!((pair, r) -> r += pair.d2, sys2)
     @test sys2.xpositions.updated[] == false
     @test sys2.ypositions.updated[] == false

@@ -74,6 +74,7 @@ ParticleSystem1{output} of dimension 3, composed of:
 
 """
 function update_unitcell!(sys, unitcell)
+    isnothing(unitcell) && return sys
     if unitcelltype(sys) == NonPeriodicCell
         throw(
             ArgumentError(
@@ -135,6 +136,7 @@ ParticleSystem1{output} of dimension 3, composed of:
 ```
 """
 function update_cutoff!(sys::ParticleSystem1, cutoff)
+    isnothing(cutoff) && return sys
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions), cutoff)
     end
@@ -143,6 +145,7 @@ function update_cutoff!(sys::ParticleSystem1, cutoff)
     return sys
 end
 function update_cutoff!(sys::ParticleSystem2, cutoff)
+    isnothing(cutoff) && return sys
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
     end

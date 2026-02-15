@@ -55,11 +55,11 @@ Returns `x`, `y`, `sides` and `cutoff`.
     map_naive!(f::Function, output, x::AbstractVector, box::Box)
     map_naive!(f::Function, output, x::AbstractVector, y::AbstractVector, box::Box)
 
-# Extended help
-
-Function that uses the naive pairwise mapping algorithm, for testing.
-
-=#
+    # Extended help
+    
+    Function that uses the naive pairwise mapping algorithm, for testing.
+    
+    =#
     function map_naive!(f::Function, output, x::AbstractVector, box::CellListMap.Box)
         (; input_unit_cell, cutoff_sqr) = box
         for i in 1:(length(x) - 1)
