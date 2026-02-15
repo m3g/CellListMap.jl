@@ -66,41 +66,41 @@
         ypositions = rand(SVector{3, Float64}, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         positions = rand(1, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         xpositions = rand(1, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         xpositions = rand(2, 100),
         ypositions = rand(1, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         positions = rand(2, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         xpositions = rand(2, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         xpositions = rand(2, 100),
         ypositions = rand(2, 100),
         cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         positions = rand(3, 100),
         cutoff = 0.1, unitcell = [1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         xpositions = rand(3, 100),
         cutoff = 0.1, unitcell = [1, 1], output = 0.0,
     )
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         xpositions = rand(3, 100),
         ypositions = rand(3, 100),
         cutoff = 0.1, unitcell = [1, 1], output = 0.0,

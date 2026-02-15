@@ -43,13 +43,24 @@ function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
     ParticleSystemPositions{N,T,typeof(x_static)}(x_static, Ref(true))
 end
 
-function ParticleSystemPositions(x::AbstractMatrix{T}) where {T}
-    N, M = size(x)
-    xv = Vector{SVector{N,T}}(undef, M)
-    for i in eachindex(xv)
-        xv[i] = SVector{N,T}(@view(x[:,i]))
+# If the the elements are ot fixed-sized and the vector is empty, pass DIM
+function ParticleSystemPositions(x::AbstractVector{<:AbstractVector}, DIM)
+    M = length(x)
+    T = eltype(eltype(x))
+    x_static = Vector{SVector{DIM,T}}(undef, M)
+    for i in eachindex(x, x_static)
+        x_static[i] = SVector{DIM,T}(ntuple(j -> x[i][j], DIM))
     end
-    ParticleSystemPositions{N,T,typeof(xv)}(xv, Ref(true))
+    ParticleSystemPositions{DIM,T,typeof(x_static)}(x_static, Ref(true))
+end
+
+function ParticleSystemPositions(x::AbstractMatrix{T}, DIM=size(x,1)) where {T}
+    M = size(x,2)
+    xv = Vector{SVector{DIM,T}}(undef, M)
+    for i in eachindex(xv)
+        xv[i] = SVector{DIM,T}(@view(x[:,i]))
+    end
+    ParticleSystemPositions{DIM,T,typeof(xv)}(xv, Ref(true))
 end
 
 function Base.empty!(p::ParticleSystemPositions)

@@ -118,35 +118,11 @@ function ParticleSystem(;
         throw(ArgumentError("Either `positions` OR `xpositions` must be defined."))
     end
     xpositions = isnothing(positions) ? xpositions : positions
-    # Check for simple input argument errors
-    for input_array in (xpositions, ypositions)
-        isnothing(input_array) && break
-        if input_array isa AbstractMatrix
-            dim = size(input_array, 1)
-            if !(dim in (2, 3))
-                throw(DimensionMismatch("Matrix of coordinates must have 2 or 3 rows, one for each dimension, got size: $(size(input_array))"))
-            end
-            input_array = reinterpret(reshape, SVector{dim, eltype(input_array)}, input_array)
-        end
-        if !isnothing(unitcell)
-            DIM = if eltype(input_array) <: SVector
-                length(eltype(input_array))
-            else
-                if length(input_array) == 0
-                    # If the array is empty, we cannot determine the dimension, so we assume it is the same as the unit cell
-                    size(unitcell, 1)
-                else
-                    length(input_array[1])
-                end
-            end
-            if DIM != size(unitcell, 1)
-                throw(DimensionMismatch("Dimension of the unit cell ($(size(unitcell, 1))) must match the dimension of the coordinates ($(size(first(input_array))[1]))"))
-            end
-        end
-    end
+    # Find dimension from input
+    DIM = get_dim(unitcell, xpositions, ypositions)
     # Single set of positions
     if isnothing(ypositions)
-        _x = ParticleSystemPositions(xpositions)
+        _x = ParticleSystemPositions(xpositions, DIM)
         unitcell = isnothing(unitcell) ? limits(_x; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(
@@ -165,8 +141,8 @@ function ParticleSystem(;
         )
         # Two sets of positions
     else
-        _x = ParticleSystemPositions(xpositions)
-        _y = ParticleSystemPositions(ypositions)
+        _x = ParticleSystemPositions(xpositions, DIM)
+        _y = ParticleSystemPositions(ypositions, DIM)
         unitcell = isnothing(unitcell) ? limits(_x, _y; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)

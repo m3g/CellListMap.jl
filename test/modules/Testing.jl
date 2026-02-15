@@ -15,8 +15,14 @@
     export missing_pair
     export simple_test
     export PSP
+    export f1, f2, _f1, _f2
 
     const PSP = CellListMap.ParticleSystemPositions
+
+    f1(pair, out) = out += pair.d 
+    f2(pair, out) = out += pair.d2 
+    _f1(x, y, i, j, d2, out) = out += sqrt(d2)
+    _f2(x, y, i, j, d2, out) = out += d2
 
     #=
     pathological_coordinates(N)

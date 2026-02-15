@@ -103,43 +103,35 @@
             output = 0.0,
             unitcell = unitcell,
         )
-        local xp = PSP(x)
-        local yp = PSP(y)
-        uc = isnothing(unitcell) ? CellListMap.limits(xp, yp) : [1, 1]
-        box = CellListMap.Box(uc, 0.1)
-        cl = CellListMap.CellList(xp, yp, box)
-        r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
+        r = pairwise!(f1, system)
+        r_naive = map_naive!(_f1, system)
+        @test r ≈ r_naive
         if x isa AbstractVector
-            xp = PSP(rand(SVector{2, Float64}, length(x) + 100))
+            xp = rand(SVector{2, Float64}, length(x) + 100)
             resize!(system.xpositions, length(xp))
+            system.xpositions .= xp
         else
             # Cannot resize the matrices, so this interface is more limited
-            xp = PSP(rand(2, size(x, 2)))
+            xp = rand(2, size(x, 2))
+            resize!(system.xpositions, size(xp, 2))
+            system.xpositions .= PSP(xp)
         end
-        if isnothing(unitcell)
-            uc = CellListMap.limits(xp, yp)
-            box = CellListMap.Box(uc, 0.1)
-        end
-        cl = CellListMap.UpdateCellList!(xp, yp, box, cl)
-        r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system.xpositions .= xp
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
+        r = pairwise!(f1, system)
+        r_naive = map_naive!(_f1, system)
+        @test r ≈ r_naive
 
         if y isa AbstractVector
-            yp = PSP(rand(SVector{2, Float64}, length(y) + 100))
+            yp = rand(SVector{2, Float64}, length(y) + 100)
             resize!(system.ypositions, length(yp))
+            system.ypositions .= yp
         else
-            yp = PSP(rand(2, size(y, 2)))
+            yp = rand(2, size(y, 2))
+            resize!(system.ypositions, size(yp, 2))
+            system.ypositions .= PSP(yp)
         end
-        if isnothing(unitcell)
-            uc = CellListMap.limits(xp, yp)
-            box = CellListMap.Box(uc, 0.1)
-        end
-        cl = CellListMap.UpdateCellList!(xp, yp, box, cl)
-        r = CellListMap.CellListMap._pairwise!((pair, r) -> r += pair.d2, 0.0, box, cl)
-        system.ypositions .= yp
-        @test r ≈ pairwise!((pair, r) -> r += pair.d2, system)
+        r = pairwise!(f1, system)
+        r_naive = map_naive!(_f1, system)
+        @test r ≈ r_naive
 
     end
 
@@ -203,12 +195,6 @@ end
 @testitem "ParticleSystem - automatic updating" setup=[Testing] begin
     using StaticArrays
     using CellListMap
-
-    f1(pair, out) = out += pair.d 
-    f2(pair, out) = out += pair.d2 
-    _f1(x, y, i, j, d2, out) = out += sqrt(d2)
-    _f2(x, y, i, j, d2, out) = out += d2
-
 
     for unitcell in [[1, 1, 1], nothing]
         #
