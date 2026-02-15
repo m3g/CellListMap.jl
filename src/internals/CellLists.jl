@@ -1195,11 +1195,11 @@ function UpdateCellList!(
     ref_list = cl_pair.ref_list
     target_list = cl_pair.target_list
     if x.updated[]
-        ref_list = UpdateCellList!(x, box, ref_list, ref_aux; parallel, validate_coordinates)
+        UpdateCellList!(x, box, ref_list, ref_aux; parallel, validate_coordinates)
         x.updated[] = false
     end
     if y.updated[]
-        target_list = UpdateCellList!(y, box, target_list, target_aux; parallel, validate_coordinates)
+        UpdateCellList!(y, box, target_list, target_aux; parallel, validate_coordinates)
         y.updated[] = false
     end
     return CellListPair{N, T}(ref_list, target_list)
