@@ -3,6 +3,8 @@
     using CellListMap
     using StaticArrays
     using Setfield: @set!
+    using CellListMap: ParticleSystem1, ParticleSystem2
+    using CellListMap: reset_output!
 
     export pathological_coordinates
     export map_naive!
@@ -50,6 +52,11 @@ Returns `x`, `y`, `sides` and `cutoff`.
 
         return x, y, sides, cutoff
     end
+
+    map_naive!(f, sys::ParticleSystem1) =
+        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys._box)
+    map_naive!(f, sys::ParticleSystem2) =
+        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys.ypositions.x, sys._box)
 
     #=
     map_naive!(f::Function, output, x::AbstractVector, box::Box)
