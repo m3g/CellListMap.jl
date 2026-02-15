@@ -19,7 +19,7 @@
         update!(system, new_x; cutoff = r)
         cl = neighborlist!(system)
         @test is_unique(cl; self = true)
-        @test compare_nb_lists(cl, nb, x, r)[1]
+        @test compare_nb_lists(cl, nb, new_x, r)[1]
 
         # Test system updating for cross-lists
         x = rand(N, 500)
@@ -37,7 +37,7 @@
         update!(system, new_x, new_y; cutoff = r)
         cl = neighborlist!(system)
         @test is_unique(cl; self = false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, new_x, new_y, r)[1]
 
     end
 

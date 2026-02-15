@@ -185,10 +185,12 @@ function update!(
         cutoff = nothing, unitcell = nothing
     ) 
     (; sys) = system
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
-    resize!(sys.ypositions, length(y))
-    sys.ypositions .= y
+    _x = ParticleSystemPositions(x)
+    _y = ParticleSystemPositions(y)
+    resize!(sys.xpositions, length(_x))
+    sys.xpositions .= _x
+    resize!(sys.ypositions, length(_y))
+    sys.ypositions .= _y
     update_cutoff!(sys, cutoff)
     update_unitcell!(sys, unitcell)
     return system

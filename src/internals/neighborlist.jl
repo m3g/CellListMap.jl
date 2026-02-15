@@ -26,7 +26,11 @@ end
 function push_pair!(pair, nb::NeighborList)
     (; i, j, d) =  pair
     nb.n += 1
-    push!(nb.list, (i, j, d))
+    if nb.n > length(nb.list)
+        push!(nb.list, (i, j, d))
+    else
+        nb.list[nb.n] = (i, j, d)
+    end
     return nb
 end
 

@@ -136,20 +136,24 @@ ParticleSystem1{output} of dimension 3, composed of:
 ```
 """
 function update_cutoff!(sys::ParticleSystem1, cutoff)
-    isnothing(cutoff) && return sys
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions), cutoff)
+    else
+        if !isnothing(cutoff)
+            sys._box = update_box(sys._box; cutoff)
+        end
     end
-    sys._box = update_box(sys._box; cutoff)
     sys.xpositions.updated[] = true
     return sys
 end
 function update_cutoff!(sys::ParticleSystem2, cutoff)
-    isnothing(cutoff) && return sys
     if unitcelltype(sys) == NonPeriodicCell
         sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
+    else
+        if !isnothing(cutoff)
+            sys._box = update_box(sys._box; cutoff)
+        end
     end
-    sys._box = update_box(sys._box; cutoff)
     sys.xpositions.updated[] = true
     sys.ypositions.updated[] = true
     return sys
