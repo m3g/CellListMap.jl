@@ -57,12 +57,13 @@
     @test last(p) == p[10]
 
     # iterate
-    count = 0
-    for v in p
-        count += 1
-        @test v isa SVector{3,Float64}
+    let count = 0
+        for v in p
+            count += 1
+            @test v isa SVector{3,Float64}
+        end
+        @test count == length(p)
     end
-    @test count == length(p)
 
     # copy preserves data and updated flag
     p.updated[] = false
