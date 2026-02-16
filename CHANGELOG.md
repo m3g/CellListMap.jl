@@ -14,6 +14,7 @@ Version 0.10.0-DEV
 --------------
 - ![FEATURE][badge-feature] `pairwise!(f, x, sys)` maps `f` to the pairs of the particles defined in vector `x` to the cell list defined in `sys` (to reuse the same cell list for cross-computations with different set of particles).
 - ![FEATURE][badge-feature] `pairwise!(; reset=[true(default)/false]`: the optional `reset` keyword of `pairwise!`, when set to `false`, avoids resetting the initial value of `output` to `zero(typeof(output))`.
+- ![FEATURE][badge-feature] Automatic update tracking of coordinates and cell list updating using the ParticleSystemPositions internal coordinate representation.
 - ![ENHANCEMENT][badge-enhancement] Improve scaling of cell list construction and updating. 
 - ![ENHANCEMENT][badge-enhancement] Improve performance of inner loops.
 - ![BREAKING][badge-breaking] `map_pairwise!` was renamed to `pairwise!`. 
@@ -27,7 +28,8 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Remove custom linear algebra code, use Base methods.
 - ![INFO][badge-info] Remove deprecated code, improve code coverage.
 - ![INFO][badge-info] Remove internal coordinate swapping by size.
-- ![INFO][badge-info] The internal representation of coordiantes is done with `ParticleSytemPositions` array type - which is not a subtype of abstract array. 
+- ![INFO][badge-info] Internal implementation of neighborlist moved to ParticleSystem interface.
+- ![INFO][badge-info] The internal representation of coordinantes is done with `ParticleSytemPositions` array type - which is not a subtype of abstract array. 
 - ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges. This bug was never released, it was created and fixed in the development version.
 
 Version 0.9.17
