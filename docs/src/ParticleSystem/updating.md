@@ -4,7 +4,7 @@ If the `pairwise!` function will compute energy and/or forces in an iterative pr
 
 ## Updating coordinates
 
-The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` (and/or `ypositions`) field of the system. These position arrays are `Vector`s of `SVector`s (from `StaticArrays`), with coordinates copied from the input array provided. Thus, the coordinates in the `ParticleSystem` structure must be updated independently of updates in the original array of coordinates.
+The coordinates can be updated (mutated, or the array of coordinates can change in size by pushing or deleting particles), simply by directly accessing the `xpositions` (and/or `ypositions`) field of the system. These position arrays are of type [`ParticleSystemPositions`](@ref), which wraps a `Vector{SVector{N,T}}` and tracks mutations automatically. When positions are modified through the supported interface (see [The `ParticleSystemPositions` type](@ref)), the cell lists are recomputed automatically on the next call to `pairwise!`. Thus, the coordinates in the `ParticleSystem` structure must be updated independently of updates in the original array of coordinates.
 
 Let us exemplify the interface with the computation of forces:
 

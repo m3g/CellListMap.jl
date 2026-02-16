@@ -93,3 +93,46 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
           vectors correspond to the *columns* of the matrix.
         - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters.
+
+## The `ParticleSystemPositions` type
+
+The positions stored in a `ParticleSystem` (accessible via `system.xpositions` and, for two-set systems, `system.ypositions`) are of type `ParticleSystemPositions{N,T}`. This is a wrapper around a `Vector{SVector{N,T}}` that carries an internal `updated` flag. When coordinates are mutated through the supported interface, the flag is set automatically, so that cell lists are recomputed on the next call to `pairwise!`.
+
+A `ParticleSystemPositions` can be constructed from:
+- A vector of vectors (e.g. `Vector{Vector{Float64}}`).
+- A vector of `SVector`s (e.g. `Vector{SVector{3,Float64}}`).
+- An `(D, M)` matrix, where `D` is the dimension and `M` the number of particles.
+
+### Mutating interface
+
+The following functions mutate the positions **and** flag the array as updated, triggering
+recomputation of the cell lists on the next `pairwise!` call:
+
+| Function      | Description                                     |
+|:------------- |:----------------------------------------------- |
+| `setindex!`   | Set the position of a single particle by index   |
+| `empty!`      | Remove all positions                             |
+| `resize!`     | Resize the number of positions                   |
+| `append!`     | Append positions from another collection         |
+| `copyto!`     | Copy positions from another array or broadcast   |
+| Broadcasting  | In-place broadcast (e.g. `p .= new_positions`)   |
+
+### Read-only interface
+
+| Function      | Description                                      |
+|:------------- |:------------------------------------------------ |
+| `getindex`    | Retrieve the position of a particle by index      |
+| `length`      | Number of particles                               |
+| `size`        | Size tuple `(length,)`                            |
+| `axes`        | Index axes of the underlying vector               |
+| `keys`        | Linear indices                                    |
+| `eachindex`   | Iterator over valid indices                       |
+| `firstindex`  | First valid index                                 |
+| `lastindex`   | Last valid index                                  |
+| `first`       | First position                                    |
+| `last`        | Last position                                     |
+| `ndims`       | Always returns `1`                                |
+| `iterate`     | Iteration protocol                                |
+| `copy`        | Shallow copy (preserves `updated` flag)           |
+| `similar`     | Allocate an uninitialized array of same shape      |
+| `view`        | Create a view sharing the `updated` flag          |
