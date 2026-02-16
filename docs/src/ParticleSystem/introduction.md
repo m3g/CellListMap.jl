@@ -94,7 +94,7 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
         - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters.
 
-## The `ParticleSystemPositions` type
+## [The `ParticleSystemPositions` type](@id ParticleSystemPositions)
 
 The positions stored in a `ParticleSystem` (accessible via `system.xpositions` and, for two-set systems, `system.ypositions`) are of type `ParticleSystemPositions{N,T}`. This is a wrapper around a `Vector{SVector{N,T}}` that carries an internal `updated` flag. When coordinates are mutated through the supported interface, the flag is set automatically, so that cell lists are recomputed on the next call to `pairwise!`.
 
@@ -114,7 +114,7 @@ recomputation of the cell lists on the next `pairwise!` call:
 | `empty!`      | Remove all positions                             |
 | `resize!`     | Resize the number of positions                   |
 | `append!`     | Append positions from another collection         |
-| `copyto!`     | Copy positions from another array or broadcast   |
+| `push!`       | Append positions from another collection         |
 | Broadcasting  | In-place broadcast (e.g. `p .= new_positions`)   |
 
 ### Read-only interface

@@ -30,6 +30,7 @@ Public and exported:
 ```@docs
 NeighborPair
 ParticleSystem
+ParticleSystemPositions
 ```
 
 Public but not exported:

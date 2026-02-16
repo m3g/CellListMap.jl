@@ -34,7 +34,7 @@ recomputation of the cell lists on the next `pairwise!` call:
 | `empty!`      | Remove all positions                             |
 | `resize!`     | Resize the number of positions                   |
 | `append!`     | Append positions from another collection         |
-| `copyto!`     | Copy positions from another array or broadcast   |
+| `push!`       | Add element                                      |
 | Broadcasting  | In-place broadcast (e.g. `p .= new_positions`)   |
 
 ## Read-only interface
@@ -109,6 +109,12 @@ function Base.resize!(p::ParticleSystemPositions, n::Integer)
     resize!(p.x, n)
     return p
 end
+function Base.push!(p::ParticleSystemPositions{N,T}, v::SVector{N,T}) where {N,T}
+    p.updated[] = true
+    push!(p.x, v)
+    return p
+end
+
 Base.getindex(p::ParticleSystemPositions, i) = p.x[i]
 function Base.setindex!(p::ParticleSystemPositions{N,T}, v::SVector{N,T}, i) where {N,T}
     p.updated[] = true
