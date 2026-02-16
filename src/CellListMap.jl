@@ -13,6 +13,7 @@ using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
 # Exported names of ParticleSystem interface
 export ParticleSystem
+export ParticleSystemPositions
 export NeighborPair
 export pairwise!
 export update_cutoff!
@@ -30,6 +31,9 @@ export neighborlist, neighborlist!
 # NeighborPair structure
 include("./API/NeighborPair.jl")
 
+# ParticleSystemPositions type (needed by CellLists.jl)
+include("./API/AbstractParticleSystem.jl")
+
 # Core-computing
 include("./internals/show.jl")
 include("./internals/Box.jl")
@@ -39,9 +43,6 @@ include("./internals/auxiliary_functions.jl")
 include("./internals/vicinal_cells.jl")
 include("./internals/self.jl")
 include("./internals/cross.jl")
-
-# ParticleSystem interface
-include("./API/AbstractParticleSystem.jl")
 include("./internals/ParticleSystem.jl")
 include("./API/ParticleSystem.jl")
 include("./API/parallel_custom.jl")

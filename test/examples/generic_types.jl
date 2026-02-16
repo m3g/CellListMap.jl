@@ -55,9 +55,9 @@ function sumsq_measurements(x_input, sides, cutoff; parallel = false)
     # input array and computing the result directly from the original
     # data. Here, `x_input` is the original array of coordinates
     # with uncertainties.
-    function sum_sqr_pair(i, j, s, x_input, box)
+    function sum_sqr_pair(i, j, s, x_input, sides)
         xi = x_input[i]
-        xj = CellListMap.wrap_relative_to(x_input[j], xi, box.input_unit_cell.matrix)
+        xj = CellListMap.wrap_relative_to(x_input[j], xi, sides)
         s += sum(abs2, xi - xj)
         return s
     end
@@ -66,19 +66,17 @@ function sumsq_measurements(x_input, sides, cutoff; parallel = false)
     # of coordinates with values only
     x = [getproperty.(v, :val) for v in x_input]
 
-    # Build cell lists
-    box = CellListMap.Box(sides, cutoff)
-    cl = CellListMap.CellList(x, box)
-
-    # The initial result is initialized with the appropriate type.
-    s = measurement(0.0, 0.0)
+    sys = ParticleSystem(
+        xpositions=x,
+        cutoff=cutoff,
+        unitcell=sides,
+        # The initial result is initialized with the appropriate type.
+        output=measurement(0.0, 0.0)
+    )
 
     # And instead of using the `x` and `y` coordinates provided by the
     # interface, we close over the `x_input` and `box` for the calculations.
-    s = CellListMap._pairwise!(
-        (pair, s) -> sum_sqr_pair(pair.i, pair.j, s, x_input, box),
-        s, box, cl, parallel = parallel
-    )
+    s = pairwise!((pair, s) -> sum_sqr_pair(pair.i, pair.j, s, x_input, sides), sys)
     return s
 end
 

@@ -112,8 +112,8 @@ end
 Updates the cell lists for periodic systems.
 
 =#
-function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
-    if update_lists
+function UpdateParticleSystem!(sys::ParticleSystem1)
+    if sys.xpositions.updated[]
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions), sys.cutoff)
         end
@@ -135,14 +135,19 @@ function UpdateParticleSystem!(sys::ParticleSystem1, update_lists::Bool = true)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
+        sys.xpositions.updated[] = false
     end
     return sys
 end
 
-function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
-    if update_lists
+function UpdateParticleSystem!(sys::ParticleSystem2)
+    if sys.xpositions.updated[] || sys.ypositions.updated[]
         if unitcelltype(sys) == NonPeriodicCell
             sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
+            # Both cell lists must be rebuilt when the box changes,
+            # because the origin and sides changed.
+            sys.xpositions.updated[] = true
+            sys.ypositions.updated[] = true
         end
         n_particles_changed = (length(sys.xpositions) != sys._cell_list.ref_list.n_real_particles) ||
             (length(sys.ypositions) != sys._cell_list.target_list.n_real_particles)
@@ -164,6 +169,8 @@ function UpdateParticleSystem!(sys::ParticleSystem2, update_lists::Bool = true)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
+        sys.xpositions.updated[] = false
+        sys.ypositions.updated[] = false
     end
     return sys
 end

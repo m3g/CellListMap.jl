@@ -6,42 +6,31 @@ mutable struct NeighborList{T}
     list::Vector{Tuple{Int, Int, T}}
 end
 
-import Base: push!, empty!, resize!, copy
-empty!(x::NeighborList) = x.n = 0
-function push!(x::NeighborList, pair)
-    x.n += 1
-    if x.n > length(x.list)
-        push!(x.list, pair)
-    else
-        x.list[x.n] = pair
+# Functions for parallel construction and reduction
+function reset_output!(nb::NeighborList)
+    nb.n = 0
+    return nb
+end
+copy_output(nb::NeighborList) = NeighborList(nb.n, copy(nb.list))
+function reducer!(nb1::NeighborList, nb2::NeighborList)
+    ntot = nb1.n + nb2.n
+    if length(nb1.list) < ntot
+        resize!(nb1.list, ntot)
     end
-    return x
+    nb1.list[nb1.n + 1:ntot] .= nb2.list[1:nb2.n]
+    nb1.n = ntot
+    return nb1
 end
-function resize!(x::NeighborList, n::Int)
-    x.n = n
-    resize!(x.list, n)
-    return x
-end
-copy(x::NeighborList{T}) where {T} = NeighborList{T}(x.n, copy(x.list))
 
 # Function adds pair to the list
-function push_pair!(i, j, d2, list::NeighborList)
-    d = sqrt(d2)
-    push!(list, (i, j, d))
-    return list
+function push_pair!(pair, nb::NeighborList)
+    (; i, j, d) =  pair
+    nb.n += 1
+    if nb.n > length(nb.list)
+        push!(nb.list, (i, j, d))
+    else
+        nb.list[nb.n] = (i, j, d)
+    end
+    return nb
 end
 
-# We have to define our own reduce function here (for the parallel version)
-# this reduction can be dum assynchronously on a preallocated array
-function reduce_lists(list::NeighborList{T}, list_threaded::Vector{<:NeighborList{T}}) where {T}
-    ranges = cumsum(nb.n for nb in list_threaded)
-    npairs = ranges[end]
-    # need to resize here for the case where length(list) < npairs
-    list = resize!(list, npairs)
-    @sync for it in eachindex(list_threaded)
-        lt = list_threaded[it]
-        range = (ranges[it] - lt.n + 1):ranges[it]
-        @spawn list.list[range] .= @view(lt.list[1:lt.n])
-    end
-    return list
-end

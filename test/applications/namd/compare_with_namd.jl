@@ -1,10 +1,12 @@
-@testitem "compare_with_namd.jl" begin
+@testitem "compare_with_namd.jl" setup=[Testing] begin
 
     import Chemfiles
     using CellListMap
     using StaticArrays
+    const PSP = ParticleSystemPositions
 
-    function lj_NE(d2, u)
+    function lj_NE(pair, u)
+        (; d2) = pair
         ε = 0.0441795
         σ = 2 * 1.64009
         d = sqrt(d2)
@@ -20,9 +22,14 @@
 
     function test_newcl(file, unit_cell, correct, lcell)
         coordinates = getcoor(file)
-        box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-        cl = CellListMap.CellList(coordinates, box)
-        u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+        sys = ParticleSystem(
+            xpositions=coordinates,
+            unitcell=unit_cell,
+            cutoff=10.0,
+            lcell=lcell,
+            output=0.0,
+        )
+        u = pairwise!(lj_NE, sys)
         if !(u ≈ correct)
             @show (u, correct)
             return false
@@ -68,7 +75,6 @@
     lcell = 1
 
     # Some orthorhombic cells
-
     unit_cell = [50.0, 50.0, 50.0]
     correct = 32230.01699504111
     @test test_newcl("$dir/o1.dcd", unit_cell, correct, lcell)
@@ -78,7 +84,6 @@
     @test test_newcl("$dir/o2.dcd", unit_cell, correct, lcell)
 
     # Orthorhombic but rotated
-
     #! format: off
     unit_cell = [50.0 0.0 50.0
                  50.0 50.0 0.0
@@ -111,7 +116,6 @@
     @test test_newcl("$dir/o6.dcd", unit_cell, correct, lcell)
 
     # Some triclinic cells
-
     #! format: off
     unit_cell = [80.0  0.0 30.0
                  30.0 80.0  0.0
@@ -131,46 +135,39 @@
     #
     # Check cell list updating routine
     #
-
-    coordinates = getcoor("$dir/o1.dcd")
-    #! format: off
-    unit_cell = [50.0  0.0  0.0
-                  0.0 50.0  0.0
-                  0.0  0.0 50.0]
-    #! format: on
+    sys = ParticleSystem(
+        xpositions=getcoor("$dir/o1.dcd"),
+        #! format: off
+        unitcell = [50.0  0.0  0.0
+                     0.0 50.0  0.0
+                     0.0  0.0 50.0],
+        #! format: on
+        cutoff=10.0,
+        output=0.0,
+    )
+    u = pairwise!(lj_NE, sys)
     correct = 32230.01699504111
-    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-    cl = CellListMap.CellList(coordinates, box)
-    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
-    coordinates = getcoor("$dir/o2.dcd")
-    unit_cell = [80.0, 70.0, 50.0]
+    sys.xpositions .= getcoor("$dir/o2.dcd")
+    update_unitcell!(sys, [80.0, 70.0, 50.0])
+    u = pairwise!(lj_NE, sys)
     correct = 1093.7225407797744
-    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-    cl = CellListMap.UpdateCellList!(coordinates, box, cl)
-    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
-    # Test preallocated AuxThreaded struct
-    aux = CellListMap.AuxThreaded(cl)
-    coordinates = getcoor("$dir/t1.dcd")
+    sys.xpositions .= getcoor("$dir/t1.dcd")
     #! format: off
     unit_cell = [80.0  0.0 30.0
                  30.0 80.0  0.0
                   0.0 40.0 80.0]
     #! format: on
+    update_unitcell!(sys, unit_cell)
     correct = -116.53213607052128
-    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-    cl = CellListMap.UpdateCellList!(coordinates, box, cl, aux)
-    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = pairwise!(lj_NE, sys)
     @test u ≈ correct
 
     # Same thing with a different lcell
-
     lcell = 3
-
-    # Some orthorhombic cells
 
     unit_cell = [50.0, 50.0, 50.0]
     correct = 32230.01699504111
@@ -181,7 +178,6 @@
     @test test_newcl("$dir/o2.dcd", unit_cell, correct, lcell)
 
     # Orthorhombic but rotated
-
     unit_cell = [
         50.0 0.0 50.0
         50.0 50.0 0.0
@@ -231,39 +227,37 @@
     #
     # Check cell list updating routine
     #
-
-    coordinates = getcoor("$dir/o1.dcd")
-    #! format: off
-    unit_cell = [ 50.0  0.0  0.0
-                   0.0 50.0  0.0
-                   0.0  0.0 50.0 ]
-    #! format: on
+    sys = ParticleSystem(
+        xpositions=getcoor("$dir/o1.dcd"),
+        #! format: off
+        unitcell = [ 50.0  0.0  0.0
+                      0.0 50.0  0.0
+                      0.0  0.0 50.0 ],
+        #! format: on
+        output=0.0,
+        cutoff=10.0,
+        lcell=lcell,
+    )
+    u = pairwise!(lj_NE, sys)
     correct = 32230.01699504111
-    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-    cl = CellListMap.CellList(coordinates, box)
-    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
     @test u ≈ correct
 
-    coordinates = getcoor("$dir/o2.dcd")
-    unit_cell = [80.0, 70.0, 50.0]
+    sys.xpositions .= getcoor("$dir/o2.dcd")
+    update_unitcell!(sys, [80.0, 70.0, 50.0])
     correct = 1093.7225407797744
-    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-    cl = CellListMap.UpdateCellList!(coordinates, box, cl)
-    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = pairwise!(lj_NE, sys)
     @test u ≈ correct
 
-    # Test preallocated AuxThreaded struct
-    aux = CellListMap.AuxThreaded(cl)
-    coordinates = getcoor("$dir/t1.dcd")
+    sys.xpositions .= getcoor("$dir/t1.dcd")
     #! format: off
-    unit_cell = [80.0  0.0 30.0
-                 30.0 80.0  0.0
-                  0.0 40.0 80.0]
+    update_unitcell!(sys,
+        [80.0  0.0 30.0
+         30.0 80.0  0.0
+         0.0 40.0 80.0]
+    )
     #! format: on
     correct = -116.53213607052128
-    box = CellListMap.Box(unit_cell, 10.0, lcell = lcell)
-    cl = CellListMap.UpdateCellList!(coordinates, box, cl, aux)
-    u = CellListMap._pairwise!((pair, u) -> lj_NE(pair.d2, u), 0.0, box, cl)
+    u = pairwise!(lj_NE, sys)
     @test u ≈ correct
 
 end

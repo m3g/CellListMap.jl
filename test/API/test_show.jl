@@ -58,7 +58,7 @@
         rep = Dict("CellListMap." => "")
     )
 
-    cl = CellListMap.CellList(x, box; nbatches = (2, 4))
+    cl = CellListMap.CellList(CellListMap.ParticleSystemPositions(x), box; nbatches = (2, 4))
     @test test_show(
         cl, """
             CellList{3, Float64}
@@ -78,7 +78,8 @@
         rep = Dict("CellListMap." => "")
     )
 
-    cl = CellListMap.CellList(x, y, box; nbatches = (2, 4))
+    PSP = CellListMap.ParticleSystemPositions
+    cl = CellListMap.CellList(PSP(x), PSP(y), box; nbatches = (2, 4))
     @test test_show(
         cl, """
             CellListMap.CellListPair{3, Float64}

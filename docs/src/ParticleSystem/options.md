@@ -115,25 +115,6 @@ julia> nbatches(system) # updated for 100000 particles
 If the number of batches is explicitly set to non-zero values, they will be kept fixed
 and will not change when the number of particles changes.
 
-## Avoid cell list updating
-
-To compute different properties without recomputing cell lists, use `update_lists=false` in
-the call of `pairwise` methods, for example,
-```julia
-using CellListMap, StaticArrays
-system = ParticleSystem(xpositions=rand(SVector{3,Float64},1000), output=0.0, cutoff=0.1, unitcell=[1,1,1])
-# First call, will compute the cell lists
-pairwise!((pair, u) -> u += pair.d2, system)
-# Second run: do not update the cell lists but compute a different property
-pairwise!((pair, u) -> u += pair.d, system; update_lists=false)
-```
-in which case we are computing the sum of distances from the same cell lists used to compute the energy in the previous example
-(requires version 0.8.9).
-
-!!! warning
-    `update_lists=false` will skip the updating of the cell lists, thus be careful to **not** use this
-    option if the coordinates, cutoff, unitcell, or any other property of the system changed.
-
 ## Control CellList cell size
 
 The cell sizes of the construction of the cell lists can be controlled with the keyword `lcell`

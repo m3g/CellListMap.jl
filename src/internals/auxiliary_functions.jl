@@ -1,4 +1,52 @@
 #=
+    get_dim(unitcell, x, [y])
+
+Try to determine the dimension (2 or 3) of the constructed system from the data
+provided, error if imposible. 
+
+=#
+function get_dim(unitcell, x, y=nothing)
+    Ds = ( 
+        !isnothing(unitcell) ?  size(unitcell, 1) : 0,
+        _element_length(x),
+        _element_length(y),
+    )
+    D = maximum(Ds)
+    if D == 0
+        throw(ArgumentError("""\n
+            Could not infer dimension (2 or 3) from the unitcell or coordinate arrays. 
+            Got: unitcell: $(Ds[1]); x: $(Ds[2]); y: $(Ds[3])
+
+        """))
+    end
+    if !(D in (2,3))
+        throw(ArgumentError("""\n
+            Dimension must be 2 or 3.
+            Got: unitcell: $(Ds[1]); x: $(Ds[2]); y: $(Ds[3])
+
+        """))
+    end
+    if any(d -> d != 0 && d != D, Ds)
+        throw(ArgumentError("""\n
+            Incompatible dimensions between unitcell and/or coordinates. 
+            Got: unitcell: $(Ds[1]); x: $(Ds[2]); y: $(Ds[3])
+
+        """))
+    end
+    return D
+end
+_element_length(::Nothing) = 0
+_element_length(::AbstractVector{<:SVector{N}}) where {N} = N
+_element_length(x::AbstractVector{<:AbstractVector}) = isempty(x) ? 0 : length(first(x))
+_element_length(x::AbstractMatrix) = size(x,1)
+_element_length(::AbstractVector) = throw(ArgumentError(" Coordinates must be vectors of vectors, or matrices."))
+
+get_dim(sys::AbstractParticleSystem) = get_dim(sys.xpositions)
+get_dim(::ParticleSystemPositions{N}) where {N} = N
+
+
+
+#=
     reduce(output, output_threaded)
 
 Most common reduction function, which sums the elements of the output. 

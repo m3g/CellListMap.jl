@@ -502,7 +502,7 @@ CellList{3, Float64}
 
 =#
 function CellList(
-        x::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
         box::Box{UnitCellType, N, T};
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
@@ -511,26 +511,6 @@ function CellList(
     cl = CellList{N, T}(n_real_particles = length(x), number_of_cells = prod(box.nc))
     set_number_of_batches!(cl, nbatches; parallel)
     return UpdateCellList!(x, box, cl; parallel, validate_coordinates)
-end
-
-#=
-    CellList(x::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
-
-Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterpreted input. The first dimension of the 
-matrix must be the dimension of the points (`2` or `3`).
-
-=#
-function CellList(
-        x::AbstractMatrix,
-        box::Box{UnitCellType, N, T};
-        parallel::Bool = true,
-        nbatches::Tuple{Int, Int} = (0, 0),
-        validate_coordinates::Union{Function, Nothing} = _validate_coordinates,
-    ) where {UnitCellType, N, T}
-    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    return CellList(x_re, box; parallel, nbatches, validate_coordinates)
 end
 
 #=
@@ -601,8 +581,8 @@ CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
 
 =#
 function CellList(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box{UnitCellType, N, T};
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
@@ -618,31 +598,8 @@ function CellList(
 end
 
 #=
-    CellList(x::AbstractMatrix, y::AbstractMatrix, box::Box{UnitCellType,N,T}; kargs...) where {UnitCellType,N,T} 
-
-Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterpreted input. The first dimension of the 
-matrices must be the dimension of the points (`2` or `3`).
-
-=#
-function CellList(
-        x::AbstractMatrix,
-        y::AbstractMatrix,
-        box::Box{UnitCellType, N, T};
-        parallel::Bool = true,
-        nbatches::Tuple{Int, Int} = (0, 0),
-        validate_coordinates::Union{Function, Nothing} = _validate_coordinates,
-    ) where {UnitCellType, N, T}
-    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    size(y, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    y_re = reinterpret(reshape, SVector{N, eltype(y)}, y)
-    return CellList(x_re, y_re, box; parallel, nbatches, validate_coordinates)
-end
-
-#=
     UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
         box::Box,
         cl:CellList;
         parallel=true,
@@ -678,45 +635,23 @@ julia> UpdateCellList!(x,box,cl); # update lists
 
 =#
 function UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
         box::Box,
         cl::CellList;
         parallel::Bool = true,
         validate_coordinates = _validate_coordinates,
     )
-    cl = if parallel
-        aux = AuxThreaded(cl)
-        UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
-    else
-        UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
+    if x.updated[]
+        cl = if parallel
+            aux = AuxThreaded(cl)
+            UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
+        else
+            UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
+        end
+        cl = update_number_of_batches!(cl; parallel)
     end
-    cl = update_number_of_batches!(cl; parallel)
+    x.updated[] = false
     return cl
-end
-
-#=
-    function UpdateCellList!(
-        x::AbstractMatrix,
-        box::Box,
-        cl::CellList{N,T};
-        parallel::Bool=true,
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates,
-    ) where {N,T}
-
-Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterpreted input. The first dimension of the 
-matrix must be the dimension of the points (`2` or `3`).
-
-=#
-function UpdateCellList!(
-        x::AbstractMatrix,
-        box::Box,
-        cl::CellList{N, T};
-        kargs...
-    ) where {N, T}
-    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    return UpdateCellList!(x_re, box, cl; kargs...)
 end
 
 #=
@@ -783,7 +718,7 @@ CellList{3, Float64}
 
 =#
 function UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
         box::Box,
         cl::CellList{N, T},
         aux::Union{Nothing, AuxThreaded{N, T}};
@@ -975,34 +910,10 @@ function UpdateCellList!(
         end
     end
 
+    # set updated to false, to indicate that the cell list was constructed
+    # for these coordinates.
+    x.updated[] = false
     return cl
-end
-
-#=
-    UpdateCellList!(
-        x::AbstractMatrix,
-        box::Box,
-        cl::CellList{N,T},
-        aux::Union{Nothing,AuxThreaded{N,T}};
-        parallel::Bool=true,
-        validate_coordinates=_validate_coordinates,
-    ) where {N,T}
-
-Reinterprets the matrix `x` as vectors of static vectors and calls the
-equivalent function with the reinterpreted input. The first dimension of the 
-matrix must be the dimension of the points (`2` or `3`).
-
-=#
-function UpdateCellList!(
-        x::AbstractMatrix,
-        box::Box,
-        cl::CellList{N, T},
-        aux::Union{Nothing, AuxThreaded{N, T}};
-        kargs...
-    ) where {N, T}
-    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    return UpdateCellList!(x_re, box, cl, aux; kargs...)
 end
 
 #=
@@ -1183,8 +1094,8 @@ julia> UpdateCellList!(x,y,box,cl); # update lists
 
 =#
 function UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box,
         cl_pair::CellListPair;
         parallel::Bool = true,
@@ -1198,34 +1109,6 @@ function UpdateCellList!(
     end
     cl_pair = update_number_of_batches!(cl_pair; parallel)
     return cl_pair
-end
-
-#=
-    UpdateCellList!(
-        x::AbstractMatrix,
-        y::AbstractMatrix,
-        box::Box{UnitCellType,N},
-        cl_pair::CellListPair;
-        parallel::Bool=true
-    ) where {UnitCellType,N}
-
-Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterpreted input. The first dimension of the 
-matrices must be the dimension of the points (`2` or `3`).
-
-=#
-function UpdateCellList!(
-        x::AbstractMatrix,
-        y::AbstractMatrix,
-        box::Box{UnitCellType, N},
-        cl_pair::CellListPair;
-        kargs...
-    ) where {UnitCellType, N}
-    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    size(y, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    y_re = reinterpret(reshape, SVector{N, eltype(y)}, y)
-    return UpdateCellList!(x_re, y_re, box, cl_pair; kargs...)
 end
 
 #=
@@ -1297,8 +1180,8 @@ julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
 
 =#
 function UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box,
         cl_pair::CellListPair{N, T},
         aux::Union{Nothing, AuxThreadedPair};
@@ -1309,37 +1192,15 @@ function UpdateCellList!(
     isnothing(validate_coordinates) || validate_coordinates(y)
     ref_aux = isnothing(aux) ? nothing : aux.ref_list
     target_aux = isnothing(aux) ? nothing : aux.target_list
-    ref_list = UpdateCellList!(x, box, cl_pair.ref_list, ref_aux; parallel, validate_coordinates)
-    target_list = UpdateCellList!(y, box, cl_pair.target_list, target_aux; parallel, validate_coordinates)
+    ref_list = cl_pair.ref_list
+    target_list = cl_pair.target_list
+    if x.updated[]
+        UpdateCellList!(x, box, ref_list, ref_aux; parallel, validate_coordinates)
+        x.updated[] = false
+    end
+    if y.updated[]
+        UpdateCellList!(y, box, target_list, target_aux; parallel, validate_coordinates)
+        y.updated[] = false
+    end
     return CellListPair{N, T}(ref_list, target_list)
-end
-
-#=
-    UpdateCellList!(
-        x::AbstractMatrix,
-        y::AbstractMatrix,
-        box::Box,
-        cl_pair::CellListPair,
-        aux::Union{Nothing,AuxThreaded};
-        parallel::Bool=true
-    ) where {UnitCellType,N}
-
-Reinterprets the matrices `x` and `y` as vectors of static vectors and calls the
-equivalent function with the reinterpreted input. The first dimension of the 
-matrices must be the dimension of the points (`2` or `3`).
-
-=#
-function UpdateCellList!(
-        x::AbstractMatrix,
-        y::AbstractMatrix,
-        box::Box{UnitCellType, N},
-        cl_pair::CellListPair,
-        aux::Union{Nothing, AuxThreadedPair};
-        kargs...
-    ) where {UnitCellType, N}
-    size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    size(y, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
-    x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    y_re = reinterpret(reshape, SVector{N, eltype(y)}, y)
-    return UpdateCellList!(x_re, y_re, box, cl_pair, aux; kargs...)
 end

@@ -1,99 +1,7 @@
-@testitem "NeighborList operations" begin
-    using CellListMap
-    nb = CellListMap.NeighborList(0, Tuple{Int, Int, Float64}[])
-    @test length(nb.list) == 0
-    push!(nb, (0, 0, 0.0))
-    @test (nb.n, length(nb.list)) == (1, 1)
-    empty!(nb)
-    @test (nb.n, length(nb.list)) == (0, 1)
-    resize!(nb, 5)
-    @test (nb.n, length(nb.list), nb.n) == (5, 5, 5)
-    nb.list = [(i, i, Float64(i)) for i in 1:5]
-    nb2 = copy(nb)
-    @test (nb.n, nb.list) == (nb2.n, nb2.list)
-end
-
-@testitem "Neighborlist push/reduce" begin
-    using CellListMap
-    nb1 = CellListMap.NeighborList(2, [(0, 0, 0.0), (1, 1, 1.0)])
-    CellListMap.push_pair!(3, 3, 9.0, nb1)
-    @test (nb1.n, nb1.list[3]) == (3, (3, 3, 3.0))
-    nb2 = [copy(nb1), CellListMap.NeighborList(1, [(4, 4, 4.0)])]
-    CellListMap.reduce_lists(nb1, nb2)
-    @test nb1.n == 4
-    @test nb1.list == [(0, 0, 0.0), (1, 1, 1.0), (3, 3, 3.0), (4, 4, 4.0)]
-end
-
-@testitem "InPlaceNeighborLists Updates" begin
-    using CellListMap
-    using StaticArrays
-    using LinearAlgebra: diag
-    import CellListMap: _sides_from_limits
-
-    # Non-periodic systems
-    x = rand(SVector{3, Float64}, 10^3)
-    system = InPlaceNeighborList(x = x, cutoff = 0.1)
-    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(CellListMap.limits(x), 0.1)
-    x = rand(SVector{3, Float64}, 10^3)
-    update!(system, x)
-    @test system.box.cutoff == 0.1
-    update!(system, x; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) == _sides_from_limits(CellListMap.limits(x), 0.05)
-
-    x = rand(SVector{3, Float64}, 10^3)
-    y = rand(SVector{3, Float64}, 10^3)
-    system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1)
-    @test diag(system.box.input_unit_cell.matrix) ≈ _sides_from_limits(CellListMap.limits(x, y), 0.1)
-    x = rand(SVector{3, Float64}, 10^3)
-    y = rand(SVector{3, Float64}, 10^3)
-    update!(system, x, y)
-    @test system.box.cutoff == 0.1
-    update!(system, x, y; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    @test diag(system.box.input_unit_cell.matrix) ≈ _sides_from_limits(CellListMap.limits(x, y), 0.05)
-
-    # Orthorhombic systems
-    x = rand(SVector{3, Float64}, 10^3)
-    system = InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1, 1, 1])
-    update!(system, x)
-    @test system.box.cutoff == 0.1
-    update!(system, x; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    update!(system, x; cutoff = 0.05, unitcell = [2, 2, 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
-
-    system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1, unitcell = [1, 1, 1])
-    update!(system, x, y)
-    @test system.box.cutoff == 0.1
-    update!(system, x, y; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    update!(system, x, y; cutoff = 0.05, unitcell = [2, 2, 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
-
-    # Triclinic systems
-    x = rand(SVector{3, Float64}, 10^3)
-    system = InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1])
-    update!(system, x)
-    @test system.box.cutoff == 0.1
-    update!(system, x; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    update!(system, x; cutoff = 0.05, unitcell = [2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
-
-    system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1])
-    update!(system, x, y)
-    @test system.box.cutoff == 0.1
-    update!(system, x, y; cutoff = 0.05)
-    @test system.box.cutoff == 0.05
-    update!(system, x, y; cutoff = 0.05, unitcell = [2 0 0; 0 2 0; 0 0 2])
-    @test (system.box.cutoff, system.box.input_unit_cell.matrix) == (0.05, [2 0 0; 0 2 0; 0 0 2])
-
-end
-
 @testitem "InPlaceNeighborList vs. NearestNeighbors" setup = [TestingNeighborLists] begin
 
     using CellListMap
+    using CellListMap: get_cutoff, get_unitcell
     using NearestNeighbors
 
     for N in [2, 3]
@@ -112,7 +20,7 @@ end
         update!(system, new_x; cutoff = r)
         cl = neighborlist!(system)
         @test is_unique(cl; self = true)
-        @test compare_nb_lists(cl, nb, x, r)[1]
+        @test compare_nb_lists(cl, nb, new_x, r)[1]
 
         # Test system updating for cross-lists
         x = rand(N, 500)
@@ -130,9 +38,76 @@ end
         update!(system, new_x, new_y; cutoff = r)
         cl = neighborlist!(system)
         @test is_unique(cl; self = false)
-        @test compare_nb_lists(cl, nb, x, y, r)[1]
+        @test compare_nb_lists(cl, nb, new_x, new_y, r)[1]
 
     end
+
+end
+
+@testitem "InPlaceNeighborLists Updates" setup=[Testing] begin
+    using CellListMap
+    using StaticArrays
+    using LinearAlgebra: diag
+    using CellListMap: _sides_from_limits,
+                        get_cutoff,
+                        get_unitcell
+
+    # Non-periodic systems
+    x = rand(SVector{3, Float64}, 10^3)
+    system = InPlaceNeighborList(x = x, cutoff = 0.1)
+    update!(system, x)
+    @test get_cutoff(system) == 0.1
+    update!(system, x; cutoff = 0.05)
+    @test get_cutoff(system) == 0.05
+    @test diag(get_unitcell(system)) == _sides_from_limits(CellListMap.limits(PSP(x)), 0.05)
+
+    x = rand(SVector{3, Float64}, 10^3)
+    y = rand(SVector{3, Float64}, 10^3)
+    system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1)
+    @test diag(get_unitcell(system)) ≈ _sides_from_limits(CellListMap.limits(PSP(x), PSP(y)), 0.1)
+    x = rand(SVector{3, Float64}, 10^3)
+    y = rand(SVector{3, Float64}, 10^3)
+    update!(system, x, y)
+    @test get_cutoff(system) == 0.1
+    update!(system, x, y; cutoff = 0.05)
+    @test get_cutoff(system) == 0.05
+    @test diag(get_unitcell(system)) ≈ _sides_from_limits(CellListMap.limits(PSP(x), PSP(y)), 0.05)
+
+    # Orthorhombic systems
+    x = rand(SVector{3, Float64}, 10^3)
+    system = InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1, 1, 1])
+    update!(system, x)
+    @test get_cutoff(system) == 0.1
+    update!(system, x; cutoff = 0.05)
+    @test get_cutoff(system) == 0.05
+    update!(system, x; cutoff = 0.05, unitcell = [2, 2, 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+
+    system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1, unitcell = [1, 1, 1])
+    update!(system, x, y)
+    @test get_cutoff(system) == 0.1
+    update!(system, x, y; cutoff = 0.05)
+    @test get_cutoff(system) == 0.05
+    update!(system, x, y; cutoff = 0.05, unitcell = [2, 2, 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+
+    # Triclinic systems
+    x = rand(SVector{3, Float64}, 10^3)
+    system = InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1])
+    update!(system, x)
+    @test get_cutoff(system) == 0.1
+    update!(system, x; cutoff = 0.05)
+    @test get_cutoff(system) == 0.05
+    update!(system, x; cutoff = 0.05, unitcell = [2 0 0; 0 2 0; 0 0 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
+
+    system = InPlaceNeighborList(x = x, y = y, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1])
+    update!(system, x, y)
+    @test get_cutoff(system) == 0.1
+    update!(system, x, y; cutoff = 0.05)
+    @test get_cutoff(system) == 0.05
+    update!(system, x, y; cutoff = 0.05, unitcell = [2 0 0; 0 2 0; 0 0 2])
+    @test (get_cutoff(system), get_unitcell(system)) == (0.05, [2 0 0; 0 2 0; 0 0 2])
 
 end
 

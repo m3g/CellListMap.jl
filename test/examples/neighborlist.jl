@@ -24,7 +24,7 @@ function neighborlist(; N = 100_000, parallel = true, x = nothing)
     end
 
     # Initialize auxiliary linked lists
-    cl = CellListMap.CellList(x, box, parallel = parallel)
+    cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
 
     # Function to be evaluated for each pair: push pair if d<cutoff
     function push_pair!(i, j, d2, pairs, cutoff)

@@ -3,6 +3,8 @@
     using CellListMap
     using StaticArrays
     using Setfield: @set!
+    using CellListMap: ParticleSystem1, ParticleSystem2
+    using CellListMap: reset_output!
 
     export pathological_coordinates
     export map_naive!
@@ -12,6 +14,15 @@
     export test_pathological
     export missing_pair
     export simple_test
+    export PSP
+    export f1, f2, _f1, _f2
+
+    const PSP = CellListMap.ParticleSystemPositions
+
+    f1(pair, out) = out += pair.d 
+    f2(pair, out) = out += pair.d2 
+    _f1(x, y, i, j, d2, out) = out += sqrt(d2)
+    _f2(x, y, i, j, d2, out) = out += d2
 
     #=
     pathological_coordinates(N)
@@ -48,15 +59,20 @@ Returns `x`, `y`, `sides` and `cutoff`.
         return x, y, sides, cutoff
     end
 
+    map_naive!(f, sys::ParticleSystem1) =
+        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys._box)
+    map_naive!(f, sys::ParticleSystem2) =
+        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys.ypositions.x, sys._box)
+
     #=
     map_naive!(f::Function, output, x::AbstractVector, box::Box)
     map_naive!(f::Function, output, x::AbstractVector, y::AbstractVector, box::Box)
 
-# Extended help
-
-Function that uses the naive pairwise mapping algorithm, for testing.
-
-=#
+    # Extended help
+    
+    Function that uses the naive pairwise mapping algorithm, for testing.
+    
+    =#
     function map_naive!(f::Function, output, x::AbstractVector, box::CellListMap.Box)
         (; input_unit_cell, cutoff_sqr) = box
         for i in 1:(length(x) - 1)
@@ -135,7 +151,7 @@ for computing purposes.
     test_map(box, cl; parallel = true) = CellListMap._pairwise!((pair, s) -> s += 1 / pair.d2, 0.0, box, cl, parallel = parallel)
     test_naive(x, box) = map_naive!((x, y, i, j, d2, s) -> s += 1 / d2, 0.0, x, box)
     function simple_test(x, box; parallel = true)
-        cl = CellListMap.CellList(x, box, parallel = parallel)
+        cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
         r_naive = test_naive(x, box)
         r_map = test_map(box, cl, parallel = parallel)
         println("naive = $r_naive")
@@ -190,7 +206,7 @@ for computing purposes.
                 x[i] = x[i] .- 50
             end
             test = try
-                cl = CellListMap.CellList(x, box, parallel = parallel)
+                cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
                 test_map(box, cl, parallel = parallel)
             catch
                 return false, x, box
@@ -207,9 +223,9 @@ for computing purposes.
             end
             if parallel
                 aux = CellListMap.AuxThreaded(cl)
-                cl = CellListMap.UpdateCellList!(x, box, cl, aux, parallel = parallel)
+                cl = CellListMap.UpdateCellList!(PSP(x), box, cl, aux, parallel = parallel)
             else
-                cl = CellListMap.UpdateCellList!(x, box, cl, parallel = parallel)
+                cl = CellListMap.UpdateCellList!(PSP(x), box, cl, parallel = parallel)
             end
             if !(test_map(box, cl, parallel = parallel) ≈ test_naive(x, box))
                 show_progress && println("FOUND PROBLEMATIC SETUP.")
@@ -310,7 +326,7 @@ This function creates a plot of the computing cell, in two dimensions.
             xticks = nothing,
             yticks = nothing
         ) where {UnitCellType}
-        cl = CellListMap.CellList(x, box, parallel = parallel)
+        cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
         return draw_computing_cell(cl, box; xticks = xticks, yticks = yticks)
     end
     function draw_computing_cell(
@@ -355,7 +371,7 @@ This function creates a plot of the computing cell, in three dimensions.
 
 =#
     function draw_computing_cell(x, box::CellListMap.Box{UnitCellType, 3}; parallel = true) where {UnitCellType}
-        cl = CellListMap.CellList(x, box, parallel = parallel)
+        cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
         vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
         p = view_celllist_particles(cl)
         plt = Main.plot()
@@ -573,7 +589,7 @@ This function creates a plot of the computing cell, in three dimensions.
             cutoff = 0.2
             box = CellListMap.Box(matrix, cutoff; lcell = lcell)
             naive = map_naive!((x, y, i, j, d2, out) -> g(i, j, d2, box.cutoff, out), 0, x, box)
-            cl = CellListMap.CellList(x, box)
+            cl = CellListMap.CellList(PSP(x), box)
             clmap = CellListMap._pairwise!((pair, out) -> g(pair.i, pair.j, pair.d2, box.cutoff, out), 0, box, cl)
             if naive != clmap
                 return x, box

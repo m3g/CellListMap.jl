@@ -9,15 +9,14 @@ Structure that containst the system information for neighborlist computations. A
 $(TYPEDFIELDS)
 
 =#
-mutable struct InPlaceNeighborList{B, C, A, NB <: NeighborList}
-    box::B
-    cl::C
-    aux::A
-    nb::NB
-    nb_threaded::Vector{NB}
-    parallel::Bool
+mutable struct InPlaceNeighborList{P}
+    sys::P
     show_progress::Bool
 end
+
+# getters
+get_unitcell(nb::InPlaceNeighborList) = nb.sys.unitcell 
+get_cutoff(nb::InPlaceNeighborList) = nb.sys.cutoff
 
 """
     InPlaceNeighborList(;
@@ -112,26 +111,19 @@ function InPlaceNeighborList(;
         parallel::Bool = true,
         show_progress::Bool = false,
         nbatches = (0, 0)
+)
+    T = _promote_types(unitcell, cutoff)
+    sys = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=unitcell,
+        output=NeighborList{T}(0, Vector{Tuple{Int, Int, T}}[]),
+        output_name=:nb,
+        parallel=parallel,
+        nbatches=nbatches,
     )
-    T = cutoff isa Integer ? Float64 : eltype(cutoff)
-    if isnothing(y)
-        if isnothing(unitcell)
-            unitcell = limits(x)
-        end
-        box = Box(unitcell, cutoff)
-        cl = CellList(x, box; parallel, nbatches)
-        aux = AuxThreaded(cl)
-    else
-        if isnothing(unitcell)
-            unitcell = limits(x, y)
-        end
-        box = Box(unitcell, cutoff)
-        cl = CellList(x, y, box; parallel, nbatches)
-        aux = AuxThreaded(cl)
-    end
-    nb = NeighborList{T}(0, Vector{Tuple{Int, Int, T}}[])
-    nb_threaded = [copy(nb) for _ in 1:CellListMap.nbatches(cl, :map)]
-    return InPlaceNeighborList(box, cl, aux, nb, nb_threaded, parallel, show_progress)
+    return InPlaceNeighborList(sys, show_progress)
 end
 
 """
@@ -173,44 +165,48 @@ julia> neighborlist!(system)
 
 """
 function update!(
-        system::InPlaceNeighborList{<:Box{UnitCellType}, C},
-        x::AbstractVecOrMat;
-        cutoff = nothing, unitcell = nothing
-    ) where {UnitCellType, C <: CellList}
-    if UnitCellType == NonPeriodicCell
-        isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
-        system.box = update_box(system.box; unitcell = limits(x), cutoff = cutoff)
-    else
-        system.box = update_box(system.box; unitcell = unitcell, cutoff = cutoff)
-    end
-    system.cl = UpdateCellList!(x, system.box, system.cl, system.aux, parallel = system.parallel)
+    system::InPlaceNeighborList,
+    x::AbstractVecOrMat;
+    cutoff = system.sys.cutoff, 
+    unitcell = unitcelltype(system.sys) == NonPeriodicCell ? nothing : system.sys.unitcell 
+)
+    (; sys) = system
+    _x = _wrap_x(x, eltype(sys.xpositions.x))
+    resize!(sys.xpositions, length(_x))
+    sys.xpositions .= _x
+    update_cutoff!(sys, cutoff)
+    update_unitcell!(sys, unitcell)
     return system
 end
+_wrap_x(x::AbstractVector{<:AbstractVector}, _) = x
+_wrap_x(x::AbstractMatrix, ::Type{V}) where {V} = reinterpret(reshape, V, x)
 
 #
 # update system for cross-computations
 #
 function update!(
-        system::InPlaceNeighborList{<:Box{UnitCellType}, C},
+        system::InPlaceNeighborList,
         x::AbstractVecOrMat,
         y::AbstractVecOrMat;
         cutoff = nothing, unitcell = nothing
-    ) where {UnitCellType, C <: CellListPair}
-    if UnitCellType == NonPeriodicCell
-        isnothing(unitcell) || throw(ArgumentError("Cannot set unitcell for NonPeriodicCell."))
-        system.box = update_box(system.box; unitcell = limits(x, y), cutoff = cutoff)
-    else
-        system.box = update_box(system.box; unitcell = unitcell, cutoff = cutoff)
-    end
-    system.cl = UpdateCellList!(x, y, system.box, system.cl, system.aux; parallel = system.parallel)
+    ) 
+    (; sys) = system
+    _x = _wrap_x(x, eltype(sys.xpositions.x))
+    _y = _wrap_x(y, eltype(sys.ypositions.x))
+    resize!(sys.xpositions, length(_x))
+    resize!(sys.ypositions, length(_y))
+    sys.xpositions .= _x
+    sys.ypositions .= _y
+    update_cutoff!(sys, cutoff)
+    update_unitcell!(sys, unitcell)
     return system
 end
 
 function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
     _print(io, "InPlaceNeighborList with types: \n")
-    _print(io, typeof(system.cl), "\n")
-    _print(io, typeof(system.box), "\n")
-    return _print(io, "Current list buffer size: $(length(system.nb.list))")
+    _print(io, typeof(system.sys._cell_list), "\n")
+    _print(io, typeof(system.sys._box), "\n")
+    return _print(io, "Current list buffer size: $(length(system.sys.nb.list))")
 end
 
 """
@@ -253,25 +249,13 @@ julia> @time neighborlist!(system; parallel=false)
 
 """
 function neighborlist!(system::InPlaceNeighborList)
-    # Empty lists and auxiliary threaded arrays
-    empty!(system.nb)
-    for i in eachindex(system.nb_threaded)
-        empty!(system.nb_threaded[i])
-    end
-    # Compute the neighbor lists
-    _pairwise!(
-        (pair, nb) -> push_pair!(pair.i, pair.j, pair.d2, nb),
-        system.nb, system.box, system.cl,
-        reduce = reduce_lists,
-        parallel = system.parallel,
-        output_threaded = system.nb_threaded,
+    pairwise!(
+        (pair, nb) -> push_pair!(pair, nb),
+        system.sys,
         show_progress = system.show_progress
     )
-    # need to resize here to return the correct number of pairs for serial runs
-    # (this resizing is redundant for parallel runs, since it occurs at the reduction function
-    # before updating)
-    !system.parallel && resize!(system.nb, system.nb.n)
-    return system.nb.list
+    resize!(system.sys.nb.list, system.sys.nb.n)
+    return system.sys.nb.list
 end
 
 """

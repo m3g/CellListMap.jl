@@ -74,6 +74,7 @@ ParticleSystem1{output} of dimension 3, composed of:
 
 """
 function update_unitcell!(sys, unitcell)
+    isnothing(unitcell) && return sys
     if unitcelltype(sys) == NonPeriodicCell
         throw(
             ArgumentError(
@@ -85,7 +86,13 @@ function update_unitcell!(sys, unitcell)
         )
     end
     sys._box = update_box(sys._box; unitcell)
+    _update_sys_box!(sys)
     return sys
+end
+_update_sys_box!(sys::ParticleSystem1) = sys.xpositions.updated[] = true
+function _update_sys_box!(sys::ParticleSystem2) 
+    sys.xpositions.updated[] = true
+    sys.ypositions.updated[] = true
 end
 
 """
@@ -129,16 +136,23 @@ ParticleSystem1{output} of dimension 3, composed of:
 ```
 """
 function update_cutoff!(sys::ParticleSystem1, cutoff)
+    _cutoff = isnothing(cutoff) ? sys.cutoff : cutoff
     if unitcelltype(sys) == NonPeriodicCell
-        sys._box = Box(limits(sys.xpositions), cutoff)
+        sys._box = Box(limits(sys.xpositions), _cutoff)
+    else
+        sys._box = update_box(sys._box; cutoff=_cutoff)
     end
-    sys._box = update_box(sys._box; cutoff)
+    sys.xpositions.updated[] = true
     return sys
 end
 function update_cutoff!(sys::ParticleSystem2, cutoff)
+    _cutoff = isnothing(cutoff) ? sys.cutoff : cutoff 
     if unitcelltype(sys) == NonPeriodicCell
-        sys._box = Box(limits(sys.xpositions, sys.ypositions), cutoff)
+        sys._box = Box(limits(sys.xpositions, sys.ypositions), _cutoff)
+    else
+        sys._box = update_box(sys._box; cutoff=_cutoff)
     end
-    sys._box = update_box(sys._box; cutoff)
+    sys.xpositions.updated[] = true
+    sys.ypositions.updated[] = true
     return sys
 end

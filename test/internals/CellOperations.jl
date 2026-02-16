@@ -48,25 +48,26 @@ end
 
 @testitem "replicate system" begin
     using StaticArrays
+    PSP = CellListMap.ParticleSystemPositions
     unitcell = [10.0 0.0; 0.0 10.0]
-    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = PSP(SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
     CellListMap.replicate_system!(x, unitcell, (1, 0))
-    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 1.0], [12.0, 2.0], [13.0, 3.0]]
-    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    @test x.x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 1.0], [12.0, 2.0], [13.0, 3.0]]
+    x = PSP(SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
     CellListMap.replicate_system!(x, unitcell, (1, 1))
-    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0]]
-    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    @test x.x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0]]
+    x = PSP(SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
     CellListMap.replicate_system!(x, unitcell, (0, 1))
-    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [1.0, 11.0], [2.0, 12.0], [3.0, 13.0]]
-    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    @test x.x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [1.0, 11.0], [2.0, 12.0], [3.0, 13.0]]
+    x = PSP(SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
     CellListMap.replicate_system!(x, unitcell, (-1, -1))
-    @test x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0]]
+    @test x.x ≈ [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [-9.0, -9.0], [-8.0, -8.0], [-7.0, -7.0]]
     # with a matrix input
     x = [1.0 2.0 3.0; 1.0 2.0 3.0]
     y = CellListMap.replicate_system(x, unitcell, (1, 0))
     @test y ≈ [1.0 2.0 3.0 11.0 12.0 13.0; 1.0 2.0 3.0 1.0 2.0 3.0]
     # throw error if dimensions do not match
-    x = SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+    x = PSP(SVector{2, Float64}[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
     @test_throws DimensionMismatch CellListMap.replicate_system!(x, unitcell, (1, 0, 1))
 end
 
@@ -86,9 +87,10 @@ end
     using BenchmarkTools
     using StaticArrays
     import CellListMap: _minmax
-    x = [[0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5]]
+    PSP = CellListMap.ParticleSystemPositions
+    x = PSP([[0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5]])
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
-    x = [SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5)]
+    x = PSP([SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5)])
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
     a = @ballocated _minmax($x) evals = 1 samples = 1
     @test a == Allocs(0)
@@ -97,18 +99,19 @@ end
 @testitem "limits - invalid coordinates" begin
     using CellListMap
     using StaticArrays: SVector
+    PSP = CellListMap.ParticleSystemPositions
     x = rand(SVector{3, Float64}, 100)
     x[50] = SVector(1.0, NaN, 1.0)
     y = rand(SVector{3, Float64}, 100)
-    @test_throws ArgumentError CellListMap.limits(x)
-    @test_throws ArgumentError CellListMap.limits(x, y)
-    @test_throws ArgumentError CellListMap.limits(y, x)
+    @test_throws ArgumentError CellListMap.limits(PSP(x))
+    @test_throws ArgumentError CellListMap.limits(PSP(x), PSP(y))
+    @test_throws ArgumentError CellListMap.limits(PSP(y), PSP(x))
     x = rand(3, 100)
     x[2, 50] = NaN
     y = rand(3, 100)
-    @test_throws ArgumentError CellListMap.limits(x)
-    @test_throws ArgumentError CellListMap.limits(x, y)
-    @test_throws ArgumentError CellListMap.limits(y, x)
+    @test_throws ArgumentError CellListMap.limits(PSP(x))
+    @test_throws ArgumentError CellListMap.limits(PSP(x), PSP(y))
+    @test_throws ArgumentError CellListMap.limits(PSP(y), PSP(x))
 end
 
 @testitem "align_cell" setup = [TestingNeighborLists] begin

@@ -3,7 +3,8 @@
     @test CellListMap.unitcelltype(CellListMap.Box([1, 1, 1], 0.1)) == CellListMap.OrthorhombicCell
     @test CellListMap.unitcelltype(CellListMap.Box([1 0 0; 0 1 0; 0 0 1], 0.1)) == CellListMap.TriclinicCell
     x = rand(3, 100)
-    @test CellListMap.unitcelltype(CellListMap.Box(CellListMap.limits(x), 0.1)) == CellListMap.NonPeriodicCell
+    const PSP = CellListMap.ParticleSystemPositions
+    @test CellListMap.unitcelltype(CellListMap.Box(CellListMap.limits(PSP(x)), 0.1)) == CellListMap.NonPeriodicCell
 end
 
 @testitem "promote types" begin
@@ -49,7 +50,7 @@ end
     update!(system, r)
     list = neighborlist!(system)
     @test list == [(1, 3, 2.0)]
-    r = [[7, 10, 10], [18, 10, 10]]
+    r = [[7.0, 10.0, 10.0], [18.0, 10.0, 10.0]]
     system = InPlaceNeighborList(x = r, cutoff = 3.0, parallel = false)
     list = neighborlist!(system)
     @test list == Tuple{Int64, Int64, Float64}[]
@@ -100,13 +101,14 @@ end
 
     # update with Limits
     x = rand(SVector{3, Float64}, 1000)
-    box = CellListMap.Box(CellListMap.limits(x), 0.1)
+    const PSP = CellListMap.ParticleSystemPositions
+    box = CellListMap.Box(CellListMap.limits(PSP(x)), 0.1)
     new_x = rand(SVector{3, Float64}, 1500)
-    a = @ballocated CellListMap.update_box($box; unitcell = $(CellListMap.limits(new_x)), cutoff = 0.2) evals = 1 samples = 1
+    a = @ballocated CellListMap.update_box($box; unitcell = $(CellListMap.limits(PSP(new_x))), cutoff = 0.2) evals = 1 samples = 1
     @test a == Allocs(0)
-    new_box = CellListMap.update_box(box; unitcell = CellListMap.limits(new_x), cutoff = 0.2)
+    new_box = CellListMap.update_box(box; unitcell = CellListMap.limits(PSP(new_x)), cutoff = 0.2)
     @test new_box.cutoff == 0.2
-    @test diag(new_box.input_unit_cell.matrix) ≈ CellListMap.limits(new_x).limits .+ 2.1 * 0.2
+    @test diag(new_box.input_unit_cell.matrix) ≈ CellListMap.limits(PSP(new_x)).limits .+ 2.1 * 0.2
 
     # Update with SMatrix
     box = CellListMap.Box([1 0 0; 0 1 0; 0 0 1], 0.1)
@@ -117,4 +119,13 @@ end
     @test new_box.cutoff == 0.2
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
+end
+
+@testitem "_promote_types" begin
+    using CellListMap: _promote_types
+    @test _promote_types(nothing, 1.f0) == Float32
+    @test _promote_types([1.f0, 1.f0, 1.f0], nothing) == Float32
+    @test _promote_types([1.f0, 1.f0, 1.f0], 1.0) == Float64
+    @test _promote_types([1.0, 1.0, 1.0], 1.f0) == Float64
+    @test _promote_types([1, 1, 1], 1) == Float64
 end
