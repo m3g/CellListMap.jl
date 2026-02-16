@@ -27,6 +27,7 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Remove custom linear algebra code, use Base methods.
 - ![INFO][badge-info] Remove deprecated code, improve code coverage.
 - ![INFO][badge-info] Remove internal coordinate swapping by size.
+- ![INFO][badge-info] The internal representation of coordiantes is done with `ParticleSytemPositions` array type - which is not a subtype of abstract array. 
 - ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges. This bug was never released, it was created and fixed in the development version.
 
 Version 0.9.17
