@@ -27,8 +27,13 @@ jobs:
         exclude:
           - version: 'lts'
             os: macOS-latest
-        build_is_production_build:
-          - true
+        include:
+          - os: ubuntu-latest
+            version: 'lts'
+            build_is_production_build: true
+          - os: ubuntu-latest
+            version: 'pre'
+            build_is_production_build: true
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
