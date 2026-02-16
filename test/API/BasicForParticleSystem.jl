@@ -138,7 +138,7 @@
     # Check if the dimension of the input array is properly errored
     # when the dimension of the unitcell does not match that of SVectors
     # of the input array
-    @test_throws DimensionMismatch ParticleSystem(
+    @test_throws "Incompatible dimensions" ParticleSystem(
         positions = rand(SVector{3, Float64}, 100),
         unitcell = [1, 1],
         cutoff = 0.1,

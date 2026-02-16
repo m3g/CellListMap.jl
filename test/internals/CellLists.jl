@@ -32,7 +32,7 @@
     end
 end
 
-@testitem "automatic nbatches update on UpdateCellList!" begin
+@testitem "automatic nbatches update on UpdateCellList!" setup=[Testing] begin
     using CellListMap, StaticArrays
     # 3-arg UpdateCellList! (without preallocated aux) should update nbatches
     # when the number of particles changes
@@ -53,7 +53,7 @@ end
     @test CellListMap.nbatches(cl) == expected
 end
 
-@testitem "nbatches symbol variants, show, and CellListPair" begin
+@testitem "nbatches symbol variants, show, and CellListPair" setup=[Testing] begin
     using CellListMap, StaticArrays
     x = rand(SVector{3, Float64}, 100)
     y = rand(SVector{3, Float64}, 50)
@@ -82,7 +82,7 @@ end
     @test_throws ArgumentError CellListMap.set_idxs!(idxs, 100, 3)
 end
 
-@testitem "UpdateCellList! for CellListPair" begin
+@testitem "UpdateCellList! for CellListPair" setup=[Testing] begin
     using CellListMap, StaticArrays
     x = rand(SVector{3, Float64}, 100)
     y = rand(SVector{3, Float64}, 50)
@@ -102,32 +102,26 @@ end
     @test cl.target_list.n_real_particles == 50  # y (second arg) has 50
 end
 
-@testitem "celllists - validate coordinates" begin
+@testitem "celllists - validate coordinates" setup=[Testing] begin
     using StaticArrays
     x = rand(SVector{3, Float64}, 100)
     x[50] = SVector(1.0, NaN, 1.0)
-    box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
+    @test_throws "Invalid coordinates" ParticleSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    x[50] = SVector(1.0, 0.5, 1.0)
+    sys = ParticleSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    sys.xpositions[1] = SVector(1.0, NaN, 1.0)
+    @test_throws "Invalid coordinates" pairwise!(f1, sys)
+    x[50] = SVector(1.0, 0.5, 1.0)
     y = rand(SVector{3, Float64}, 100)
-    @test_throws ArgumentError CellListMap.CellList(PSP(x), box)
-    cl = CellListMap.CellList(PSP(y), box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), box, cl)
-    @test_throws ArgumentError CellListMap.CellList(PSP(x), PSP(y), box)
-    @test_throws ArgumentError CellListMap.CellList(PSP(y), PSP(x), box)
-    cl = CellListMap.CellList(PSP(y), PSP(y), box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), PSP(y), box, cl)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(y), PSP(x), box, cl)
+    y[50] = SVector(1.0, NaN, 1.0)
+    @test_throws "Invalid coordinates" ParticleSystem(xpositions=x, ypositions=y, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    y[50] = SVector(1.0, 0.5, 1.0)
+    sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1,1,1], cutoff=0.1, output=0.0)
+    sys.ypositions[1] = SVector(1.0, NaN, 1.0)
+    @test_throws "Invalid coordinates" pairwise!(f1, sys)
     x = rand(3, 100)
     x[2, 50] = NaN
-    box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
-    y = rand(3, 100)
-    @test_throws ArgumentError CellListMap.CellList(PSP(x), box)
-    cl = CellListMap.CellList(PSP(y), box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), box, cl)
-    @test_throws ArgumentError CellListMap.CellList(PSP(x), PSP(y), box)
-    @test_throws ArgumentError CellListMap.CellList(PSP(y), PSP(x), box)
-    cl = CellListMap.CellList(PSP(y), PSP(y), box)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(x), PSP(y), box, cl)
-    @test_throws ArgumentError CellListMap.UpdateCellList!(PSP(y), PSP(x), box, cl)
+    @test_throws "Invalid coordinates" ParticleSystem(xpositions=x, unitcell=[1,1,1], cutoff=0.1, output=0.0)
 end
 
 @testitem "CellList dimension mismatch error" begin
