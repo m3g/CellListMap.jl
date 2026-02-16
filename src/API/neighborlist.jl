@@ -171,13 +171,15 @@ function update!(
     unitcell = unitcelltype(system.sys) == NonPeriodicCell ? nothing : system.sys.unitcell 
 )
     (; sys) = system
-    _x = ParticleSystemPositions(x)
+    _x = _wrap_x(x, eltype(sys.xpositions.x))
     resize!(sys.xpositions, length(_x))
     sys.xpositions .= _x
     update_cutoff!(sys, cutoff)
     update_unitcell!(sys, unitcell)
     return system
 end
+_wrap_x(x::AbstractVector{<:AbstractVector}, _) = x
+_wrap_x(x::AbstractMatrix, ::Type{V}) where {V} = reinterpret(reshape, V, x)
 
 #
 # update system for cross-computations
@@ -189,11 +191,11 @@ function update!(
         cutoff = nothing, unitcell = nothing
     ) 
     (; sys) = system
-    _x = ParticleSystemPositions(x)
-    _y = ParticleSystemPositions(y)
+    _x = _wrap_x(x, eltype(sys.xpositions.x))
+    _y = _wrap_x(y, eltype(sys.ypositions.x))
     resize!(sys.xpositions, length(_x))
-    sys.xpositions .= _x
     resize!(sys.ypositions, length(_y))
+    sys.xpositions .= _x
     sys.ypositions .= _y
     update_cutoff!(sys, cutoff)
     update_unitcell!(sys, unitcell)
