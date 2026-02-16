@@ -11,7 +11,7 @@ function gravitational_potential(; N = 100_000, parallel = true, x = nothing)
 
     # Particle positions
     Random.seed!(321)
-    sides=@SVector([250, 250, 250]),
+    sides = @SVector [250, 250, 250]
     if x === nothing
         x = [ sides .* rand(SVector{3, Float64}) for i in 1:N ]
     end
@@ -36,8 +36,7 @@ function gravitational_potential(; N = 100_000, parallel = true, x = nothing)
     # Run pairwise computation
     u = pairwise!(
         (pair, u) -> potential(pair, u, mass),
-        sys,
-        parallel = parallel
+        sys
     )
 
     return u

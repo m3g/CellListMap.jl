@@ -30,7 +30,7 @@ function sumsq_grad(x, sides, cutoff; parallel = false)
         parallel = parallel,
         output = similar(x),
     )
-    pairwise!(
+    g = pairwise!(
         (pair, g) -> begin
             (; i, j, x, y) = pair
             dx = x - y
