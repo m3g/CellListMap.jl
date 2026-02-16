@@ -2,6 +2,18 @@ using CellListMap
 using StaticArrays
 import Random
 
+# Structure that stores a minimum distance pair
+struct Mind
+    i::Int
+    j::Int
+    d::Float64
+end
+
+# Auxiliary functions for parallelization
+CellListMap.copy_output(m::Mind) = m
+CellListMap.reset_output!(::Mind) = Mind(0, 0, +Inf) 
+CellListMap.reducer!(m1::Mind, m2::Mind) =  m1.d <= m2.d ? m1 : m2
+
 #
 # In this test we compute the minimum distance between two independent sets of particles,
 # without periodic conditions. We need to define a special reducing function to the
@@ -30,36 +42,20 @@ function nearest_neighbor_nopbc(; N1 = 1_500, N2 = 1_500_000, parallel = true, x
         cutoff = min(CellListMap.norm(v - y[iy]), cutoff)
     end
 
-    # Define box, since no PBC are used, define sizes with CellListMap.limits(x,y)
-    box = CellListMap.Box(CellListMap.limits(x, y), cutoff)
-
-    # Initialize auxiliary linked lists
-    cl = CellListMap.CellList(x, y, box, parallel = parallel)
-
-    # Function that keeps the minimum distance
-    f(i, j, d2, mind) = d2 < mind[3] ? (i, j, d2) : mind
-
-    # We have to define our own reduce function here (for the parallel version)
-    function reduce_mind(output, output_threaded)
-        mind = output_threaded[1]
-        for i in (firstindex(output_threaded) + 1):lastindex(output_threaded)
-            if output_threaded[i][3] < mind[3]
-                mind = output_threaded[i]
-            end
-        end
-        return mind
-    end
-
-    # Initialize
-    mind = (0, 0, +Inf)
-
-    # Run pairwise computation
-    mind = CellListMap._pairwise!(
-        (pair, mind) -> f(pair.i, pair.j, pair.d2, mind),
-        mind, box, cl; reduce = reduce_mind, parallel = parallel
+    sys = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        output=Mind(0,0,+Inf),
+        parallel=parallel,
     )
 
-    # Take the square root of the minimum distance to return
-    return (mind[1], mind[2], sqrt(mind[3]))
+    # Function that keeps the minimum distance
+    f(pair, mind) = pair.d < mind.d ? Mind(pair.i, pair.j, pair.d) : mind
 
+    # Run pairwise computation
+    mind = pairwise!(f, sys)
+
+    # Take the square root of the minimum distance to return
+    return (mind.i, mind.j, mind.d)
 end

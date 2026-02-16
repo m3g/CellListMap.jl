@@ -94,12 +94,14 @@ julia> wrap_to_first(x,unit_cell_matrix)
 end
 
 """
-    wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N,N,T}) where {N,T}
+    wrap_relative_to(x, xref, unit_cell_matrix::AbstractMatrix)
 
 Wraps the coordinates of point `x` such that it is the minimum image relative to `xref`. 
 
 """
-@inline function wrap_relative_to(x, xref, unit_cell_matrix::SMatrix{N, N, T}) where {N, T}
+@inline function wrap_relative_to(x, xref, unit_cell_matrix::AbstractMatrix)
+    N = length(x)
+    T = eltype(unit_cell_matrix)
     invu = inv(oneunit(T))
     unit_cell_matrix = invu * unit_cell_matrix
     x_f = wrap_cell_fraction(invu * x, unit_cell_matrix)

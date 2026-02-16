@@ -9,34 +9,34 @@ import Random
 #
 function gravitational_potential(; N = 100_000, parallel = true, x = nothing)
 
-    # Number of particles, sides and cutoff
-    sides = @SVector [250, 250, 250]
-    cutoff = 10.0
-    box = CellListMap.Box(sides, cutoff)
-
     # Particle positions
     Random.seed!(321)
+    sides=@SVector([250, 250, 250]),
     if x === nothing
         x = [ sides .* rand(SVector{3, Float64}) for i in 1:N ]
     end
-
-    # Initialize auxiliary linked lists
-    cl = CellListMap.CellList(x, box, parallel = parallel)
+    sys = ParticleSystem(
+        xpositions=x,
+        unitcell=sides,
+        cutoff=10.0,
+        parallel=parallel,
+        output=0.0,
+    )
 
     # masses
     mass = [ 5 * x[i][1] for i in 1:N ]
 
     # Function to be evaluated for each pair: build distance histogram
-    function potential(i, j, d2, u, mass)
-        d = sqrt(d2)
+    function potential(pair, u, mass)
+        (; i, j, d) = pair
         u = u - 9.8 * mass[i] * mass[j] / d
         return u
     end
 
     # Run pairwise computation
-    u = CellListMap._pairwise!(
-        (pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass),
-        0.0, box, cl,
+    u = pairwise!(
+        (pair, u) -> potential(pair, u, mass),
+        sys,
         parallel = parallel
     )
 

@@ -330,8 +330,6 @@ end
 
     N = 2000
     x, y, sides, cutoff = pathological_coordinates(N)
-    box = CellListMap.Box(sides, cutoff)
-    cl = CellListMap.CellList(PSP(x), box)
 
     # Function to be evaluated for each pair: build distance histogram
     function build_histogram!(d2, hist)
@@ -341,9 +339,26 @@ end
         return hist
     end
 
-    naive = map_naive!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), zeros(Int, 10), x, box)
-    @test CellListMap._pairwise!((pair, hist) -> build_histogram!(pair.d2, hist), zeros(Int, 10), box, cl, parallel = true) ≈ naive
-    @test CellListMap._pairwise!((pair, hist) -> build_histogram!(pair.d2, hist), zeros(Int, 10), box, cl, parallel = false) ≈ naive
+    sys_p = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=sides,
+        parallel=true,
+        output=zeros(Int,10),
+    )
+    sys_s = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=sides,
+        parallel=false,
+        output=zeros(Int,10),
+    )
+
+    naive = map_naive!((x, y, i, j, d2, hist) -> build_histogram!(d2, hist), sys_s)
+    @test pairwise!((pair, hist) -> build_histogram!(pair.d2, hist), sys_p) ≈ naive
+    @test pairwise!((pair, hist) -> build_histogram!(pair.d2, hist), sys_s) ≈ naive
 
     # Function to be evaluated for each pair: gravitational potential
     function potential(pair, u, mass)
@@ -352,22 +367,34 @@ end
         u = u - 9.8 * mass[i] * mass[j] / pair.d
         return u
     end
+    potential(i,j,d2,u,mass) = potential((i=i,j=j,d2=d2,d=sqrt(d2)),u,mass)
 
-    function potential(i, j, d2, u, mass)
-        d2 == 0.0 && return u
-        d = sqrt(d2)
-        u = u - 9.8 * mass[i] * mass[j] / d
-        return u
-    end
+    sys_p = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=sides,
+        parallel=true,
+        output=0.0,
+    )
+    sys_s = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=sides,
+        parallel=false,
+        output=0.0,
+    )
 
     # Run pairwise computation
     mass = rand(N)
-    naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, box)
-    @test CellListMap._pairwise!((pair, u) -> potential(pair, u, mass), 0.0, box, cl, parallel = true) ≈ naive
-    @test CellListMap._pairwise!((pair, u) -> potential(pair, u, mass), 0.0, box, cl, parallel = false) ≈ naive
+    naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), sys_s)
+    @test pairwise!((pair, u) -> potential(pair, u, mass), sys_p) ≈ naive
+    @test pairwise!((pair, u) -> potential(pair, u, mass), sys_s) ≈ naive
 
     # Function to be evaluated for each pair: gravitational force
-    function calc_forces!(x, y, i, j, d2, mass, forces)
+    function calc_forces!(pair, mass, forces)
+        (; x, y, i, j, d2) = pair
         d2 == 0.0 && return forces
         G = 9.8 * mass[i] * mass[j] / d2
         d = sqrt(d2)
@@ -376,14 +403,32 @@ end
         forces[j] = forces[j] + df
         return forces
     end
+    calc_forces!(x,y,i,j,d2,mass,forces) = calc_forces!((x=x,y=y,i=i,j=j,d2=d2),mass,forces)
 
     # forces
     forces = [ zeros(SVector{3, Float64}) for i in 1:N ]
 
+    sys_p = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=sides,
+        parallel=true,
+        output=copy(forces),
+    )
+    sys_s = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        cutoff=cutoff,
+        unitcell=sides,
+        parallel=false,
+        output=copy(forces),
+    )
+
     # Run pairwise computation
-    naive = map_naive!((x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces), copy(forces), x, box)
-    @test CellListMap._pairwise!((pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces), copy(forces), box, cl, parallel = true) ≈ naive
-    @test CellListMap._pairwise!((pair, forces) -> calc_forces!(pair.x, pair.y, pair.i, pair.j, pair.d2, mass, forces), copy(forces), box, cl, parallel = false) ≈ naive
+    naive = map_naive!((x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, mass, forces), sys_s)
+    @test pairwise!((pair, forces) -> calc_forces!(pair, mass, forces), sys_p) ≈ naive
+    @test pairwise!((pair, forces) -> calc_forces!(pair, mass, forces), sys_s) ≈ naive
 
     # Test the examples, to check further if the parallelization didn't break something
     N = 100_000
