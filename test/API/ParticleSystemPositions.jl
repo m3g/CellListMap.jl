@@ -144,6 +144,10 @@
     io = IOBuffer()
     show(io, MIME"text/plain"(), p)
     @test length(take!(io)) > 0
+
+    # error on construction if dimension is not inferrable
+    @test_throws "method matching length" ParticleSystemPositions(Vector{Float64}[])
+
 end
 
 @testitem "ParticleSystemPositions integration with ParticleSystem" begin

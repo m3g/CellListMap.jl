@@ -120,3 +120,12 @@ end
     @test new_box.input_unit_cell.matrix == [2 0 0; 0 2 0; 0 0 2]
 
 end
+
+@testitem "_promote_types" begin
+    using CellListMap: _promote_types
+    @test _promote_types(nothing, 1.f0) == Float32
+    @test _promote_types([1.f0, 1.f0, 1.f0], nothing) == Float32
+    @test _promote_types([1.f0, 1.f0, 1.f0], 1.0) == Float64
+    @test _promote_types([1.0, 1.0, 1.0], 1.f0) == Float64
+    @test _promote_types([1, 1, 1], 1) == Float64
+end

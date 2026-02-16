@@ -139,7 +139,7 @@ function _promote_types(unitcell, cutoff)
     input_type = if isnothing(unitcell)
         typeof(cutoff)
     elseif isnothing(cutoff)
-        typeof(unitcell)
+        eltype(unitcell)
     else
         promote_type(eltype(unitcell), typeof(cutoff))
     end
