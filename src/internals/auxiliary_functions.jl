@@ -36,7 +36,7 @@ function get_dim(unitcell, x, y=nothing)
     return D
 end
 _element_length(::Nothing) = 0
-_element_length(::AbstractVector{SVector{N}}) where {N} = N
+_element_length(::AbstractVector{<:SVector{N}}) where {N} = N
 _element_length(x::AbstractVector{<:AbstractVector}) = isempty(x) ? 0 : length(first(x))
 _element_length(x::AbstractMatrix) = size(x,1)
 _element_length(::AbstractVector) = throw(ArgumentError(" Coordinates must be vectors of vectors, or matrices."))
