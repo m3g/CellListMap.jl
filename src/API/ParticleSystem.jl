@@ -11,7 +11,7 @@
         output_name::Symbol,
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0, 0),
-        validate_coordinates::Union{Nothing,Function}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     )
 
 Constructor of the `ParticleSystem` type given the positions of the particles.
@@ -51,8 +51,9 @@ By default the parallelization is turned on and `nbatches` is set with heuristic
 that may provide good efficiency in most cases. 
 
 The `validate_coordinates` function can be used to validate the coordinates
-before the construction of the system. If `nothing`, no validation is performed.
-By default the validation checks if the coordinates are not missing or NaN. 
+before computations, and throw appropriate error messages. By default the validation checks if 
+the coordinates are not missing or NaN. The function must have a single
+input parameter and be `(x) -> nothing` to skip any validation.
 
 # Example
 
@@ -111,8 +112,8 @@ function ParticleSystem(;
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
         lcell = 1,
-        validate_coordinates::Union{Nothing, Function} = _validate_coordinates,
-    )
+        validate_coordinates::F = _validate_coordinates,
+    ) where {F<:Function}
     # Set xpositions if positions was set
     if (isnothing(positions) && isnothing(xpositions)) || (!isnothing(positions) && !isnothing(xpositions))
         throw(ArgumentError("Either `positions` OR `xpositions` must be defined."))
@@ -122,7 +123,7 @@ function ParticleSystem(;
     DIM = get_dim(unitcell, xpositions, ypositions)
     # Single set of positions
     if isnothing(ypositions)
-        _x = ParticleSystemPositions(xpositions, DIM)
+        _x = ParticleSystemPositions(xpositions, Val(DIM))
         unitcell = isnothing(unitcell) ? limits(_x; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(
@@ -141,8 +142,8 @@ function ParticleSystem(;
         )
         # Two sets of positions
     else
-        _x = ParticleSystemPositions(xpositions, DIM)
-        _y = ParticleSystemPositions(ypositions, DIM)
+        _x = ParticleSystemPositions(xpositions, Val(DIM))
+        _y = ParticleSystemPositions(ypositions, Val(DIM))
         unitcell = isnothing(unitcell) ? limits(_x, _y; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)

@@ -125,6 +125,12 @@ end
     using StaticArrays
     using CellListMap
     x = rand(SVector{3, Float64}, 1000)
+    a = @benchmark ParticleSystem(xpositions = $x, unitcell = $([1, 1, 1]), cutoff = 0.1, output = 0.0) samples=1 evals=1
+    @test a.allocs < Allocs(10_000)
+    a = @benchmark ParticleSystem(xpositions = $(rand(3,10^4)), unitcell = $([1, 1, 1]), cutoff = 0.1, output = 0.0) samples=1 evals=1
+    @test a.allocs < Allocs(30_000)
+    a = @benchmark ParticleSystem(xpositions = $([rand(3) for _ in 1:10^4]), unitcell = $([1, 1, 1]), cutoff = 0.1, output = 0.0) samples=1 evals=1
+    @test a.allocs < Allocs(30_000)
     sys1 = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
@@ -295,7 +301,7 @@ end
     p = ParticleSystem(positions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     p.positions .= x
     @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
-    p = ParticleSystem(xpositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = nothing)
+    p = ParticleSystem(xpositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = (x) -> nothing)
     @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
     # 2-set system
     x = rand(SVector{3, Float64}, 100)
@@ -311,7 +317,7 @@ end
     p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     p.ypositions .= x
     @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
-    p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = nothing)
+    p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = (x) -> nothing)
     @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
 end
 
