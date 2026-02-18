@@ -64,6 +64,19 @@ struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
     updated::Ref{Bool}
 end
 
+# When input is already a vector of SVectors, copy it type-stably
+function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}) where {N,T}
+    x_copy = Vector{SVector{N,T}}(undef, length(x))
+    copyto!(x_copy, x)
+    ParticleSystemPositions{N,T,typeof(x_copy)}(x_copy, Ref(true))
+end
+function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}, _DIM) where {N,T}
+    x_copy = Vector{SVector{N,T}}(undef, length(x))
+    copyto!(x_copy, x)
+    ParticleSystemPositions{N,T,typeof(x_copy)}(x_copy, Ref(true))
+end
+
+# For non-SVector element types, convert to SVector
 function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
     M = length(x)
     N, T = if M > 0
@@ -79,7 +92,7 @@ function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
     ParticleSystemPositions{N,T,typeof(x_static)}(x_static, Ref(true))
 end
 
-# If the the elements are ot fixed-sized and the vector is empty, pass DIM
+# If the the elements are not fixed-sized and the vector is empty, pass DIM
 function ParticleSystemPositions(x::AbstractVector{<:AbstractVector}, DIM)
     M = length(x)
     T = eltype(eltype(x))
