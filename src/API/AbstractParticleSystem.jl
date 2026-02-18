@@ -64,52 +64,44 @@ struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
     updated::Ref{Bool}
 end
 
-# When input is already a vector of SVectors, copy it type-stably
+# Single-arg constructors: infer DIM and dispatch through Val for type stability
 function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}) where {N,T}
-    x_copy = Vector{SVector{N,T}}(undef, length(x))
-    copyto!(x_copy, x)
-    ParticleSystemPositions{N,T,typeof(x_copy)}(x_copy, Ref(true))
-end
-function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}, _DIM) where {N,T}
-    x_copy = Vector{SVector{N,T}}(undef, length(x))
-    copyto!(x_copy, x)
+    x_copy = copy(x)
     ParticleSystemPositions{N,T,typeof(x_copy)}(x_copy, Ref(true))
 end
 
-# For non-SVector element types, convert to SVector
 function ParticleSystemPositions(x::AbstractVector{<:AbstractVector})
+    N = length(first(x))
+    ParticleSystemPositions(x, Val(N))
+end
+
+function ParticleSystemPositions(x::AbstractMatrix)
+    ParticleSystemPositions(x, Val(size(x, 1)))
+end
+
+# Two-arg with Val{N}: type-stable constructors
+function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}, ::Val) where {N,T}
+    x_copy = copy(x)
+    ParticleSystemPositions{N,T,typeof(x_copy)}(x_copy, Ref(true))
+end
+
+function ParticleSystemPositions(x::AbstractVector{<:AbstractVector}, ::Val{N}) where {N}
+    T = eltype(eltype(x))
     M = length(x)
-    N, T = if M > 0
-        length(first(x)), eltype(first(x))
-    else
-        # This will error for empty vectors of non-fixed-size element vectors
-        length(eltype(x)), eltype(eltype(x))
-    end
     x_static = Vector{SVector{N,T}}(undef, M)
     for i in eachindex(x, x_static)
-        x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], N))
+        x_static[i] = SVector{N,T}(ntuple(j -> x[i][j], Val(N)))
     end
     ParticleSystemPositions{N,T,typeof(x_static)}(x_static, Ref(true))
 end
 
-# If the the elements are not fixed-sized and the vector is empty, pass DIM
-function ParticleSystemPositions(x::AbstractVector{<:AbstractVector}, DIM)
-    M = length(x)
-    T = eltype(eltype(x))
-    x_static = Vector{SVector{DIM,T}}(undef, M)
-    for i in eachindex(x, x_static)
-        x_static[i] = SVector{DIM,T}(ntuple(j -> x[i][j], DIM))
-    end
-    ParticleSystemPositions{DIM,T,typeof(x_static)}(x_static, Ref(true))
-end
-
-function ParticleSystemPositions(x::AbstractMatrix{T}, DIM=size(x,1)) where {T}
-    M = size(x,2)
-    xv = Vector{SVector{DIM,T}}(undef, M)
+function ParticleSystemPositions(x::AbstractMatrix{T}, ::Val{N}) where {T,N}
+    M = size(x, 2)
+    xv = Vector{SVector{N,T}}(undef, M)
     for i in eachindex(xv)
-        xv[i] = SVector{DIM,T}(@view(x[:,i]))
+        xv[i] = SVector{N,T}(@view(x[:, i]))
     end
-    ParticleSystemPositions{DIM,T,typeof(xv)}(xv, Ref(true))
+    ParticleSystemPositions{N,T,typeof(xv)}(xv, Ref(true))
 end
 
 function Base.empty!(p::ParticleSystemPositions)

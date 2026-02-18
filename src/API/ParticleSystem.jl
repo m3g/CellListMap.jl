@@ -123,7 +123,7 @@ function ParticleSystem(;
     DIM = get_dim(unitcell, xpositions, ypositions)
     # Single set of positions
     if isnothing(ypositions)
-        _x = ParticleSystemPositions(xpositions, DIM)
+        _x = ParticleSystemPositions(xpositions, Val(DIM))
         unitcell = isnothing(unitcell) ? limits(_x; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(
@@ -142,8 +142,8 @@ function ParticleSystem(;
         )
         # Two sets of positions
     else
-        _x = ParticleSystemPositions(xpositions, DIM)
-        _y = ParticleSystemPositions(ypositions, DIM)
+        _x = ParticleSystemPositions(xpositions, Val(DIM))
+        _y = ParticleSystemPositions(ypositions, Val(DIM))
         unitcell = isnothing(unitcell) ? limits(_x, _y; validate_coordinates) : unitcell
         _box = Box(unitcell, cutoff, lcell = lcell)
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)
