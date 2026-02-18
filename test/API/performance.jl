@@ -1,4 +1,4 @@
-@testitem "performance" begin
+@testitem "performance" tags=[:performance] begin
     using CellListMap
     using StaticArrays
     using LinearAlgebra
