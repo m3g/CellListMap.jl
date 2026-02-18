@@ -27,3 +27,7 @@ include("$(@__DIR__)/applications/gromacs/compare_with_gromacs.jl")
 include("$(@__DIR__)/applications/namd/compare_with_namd.jl")
 include("$(@__DIR__)/applications/namd/ParticleSystem_vs_NAMD.jl")
 include("$(@__DIR__)/API/test_show.jl")
+# These performance tests seem to fail on test suites, although 
+# they do not fail on direct run. Why? 
+#include("$(@__DIR__)/API/performance.jl")
+
