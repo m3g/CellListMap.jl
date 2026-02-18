@@ -23,23 +23,6 @@
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = false) ≈ naive
     @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl, parallel = true) ≈ naive
 
-    # Test disjoint sets, with matrices
-    xmat = zeros(3, length(x))
-    for i in eachindex(x)
-        for j in 1:3
-            xmat[j, i] = x[i][j]
-        end
-    end
-    ymat = zeros(3, length(y))
-    for i in eachindex(x)
-        for j in 1:3
-            ymat[j, i] = y[i][j]
-        end
-    end
-    cl_mat = CellListMap.CellList(PSP(xmat), PSP(ymat), box)
-    @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl_mat, parallel = false) ≈ naive
-    @test CellListMap._pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), 0.0, box, cl_mat, parallel = true) ≈ naive
-
     # Check different lcell
     box = CellListMap.Box(sides, cutoff, lcell = 3)
     cl = CellListMap.CellList(PSP(x), PSP(y), box)
@@ -63,7 +46,6 @@
     # Test updating of the data on disjoint sets works fine
     for arrays in [
             [rand(SVector{2, Float64}, 1000), rand(SVector{2, Float64}, 100)], # with static vectors
-            [[ rand(2) for _ in 1:1000 ], [ rand(2) for _ in 1:100 ]], # with standard vectors
         ]
         local x = arrays[1]
         local y = arrays[2]
@@ -87,35 +69,6 @@
 
 end
 
-@testitem "matrix inputs" setup = [Testing] begin
-
-    using CellListMap
-    using StaticArrays
-
-    # Function to be evaluated for each pair: sum of displacements on x
-    f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
-
-    # Number of particles, sides and cutoff
-    N = 2000
-    sides = @SVector [250.0, 250.0, 250.0]
-    cutoff = 10.0
-    box = CellListMap.Box(sides, cutoff)
-
-    # Test the input as a matrix
-    x = rand(SVector{3, Float64}, N)
-    xmat = zeros(3, N)
-    for i in 1:N
-        for j in 1:3
-            xmat[j, i] = x[i][j]
-        end
-    end
-    const PSP = CellListMap.ParticleSystemPositions
-    cl_mat = CellListMap.CellList(PSP(xmat), box)
-    naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
-    @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl_mat, parallel = true) ≈ naive
-    @test CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, box, cl_mat, parallel = false) ≈ naive
-
-end
 
 @testitem "parallelization" setup = [Testing] begin
 

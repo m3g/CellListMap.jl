@@ -114,7 +114,7 @@
             # Cannot resize the matrices, so this interface is more limited
             xp = rand(2, size(x, 2))
             resize!(system.xpositions, size(xp, 2))
-            system.xpositions .= PSP(xp)
+            system.xpositions .= [SVector{2,Float64}(xp[:,i]) for i in axes(xp,2)]
         end
         r = pairwise!(f1, system)
         r_naive = map_naive!(_f1, system)
@@ -127,7 +127,7 @@
         else
             yp = rand(2, size(y, 2))
             resize!(system.ypositions, size(yp, 2))
-            system.ypositions .= PSP(yp)
+            system.ypositions .= [SVector{2,Float64}(yp[:,i]) for i in axes(yp,2)]
         end
         r = pairwise!(f1, system)
         r_naive = map_naive!(_f1, system)

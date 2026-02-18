@@ -3,35 +3,16 @@
     using CellListMap
     const PSP = CellListMap.ParticleSystemPositions
 
-    # Construction from vector of plain vectors
-    x_vecs = [rand(3) for _ in 1:10]
-    p = PSP(x_vecs)
+    # Construction from vector of SVectors
+    x_svecs = rand(SVector{3,Float64}, 10)
+    p = PSP(x_svecs)
     @test p isa PSP{3,Float64}
     @test length(p) == 10
     @test p.updated[] == true
-
-    # Construction from vector of SVectors
-    x_svecs = rand(SVector{3,Float64}, 10)
-    p2 = PSP(x_svecs)
-    @test p2 isa PSP{3,Float64}
-    @test length(p2) == 10
-    @test p2[1] == x_svecs[1]
-
-    # Construction from matrix (D x M)
-    xmat = rand(3, 10)
-    p3 = PSP(xmat)
-    @test length(p3) == 10
-    @test p3[1] ≈ SVector{3,Float64}(xmat[:, 1])
-
-    # Construction with explicit DIM for non-fixed-size elements
-    x_plain = [rand(2) for _ in 1:5]
-    p4 = PSP(x_plain, 2)
-    @test p4 isa PSP{2,Float64}
-    @test length(p4) == 5
+    @test p[1] == x_svecs[1]
 
     # getindex
     @test p[1] isa SVector{3,Float64}
-    @test p3[1] ≈ SVector{3,Float64}(xmat[:, 1])
 
     # setindex! flags updated
     p.updated[] = false
@@ -145,8 +126,9 @@
     show(io, MIME"text/plain"(), p)
     @test length(take!(io)) > 0
 
-    # error on construction if dimension is not inferrable
-    @test_throws BoundsError ParticleSystemPositions(Vector{Float64}[])
+    # error on construction from non-SVector element type
+    @test_throws MethodError ParticleSystemPositions(Vector{Float64}[])
+    @test_throws MethodError ParticleSystemPositions([rand(3) for _ in 1:5])
 
 end
 
