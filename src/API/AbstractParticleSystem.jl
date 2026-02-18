@@ -79,6 +79,9 @@ function ParticleSystemPositions(x::AbstractMatrix)
     ParticleSystemPositions(x, Val(size(x, 1)))
 end
 
+# Convenience: accept plain Int DIM and wrap in Val
+ParticleSystemPositions(x, DIM::Int) = ParticleSystemPositions(x, Val(DIM))
+
 # Two-arg with Val{N}: type-stable constructors
 function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}, ::Val) where {N,T}
     x_copy = copy(x)
