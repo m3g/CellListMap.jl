@@ -285,7 +285,10 @@ by passing a function that takes the coordinates as input and throws an error if
 are invalid.
 
 =#
-function limits(x::ParticleSystemPositions; validate_coordinates::Union{Nothing, Function} = _validate_coordinates)
+function limits(
+    x::ParticleSystemPositions; 
+    validate_coordinates::F = _validate_coordinates
+    ) where {F<:Function}
     isnothing(validate_coordinates) || validate_coordinates(x)
     xmin, xmax = _minmax(x)
     return Limits(xmax .- xmin, xmin)
@@ -307,8 +310,8 @@ are invalid.
 function limits(
         x::ParticleSystemPositions,
         y::ParticleSystemPositions;
-        validate_coordinates::Union{Nothing, Function} = _validate_coordinates
-    )
+        validate_coordinates::F = _validate_coordinates
+    ) where {F<:Function}
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     xmin, xmax = _minmax(x)

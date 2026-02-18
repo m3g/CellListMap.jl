@@ -476,7 +476,7 @@ AuxThreaded(cl_pair::CellListPair) =
         box::Box{UnitCellType,N,T};
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellList` structure from scratch, given a vector
@@ -506,8 +506,8 @@ function CellList(
         box::Box{UnitCellType, N, T};
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
-        validate_coordinates::Union{Function, Nothing} = _validate_coordinates,
-    ) where {UnitCellType, N, T}
+        validate_coordinates::F = _validate_coordinates,
+    ) where {UnitCellType, N, T, F<:Function}
     cl = CellList{N, T}(n_real_particles = length(x), number_of_cells = prod(box.nc))
     set_number_of_batches!(cl, nbatches; parallel)
     return UpdateCellList!(x, box, cl; parallel, validate_coordinates)
@@ -557,7 +557,7 @@ end
         box::Box{UnitCellType,N,T};
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellListPair` structure from scratch, given two vectors
@@ -586,8 +586,8 @@ function CellList(
         box::Box{UnitCellType, N, T};
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
-        validate_coordinates::Union{Function, Nothing} = _validate_coordinates,
-    ) where {UnitCellType, N, T}
+        validate_coordinates::F = _validate_coordinates,
+    ) where {UnitCellType, N, T, F<:Function}
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     ref_list = CellList(x, box; parallel, validate_coordinates)
@@ -603,7 +603,7 @@ end
         box::Box,
         cl:CellList;
         parallel=true,
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     )
 
 Function that will update a previously allocated `CellList` structure, given new
@@ -639,8 +639,8 @@ function UpdateCellList!(
         box::Box,
         cl::CellList;
         parallel::Bool = true,
-        validate_coordinates = _validate_coordinates,
-    )
+        validate_coordinates::F = _validate_coordinates,
+    ) where {F<:Function}
     if x.updated[]
         cl = if parallel
             aux = AuxThreaded(cl)
@@ -661,7 +661,7 @@ end
         cl::CellList{N,T},
         aux::Union{Nothing,AuxThreaded{N,T}};
         parallel::Bool=true,
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     ) where {N,T}
 
 Function that updates the cell list `cl` new coordinates `x` and possibly a new
@@ -723,8 +723,8 @@ function UpdateCellList!(
         cl::CellList{N, T},
         aux::Union{Nothing, AuxThreaded{N, T}};
         parallel::Bool = true,
-        validate_coordinates = _validate_coordinates,
-    ) where {N, T}
+        validate_coordinates::F = _validate_coordinates,
+    ) where {N, T, F<:Function}
 
     # validate coordinates
     isnothing(validate_coordinates) || validate_coordinates(x)
@@ -1065,7 +1065,7 @@ end
         box::Box,
         cl:CellListPair,
         parallel=true,
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     )
 
 Function that will update a previously allocated `CellListPair` structure, given
@@ -1119,7 +1119,7 @@ end
         cl_pair::CellListPair,
         aux::Union{Nothing,AuxThreaded};
         parallel::Bool=true,
-        validate_coordinates::Union{Function,Nothing}=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates
     )
 
 This function will update the `cl_pair` structure that contains the cell lists
@@ -1186,8 +1186,8 @@ function UpdateCellList!(
         cl_pair::CellListPair{N, T},
         aux::Union{Nothing, AuxThreadedPair};
         parallel::Bool = true,
-        validate_coordinates::Union{Nothing, Function} = _validate_coordinates,
-    ) where {N, T}
+        validate_coordinates::F = _validate_coordinates,
+    ) where {N, T, F<:Function}
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     ref_aux = isnothing(aux) ? nothing : aux.ref_list

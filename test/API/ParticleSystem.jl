@@ -295,7 +295,7 @@ end
     p = ParticleSystem(positions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     p.positions .= x
     @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
-    p = ParticleSystem(xpositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = nothing)
+    p = ParticleSystem(xpositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = (x) -> nothing)
     @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
     # 2-set system
     x = rand(SVector{3, Float64}, 100)
@@ -311,7 +311,7 @@ end
     p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     p.ypositions .= x
     @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
-    p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = nothing)
+    p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = (x) -> nothing)
     @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
 end
 
