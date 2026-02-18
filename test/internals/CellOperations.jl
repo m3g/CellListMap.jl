@@ -88,8 +88,6 @@ end
     using StaticArrays
     import CellListMap: _minmax
     PSP = CellListMap.ParticleSystemPositions
-    x = PSP([[0.0, 0.5, 1.0], [0.5, 1.0, 0.0], [1.0, 0.0, 0.5]])
-    @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
     x = PSP([SVector(0.0, 0.5, 1.0), SVector(0.5, 1.0, 0.0), SVector(1.0, 0.0, 0.5)])
     @test _minmax(x) === (SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0))
     a = @ballocated _minmax($x) evals = 1 samples = 1
@@ -103,12 +101,6 @@ end
     x = rand(SVector{3, Float64}, 100)
     x[50] = SVector(1.0, NaN, 1.0)
     y = rand(SVector{3, Float64}, 100)
-    @test_throws ArgumentError CellListMap.limits(PSP(x))
-    @test_throws ArgumentError CellListMap.limits(PSP(x), PSP(y))
-    @test_throws ArgumentError CellListMap.limits(PSP(y), PSP(x))
-    x = rand(3, 100)
-    x[2, 50] = NaN
-    y = rand(3, 100)
     @test_throws ArgumentError CellListMap.limits(PSP(x))
     @test_throws ArgumentError CellListMap.limits(PSP(x), PSP(y))
     @test_throws ArgumentError CellListMap.limits(PSP(y), PSP(x))

@@ -1,8 +1,8 @@
 @testitem "output of nbatches" begin
     using CellListMap, StaticArrays
     const PSP = CellListMap.ParticleSystemPositions
-    x = rand(3, 100)
-    y = rand(3, 10)
+    x = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3,Float64}, 10)
     box = CellListMap.Box([1, 1, 1], 0.1)
     cl = CellListMap.CellList(PSP(x), box; nbatches = (2, 4))
     @test CellListMap.nbatches(cl) == (2, 4)
@@ -134,10 +134,6 @@ end
     # 2D positions with 3D box should throw DimensionMismatch
     x = rand(SVector{2, Float64}, 100)
     box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
-    @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
-    # Matrix input: 3 rows (3D) with 2D box
-    x = rand(3, 100)
-    box = CellListMap.Box([1.0, 1.0], 0.1)
     @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
 end
 
