@@ -125,6 +125,8 @@ end
     using StaticArrays
     using CellListMap
     x = rand(SVector{3, Float64}, 1000)
+    a = @benchmark ParticleSystem(xpositions = $x, unitcell = $([1, 1, 1]), cutoff = 0.1, output = 0.0)
+    @test a.allocs < Allocs(10_000)
     sys1 = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
     update_unitcell!(sys1, SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
