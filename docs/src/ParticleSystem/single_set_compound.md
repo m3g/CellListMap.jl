@@ -56,7 +56,9 @@ end
 
 The reducer function defines what it means to combine two output variables obtained on
 independent threads. In this case, we sum the energies and forces. Different reduction functions
-might be necessary for other custom types (for example if computing minimum distances).
+might be necessary for other custom types
+(see the [Custom parallel reduction](@ref) section and the `CellListMap.reduce_output!` function
+for advanced control over the reduction strategy).
 ```julia
 function CellListMap.reducer(x::EnergyAndForces, y::EnergyAndForces)
     e_tot = x.energy + y.energy

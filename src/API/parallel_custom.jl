@@ -208,3 +208,52 @@ function reducer!(x, y)
 end
 reducer!(x::T, y::T) where {T <: SupportedTypes} = +(x, y)
 const reducer = reducer!
+
+"""
+    reduce_output!(reducer::Function, output, output_threaded)
+
+Function that defines how to reduce the vector of `output_threaded` variables (one per batch)
+into the single `output` variable, after a parallel computation. The default implementation
+calls `reducer(output, output_threaded[i])` for each batch sequentially.
+
+For custom output types that are large collections (e.g. lists of pairs), overloading this
+function can avoid significant allocation overhead. The generic implementation performs
+`nbatches` incremental `resize!` calls on `output`, each copying the existing data to a new
+buffer. For output types where the final size is known only after computing all batches, this
+leads to O(N × nbatches) total memory traffic in the reduce step. A custom overload can
+compute the total size first, resize once, and then copy each batch directly.
+
+## Requirements for the overload
+
+- The signature must be `reduce_output!(::Function, output::MyType, output_threaded::Vector{<:MyType})`
+- The function *must* return `output`.
+
+## Example
+
+The following shows a custom overload for a hypothetical `PairList` output type that holds
+a growing list of pairs. The overload resizes the output list once and copies each batch
+with `copyto!`, avoiding the O(N × nbatches) overhead of the generic implementation:
+
+```julia
+struct PairList
+    n::Int
+    list::Vector{Tuple{Int,Int,Float64}}
+end
+
+function CellListMap.reduce_output!(::Function, output::PairList, output_threaded::Vector{<:PairList})
+    ntot = output.n + sum(nb.n for nb in output_threaded; init = 0)
+    if length(output.list) < ntot
+        resize!(output.list, ntot)
+    end
+    offset = output.n
+    for nb in output_threaded
+        copyto!(output.list, offset + 1, nb.list, 1, nb.n)
+        offset += nb.n
+    end
+    output.n = ntot
+    return output
+end
+```
+
+"""
+reduce_output!
