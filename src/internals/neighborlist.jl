@@ -57,13 +57,15 @@ function _estimated_n_pairs(box::Box{UnitCellType, N}, cl::CellListPair) where {
 end
 
 # Pre-allocate capacity for neighbor lists based on the estimated pair count.
+# shrink=false ensures this is a no-op when capacity is already sufficient,
+# preventing spurious allocations on repeated calls.
 function _sizehint_neighbor_lists!(output::NeighborList, output_threaded, box, cl)
     n_pairs = _estimated_n_pairs(box, cl)
-    sizehint!(output.list, n_pairs)
+    sizehint!(output.list, n_pairs; shrink = false)
     nbatch = max(1, nbatches(cl, :map))
     n_per_batch = cld(n_pairs, nbatch)
     for nb in output_threaded
-        sizehint!(nb.list, n_per_batch)
+        sizehint!(nb.list, n_per_batch; shrink = false)
     end
     return nothing
 end
