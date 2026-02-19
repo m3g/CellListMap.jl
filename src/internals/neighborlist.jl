@@ -17,7 +17,7 @@ function reducer!(nb1::NeighborList, nb2::NeighborList)
     if length(nb1.list) < ntot
         resize!(nb1.list, ntot)
     end
-    nb1.list[nb1.n + 1:ntot] .= nb2.list[1:nb2.n]
+    nb1.list[nb1.n + 1:ntot] .= @view(nb2.list[1:nb2.n])
     nb1.n = ntot
     return nb1
 end
