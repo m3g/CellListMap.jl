@@ -33,6 +33,7 @@ include("./API/NeighborPair.jl")
 
 # ParticleSystemPositions type (needed by CellLists.jl)
 include("./API/AbstractParticleSystem.jl")
+include("./API/ParticleSystemPositions.jl")
 
 # Core-computing
 include("./internals/show.jl")
