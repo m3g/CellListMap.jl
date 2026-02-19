@@ -939,13 +939,13 @@ function add_particles!(x, box, ishift, cl::CellList{N, T}) where {N, T}
     return cl
 end
 
-# For NonPeriodicCell, translate coordinates instead of modular wrapping.
-# This avoids a discontinuity at the wrap boundary that splits nearby particles.
+# For NonPeriodicCell, store original coordinates without wrapping or translation.
+# The computing_box is offset by box.origin so particle_cell maps original coordinates
+# to valid cell indices directly, avoiding the modular-wrapping discontinuity at x=0.
 function add_particles!(x, box::Box{NonPeriodicCell}, ishift, cl::CellList{N, T}) where {N, T}
     for ip in eachindex(x)
         xp = x[ip]
         p = SVector{N, T}(ntuple(i -> xp[i], Val(N)))
-        p = _nonperiodic_translate(p, box)
         add_particle_to_celllist!(ishift + ip, p, box, cl)
         replicate_particle!(ishift + ip, p, box, cl)
     end

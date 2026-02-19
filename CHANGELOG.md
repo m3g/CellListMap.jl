@@ -31,7 +31,7 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Remove internal coordinate swapping by size.
 - ![INFO][badge-info] Internal implementation of neighborlist moved to ParticleSystem interface.
 - ![INFO][badge-info] The internal representation of coordinantes is done with `ParticleSytemPositions` array type - which is not a subtype of abstract array. 
-- ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges. This bug was never released, it was created and fixed in the development version.
+- ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges / do not modify input coordinates in `NonPeriodicCell`. This bug was never released, it was created and fixed in the development version.
 
 Version 0.9.17
 --------------
