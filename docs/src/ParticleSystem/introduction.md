@@ -98,10 +98,7 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
 
 The positions stored in a `ParticleSystem` (accessible via `system.xpositions` and, for two-set systems, `system.ypositions`) are of type `ParticleSystemPositions{N,T}`. This is a wrapper around a `Vector{SVector{N,T}}` that carries an internal `updated` flag. When coordinates are mutated through the supported interface, the flag is set automatically, so that cell lists are recomputed on the next call to `pairwise!`.
 
-A `ParticleSystemPositions` can be constructed from:
-- A vector of vectors (e.g. `Vector{Vector{Float64}}`).
-- A vector of `SVector`s (e.g. `Vector{SVector{3,Float64}}`).
-- An `(D, M)` matrix, where `D` is the dimension and `M` the number of particles.
+A `ParticleSystemPositions` can be constructed from a vector of vectors (e.g. `Vector{Vector{Float64}}`), but typically this construction occurs only internal on the call to `ParticleSystem`. The mutation interface is important when the user wants to vary the coordinates of the system. Mutation must strictly follow the available API methods, otherwise subsequent computations might be wrong because they can be based on outdated cell lists.  
 
 ### Mutating interface
 
@@ -116,6 +113,7 @@ recomputation of the cell lists on the next `pairwise!` call:
 | `append!`     | Append positions from another collection         |
 | `push!`       | Append positions from another collection         |
 | Broadcasting  | In-place broadcast (e.g. `p .= new_positions`)   |
+| `view`        | Views share the updated state of the original array, such that mutations to views are tracked. |
 
 ### Read-only interface
 

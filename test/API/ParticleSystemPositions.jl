@@ -114,12 +114,14 @@
     @test p11.updated[] == true
     @test all(p11[i] == p12[i] for i in 1:5)
 
-    # view shares the updated flag
+    # view shares the updated reference flag
     p13 = PSP(rand(SVector{3,Float64}, 10))
     p13.updated[] = false
     v = @view p13[1:5]
+    v[1] = SVector(1.0, 1.0, 1.0)
     @test length(v) == 5
-    @test v[1] == p13[1]
+    @test p13[1] == v[1]
+    @test p13.updated[] = true
 
     # show does not error
     io = IOBuffer()

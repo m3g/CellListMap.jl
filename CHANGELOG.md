@@ -14,7 +14,7 @@ Version 0.10.0-DEV
 --------------
 - ![FEATURE][badge-feature] `pairwise!(f, x, sys)` maps `f` to the pairs of the particles defined in vector `x` to the cell list defined in `sys` (to reuse the same cell list for cross-computations with different set of particles).
 - ![FEATURE][badge-feature] `pairwise!(; reset=[true(default)/false]`: the optional `reset` keyword of `pairwise!`, when set to `false`, avoids resetting the initial value of `output` to `zero(typeof(output))`.
-- ![FEATURE][badge-feature] Automatic update tracking of coordinates and cell list updating using the ParticleSystemPositions internal coordinate representation.
+- ![FEATURE][badge-feature] Automatic update tracking of coordinates and cell list updating using the ParticleSystemPositions internal coordinate representation. Views share the reference updated flag, such that mutations to views are tracked.
 - ![ENHANCEMENT][badge-enhancement] Improve scaling of cell list construction and updating. 
 - ![ENHANCEMENT][badge-enhancement] Improve performance of inner loops.
 - ![BREAKING][badge-breaking] `map_pairwise!` was renamed to `pairwise!`. 
