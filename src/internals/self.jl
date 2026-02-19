@@ -30,14 +30,12 @@ function _pairwise!(
         # Parallelization options
         parallel::Bool = true,
         output_threaded = nothing,
-        reduce::Function = reduce,
         show_progress::Bool = false,
     ) where {F} # Needed for specialization for this function (avoids some allocations)
     if parallel
         output = _pairwise_parallel!(
             f, output, box, cl;
             output_threaded = output_threaded,
-            reduce = reduce,
             show_progress = show_progress
         )
     else
@@ -83,9 +81,8 @@ end
 function _pairwise_parallel!(
         f::F1, output, box::Box, cl::CellList{N, T};
         output_threaded = nothing,
-        reduce::F2 = reduce,
         show_progress::Bool = false
-    ) where {F1, F2, N, T}
+    ) where {F1, N, T}
     _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for i in 1:_nbatches]
@@ -95,7 +92,7 @@ function _pairwise_parallel!(
     @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
     end
-    return reduce(output, output_threaded)
+    return reduce_output!(output, output_threaded)
 end
 
 #

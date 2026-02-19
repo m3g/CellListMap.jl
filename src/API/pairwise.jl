@@ -57,7 +57,6 @@ function pairwise!(
         f, sys.output, sys._box, sys._cell_list;
         output_threaded = sys._output_threaded,
         parallel = sys.parallel,
-        reduce = (output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
         show_progress = show_progress
     )
     return sys.output
@@ -119,7 +118,6 @@ function pairwise!(
     sys.output = _pairwise!(
         f, sys.output, sys._box, x, sys._cell_list;
         output_threaded = sys._output_threaded,
-        reduce = (output, output_threaded) -> reduce_output!(reducer, output, output_threaded),
         parallel = sys.parallel, show_progress,
     )
     return sys.output

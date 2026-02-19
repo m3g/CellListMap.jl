@@ -59,16 +59,13 @@ function _reset_all_output!(output, output_threaded; reset::Bool)
     return output
 end
 
-function reduce_output! end
-const reduce_output = reduce_output!
-function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}) where {T}
+function reduce_output!(output::T, output_threaded::Vector{T}) where {T}
     for ibatch in eachindex(output_threaded)
         output = reducer(output, output_threaded[ibatch])
     end
     return output
 end
 function reduce_output!(
-        reducer::Function,
         output::AbstractVecOrMat{T},
         output_threaded::Vector{<:AbstractVecOrMat{T}}
     ) where {T}

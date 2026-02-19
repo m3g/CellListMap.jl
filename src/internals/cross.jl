@@ -10,14 +10,12 @@ function _pairwise!(
         # Parallelization options
         parallel::Bool = true,
         output_threaded = nothing,
-        reduce::F2 = reduce,
         show_progress::Bool = false
-    ) where {F1, F2, N, T} # F1, F2 Needed for specialization for these functions
+    ) where {F1, N, T} # F1 Needed for specialization for this function
     if parallel
         output = _pairwise_parallel!(
             f, output, box, cl;
             output_threaded = output_threaded,
-            reduce = reduce,
             show_progress = show_progress
         )
     else
@@ -63,9 +61,8 @@ end
 function _pairwise_parallel!(
         f::F1, output, box::Box, cl::CellListPair{N, T};
         output_threaded = nothing,
-        reduce::F2 = reduce,
         show_progress::Bool = false
-    ) where {F1, F2, N, T}
+    ) where {F1, N, T}
     _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for i in 1:_nbatches]
@@ -75,7 +72,7 @@ function _pairwise_parallel!(
     @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
         @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
     end
-    return reduce(output, output_threaded)
+    return reduce_output!(output, output_threaded)
 end
 
 #
@@ -159,8 +156,8 @@ end
 
 function _parallel_pairwise_x_vs_sys!(
         f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N, T};
-        show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
-    ) where {F1 <: Function, F2 <: Function, N, T}
+        show_progress::Bool = false, output_threaded = nothing,
+    ) where {F1 <: Function, N, T}
     _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for _ in 1:_nbatches]
@@ -169,15 +166,15 @@ function _parallel_pairwise_x_vs_sys!(
     @sync for (ibatch, x_atom_indices) in enumerate(index_chunks(1:length(x); n = _nbatches, split = Consecutive()))
         @spawn _batch_x_vs_sys!($f, $x, $x_atom_indices, $ibatch, $output_threaded, $box, $cl, $p)
     end
-    return reduce(output, output_threaded)
+    return reduce_output!(output, output_threaded)
 end
 
 function _pairwise!(
         f::F1, output, box::Box, x::AbstractVector{<:AbstractVector}, cl::CellList{N, T};
-        parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
-    ) where {F1 <: Function, F2 <: Function, N, T}
+        parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing,
+    ) where {F1 <: Function, N, T}
     output = if parallel
-        _parallel_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress, output_threaded, reduce)
+        _parallel_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress, output_threaded)
     else
         _serial_pairwise_x_vs_sys!(f, output, box, x, cl; show_progress)
     end
@@ -186,11 +183,11 @@ end
 
 function _pairwise!(
         f::F1, output, box::Box, x::AbstractMatrix, cl::CellList{N};
-        parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing, reduce::F2 = reduce,
-    ) where {N, F1 <: Function, F2 <: Function}
+        parallel::Bool = true, show_progress::Bool = false, output_threaded = nothing,
+    ) where {N, F1 <: Function}
     size(x, 1) == N || throw(DimensionMismatch("First dimension of input matrix must be $N"))
     x_re = reinterpret(reshape, SVector{N, eltype(x)}, x)
-    return _pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded, reduce)
+    return _pairwise!(f, output, box, x_re, cl; parallel, show_progress, output_threaded)
 end
 
 function single_particle_vs_list!(

@@ -24,7 +24,7 @@ end
 
 # Specialized reduce to avoid O(nbatches²) work from incremental resize! calls:
 # compute total once, resize output.list once, then copyto! from each batch.
-function reduce_output!(::Function, output::NeighborList, output_threaded::Vector{<:NeighborList})
+function reduce_output!(output::NeighborList, output_threaded::Vector{<:NeighborList})
     ntot = output.n
     for nb in output_threaded
         ntot += nb.n
@@ -34,7 +34,7 @@ function reduce_output!(::Function, output::NeighborList, output_threaded::Vecto
     end
     offset = output.n
     for nb in output_threaded
-        copyto!(output.list, offset + 1, nb.list, 1, nb.n)
+        output.list[offset + 1:offset + nb.n] .= @view(nb.list[1:nb.n])
         offset += nb.n
     end
     output.n = ntot

@@ -210,11 +210,11 @@ reducer!(x::T, y::T) where {T <: SupportedTypes} = +(x, y)
 const reducer = reducer!
 
 """
-    reduce_output!(reducer::Function, output, output_threaded)
+    reduce_output!(output, output_threaded)
 
 Function that defines how to reduce the vector of `output_threaded` variables (one per batch)
 into the single `output` variable, after a parallel computation. The default implementation
-calls `reducer(output, output_threaded[i])` for each batch sequentially.
+calls `CellListMap.reducer(output, output_threaded[i])` for each batch sequentially.
 
 For custom output types that are large collections (e.g. lists of pairs), overloading this
 function can avoid significant allocation overhead. The generic implementation performs
@@ -225,7 +225,7 @@ compute the total size first, resize once, and then copy each batch directly.
 
 ## Requirements for the overload
 
-- The signature must be `reduce_output!(::Function, output::MyType, output_threaded::Vector{<:MyType})`
+- The signature must be `reduce_output!(output::MyType, output_threaded::Vector{<:MyType})`
 - The function *must* return `output`.
 
 ## Example
@@ -240,14 +240,14 @@ struct PairList
     list::Vector{Tuple{Int,Int,Float64}}
 end
 
-function CellListMap.reduce_output!(::Function, output::PairList, output_threaded::Vector{<:PairList})
+function CellListMap.reduce_output!(output::PairList, output_threaded::Vector{<:PairList})
     ntot = output.n + sum(nb.n for nb in output_threaded; init = 0)
     if length(output.list) < ntot
         resize!(output.list, ntot)
     end
     offset = output.n
     for nb in output_threaded
-        copyto!(output.list, offset + 1, nb.list, 1, nb.n)
+        output.list[offset + 1:offset + nb.n] .= @view(nb.list[1:nb.n])
         offset += nb.n
     end
     output.n = ntot
