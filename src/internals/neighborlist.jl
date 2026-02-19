@@ -41,6 +41,33 @@ function reduce_output!(output::NeighborList, output_threaded::Vector{<:Neighbor
     return output
 end
 
+# Estimate the expected number of neighbor pairs assuming uniform density.
+function _estimated_n_pairs(box::Box{UnitCellType, N}, cl::CellList) where {UnitCellType, N}
+    n = cl.n_real_particles
+    vol = abs(LinearAlgebra.det(box.input_unit_cell.matrix))
+    sphere_vol = (N == 2 ? π : 4π / 3) * box.cutoff^N
+    return max(0, round(Int, (n * (n - 1) / 2) * sphere_vol / vol))
+end
+function _estimated_n_pairs(box::Box{UnitCellType, N}, cl::CellListPair) where {UnitCellType, N}
+    n_x = cl.ref_list.n_real_particles
+    n_y = cl.target_list.n_real_particles
+    vol = abs(LinearAlgebra.det(box.input_unit_cell.matrix))
+    sphere_vol = (N == 2 ? π : 4π / 3) * box.cutoff^N
+    return max(0, round(Int, n_x * n_y * sphere_vol / vol))
+end
+
+# Pre-allocate capacity for neighbor lists based on the estimated pair count.
+function _sizehint_neighbor_lists!(output::NeighborList, output_threaded, box, cl)
+    n_pairs = _estimated_n_pairs(box, cl)
+    sizehint!(output.list, n_pairs)
+    nbatch = max(1, nbatches(cl, :map))
+    n_per_batch = cld(n_pairs, nbatch)
+    for nb in output_threaded
+        sizehint!(nb.list, n_per_batch)
+    end
+    return nothing
+end
+
 # Function adds pair to the list
 function push_pair!(pair, nb::NeighborList)
     (; i, j, d) =  pair

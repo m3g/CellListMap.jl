@@ -249,9 +249,19 @@ julia> @time neighborlist!(system; parallel=false)
 
 """
 function neighborlist!(system::InPlaceNeighborList)
-    pairwise!(push_pair!, system.sys, show_progress = system.show_progress)
-    resize!(system.sys.nb.list, system.sys.nb.n)
-    return system.sys.nb.list
+    (; sys) = system
+    sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset = true)
+    UpdateParticleSystem!(sys)
+    _sizehint_neighbor_lists!(sys.output, sys._output_threaded, sys._box, sys._cell_list)
+    sys.output = _pairwise!(
+        push_pair!,
+        sys.output, sys._box, sys._cell_list;
+        output_threaded = sys._output_threaded,
+        parallel = sys.parallel,
+        show_progress = system.show_progress,
+    )
+    resize!(sys.output.list, sys.output.n)
+    return sys.output.list
 end
 
 """
