@@ -1,5 +1,5 @@
 using TestItemRunner
-@run_package_tests filter=t -> !(:performance in t.tags)
+@run_package_tests
 
 # Aqua
 @testitem "Aqua.test_all" begin
