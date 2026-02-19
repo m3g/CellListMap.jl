@@ -252,7 +252,7 @@ function neighborlist!(system::InPlaceNeighborList)
     (; sys) = system
     sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset = true)
     UpdateParticleSystem!(sys)
-    _sizehint_neighbor_lists!(sys.output, sys._output_threaded, sys._box, sys._cell_list)
+    _sizehint_neighbor_lists!(sys)
     sys.output = _pairwise!(
         push_pair!,
         sys.output, sys._box, sys._cell_list;

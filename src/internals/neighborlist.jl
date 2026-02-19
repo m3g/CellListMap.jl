@@ -6,6 +6,13 @@ mutable struct NeighborList{T}
     list::Vector{Tuple{Int, Int, T}}
 end
 
+# resize! used to sizehint the neighborlist in a 1.10 compatible way.
+# (no shrink=false)
+function Base.resize!(nb::NeighborList, n) 
+    resize!(nb.list, n)
+    return nb
+end
+
 # Functions for parallel construction and reduction
 function reset_output!(nb::NeighborList)
     nb.n = 0
@@ -59,14 +66,9 @@ end
 # Pre-allocate capacity for neighbor lists based on the estimated pair count.
 # shrink=false ensures this is a no-op when capacity is already sufficient,
 # preventing spurious allocations on repeated calls.
-function _sizehint_neighbor_lists!(output::NeighborList, output_threaded, box, cl)
-    n_pairs = _estimated_n_pairs(box, cl)
-    sizehint!(output.list, n_pairs; shrink = false)
-    nbatch = max(1, nbatches(cl, :map))
-    n_per_batch = cld(n_pairs, nbatch)
-    for nb in output_threaded
-        sizehint!(nb.list, n_per_batch; shrink = false)
-    end
+function _sizehint_neighbor_lists!(sys::AbstractParticleSystem)
+    n_pairs = _estimated_n_pairs(sys._box, sys._cell_list)
+    resize_output!(sys, n_pairs)
     return nothing
 end
 
