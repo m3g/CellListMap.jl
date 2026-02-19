@@ -64,6 +64,7 @@ These are public, but not exported.
 CellListMap.copy_output
 CellListMap.reset_output!
 CellListMap.reducer!
+CellListMap.reduce_output!
 ```
 
 ### Auxiliary functions

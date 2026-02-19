@@ -59,41 +59,13 @@ function _reset_all_output!(output, output_threaded; reset::Bool)
     return output
 end
 
-#=
-    reduce_output!(reducer::Function, output, output_threaded)
-
-# Extended help
-
-Function that defines how to reduce the vector of `output` variables, after a threaded
-computation. This function is implemented for `output` variables that are numbers, 
-and vectors or arrays of number of static arrays, as the sum of the values of the 
-threaded computations, which is the most common application, found in computing
-forces, energies, etc. 
-
-It may be interesting to implement custom `CellListMap.reduce_output!` function for other types 
-of output variables, considering:
-
-- The arguments of the function must be the return `output` value and a vector 
-  `output_threaded` of `output` variables, which is created (automatically) by copying
-  the output the number of times necessary for the multi-threaded computation. 
-
-- The function *must* return the `output` variable, independently of it being mutable
-  or immutable.
-
-`reduce_output` is an alias to `reduce_output!` that can be used for consistency if the `output`
-variable is immutable.
-
-```
-
-=#
-function reduce_output!(reducer::Function, output::T, output_threaded::Vector{T}) where {T}
+function reduce_output!(output::T, output_threaded::Vector{T}) where {T}
     for ibatch in eachindex(output_threaded)
         output = reducer(output, output_threaded[ibatch])
     end
     return output
 end
 function reduce_output!(
-        reducer::Function,
         output::AbstractVecOrMat{T},
         output_threaded::Vector{<:AbstractVecOrMat{T}}
     ) where {T}
