@@ -319,6 +319,28 @@ end
     @test_throws ArgumentError pairwise!((pair, out) -> out += pair.d2, p)
     p = ParticleSystem(xpositions = copy(y), ypositions = copy(y), cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, validate_coordinates = (x) -> nothing)
     @test pairwise!((pair, out) -> out += pair.d2, p) > 0.0
+
+    # Tests to guarantee that future versions do not introduce internal changes that cause
+    # input coordinates in NonPeriodicCell to be modified
+    x = [ SVector(-0.5, -0.5, -0.5) + rand(SVector{3,Float64}) for _ in 1:100]
+    sys = ParticleSystem(
+        xpositions=x,
+        unitcell=nothing,
+        cutoff=0.1,
+        output=0.0,
+    )
+    @test all(sys.xpositions .== x)
+    y = [ SVector(-0.5, -0.5, -0.5) + rand(SVector{3,Float64}) for _ in 1:50]
+    sys = ParticleSystem(
+        xpositions=x,
+        ypositions=y,
+        unitcell=nothing,
+        cutoff=0.1,
+        output=0.0,
+    )
+    @test all(sys.xpositions .== x)
+    @test all(sys.ypositions .== y)
+
 end
 
 @testitem "reset output value" setup = [Testing] begin
