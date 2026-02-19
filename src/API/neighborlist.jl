@@ -249,11 +249,7 @@ julia> @time neighborlist!(system; parallel=false)
 
 """
 function neighborlist!(system::InPlaceNeighborList)
-    pairwise!(
-        (pair, nb) -> push_pair!(pair, nb),
-        system.sys,
-        show_progress = system.show_progress
-    )
+    pairwise!(push_pair!, system.sys, show_progress = system.show_progress)
     resize!(system.sys.nb.list, system.sys.nb.n)
     return system.sys.nb.list
 end
