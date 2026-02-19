@@ -96,11 +96,6 @@ Base.@kwdef struct Box{UnitCellType, N, T, TSQ, M, TR}
     origin::SVector{N, T}
 end
 
-# Translation for NonPeriodicCell: shifts coordinates so that xmin maps to 0,
-# placing all coordinates in [0, extent] ⊂ [0, sides). This avoids the
-# discontinuity of modular wrapping that splits nearby particles.
-@inline _nonperiodic_translate(p, box::Box{NonPeriodicCell}) = p .- box.origin
-@inline _nonperiodic_untranslate(p, box::Box{NonPeriodicCell}) = p .+ box.origin
 
 #=
     unitcelltype(::Box{T}) where T = T
@@ -255,7 +250,7 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cu
     xmin, xmax = cell_limits(aligned_unit_cell.matrix)
 
     nc, cell_size = _compute_nc_and_cell_size(UnitCellType, xmin, xmax, cutoff, lcell)
-    computing_box = (xmin .- lcell * cell_size, xmax .+ lcell * cell_size)
+    computing_box = (xmin .+ origin .- lcell * cell_size, xmax .+ origin .+ lcell * cell_size)
 
     # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
     cutoff_sqr = cutoff^2

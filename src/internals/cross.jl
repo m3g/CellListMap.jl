@@ -229,9 +229,9 @@ function single_particle_vs_list!(
         cl::CellList{N, T}
     ) where {F, N, T}
     (; nc, cutoff_sqr) = box
-    # Translate the cross particle into the same frame used by add_particles!
-    xpᵢ = _nonperiodic_translate(x, box)
-    ic = particle_cell(xpᵢ, box)
+    # No translation needed: the computing_box is offset by box.origin so particle_cell
+    # maps original coordinates to valid cell indices directly.
+    ic = particle_cell(x, box)
     for neighbor_cell in current_and_neighbor_cells(box)
         jc_cartesian = neighbor_cell + ic
         # if cell is outside computing box, cycle
@@ -249,9 +249,9 @@ function single_particle_vs_list!(
             @inbounds pⱼ = cellⱼ.particles[j]
             if pⱼ.real
                 xpⱼ = pⱼ.coordinates
-                d2 = sum(abs2, xpᵢ - xpⱼ)
+                d2 = sum(abs2, x - xpⱼ)
                 if d2 <= cutoff_sqr
-                    pair = NeighborPair(i, pⱼ.index, x, _nonperiodic_untranslate(xpⱼ, box), d2)
+                    pair = NeighborPair(i, pⱼ.index, x, xpⱼ, d2)
                     output = f(pair, output)
                 end
             end
