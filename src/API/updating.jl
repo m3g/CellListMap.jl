@@ -56,7 +56,7 @@ julia> sys = ParticleSystem(
        );
 
 julia> update_unitcell!(sys, [30.0, 30.0, 30.0])
-ParticleSystem1{output} of dimension 3, composed of:
+ParticleSystem1{default_output_name} of dimension 3, composed of:
     Box{CellListMap.OrthorhombicCell, 3}
       unit cell matrix = [ 30.0 0.0 0.0; 0.0 30.0 0.0; 0.0 0.0 30.0 ]
       cutoff = 8.0
@@ -67,8 +67,8 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for 4 batch(es).
-    Type of output variable (output): Float64
+    Parallelization auxiliary data set for 8 batch(es).
+    Type of output variable (default_output_name): Float64
 
 ```
 
@@ -120,7 +120,7 @@ julia> sys = ParticleSystem(
        );
 
 julia> update_cutoff!(sys, 10.0)
-ParticleSystem1{output} of dimension 3, composed of:
+ParticleSystem1{default_output_name} of dimension 3, composed of:
     Box{CellListMap.OrthorhombicCell, 3}
       unit cell matrix = [ 21.0 0.0 0.0; 0.0 21.0 0.0; 0.0 0.0 21.0 ]
       cutoff = 10.0
@@ -131,8 +131,8 @@ ParticleSystem1{output} of dimension 3, composed of:
       100 real particles.
       8 cells with real particles.
       800 particles in computing box, including images.
-    Parallelization auxiliary data set for 4 batch(es).
-    Type of output variable (output): Float64
+    Parallelization auxiliary data set for 8 batch(es).
+    Type of output variable (default_output_name): Float64
 ```
 """
 function update_cutoff!(sys::ParticleSystem1, cutoff)

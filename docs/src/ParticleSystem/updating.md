@@ -132,7 +132,7 @@ julia> system = ParticleSystem(;
         );
 
 julia> update_cutoff!(system, 0.2)
-ParticleSystem1{output} of dimension 3, composed of:
+ParticleSystem1{default_output_name} of dimension 3, composed of:
     Box{OrthorhombicCell, 3}
       unit cell matrix = [ 1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0 ]
       cutoff = 0.2
@@ -144,6 +144,6 @@ ParticleSystem1{output} of dimension 3, composed of:
       636 cells with real particles.
       1738 particles in computing box, including images.
     Parallelization auxiliary data set for 8 batch(es).
-    Type of output variable (output): Float64
+    Type of output variable (default_output_name): Float64
 
 ```

@@ -152,6 +152,18 @@
     )
     @test size(sys.unitcell) == (3, 3)
 
+    # property names and output name
+    sys = ParticleSystem(xpositions = rand(3,10), cutoff=0.1, output=0.0)
+    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :default_output_name)
+    sys = ParticleSystem(xpositions = rand(3,10), cutoff=0.1, output=0.0, output_name=:energy)
+    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :energy)
+
+    # NeighborPair interface
+    p = NeighborPair(1, 2, SVector(1.0, 1.0), SVector(1.0, 3.0), 4.0)
+    @test (p.i, p.j, p.x, p.y, p.d2) == (1, 2, SVector(1.0, 1.0), SVector(1.0, 3.0), 4.0)
+    @test p.d == 2.0
+    @test propertynames(p) == (:i, :j, :x, :y, :d, :d2)
+
 end
 
 @testitem "ParticleSystem - resize output" setup = [Testing] begin

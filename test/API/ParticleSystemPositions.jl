@@ -1,6 +1,7 @@
 @testitem "ParticleSystemPositions interface" begin
     using StaticArrays
     using CellListMap
+    using ShowMethodTesting
     const PSP = CellListMap.ParticleSystemPositions
 
     # Construction from vector of SVectors
@@ -124,9 +125,13 @@
     @test p13.updated[] = true
 
     # show does not error
-    io = IOBuffer()
-    show(io, MIME"text/plain"(), p)
-    @test length(take!(io)) > 0
+    @test isapprox(parse_show(p; repl=Dict("StaticArraysCore." => "")), """
+      ParticleSystemPositions, updated: false, with 10-element Vector{SVector{3, Float64}}:
+        [1.0, 2.0, 3.0]
+        [0.939318968863584, 0.5097640417408886, 0.19846095185478763]
+        [0.5368806196615254, 0.8508139226462262, 0.4786069714983523]
+        [0.4127933306918298, 0.05227010510480201, 0.04247943213111527]
+    """; float_match = (x,y) -> true)
 
     # error on construction from non-SVector element type
     @test_throws MethodError ParticleSystemPositions(Vector{Float64}[])
