@@ -125,7 +125,7 @@
     @test p13.updated[] = true
 
     # show does not error
-    @test parse_show(p) ≈ """
+    @test parse_show(p; repl=Dict("StaticArraysCore." => "")) ≈ """
       ParticleSystemPositions, updated: false, with 10-element Vector{SVector{3, Float64}}:
         [1.0, 2.0, 3.0]
         [0.939318968863584, 0.5097640417408886, 0.19846095185478763]
