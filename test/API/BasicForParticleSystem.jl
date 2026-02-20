@@ -154,7 +154,7 @@
 
     # property names and output name
     sys = ParticleSystem(xpositions = rand(3,10), cutoff=0.1, output=0.0)
-    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :output_name)
+    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :default_output_name)
     sys = ParticleSystem(xpositions = rand(3,10), cutoff=0.1, output=0.0, output_name=:energy)
     @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :energy)
 
