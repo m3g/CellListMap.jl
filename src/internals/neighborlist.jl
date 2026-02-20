@@ -6,6 +6,13 @@ mutable struct NeighborList{T}
     list::Vector{Tuple{Int, Int, T}}
 end
 
+# resize! used to sizehint the neighborlist in a 1.10 compatible way.
+# (no shrink=false)
+function Base.resize!(nb::NeighborList, n) 
+    resize!(nb.list, n)
+    return nb
+end
+
 # Functions for parallel construction and reduction
 function reset_output!(nb::NeighborList)
     nb.n = 0
@@ -39,6 +46,30 @@ function reduce_output!(output::NeighborList, output_threaded::Vector{<:Neighbor
     end
     output.n = ntot
     return output
+end
+
+# Estimate the expected number of neighbor pairs assuming uniform density.
+function _estimated_n_pairs(box::Box{UnitCellType, N}, cl::CellList) where {UnitCellType, N}
+    n = cl.n_real_particles
+    vol = abs(LinearAlgebra.det(box.input_unit_cell.matrix))
+    sphere_vol = (N == 2 ? π : 4π / 3) * box.cutoff^N
+    return max(0, round(Int, (n * (n - 1) / 2) * sphere_vol / vol))
+end
+function _estimated_n_pairs(box::Box{UnitCellType, N}, cl::CellListPair) where {UnitCellType, N}
+    n_x = cl.ref_list.n_real_particles
+    n_y = cl.target_list.n_real_particles
+    vol = abs(LinearAlgebra.det(box.input_unit_cell.matrix))
+    sphere_vol = (N == 2 ? π : 4π / 3) * box.cutoff^N
+    return max(0, round(Int, n_x * n_y * sphere_vol / vol))
+end
+
+# Pre-allocate capacity for neighbor lists based on the estimated pair count.
+# shrink=false ensures this is a no-op when capacity is already sufficient,
+# preventing spurious allocations on repeated calls.
+function _sizehint_neighbor_lists!(sys::AbstractParticleSystem)
+    n_pairs = _estimated_n_pairs(sys._box, sys._cell_list)
+    resize_output!(sys, n_pairs)
+    return nothing
 end
 
 # Function adds pair to the list
