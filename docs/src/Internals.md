@@ -344,17 +344,7 @@ output_threaded = [ deepcopy(output) for i in 1:nbatches(cl, :map) ]
 ```
 where `nbatches(cl, :map)` is the number of batches into which the mapped computation will be divided. The number of batches is *not* necessarily equal to the number of threads available (an heuristic is used to optimize performance, as a function of the workload per batch), but can be manually set, as described in the **Number of batches** section below.
 
-The default reduction function just assumes the additivity of the results obtained by each batch:
-```julia
-reduce(output::Number,output_threaded) = sum(output_threaded)
-function reduce(output::Vector,output_threaded)
-    @. output = output_threaded[1]
-    for i in 2:length(output_threaded)
-         @. output += output_threaded[i]
-    end
-    return output
-end
-```
+The default reduction function just assumes the additivity of the results obtained by each batch.
 
 ### Custom reduction functions
 

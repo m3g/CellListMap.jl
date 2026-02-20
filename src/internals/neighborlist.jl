@@ -19,15 +19,6 @@ function reset_output!(nb::NeighborList)
     return nb
 end
 copy_output(nb::NeighborList) = NeighborList(nb.n, copy(nb.list))
-function reducer!(nb1::NeighborList, nb2::NeighborList)
-    ntot = nb1.n + nb2.n
-    if length(nb1.list) < ntot
-        resize!(nb1.list, ntot)
-    end
-    nb1.list[nb1.n + 1:ntot] .= @view(nb2.list[1:nb2.n])
-    nb1.n = ntot
-    return nb1
-end
 
 # Specialized reduce to avoid O(nbatches²) work from incremental resize! calls:
 # compute total once, resize output.list once, then copyto! from each batch.

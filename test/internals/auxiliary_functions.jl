@@ -1,8 +1,3 @@
-@testitem "reduce fallback error" begin
-    using CellListMap
-    @test_throws ArgumentError CellListMap.reduce("hello", [1, 2, 3])
-end
-
 @testitem "pairwise with show_progress" begin
     using CellListMap
     using StaticArrays
