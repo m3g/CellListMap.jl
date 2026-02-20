@@ -179,7 +179,7 @@ function ParticleSystem(;
         unitcell::Union{AbstractVecOrMat, Nothing} = nothing,
         cutoff::Number,
         output,
-        output_name::Symbol = :output,
+        output_name::Symbol = :output_name,
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
         lcell = 1,
