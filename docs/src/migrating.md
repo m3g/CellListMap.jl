@@ -74,16 +74,6 @@ The `NeighborPair` object contains the fields:
 
 The lazy computation of `d` is particularly useful when your function only needs the squared distance `d2`, avoiding unnecessary `sqrt` calls.
 
-### New `pairwise!(f, x, sys)` method
-
-A new method has been added that allows computing pairwise interactions between a new set of particles `x` and the particles already in the system `sys`. This is useful for reusing the same cell list for cross-computations with different sets of particles, and replaces previous uses of the `autoswap=false` option:
-
-```julia
-sys = ParticleSystem(positions=y, cutoff=cutoff, output=0.0)
-# Compute interactions between particles in x and those in sys
-u = pairwise!(f, x, sys)
-```
-
 ### Output resetting behavior
 
 The handling of the initial output value has changed:
@@ -152,5 +142,5 @@ The Python interface has been discontinued in version 0.10.0.
 | Alias for "non-mutating" pairwise | `pairwise` | Removed |
 | Output reset behavior | Manual | Automatic (use `reset=false` to skip) |
 | Low-level interface | Exported | Internal (use `ParticleSystem`) |
-| `autoswap` option | Deprecated | Removed (use `pairwise!(f, x, sys)`) |
+| `autoswap` option | Deprecated | Removed |
 | Python interface | Available | Discontinued |

@@ -112,14 +112,27 @@ function UpdateParticleSystem!(sys::ParticleSystem1)
     return sys
 end
 
+# Check if the new limits are compatible with the current box: the new particle
+# bounding box fits within the old one, so the box does not need to be updated.
+function _limits_fit_in_box(new_limits::Limits{N}, box::Box) where {N}
+    old_origin = box.origin
+    # Recover the old limits extent by undoing the cutoff padding from the box sides.
+    old_upper = old_origin .+ SVector(ntuple(i -> box.input_unit_cell.matrix[i,i], Val(N))) .- (210 * box.cutoff / 100)
+    new_upper = new_limits.origin .+ new_limits.limits
+    return all(new_limits.origin .>= old_origin) && all(new_upper .<= old_upper)
+end
+
 function UpdateParticleSystem!(sys::ParticleSystem2)
     if sys.xpositions.updated[] || sys.ypositions.updated[]
         if unitcelltype(sys) == NonPeriodicCell
-            sys._box = Box(limits(sys.xpositions, sys.ypositions), sys.cutoff)
-            # Both cell lists must be rebuilt when the box changes,
-            # because the origin and sides changed.
-            sys.xpositions.updated[] = true
-            sys.ypositions.updated[] = true
+            new_limits = limits(sys.xpositions, sys.ypositions)
+            if !_limits_fit_in_box(new_limits, sys._box)
+                sys._box = Box(new_limits, sys._box.cutoff)
+                # Both cell lists must be rebuilt when the box changes,
+                # because the origin and sides changed.
+                sys.xpositions.updated[] = true
+                sys.ypositions.updated[] = true
+            end
         end
         n_particles_changed = (length(sys.xpositions) != sys._cell_list.ref_list.n_real_particles) ||
             (length(sys.ypositions) != sys._cell_list.target_list.n_real_particles)

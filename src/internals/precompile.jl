@@ -27,13 +27,11 @@ PrecompileTools.@setup_workload begin
         # 3D
         sys = ParticleSystem(positions = x3d, unitcell = u3d, cutoff = cutoff, output = 0.0)
         pairwise!(f, sys)
-        pairwise!(f, y3d, sys)
         sys = ParticleSystem(xpositions = x3d, ypositions = y3d, unitcell = u3d, cutoff = cutoff, output = 0.0)
         pairwise!(f, sys)
         # 2D
         sys = ParticleSystem(positions = x2d, unitcell = u2d, cutoff = cutoff, output = 0.0)
         pairwise!(f, sys)
-        pairwise!(f, y2d, sys)
         sys = ParticleSystem(xpositions = x2d, ypositions = y2d, unitcell = u2d, cutoff = cutoff, output = 0.0)
         pairwise!(f, sys)
     end

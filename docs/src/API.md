@@ -45,7 +45,6 @@ CellListMap.ParticleSystem2
 
 ```@docs
 pairwise!(::F, ::CellListMap.AbstractParticleSystem) where {F<:Function} 
-pairwise!(::F, ::AbstractVecOrMat, ::CellListMap.ParticleSystem1) where {F<:Function}
 ```
 
 ### Updating systems
