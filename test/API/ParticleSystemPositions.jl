@@ -134,8 +134,8 @@
     """; float_match = (x,y) -> true)
 
     # error on construction from non-SVector element type
-    @test_throws MethodError ParticleSystemPositions(Vector{Float64}[])
-    @test_throws MethodError ParticleSystemPositions([rand(3) for _ in 1:5])
+    @test_throws MethodError PSP(Vector{Float64}[])
+    @test_throws MethodError PSP([rand(3) for _ in 1:5])
 
 end
 
@@ -166,20 +166,20 @@ end
     @test sys2.xpositions.updated[] == false
     @test sys2.ypositions.updated[] == false
 
-    # update_unitcell! sets updated flag
+    # update! with unitcell sets updated flag
     sys.xpositions.updated[] = false
-    update_unitcell!(sys, [2, 2, 2])
+    update!(sys; unitcell=[2, 2, 2])
     @test sys.xpositions.updated[] == true
 
-    # update_cutoff! sets updated flag
+    # update! with cutoff sets updated flag
     sys.xpositions.updated[] = false
-    update_cutoff!(sys, 0.2)
+    update!(sys; cutoff=0.2)
     @test sys.xpositions.updated[] == true
 
-    # update_cutoff! sets both flags for ParticleSystem2
+    # update! with cutoff sets both flags for ParticleSystem2
     sys2.xpositions.updated[] = false
     sys2.ypositions.updated[] = false
-    update_cutoff!(sys2, 0.2)
+    update!(sys2; cutoff=0.2)
     @test sys2.xpositions.updated[] == true
     @test sys2.ypositions.updated[] == true
 

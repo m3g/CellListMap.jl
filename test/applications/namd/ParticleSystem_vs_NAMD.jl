@@ -145,7 +145,7 @@
 
     # Update coordinates and unit cell of ParticleSystem
     system.xpositions .= copy_to_svector(coordinates)
-    update_unitcell!(system, unit_cell)
+    update!(system; unitcell=unit_cell)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), system)
     @test u ≈ correct
 
@@ -240,7 +240,7 @@
     unit_cell = [80.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 50.0]
     correct = 1093.7225407797744
     system.xpositions .= copy_to_svector(coordinates)
-    update_unitcell!(system, unit_cell)
+    update!(system; unitcell=unit_cell)
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), system)
     @test u ≈ correct
 

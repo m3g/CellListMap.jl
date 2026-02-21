@@ -24,9 +24,9 @@
         output_name = :gravitational_potential
     )
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(sides, cutoff))
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
     # Test fetching by output name
     @test system.gravitational_potential ≈ naive
@@ -39,9 +39,9 @@
         output = 0.0,
     )
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(CellListMap.limits(PSP(x), PSP(y)), cutoff))
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
 
     # Use matrices as input coordinates
@@ -59,9 +59,9 @@
         output = 0.0,
     )
     naive = map_naive!((x, y, i, j, d2, u) -> potential(i, j, d2, u, mass), 0.0, x, y, CellListMap.Box(sides, cutoff))
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
 
     # Check different lcell
@@ -73,9 +73,9 @@
         output = 0.0,
         lcell = 3,
     )
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
 
     # Test updating of the data on disjoint sets works fine
@@ -413,9 +413,9 @@ end
     f(x, y, avg_dx) = avg_dx + abs(x[1] - y[1])
 
     naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, x, box)
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ naive
 
     # Orthorhombic cell
@@ -426,11 +426,9 @@ end
     new_naive = map_naive!((x, y, i, j, d2, avg_dx) -> f(x, y, avg_dx), 0.0, new_x, new_box)
     # Update system
     system.xpositions .= new_x
-    update_unitcell!(system, new_sides)
-    update_cutoff!(system, new_cutoff)
-    system.parallel = false
+    update!(system; unitcell=new_sides, cutoff=new_cutoff, parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_naive
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_naive
 
     # If the number of particles and box change
@@ -439,11 +437,9 @@ end
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
-    update_unitcell!(system, [new_box.input_unit_cell.matrix[i, i] for i in 1:3])
-    update_cutoff!(system, new_box.cutoff)
-    system.parallel = false
+    update!(system; unitcell=[new_box.input_unit_cell.matrix[i, i] for i in 1:3], cutoff=new_box.cutoff, parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
 
     #
@@ -459,9 +455,9 @@ end
         cutoff = cutoff,
         output = 0.0,
     )
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
 
     # If the number of particles and box change
@@ -473,11 +469,9 @@ end
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
-    update_unitcell!(system, unitcell)
-    update_cutoff!(system, cutoff)
-    system.parallel = false
+    update!(system; unitcell=unitcell, cutoff=cutoff, parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
 
     #
@@ -491,9 +485,9 @@ end
         cutoff = cutoff,
         output = 0.0,
     )
-    system.parallel = false
+    update!(system; parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
 
     # If the number of particles and box change
@@ -504,10 +498,9 @@ end
     new_val = CellListMap.CellListMap._pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), 0.0, new_box, new_cl)
     resize!(system.xpositions, length(new_x))
     system.xpositions .= new_x
-    update_cutoff!(system, cutoff)
-    system.parallel = false
+    update!(system; cutoff=cutoff, parallel=false)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
-    system.parallel = true
+    update!(system; parallel=true)
     @test pairwise!((pair, avg_dx) -> f(pair.x, pair.y, avg_dx), system) ≈ new_val
 end
 

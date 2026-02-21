@@ -22,7 +22,7 @@
     @test sys.test == 0
     @test sys.parallel == true
 
-    sys.parallel = false
+    update!(sys; parallel=false)
     @test sys.parallel == false
     sys.cutoff = 0.2
     @test sys.cutoff == 0.2
@@ -119,7 +119,7 @@ end
     @test_throws ArgumentError CellListMap.reducer(A(), A())
 end
 
-@testitem "update_unitcell!" setup = [AllocTest] begin
+@testitem "update! unitcell" setup = [AllocTest] begin
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
@@ -132,39 +132,39 @@ end
     a = @benchmark ParticleSystem(xpositions = $([rand(3) for _ in 1:10^4]), unitcell = $([1, 1, 1]), cutoff = 0.1, output = 0.0) samples=1 evals=1
     @test a.allocs < Allocs(30_000)
     sys1 = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_unitcell!(sys1, SVector(2, 2, 2))
+    update!(sys1; unitcell=SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
-    a = @ballocated update_unitcell!($sys1, SVector(2, 2, 2)) evals = 1 samples = 1
+    a = @ballocated update!($sys1; unitcell=SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == Allocs(0)
     y = rand(SVector{3, Float64}, 1000)
     sys2 = ParticleSystem(xpositions = x, ypositions = y, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_unitcell!(sys2, SVector(2, 2, 2))
+    update!(sys2; unitcell=SVector(2, 2, 2))
     @test diag(sys2.unitcell) == [2, 2, 2]
-    a = @ballocated update_unitcell!($sys2, SVector(2, 2, 2)) evals = 1 samples = 1
+    a = @ballocated update!($sys2; unitcell=SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == Allocs(0)
     # Test throwing error on updating non-periodic unit cells
     sys = ParticleSystem(xpositions = x, cutoff = 0.1, output = 0.0)
-    @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
+    @test_throws ArgumentError update!(sys; unitcell=[1, 1, 1])
     sys = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0)
-    @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
+    @test_throws ArgumentError update!(sys; unitcell=[1, 1, 1])
 end
 
-@testitem "update_cutoff!" setup = [AllocTest, Testing] begin
+@testitem "update! cutoff" setup = [AllocTest, Testing] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
     using PDBTools
     x = rand(SVector{3, Float64}, 1000)
     sys1 = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_cutoff!(sys1, 0.2)
+    update!(sys1; cutoff=0.2)
     @test sys1.cutoff == 0.2
-    a = @ballocated update_cutoff!($sys1, 0.1) evals = 1 samples = 1
+    a = @ballocated update!($sys1; cutoff=0.1) evals = 1 samples = 1
     @test a == Allocs(0)
     y = rand(SVector{3, Float64}, 1000)
     sys2 = ParticleSystem(xpositions = x, ypositions = y, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_cutoff!(sys2, 0.2)
+    update!(sys2; cutoff=0.2)
     @test sys2.cutoff == 0.2
-    a = @ballocated update_cutoff!($sys2, 0.1) evals = 1 samples = 1
+    a = @ballocated update!($sys2; cutoff=0.1) evals = 1 samples = 1
     @test a == Allocs(0)
 
     # Update cutoff of non-periodic systems
@@ -172,16 +172,16 @@ end
     sys1 = ParticleSystem(xpositions = x, cutoff = 8.0, output = 0.0)
     @test CellListMap.unitcelltype(sys1) == CellListMap.NonPeriodicCell
     @test sys1.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1.0e-2
-    update_cutoff!(sys1, 10.0)
+    update!(sys1; cutoff=10.0)
     @test sys1.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1.0e-2
-    a = @ballocated update_cutoff!($sys1, 8.0) evals = 1 samples = 1
+    a = @ballocated update!($sys1; cutoff=8.0) evals = 1 samples = 1
     @test a == Allocs(0)
     sys2 = ParticleSystem(xpositions = x[1:50], ypositions = x[51:100], cutoff = 8.0, output = 0.0)
     @test CellListMap.unitcelltype(sys2) == CellListMap.NonPeriodicCell
     @test sys2.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1.0e-2
-    update_cutoff!(sys2, 10.0)
+    update!(sys2; cutoff=10.0)
     @test sys2.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1.0e-2
-    a = @ballocated update_cutoff!($sys2, 8.0) evals = 1 samples = 1
+    a = @ballocated update!($sys2; cutoff=8.0) evals = 1 samples = 1
     @test a == Allocs(0)
 end
 
