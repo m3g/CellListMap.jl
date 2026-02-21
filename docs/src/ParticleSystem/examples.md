@@ -139,48 +139,6 @@ system = ParticleSystem(
 pairwise!(minimum_distance, system)
 ```
 
-In the above example, the function is used such that cell lists are constructed for both
-sets. There are situations where this is not optimal, in particular:
-
-1. When one of the sets if very small. In this case, constructing a cell list for the largest
-   set becomes the bottleneck. Therefore, it is better to construct a cell list for the smallest
-   set and loop over the particles of the largest set.
-2. When one of the set is fixed and the second set is variable. In this case, it is better to
-   construct the cell list for the fixed set only and loop over the variables of the variable set.
-
-For dealing with these possibilities, an additional two-set interface is available, where one maps
-the computation over an array of particles relative to a previously computed cell list. Complementing
-the example above, we could compute the same minimum distance using:
-
-```julia
-# Construct the cell list system only for one of the sets: ypositions
-ysystem = ParticleSystem(
-       positions = ypositions,
-       unitcell=[1.0,1.0,1.0],
-       cutoff = 0.1,
-       output = MinimumDistance(0,0,+Inf),
-       output_name = :minimum_distance,
-)
-# obtain the minimum distance between xpositions and the cell list in system
-# Note the additional `xpositions` parameter in the call to pairwise.
-pairwise!(get_md, xpositions, ysystem)
-```
-
-Additionally, if the `xpositions` are updated, we can obtain compute the function relative to `ysystem` without
-having to update the cell lists:
-
-```julia-repl
-julia> xpositions = rand(SVector{3,Float64},100);
-
-julia> pairwise!(minimum_distance, xpositions, ysystem)
-MinimumDistance(67, 580, 0.008423693268450603)
-```
-
-while with the two-set cell list system one would need to update the cell lists for this new computation.
-
-!!! compat
-    The single-set cross-interaction was introduced in v0.10.0. It uses the method previously implemented
-    for all cross-interactions.
 
 ## Particle simulation
 
