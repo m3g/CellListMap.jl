@@ -54,7 +54,7 @@ julia> using CellListMap
 
 julia> x = rand(3, 10_000); # 10,000 particles in 3D
 
-julia> neighborlist(x, 0.05) # cutoff of 0.05
+julia> neighborlist(xpositions=x, cutoff=0.05) # cutoff of 0.05
 209452-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 1055, 0.04770602450750023)
  (1, 1261, 0.048087995599677004)
@@ -68,7 +68,7 @@ Each element of the list is a tuple `(i, j, d)` containing the indices of the pa
 `CellListMap` supports general periodic boundary conditions, by providing the unitcell as vector (for orthorhombic systems) or a unitcell matrix (for general triclinic systems):
 
 ```julia-repl
-julia> neighborlist(x, 0.05; unitcell=[1,1,1]) # periodic box of side 1
+julia> neighborlist(xpositions=x, cutoff=0.05, unitcell=[1,1,1]) # periodic box of side 1
 305006-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 1055, 0.04770602450750023)
  ⋮

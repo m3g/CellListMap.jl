@@ -114,6 +114,8 @@ end
     update!(
         sys::AbstractParticleSystem;
         xpositions = nothing,
+        #or
+        positions = nothing,
         ypositions = nothing,
         cutoff = nothing,
         unitcell = nothing,
@@ -123,10 +125,11 @@ end
 Update one or more properties of `sys` in a single call. Only the keyword
 arguments that are provided (i.e. not `nothing`) are updated.
 
-- `xpositions`: new coordinates for the first (or only) set of particles.
-  Accepts the same types as the `ParticleSystem` constructor: a
-  `Vector{SVector}`, a vector of vectors, or an `(D, N)` matrix.
-  The internal storage is resized automatically if the number of particles changes.
+- `xpositions` (or `positions` as a shortcut for single-set systems): new
+  coordinates for the first (or only) set of particles. Accepts the same types
+  as the `ParticleSystem` constructor: a `Vector{SVector}`, a vector of vectors,
+  or an `(D, N)` matrix. The internal storage is resized automatically if the
+  number of particles changes.
 
 - `ypositions`: new coordinates for the second set of particles (only valid for
   two-set systems). Same accepted types as `xpositions`.
@@ -159,12 +162,17 @@ julia> update!(sys; xpositions=new_x, cutoff=0.2, unitcell=[2,2,2], parallel=fal
 """
 function update!(
     sys::AbstractParticleSystem;
+    positions = nothing,
     xpositions = nothing,
     ypositions = nothing,
     cutoff = nothing,
     unitcell = nothing,
     parallel = nothing,
 )
+    if !isnothing(positions) && !isnothing(xpositions)
+        throw(ArgumentError("Either `positions` OR `xpositions` must be provided, not both."))
+    end
+    xpositions = isnothing(positions) ? xpositions : positions
     if !isnothing(ypositions) && !(sys isa ParticleSystem2)
         throw(ArgumentError("ypositions can only be set for a two-set particle system"))
     end

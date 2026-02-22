@@ -14,16 +14,16 @@ PrecompileTools.@setup_workload begin
     u2d = [1.0 0.0; 0.0 1.0]
     f(pair, out) = out += pair.d2
     PrecompileTools.@compile_workload begin
-        neighborlist(x3d, y3d, cutoff, unitcell = u3d)
-        neighborlist(x3d, y3d, cutoff, unitcell = LinearAlgebra.diag(u3d))
-        neighborlist(x3d, cutoff, unitcell = u3d)
-        neighborlist(x3d, y3d, cutoff)
-        neighborlist(x3d, cutoff)
-        neighborlist(x2d, y2d, cutoff, unitcell = u2d)
-        neighborlist(x2d, y2d, cutoff, unitcell = LinearAlgebra.diag(u2d))
-        neighborlist(x2d, cutoff)
-        neighborlist(x2d, y2d, cutoff)
-        neighborlist(x2d, cutoff, unitcell = u2d)
+        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=cutoff, unitcell=u3d)
+        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=cutoff, unitcell=LinearAlgebra.diag(u3d))
+        neighborlist(xpositions=x3d, cutoff=cutoff, unitcell=u3d)
+        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=cutoff)
+        neighborlist(xpositions=x3d, cutoff=cutoff)
+        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=cutoff, unitcell=u2d)
+        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=cutoff, unitcell=LinearAlgebra.diag(u2d))
+        neighborlist(xpositions=x2d, cutoff=cutoff)
+        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=cutoff)
+        neighborlist(xpositions=x2d, cutoff=cutoff, unitcell=u2d)
         # 3D
         sys = ParticleSystem(positions = x3d, unitcell = u3d, cutoff = cutoff, output = 0.0)
         pairwise!(f, sys)

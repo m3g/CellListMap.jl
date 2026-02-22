@@ -1,7 +1,6 @@
 # Additional options
 
-This section covers additional options for fine-tuning the behavior and performance
-of the `ParticleSystem` interface.
+This section covers additional options for fine-tuning the behavior and performance of the `ParticleSystem` interface.
 
 ## Turn parallelization on and off
 
@@ -16,6 +15,8 @@ julia> update!(system; parallel=false)
 For example, using 8 threads for the calculation of the minimum-distance example:
 
 ```julia-repl
+julia> using BenchmarkTools
+
 julia> f(system) = pairwise!(minimum_distance, system)
 f (generic function with 1 method)
 
@@ -37,12 +38,9 @@ MinimumDistance(783, 497, 0.007213710914619913)
 
 ## Displaying a progress bar
 
-Displaying a progress bar: for very long runs, the user might want to see the progress
-of the computation. Use the `show_progress` keyword parameter of the `pairwise!`
-function for that.
+Displaying a progress bar: for very long runs, the user might want to see the progress of the computation. Use the `show_progress` keyword parameter of the `pairwise!` function for that.
 
-For example, we execute the computation above, but with much more
-particles:
+For example, we execute the computation above, but with much more particles:
 
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},10^6);
@@ -87,15 +85,9 @@ julia> system = ParticleSystem(
        );
 ```
 
-Most times it is expected that the default parameters are optimal. But particularly for
-inhomogeneous systems increasing the number of batches of the mapping phase (second
-parameter of the tuple) may improve the performance by reducing the idle time of
-threads.
+Most times it is expected that the default parameters are optimal. But particularly for inhomogeneous systems increasing the number of batches of the mapping phase (second parameter of the tuple) may improve the performance by reducing the idle time of threads.
 
-When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted),
-it is automatically recomputed whenever `pairwise!` detects that the number of particles
-has changed. This allows adding or removing particles from the system without having to
-manually adjust the parallelization parameters:
+When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted), it is automatically recomputed whenever `pairwise!` detects that the number of particles has changed. This allows adding or removing particles from the system without having to manually adjust the parallelization parameters:
 
 ```julia-repl
 julia> system = ParticleSystem(
@@ -106,19 +98,18 @@ julia> system = ParticleSystem(
            output_name = :energy,
        );
 
-julia> nbatches(system) # default batches for 1000 particles
+julia> CellListMap.nbatches(system) # default batches for 1000 particles
 (2, 4)
 
 julia> update!(system; xpositions=rand(SVector{3,Float64}, 100000)); # resize
 
 julia> pairwise!((pair, out) -> out + pair.d2, system); # nbatches recomputed on next call
 
-julia> nbatches(system) # updated for 100000 particles
+julia> CellListMap.nbatches(system) # updated for 100000 particles
 (8, 32)
 ```
 
-If the number of batches is explicitly set to non-zero values, they will be kept fixed
-and will not change when the number of particles changes.
+If the number of batches is explicitly set to non-zero values, they will be kept fixed and will not change when the number of particles changes.
 
 ## Control CellList cell size
 
