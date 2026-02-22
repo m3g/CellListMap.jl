@@ -8,9 +8,10 @@ The function will error if `Base.resize!` is not defined for the
 type of `system.output`. In this case, a `Base.resize!` method
 must be implemented by the user.
 
-!!! warn
-    This function *must* be used whenever the output is dependent on
-    the number of particles, and that changes, because it adjust the
+!!! warning
+    This function *must* be used whenever the output is an array and
+    must be resiszed (for example for force arrays dependent on 
+    variable number of particles) because it adjust the
     size of the copies of the output variable used for multi-threading.
 
 """

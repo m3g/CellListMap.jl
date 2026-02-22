@@ -78,7 +78,7 @@ at all, in particular if the computation is run without parallelization:
 
 If the structure is used repeatedly for similar systems, the allocations will
 vanish, except for minor allocations used in the threading computation (if a
-non-parallel computation is executed, the allocations will vanish completely):
+non-parallel computation is executed, the allocations will vanish completely).
 
 """
 function InPlaceNeighborList(; show_progress::Bool = false, cutoff, unitcell = nothing, kargs...)

@@ -70,9 +70,7 @@ julia> update!(system; xpositions=rand(SVector{3,Float64}, 1200))
     ```
 
     In the case of compound outputs (custom output structures) like that
-    of the [Computing both energy and forces](@ref) example, calling `resize_output!` will
-    return an error and require the user to define `Base.resize!` for the
-    custom type.
+    of the [Computing both energy and forces](@ref) example, calling `resize_output!` will return an error and require the user to define `Base.resize!` for the custom type.
 
 ## Updating the unit cell
 

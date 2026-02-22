@@ -157,6 +157,10 @@ complex data types, containing different types of variables, fields, or sizes.
 The appropriate behavior of the reducer should be carefully inspected by the user
 to avoid spurious results. 
 
+!!! note
+    For full control of the reduction strategy, overload the the `reduce_output!`
+    function instead. 
+
 # Example
 
 In this example we show how to obtain the minimum distance among argon atoms
