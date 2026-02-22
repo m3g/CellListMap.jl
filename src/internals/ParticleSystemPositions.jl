@@ -54,6 +54,7 @@ Base.lastindex(p::ParticleSystemPositions) = lastindex(p.x)
 Base.first(p::ParticleSystemPositions) = first(p.x)
 Base.last(p::ParticleSystemPositions) = last(p.x)
 Base.copy(p::ParticleSystemPositions{N,T,V}) where {N,T,V<:Vector} = ParticleSystemPositions{N,T,V}(copy(p.x), Ref(p.updated[]))
+Base.eltype(p::ParticleSystemPositions) = eltype(p.x)
 function Base.append!(p::ParticleSystemPositions, x) 
     p.updated[] = true 
     append!(p.x, x)
