@@ -22,7 +22,7 @@
     @test sys.test == 0
     @test sys.parallel == true
 
-    sys.parallel = false
+    update!(sys; parallel=false)
     @test sys.parallel == false
     sys.cutoff = 0.2
     @test sys.cutoff == 0.2
@@ -119,7 +119,7 @@ end
     @test_throws ArgumentError CellListMap.reducer(A(), A())
 end
 
-@testitem "update_unitcell!" setup = [AllocTest] begin
+@testitem "update! unitcell" setup = [AllocTest] begin
     using BenchmarkTools
     using LinearAlgebra: diag
     using StaticArrays
@@ -132,39 +132,39 @@ end
     a = @benchmark ParticleSystem(xpositions = $([rand(3) for _ in 1:10^4]), unitcell = $([1, 1, 1]), cutoff = 0.1, output = 0.0) samples=1 evals=1
     @test a.allocs < Allocs(30_000)
     sys1 = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_unitcell!(sys1, SVector(2, 2, 2))
+    update!(sys1; unitcell=SVector(2, 2, 2))
     @test diag(sys1.unitcell) == [2, 2, 2]
-    a = @ballocated update_unitcell!($sys1, SVector(2, 2, 2)) evals = 1 samples = 1
+    a = @ballocated update!($sys1; unitcell=SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == Allocs(0)
     y = rand(SVector{3, Float64}, 1000)
     sys2 = ParticleSystem(xpositions = x, ypositions = y, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_unitcell!(sys2, SVector(2, 2, 2))
+    update!(sys2; unitcell=SVector(2, 2, 2))
     @test diag(sys2.unitcell) == [2, 2, 2]
-    a = @ballocated update_unitcell!($sys2, SVector(2, 2, 2)) evals = 1 samples = 1
+    a = @ballocated update!($sys2; unitcell=SVector(2, 2, 2)) evals = 1 samples = 1
     @test a == Allocs(0)
     # Test throwing error on updating non-periodic unit cells
     sys = ParticleSystem(xpositions = x, cutoff = 0.1, output = 0.0)
-    @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
+    @test_throws ArgumentError update!(sys; unitcell=[1, 1, 1])
     sys = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0)
-    @test_throws ArgumentError update_unitcell!(sys, [1, 1, 1])
+    @test_throws ArgumentError update!(sys; unitcell=[1, 1, 1])
 end
 
-@testitem "update_cutoff!" setup = [AllocTest, Testing] begin
+@testitem "update! cutoff" setup = [AllocTest, Testing] begin
     using BenchmarkTools
     using StaticArrays
     using CellListMap
     using PDBTools
     x = rand(SVector{3, Float64}, 1000)
     sys1 = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_cutoff!(sys1, 0.2)
+    update!(sys1; cutoff=0.2)
     @test sys1.cutoff == 0.2
-    a = @ballocated update_cutoff!($sys1, 0.1) evals = 1 samples = 1
+    a = @ballocated update!($sys1; cutoff=0.1) evals = 1 samples = 1
     @test a == Allocs(0)
     y = rand(SVector{3, Float64}, 1000)
     sys2 = ParticleSystem(xpositions = x, ypositions = y, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
-    update_cutoff!(sys2, 0.2)
+    update!(sys2; cutoff=0.2)
     @test sys2.cutoff == 0.2
-    a = @ballocated update_cutoff!($sys2, 0.1) evals = 1 samples = 1
+    a = @ballocated update!($sys2; cutoff=0.1) evals = 1 samples = 1
     @test a == Allocs(0)
 
     # Update cutoff of non-periodic systems
@@ -172,16 +172,16 @@ end
     sys1 = ParticleSystem(xpositions = x, cutoff = 8.0, output = 0.0)
     @test CellListMap.unitcelltype(sys1) == CellListMap.NonPeriodicCell
     @test sys1.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1.0e-2
-    update_cutoff!(sys1, 10.0)
+    update!(sys1; cutoff=10.0)
     @test sys1.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1.0e-2
-    a = @ballocated update_cutoff!($sys1, 8.0) evals = 1 samples = 1
+    a = @ballocated update!($sys1; cutoff=8.0) evals = 1 samples = 1
     @test a == Allocs(0)
     sys2 = ParticleSystem(xpositions = x[1:50], ypositions = x[51:100], cutoff = 8.0, output = 0.0)
     @test CellListMap.unitcelltype(sys2) == CellListMap.NonPeriodicCell
     @test sys2.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1.0e-2
-    update_cutoff!(sys2, 10.0)
+    update!(sys2; cutoff=10.0)
     @test sys2.unitcell ≈ [39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99] atol = 1.0e-2
-    a = @ballocated update_cutoff!($sys2, 8.0) evals = 1 samples = 1
+    a = @ballocated update!($sys2; cutoff=8.0) evals = 1 samples = 1
     @test a == Allocs(0)
 end
 
@@ -242,32 +242,30 @@ end
     x = rand(SVector{3, Float64}, 2)
     sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     x = rand(SVector{3, Float64}, 10000)
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
+    update!(sys; positions=x)
     pairwise!((pair, out) -> out += pair.d2, sys)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
         CellListMap._nbatches_map_computation(10000),
     )
-    @test CellListMap.nbatches(sys) == expected
+    @test CellListMap.get_nbatches(sys) == expected
 
     # ParticleSystem1: nbatches stable when particle count does not change
     x = rand(SVector{3, Float64}, 1000)
     sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
-    nb_before = CellListMap.nbatches(sys)
-    sys.xpositions .= rand(SVector{3, Float64}, 1000)
+    nb_before = CellListMap.get_nbatches(sys)
+    update!(sys; positions=rand(SVector{3, Float64}, 1000))
     pairwise!((pair, out) -> out += pair.d2, sys)
-    @test CellListMap.nbatches(sys) == nb_before
+    @test CellListMap.get_nbatches(sys) == nb_before
 
     # ParticleSystem1: manually set nbatches are not overridden on resize
     x = rand(SVector{3, Float64}, 100)
     sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, nbatches = (2, 3))
-    @test CellListMap.nbatches(sys) == (2, 3)
+    @test CellListMap.get_nbatches(sys) == (2, 3)
     x = rand(SVector{3, Float64}, 10000)
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
+    update!(sys; positions=x)
     pairwise!((pair, out) -> out += pair.d2, sys)
-    @test CellListMap.nbatches(sys) == (2, 3)
+    @test CellListMap.get_nbatches(sys) == (2, 3)
 
     # ParticleSystem2: nbatches updates when particle count changes
     x = rand(SVector{3, Float64}, 2)
@@ -275,18 +273,15 @@ end
     sys = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     x = rand(SVector{3, Float64}, 5000)
     y = rand(SVector{3, Float64}, 10000)
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
-    resize!(sys.ypositions, length(y))
-    sys.ypositions .= y
+    update!(sys; xpositions=x, ypositions=y)
     pairwise!((pair, out) -> out += pair.d2, sys)
     # For CellListPair, nbatches(sys) returns ref_list (x) nbatches
     # Build: based on ref_list particle count, Map: based on product
     expected = (
-        CellListMap._nbatches_build_cell_lists(5000),
-        CellListMap._nbatches_map_computation(5000 * 10000),
+            CellListMap._nbatches_build_cell_lists(5000 * 10000),
+            CellListMap._nbatches_map_computation(5000 * 10000)
     )
-    @test CellListMap.nbatches(sys) == expected
+    @test CellListMap.get_nbatches(sys) == expected
 end
 
 @testitem "ParticleSystem - validate coordinates" begin
@@ -354,4 +349,42 @@ end
     @test sys.output ≈ 2 * u
     pairwise!((pair, u) -> u += inv(pair.d), sys)
     @test sys.output ≈ u
+end
+
+@testitem "update! xpositions non-allocating" setup = [AllocTest] begin
+    using BenchmarkTools
+    using CellListMap, StaticArrays
+
+    # Vector{SVector}: same-size update must not allocate
+    sys = ParticleSystem(
+        xpositions = rand(SVector{3,Float64}, 100),
+        unitcell = [1.0, 1.0, 1.0],
+        cutoff = 0.1,
+        output = 0.0,
+    )
+    new_x_sv = rand(SVector{3,Float64}, 100)
+    a = @ballocated update!($sys; xpositions=$new_x_sv) evals=1 samples=1
+    @test a == Allocs(0)
+
+    # (D,N) matrix input: same-size update must not allocate
+    new_x_mat = rand(3, 100)
+    a = @ballocated update!($sys; xpositions=$new_x_mat) evals=1 samples=1
+    @test a == Allocs(0)
+
+    # vector-of-vectors input: same-size update must not allocate
+    new_x_vov = [rand(3) for _ in 1:100]
+    a = @ballocated update!($sys; xpositions=$new_x_vov) evals=1 samples=1
+    @test a == Allocs(0)
+
+    # Two-set system: same-size updates must not allocate
+    sys2 = ParticleSystem(
+        xpositions = rand(SVector{3,Float64}, 100),
+        ypositions = rand(SVector{3,Float64}, 50),
+        unitcell = [1.0, 1.0, 1.0],
+        cutoff = 0.1,
+        output = 0.0,
+    )
+    new_y_sv = rand(SVector{3,Float64}, 50)
+    a = @ballocated update!($sys2; xpositions=$new_x_sv, ypositions=$new_y_sv) evals=1 samples=1
+    @test a == Allocs(0)
 end

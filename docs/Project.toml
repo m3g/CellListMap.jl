@@ -1,6 +1,7 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
+Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"

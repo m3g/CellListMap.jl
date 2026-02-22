@@ -48,7 +48,7 @@ pairwise!((pair, out) -> out += pair.d2, system)
 
 ```@example units
 cutoff = 0.8u"nm";
-neighborlist(positions, cutoff)
+neighborlist(xpositions=positions, cutoff=cutoff)
 ```
 
 ## Automatic differentiation

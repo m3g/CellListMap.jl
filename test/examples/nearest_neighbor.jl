@@ -1,7 +1,6 @@
 using CellListMap
 using StaticArrays
 import Random
-const PSP = ParticleSystemPositions
 
 #
 # In this test we compute the minimum distance between two independent sets of particles

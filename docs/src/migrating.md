@@ -123,7 +123,7 @@ end
 # After (0.10.0)
 sys = ParticleSystem(positions=x, cutoff=cutoff, unitcell=sides, output=0.0)
 for step in 1:nsteps
-    sys.xpositions .= new_positions()  # update coordinates directly
+    update!(sys; xpositions=new_positions())
     u = pairwise!(f, sys)
 end
 ```

@@ -20,8 +20,10 @@ get_cutoff(nb::InPlaceNeighborList) = nb.sys.cutoff
 
 """
     InPlaceNeighborList(;
-        x::AbstractVecOrMat,
-        y::Union{AbstractVecOrMat,Nothing}=nothing,
+        xpositions::AbstractVecOrMat,
+        #or
+        positions::AbstractVecOrMat,
+        ypositions::Union{AbstractVecOrMat,Nothing}=nothing,
         cutoff::T,
         unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
         parallel::Bool=true,
@@ -31,12 +33,13 @@ get_cutoff(nb::InPlaceNeighborList) = nb.sys.cutoff
 Function that initializes the `InPlaceNeighborList` structure, to be used for in-place
 computation of neighbor lists.
 
-- If only `x` is provided, the neighbor list of the set is computed. 
-- If `x` and `y` are provided, the neighbor list between the sets is computed.
+- `xpositions` (or `positions` as a shortcut for single-set computations) provides the
+  coordinates of the particles.
+- If `ypositions` is also provided, the neighbor list between the two sets is computed.
 - If `unitcell` is provided, periodic boundary conditions will be used. The `unitcell` can
-  be a vector of Orthorhombic box sides, or an actual unitcell matrix for general cells. 
-- If `unicell` is not provide (value `nothing`), no periodic boundary conditions will
-  be considered. 
+  be a vector of Orthorhombic box sides, or an actual unitcell matrix for general cells.
+- If `unitcell` is not provided (value `nothing`), no periodic boundary conditions will
+  be considered.
 
 ## Examples
 
@@ -48,11 +51,11 @@ julia> using CellListMap, StaticArrays
 
 julia> x = rand(SVector{3,Float64}, 10^4);
 
-julia> system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]) 
-InPlaceNeighborList with types: 
+julia> system = InPlaceNeighborList(xpositions=x, cutoff=0.1, unitcell=[1,1,1])
+InPlaceNeighborList with types:
 CellList{3, Float64}
 Box{OrthorhombicCell, 3, Float64, Float64, 9}
-Current list buffer size: 0
+Current list buffer length: 0
 
 julia> neighborlist!(system)
 210034-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -65,72 +68,44 @@ julia> neighborlist!(system)
 ```
 
 The coordinates of the system, its unitcell, or the cutoff can be changed with
-the `update!` function. If the number of pairs of the list does not change 
-significantly, the new calculation is minimally allocating, or non-allocating 
+the `update!` function. If the number of pairs of the list does not change
+significantly, the new calculation is minimally allocating, or non-allocating
 at all, in particular if the computation is run without parallelization:
 
 !!! note
     The order of the pairs in the output of `neighborlist!` is not guaranteed,
     and may change, in particular, in parallel runs.
-    
+
 If the structure is used repeatedly for similar systems, the allocations will
-vanish, except for minor allocations used in the threading computation (if a 
+vanish, except for minor allocations used in the threading computation (if a
 non-parallel computation is executed, the allocations will vanish completely):
 
-```julia-repl
-julia> x = rand(SVector{3,Float64}, 10^4);
-
-julia> system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.008004 seconds (228 allocations: 16.728 MiB)
-
-julia> update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.024811 seconds (167 allocations: 7.887 MiB)
-
-julia> update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.005213 seconds (164 allocations: 1.439 MiB)
-
-julia> update!(system, rand(SVector{3,Float64}, 10^4); cutoff = 0.1, unitcell = [1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.005276 seconds (162 allocations: 15.359 KiB)
-
-```
-
 """
-function InPlaceNeighborList(;
-        x::AbstractVecOrMat,
-        y::Union{AbstractVecOrMat, Nothing} = nothing,
-        cutoff,
-        unitcell::Union{AbstractVecOrMat, Nothing} = nothing,
-        parallel::Bool = true,
-        show_progress::Bool = false,
-        nbatches = (0, 0)
-)
+function InPlaceNeighborList(; show_progress::Bool = false, cutoff, unitcell = nothing, kargs...)
     T = _promote_types(unitcell, cutoff)
-    sys = ParticleSystem(
-        xpositions=x,
-        ypositions=y,
+    sys = ParticleSystem(;
         cutoff=cutoff,
         unitcell=unitcell,
         output=NeighborList{T}(0, Vector{Tuple{Int, Int, T}}[]),
         output_name=:nb,
-        parallel=parallel,
-        nbatches=nbatches,
+        kargs...
     )
     return InPlaceNeighborList(sys, show_progress)
 end
 
 """
-    update!(system::InPlaceNeighborList, x::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
-    update!(system::InPlaceNeighborList, x::AbstractVecOrMat, y::AbstractVecOrMat; cutoff=nothing, unitcell=nothing)
+    update!(
+        system::InPlaceNeighborList;
+        xpositions = nothing,
+        #or
+        positions = nothing,
+        ypositions = nothing,
+        cutoff = nothing,
+        unitcell = nothing,
+    )
 
-Updates a `InPlaceNeighborList` system, by updating the coordinates, cutoff, and unitcell.
+Updates a `InPlaceNeighborList` system. Only the keyword arguments that are provided
+(i.e. not `nothing`) are updated. `positions` is accepted as an alias for `xpositions`.
 
 ## Examples
 
@@ -139,21 +114,21 @@ Updates a `InPlaceNeighborList` system, by updating the coordinates, cutoff, and
 ```julia-repl
 julia> x = rand(SVector{3,Float64}, 10^3);
 
-julia> system = InPlaceNeighborList(x=x; cutoff=0.1)
-InPlaceNeighborList with types: 
+julia> system = InPlaceNeighborList(xpositions=x, cutoff=0.1)
+InPlaceNeighborList with types:
 CellList{3, Float64}
 Box{NonPeriodicCell, 3, Float64, Float64, 9}
-Current list buffer size: 0
+Current list buffer length: 0
 
 julia> neighborlist!(system);
 
 julia> new_x = rand(SVector{3,Float64}, 10^3);
 
-julia> update!(system, new_x; cutoff = 0.05)
-InPlaceNeighborList with types: 
+julia> update!(system; xpositions=new_x, cutoff=0.05)
+InPlaceNeighborList with types:
 CellList{3, Float64}
 Box{NonPeriodicCell, 3, Float64, Float64, 9}
-Current list buffer size: 1826
+Current list buffer length: 1826
 
 julia> neighborlist!(system)
 224-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -164,41 +139,8 @@ julia> neighborlist!(system)
 ```
 
 """
-function update!(
-    system::InPlaceNeighborList,
-    x::AbstractVecOrMat;
-    cutoff = system.sys.cutoff, 
-    unitcell = unitcelltype(system.sys) == NonPeriodicCell ? nothing : system.sys.unitcell 
-)
-    (; sys) = system
-    _x = _wrap_x(x, eltype(sys.xpositions.x))
-    resize!(sys.xpositions, length(_x))
-    sys.xpositions .= _x
-    update_cutoff!(sys, cutoff)
-    update_unitcell!(sys, unitcell)
-    return system
-end
-_wrap_x(x::AbstractVector{<:AbstractVector}, _) = x
-_wrap_x(x::AbstractMatrix, ::Type{V}) where {V} = reinterpret(reshape, V, x)
-
-#
-# update system for cross-computations
-#
-function update!(
-        system::InPlaceNeighborList,
-        x::AbstractVecOrMat,
-        y::AbstractVecOrMat;
-        cutoff = nothing, unitcell = nothing
-    ) 
-    (; sys) = system
-    _x = _wrap_x(x, eltype(sys.xpositions.x))
-    _y = _wrap_x(y, eltype(sys.ypositions.x))
-    resize!(sys.xpositions, length(_x))
-    resize!(sys.ypositions, length(_y))
-    sys.xpositions .= _x
-    sys.ypositions .= _y
-    update_cutoff!(sys, cutoff)
-    update_unitcell!(sys, unitcell)
+function update!(system::InPlaceNeighborList; kargs...) 
+    update!(system.sys; kargs...)
     return system
 end
 
@@ -206,7 +148,7 @@ function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
     _print(io, "InPlaceNeighborList with types: \n")
     _print(io, typeof(system.sys._cell_list), "\n")
     _print(io, typeof(system.sys._box), "\n")
-    return _print(io, "Current list buffer size: $(length(system.sys.nb.list))")
+    return _print(io, "Current list buffer length: $(length(system.sys.nb.list))")
 end
 
 """
@@ -225,7 +167,7 @@ julia> using CellListMap, StaticArrays
 
 julia> x = rand(SVector{3,Float64}, 10^4);
 
-julia> system = InPlaceNeighborList(x=x, cutoff=0.1, unitcell=[1,1,1], parallel=false);
+julia> system = InPlaceNeighborList(xpositions=x, cutoff=0.1, unitcell=[1,1,1], parallel=false);
 
 julia> neighborlist!(system)
 210034-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -265,11 +207,25 @@ function neighborlist!(system::InPlaceNeighborList)
 end
 
 """
-    neighborlist(x, cutoff; unitcell=nothing, parallel=true, show_progress=false)
+    neighborlist(;
+        xpositions,
+        #or
+        positions,
+        ypositions=nothing,
+        cutoff,
+        unitcell=nothing,
+        parallel=true,
+        show_progress=false,
+        nbatches=(0,0),
+    )
 
-Computes the list of pairs of particles in `x` which are closer to each other than `cutoff`.
-If the keyword parameter `unitcell` is provided (as a vector of sides or a general unit cell
-matrix, periodic boundary conditions are considered). 
+Computes the list of pairs of particles closer to each other than `cutoff`.
+
+- `xpositions` (or `positions` as a shortcut for single-set computations) provides the
+  coordinates of the particles.
+- If `ypositions` is also provided, returns the cross-pair neighbor list between the two sets.
+- If `unitcell` is provided (as a vector of sides or a unit cell matrix), periodic boundary
+  conditions are used.
 
 !!! note
     The order of the pairs in the output of `neighborlist` is not guaranteed,
@@ -277,15 +233,14 @@ matrix, periodic boundary conditions are considered).
 
 ## Example
 
-Compute the neighborlist between within a set Argon atoms, considering the system
-non-periodic (do not provide a `unitcell`):
+Compute the neighborlist within a set of Argon atoms, non-periodic:
 
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
 
 julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
-julia> neighborlist(x, 8.0; parallel=false)
+julia> neighborlist(xpositions=x, cutoff=8.0, parallel=false)
 857-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 20, 3.163779526466901)
  (1, 61, 4.08865164675529)
@@ -302,7 +257,7 @@ julia> using CellListMap, PDBTools
 
 julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
-julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
+julia> neighborlist(xpositions=x, cutoff=8.0, unitcell=[21.0, 21.0, 21.0], parallel=false)
 1143-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 7, 3.3638756414119397)
  (1, 20, 3.163779526466901)
@@ -312,37 +267,7 @@ julia> neighborlist(x, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
  (68, 90, 7.8758006026725464)
 ```
 
-"""
-function neighborlist(
-        x, cutoff;
-        unitcell = nothing,
-        parallel = true,
-        show_progress = false,
-        nbatches = (0, 0)
-    )
-    system = InPlaceNeighborList(; x, cutoff, unitcell, parallel, show_progress, nbatches)
-    return neighborlist!(system)
-end
-
-"""
-    neighborlist(
-        x, y, cutoff; 
-        unitcell=nothing, 
-        parallel=true, 
-        show_progress=false, 
-        nbatches=(0,0)
-    )
-
-Computes the list of pairs of particles of `x` which are closer than `r` to the particles of `y`. 
-
-!!! note
-    The order of the pairs in the output of `neighborlist!` is not guaranteed,
-    and may change, in particular, in parallel runs.
-    
-## Examples
-
-Compute the neighborlist between two sets of Argon atoms, considering the system
-non-periodic (do not provide a `unitcell`):
+For cross-pair neighbor lists between two sets:
 
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
 julia> using CellListMap, PDBTools
@@ -351,7 +276,7 @@ julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
 
 julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
 
-julia> CellListMap.neighborlist(x, y, 8.0; parallel=false)
+julia> CellListMap.neighborlist(xpositions=x, ypositions=y, cutoff=8.0, parallel=false)
 439-element Vector{Tuple{Int64, Int64, Float64}}:
  (1, 11, 4.08865164675529)
  (1, 17, 5.939772435456664)
@@ -361,33 +286,5 @@ julia> CellListMap.neighborlist(x, y, 8.0; parallel=false)
  (46, 1, 7.99947286297016)
 ```
 
-Now, considering the system periodic:
-
-```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
-julia> using CellListMap, PDBTools
-
-julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
-
-julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
-
-julia> CellListMap.neighborlist(x, y, 8.0; unitcell = [21.0, 21.0, 21.0], parallel=false)
-584-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 13, 7.0177634180502215)
- (1, 24, 7.97689645513632)
- (1, 29, 3.177029085967527)
- ⋮
- (18, 10, 6.9654396670725)
- (18, 37, 6.222988130894417)
-```
-
 """
-function neighborlist(
-        x, y, cutoff;
-        unitcell = nothing,
-        parallel = true,
-        show_progress = false,
-        nbatches = (0, 0)
-    )
-    system = InPlaceNeighborList(; x, y, cutoff, unitcell, parallel, show_progress, nbatches)
-    return neighborlist!(system)
-end
+neighborlist(; kargs...) = neighborlist!(InPlaceNeighborList(; kargs...))
