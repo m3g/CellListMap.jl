@@ -23,22 +23,22 @@ updates are non-allocating.
 
 ### Example: updating in a simulation loop
 
-```julia-repl
-julia> using CellListMap, StaticArrays
-
-julia> system = ParticleSystem(
-           xpositions = rand(SVector{3,Float64}, 1000),
-           unitcell = [1.0, 1.0, 1.0],
-           cutoff = 0.1,
-           output = 0.0,
-       );
-
-julia> new_x = rand(SVector{3,Float64}, 1000);
-
-julia> update!(system; xpositions=new_x, unitcell=SVector(1.2, 1.2, 1.2), cutoff=0.15);
+```julia
+using CellListMap, StaticArrays
+system = ParticleSystem(
+    xpositions = rand(SVector{3,Float64}, 1000),
+    unitcell = [1.0, 1.0, 1.0],
+    cutoff = 0.1,
+    output = 0.0,
+)
+for i in 1:nsteps
+    new_x = rand(SVector{3,Float64}, 1000)
+    update!(system; xpositions=new_x)
+end
 ```
 
 Multiple properties can be updated in a single call. Any combination of kwargs is valid.
+Updating only coordinates, without changing the number of particles, does not incurr in new allocations. Updating the unitcell, the cutoff, or increasing the number of particles can incurr in new allocations because the structure of the cell lists can change. 
 
 ## Updating coordinates
 
@@ -76,13 +76,11 @@ julia> update!(system; xpositions=rand(SVector{3,Float64}, 1200))
 
 ## Updating the unit cell
 
-```julia-repl
-julia> update!(system; unitcell=SVector(1.2, 1.2, 1.2))                          # orthorhombic
+```julia
+update!(system; unitcell=SVector(1.2, 1.2, 1.2)) # orthorhombic
 
-julia> update!(system; unitcell=[1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2])        # triclinic
+update!(system; unitcell=[1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]) # triclinic
 ```
-
-The property setter `system.unitcell = x` is also available as a shortcut.
 
 !!! note
     - The unit cell type (orthorhombic or triclinic) cannot be changed after construction.
@@ -94,12 +92,10 @@ The property setter `system.unitcell = x` is also available as a shortcut.
 julia> update!(system; cutoff=0.2)
 ```
 
-The property setter `system.cutoff = 0.2` is also available as a shortcut.
-
 ## Updating the parallelization flag
 
-```julia-repl
-julia> update!(system; parallel=false)   # disable multi-threading
+```julia
+update!(system; parallel=false) # disable multi-threading
 
-julia> update!(system; parallel=true)    # enable multi-threading
+update!(system; parallel=true) # enable multi-threading
 ```

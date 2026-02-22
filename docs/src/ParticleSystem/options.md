@@ -68,8 +68,7 @@ The number of batches launched in parallel runs can be tunned by the
 `nbatches` keyword parameter of the `ParticleSystem` constructor.
 By default, the number of batches is defined as heuristic function
 dependent on the number of particles, and possibly returns optimal
-values in most cases. For a detailed discussion about this parameter,
-see [Number of batches](@ref Number-of-batches).
+values in most cases. 
 
 For example, to set the number of batches for cell list calculation
 to 4 and the number of batches for mapping to 8, we can do:
@@ -87,34 +86,12 @@ julia> system = ParticleSystem(
 
 Most times it is expected that the default parameters are optimal. But particularly for inhomogeneous systems increasing the number of batches of the mapping phase (second parameter of the tuple) may improve the performance by reducing the idle time of threads.
 
-When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted), it is automatically recomputed whenever `pairwise!` detects that the number of particles has changed. This allows adding or removing particles from the system without having to manually adjust the parallelization parameters:
-
-```julia-repl
-julia> system = ParticleSystem(
-           xpositions = rand(SVector{3,Float64}, 1000),
-           unitcell = [1,1,1],
-           cutoff = 0.1,
-           output = 0.0,
-           output_name = :energy,
-       );
-
-julia> CellListMap.nbatches(system) # default batches for 1000 particles
-(2, 4)
-
-julia> update!(system; xpositions=rand(SVector{3,Float64}, 100000)); # resize
-
-julia> pairwise!((pair, out) -> out + pair.d2, system); # nbatches recomputed on next call
-
-julia> CellListMap.nbatches(system) # updated for 100000 particles
-(8, 32)
-```
-
-If the number of batches is explicitly set to non-zero values, they will be kept fixed and will not change when the number of particles changes.
+When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted), it is automatically recomputed whenever `pairwise!` detects that the number of particles has changed. This allows adding or removing particles from the system without having to manually adjust the parallelization parameters. The `CellListMap.get_nbatches` function can be used to check the number of batches being used.
 
 ## Control CellList cell size
 
-The cell sizes of the construction of the cell lists can be controlled with the keyword `lcell`
-of the `ParticleSystem` constructor. For example:
+The cell sizes of the construction of the cell lists can be controlled with the keyword `lcell` of the `ParticleSystem` constructor. For example:
+
 ```julia-repl
 julia> system = ParticleSystem(
            xpositions = rand(SVector{3,Float64},1000),
@@ -125,9 +102,7 @@ julia> system = ParticleSystem(
            lcell=2,
        );
 ```
-Most times using `lcell=1` (default) or `lcell=2` will provide the optimal performance. For very
-dense systems, or systems for which the number of particles within the cutoff is very large,
-larger values of `lcell` may improve the performance. To be tested by the user.
+Most times using `lcell=1` (default) or `lcell=2` will provide the optimal performance. For very dense systems, or systems for which the number of particles within the cutoff is very large, larger values of `lcell` may improve the performance. To be tested by the user.
 
 !!! note
     The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.
@@ -151,8 +126,3 @@ system = ParticleSystem(
     output=0.0,
 )
 ```
-
-!!! warning
-    This interface less flexible than when the coordinates are input as vectors of vectors, because
-    *the number of particles* cannot be changed, because matrices cannot be resized. Otherwise, matrices can
-    be used as input.

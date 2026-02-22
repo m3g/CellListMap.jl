@@ -48,31 +48,48 @@ extract from the object using [destructuring syntax](https://docs.julialang.org/
 ### Basic examples
 
 For example, computing the energy, as the sum of the inverse of the distance between particles, can be done with a function like:
-```julia
+```@example ps_intro
+using CellListMap
 function energy(pair, u)
     u += 1 / pair.d
     return u
 end
 ```
-and this function is passed directly to `pairwise!`:
-```julia
+
+The coordinates and other properties of the system are defined with the `ParticleSystem` constructor, for example:
+
+```@example ps_intro
+system = ParticleSystem(
+    positions=rand(3,10^4),
+    unitcell=[1,1,1],
+    cutoff=0.1,
+    output=0.0,
+    output_name=:energy,
+)
+```
+
+The `output=0.0` defines the variable type, which can be simple scalars or any compound object. 
+
+Finally, the `pairwise!` function applies the function `energy` to all pairs of particles whose distances are within the `cutoff`:
+```@example ps_intro
 u = pairwise!(energy, system)
 ```
-(what `system` is will be explained in the examples below). Note that the `energy` function only uses `pair.d` (the distance), but all other fields (`pair.x`, `pair.y`, `pair.i`, `pair.j`, `pair.d2`) are available.
 
-Alternatively, the function might require additional parameters, such as the masses of the particles. In this case, we can use a closure to provide such data:
-```julia
-function energy(pair, u, masses)
+Note that the `energy` function only uses `pair.d` (the distance), but all other fields (`pair.x`, `pair.y`, `pair.i`, `pair.j`, `pair.d2`) are available.
+
+The mapped function might require additional parameters, such as the masses of the particles. In this case, we can use a closure to provide such data:
+
+```@example ps_intro
+function gravitational_energy(pair, u, masses)
     (; i, j, d)  = pair 
     u += masses[i]*masses[j] / d
     return u
 end
-const masses = # ... some masses
-u = pairwise!((pair, u) -> energy(pair, u, masses), system)
+const masses = rand(10^4) # some random masses
+u = pairwise!((pair, u) -> gravitational_energy(pair, u, masses), system)
 ```
 
-Here we reinforce the fact that the `energy` functions defined above compute the contribution to the energy of the interaction of *a single* pair
-of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `pairwise!` call.
+Here we reinforce the fact that the functions defined above compute the contribution to the energy of the interaction of *a single* pair of particles. This function will be called for every pair of particles within the cutoff, automatically, in the `pairwise!` call.
 
 !!! note
     The `output` of the `CellListMap` computation may be of any kind. Most commonly, it is an energy, a set of forces, or other data type that can be represented either as a number, an array of numbers, or an array of vectors (`SVectors` in particular), such as an arrays of forces.
@@ -83,24 +100,23 @@ of particles. This function will be called for every pair of particles within th
 
 ## The ParticleSystem constructor
 
-The `ParticleSystem` constructor receives the properties of the system and sets up automatically the most commonly used data structures necessary.
+The `ParticleSystem` constructor receives the properties of the system and sets up automatically all the data structures needed for the `pairwise!` computation.
+
+### Input parameters
+
+| Keyword | Type | Default | Description |
+|:--------|:-----|:-------:|:------------|
+| `positions` / `xpositions` | `AbstractVector` or `AbstractMatrix` | — (required) | Coordinates of the (first) set of particles. `positions` is an alias for `xpositions` for single-set computations. Accepts a `Vector{SVector}`, a vector of plain vectors, or a `(D, N)` matrix. |
+| `ypositions` | `AbstractVector`, `AbstractMatrix`, or `Nothing` | `nothing` | Coordinates of the second set of particles. If provided, the `pairwise!` function will iterate over all cross-pairs between the two sets. |
+| `cutoff` | `Number` | — (required) | Cutoff distance. Only pairs within this distance contribute to the output. |
+| `unitcell` | vector, matrix, or `Nothing` | `nothing` | Unit cell for periodic boundary conditions. A vector of sides defines an orthorhombic cell (faster); a matrix defines a triclinic cell (columns are lattice vectors). `nothing` means non-periodic. |
+| `output` | any | — (required) | Initial value of the output variable. Determines the type of the result; typically `0.0` for a scalar, or a pre-allocated array for forces. |
+| `output_name` | `Symbol` | `:output` | Name used to access the output from the system: `system.energy` if `output_name=:energy`. |
+| `parallel` | `Bool` | `true` | Enable multi-threading. |
+| `nbatches` | `Tuple{Int,Int}` | `(0,0)` | Number of batches for parallelization (see [Fine control of the parallelization](@ref Fine-control-of-the-parallelization)). |
 
 !!! note
     - Systems can be 2 or 3-dimensional.
-    - The `unitcell` parameter may be:
-        - a vector, in which case the system periodic boundaries are Orthorhombic, this is faster.
-        - a matrix, in which case the system periodic boundaries are Triclinic (general). The lattice
-          vectors correspond to the *columns* of the matrix.
-        - `nothing` (by default), in which case no periodic boundary conditions will be used.
-    - `Unitful` quantities can be provided, given appropriate types for all input parameters.
+    - `Unitful` quantities are supported when appropriate unit types are provided for all input parameters.
 
-## Coordinate arrays
-
-The positions stored in a `ParticleSystem` are accessible as `system.xpositions` (and
-`system.ypositions` for two-set systems). These properties behave like ordinary
-`Vector{SVector{N,T}}` arrays: you can index, iterate, broadcast, push, and append to them.
-Any mutation automatically triggers recomputation of the cell lists on the next `pairwise!`
-call.
-
-To replace the entire coordinate array, or to update other system properties, use
-[`update!`](@ref "Updating the system").
+After construction, use [`update!`](@ref) to change coordinates, cutoff, unit cell, or parallelization between `pairwise!` calls. See the [Updating the system](@ref) section for details.
