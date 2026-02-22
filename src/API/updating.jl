@@ -69,15 +69,44 @@ function _update_cutoff!(sys::ParticleSystem2, cutoff)
     return sys
 end
 
-# Internal helper: update a ParticleSystemPositions from any supported coordinate type,
-# resizing if the number of particles changed.
-function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x) where {N,T}
-    x_svec = _to_svectors(Val(N), new_x)
-    n_new = length(x_svec)
+# Internal helpers: update a ParticleSystemPositions from any supported coordinate type,
+# resizing if the number of particles changed. Each method copies element-wise into the
+# existing storage without allocating a temporary Vector{SVector}.
+
+# Same element type: plain copy into psp.x
+function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractVector{SVector{N,T}}) where {N,T}
+    n_new = length(new_x)
     if n_new != length(psp)
         resize!(psp, n_new)
     end
-    psp .= x_svec
+    psp.updated[] = true
+    copyto!(psp.x, new_x)
+    return psp
+end
+
+# Vector of plain (non-SVector) vectors: construct SVectors element-wise
+function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractVector{<:AbstractVector}) where {N,T}
+    n_new = length(new_x)
+    if n_new != length(psp)
+        resize!(psp, n_new)
+    end
+    psp.updated[] = true
+    for (j, x_i) in enumerate(new_x)
+        psp.x[j] = SVector{N,T}(x_i)
+    end
+    return psp
+end
+
+# (D, N) matrix: columns are particles
+function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractMatrix) where {N,T}
+    n_new = size(new_x, 2)
+    if n_new != length(psp)
+        resize!(psp, n_new)
+    end
+    psp.updated[] = true
+    for (j, i) in enumerate(axes(new_x, 2))
+        psp.x[j] = SVector{N,T}(@view(new_x[:, i]))
+    end
     return psp
 end
 
