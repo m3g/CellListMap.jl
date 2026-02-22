@@ -18,7 +18,7 @@ export pairwise!
 export resize_output!
 @compat public AbstractParticleSystem, ParticleSystem1, ParticleSystem2
 @compat public copy_output, reset_output!, reset_output, reducer, reducer!, reduce_output!
-@compat public wrap_relative_to, get_computing_box
+@compat public wrap_relative_to, get_computing_box, get_nbatches
 
 # Specific for neighborlist interface
 export InPlaceNeighborList

@@ -242,32 +242,30 @@ end
     x = rand(SVector{3, Float64}, 2)
     sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     x = rand(SVector{3, Float64}, 10000)
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
+    update!(sys; positions=x)
     pairwise!((pair, out) -> out += pair.d2, sys)
     expected = (
         CellListMap._nbatches_build_cell_lists(10000),
         CellListMap._nbatches_map_computation(10000),
     )
-    @test CellListMap.nbatches(sys) == expected
+    @test CellListMap.get_nbatches(sys) == expected
 
     # ParticleSystem1: nbatches stable when particle count does not change
     x = rand(SVector{3, Float64}, 1000)
     sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
-    nb_before = CellListMap.nbatches(sys)
-    sys.xpositions .= rand(SVector{3, Float64}, 1000)
+    nb_before = CellListMap.get_nbatches(sys)
+    update!(sys; positions=rand(SVector{3, Float64}, 1000))
     pairwise!((pair, out) -> out += pair.d2, sys)
-    @test CellListMap.nbatches(sys) == nb_before
+    @test CellListMap.get_nbatches(sys) == nb_before
 
     # ParticleSystem1: manually set nbatches are not overridden on resize
     x = rand(SVector{3, Float64}, 100)
     sys = ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, nbatches = (2, 3))
-    @test CellListMap.nbatches(sys) == (2, 3)
+    @test CellListMap.get_nbatches(sys) == (2, 3)
     x = rand(SVector{3, Float64}, 10000)
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
+    update!(sys; positions=x)
     pairwise!((pair, out) -> out += pair.d2, sys)
-    @test CellListMap.nbatches(sys) == (2, 3)
+    @test CellListMap.get_nbatches(sys) == (2, 3)
 
     # ParticleSystem2: nbatches updates when particle count changes
     x = rand(SVector{3, Float64}, 2)
@@ -275,18 +273,15 @@ end
     sys = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)
     x = rand(SVector{3, Float64}, 5000)
     y = rand(SVector{3, Float64}, 10000)
-    resize!(sys.xpositions, length(x))
-    sys.xpositions .= x
-    resize!(sys.ypositions, length(y))
-    sys.ypositions .= y
+    update!(sys; xpositions=x, ypositions=y)
     pairwise!((pair, out) -> out += pair.d2, sys)
     # For CellListPair, nbatches(sys) returns ref_list (x) nbatches
     # Build: based on ref_list particle count, Map: based on product
     expected = (
-        CellListMap._nbatches_build_cell_lists(5000),
-        CellListMap._nbatches_map_computation(5000 * 10000),
+            CellListMap._nbatches_build_cell_lists(5000 * 10000),
+            CellListMap._nbatches_map_computation(5000 * 10000)
     )
-    @test CellListMap.nbatches(sys) == expected
+    @test CellListMap.get_nbatches(sys) == expected
 end
 
 @testitem "ParticleSystem - validate coordinates" begin
