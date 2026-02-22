@@ -94,43 +94,13 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
         - `nothing` (by default), in which case no periodic boundary conditions will be used.
     - `Unitful` quantities can be provided, given appropriate types for all input parameters.
 
-## [The `ParticleSystemPositions` type](@id ParticleSystemPositions)
+## Coordinate arrays
 
-The positions stored in a `ParticleSystem` (accessible via `system.xpositions` and, for two-set systems, `system.ypositions`) are of type `ParticleSystemPositions{N,T}`. This is a wrapper around a `Vector{SVector{N,T}}` that carries an internal `updated` flag. When coordinates are mutated through the supported interface, the flag is set automatically, so that cell lists are recomputed on the next call to `pairwise!`.
+The positions stored in a `ParticleSystem` are accessible as `system.xpositions` (and
+`system.ypositions` for two-set systems). These properties behave like ordinary
+`Vector{SVector{N,T}}` arrays: you can index, iterate, broadcast, push, and append to them.
+Any mutation automatically triggers recomputation of the cell lists on the next `pairwise!`
+call.
 
-A `ParticleSystemPositions` can be constructed from a vector of vectors (e.g. `Vector{Vector{Float64}}`), but typically this construction occurs only internal on the call to `ParticleSystem`. The mutation interface is important when the user wants to vary the coordinates of the system. Mutation must strictly follow the available API methods, otherwise subsequent computations might be wrong because they can be based on outdated cell lists.  
-
-### Mutating interface
-
-The following functions mutate the positions **and** flag the array as updated, triggering
-recomputation of the cell lists on the next `pairwise!` call:
-
-| Function      | Description                                     |
-|:------------- |:----------------------------------------------- |
-| `setindex!`   | Set the position of a single particle by index   |
-| `empty!`      | Remove all positions                             |
-| `resize!`     | Resize the number of positions                   |
-| `append!`     | Append positions from another collection         |
-| `push!`       | Append positions from another collection         |
-| Broadcasting  | In-place broadcast (e.g. `p .= new_positions`)   |
-| `view`        | Views share the updated state of the original array, such that mutations to views are tracked. |
-
-### Read-only interface
-
-| Function      | Description                                      |
-|:------------- |:------------------------------------------------ |
-| `getindex`    | Retrieve the position of a particle by index      |
-| `length`      | Number of particles                               |
-| `size`        | Size tuple `(length,)`                            |
-| `axes`        | Index axes of the underlying vector               |
-| `keys`        | Linear indices                                    |
-| `eachindex`   | Iterator over valid indices                       |
-| `firstindex`  | First valid index                                 |
-| `lastindex`   | Last valid index                                  |
-| `first`       | First position                                    |
-| `last`        | Last position                                     |
-| `ndims`       | Always returns `1`                                |
-| `iterate`     | Iteration protocol                                |
-| `copy`        | Shallow copy (preserves `updated` flag)           |
-| `similar`     | Allocate an uninitialized array of same shape      |
-| `view`        | Create a view sharing the `updated` flag          |
+To replace the entire coordinate array, or to update other system properties, use
+[`update!`](@ref "Updating the system").

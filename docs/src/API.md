@@ -30,7 +30,6 @@ Public and exported:
 ```@docs
 NeighborPair
 ParticleSystem
-ParticleSystemPositions
 ```
 
 Public but not exported:
@@ -41,18 +40,27 @@ CellListMap.ParticleSystem1
 CellListMap.ParticleSystem2
 ```
 
-### The parwise! methods
+### The pairwise! methods
 
 ```@docs
-pairwise!(::F, ::CellListMap.AbstractParticleSystem) where {F<:Function} 
+pairwise!(::F, ::CellListMap.AbstractParticleSystem) where {F<:Function}
 ```
 
 ### Updating systems
 
 ```@docs
+update!(::CellListMap.AbstractParticleSystem)
+resize_output!
+```
+
+!!! note "Deprecated update functions"
+    `update_cutoff!` and `update_unitcell!` are deprecated. Use `update!(sys; cutoff=...)` and
+    `update!(sys; unitcell=...)` instead. Setting `sys.parallel` directly is also deprecated;
+    use `update!(sys; parallel=...)`.
+
+```@docs
 update_cutoff!
 update_unitcell!
-resize_output!
 ```
 
 ### Custom parallel reduction

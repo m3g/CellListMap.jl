@@ -85,6 +85,10 @@ computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#N
 By default the parallelization is turned on and `nbatches` is set with heuristics
 that may provide good efficiency in most cases.
 
+After construction, use `update!(system; xpositions=..., ypositions=..., cutoff=...,
+unitcell=..., parallel=...)` to update any system properties before subsequent
+`pairwise!` calls.
+
 The `validate_coordinates` function can be used to validate the coordinates
 before computations, and throw appropriate error messages. By default the validation checks if
 the coordinates are not missing or NaN. The function must have a single

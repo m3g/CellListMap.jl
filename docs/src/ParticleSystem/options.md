@@ -5,8 +5,15 @@ of the `ParticleSystem` interface.
 
 ## Turn parallelization on and off
 
-The use of parallel computations can be tunned on and of by the `system.parallel` boolean flag.
-For example, using 6 cores (12 threads) for the calculation of the minimum-distance example:
+Parallelization is controlled with the `parallel` keyword of `update!`:
+
+```julia-repl
+julia> update!(system; parallel=true)
+
+julia> update!(system; parallel=false)
+```
+
+For example, using 8 threads for the calculation of the minimum-distance example:
 
 ```julia-repl
 julia> f(system) = pairwise!(minimum_distance, system)
@@ -15,15 +22,13 @@ f (generic function with 1 method)
 julia> Threads.nthreads()
 8
 
-julia> system.parallel = true
-true
+julia> update!(system; parallel=true)
 
 julia> @btime f($system)
   268.265 μs (144 allocations: 16.91 KiB)
 MinimumDistance(783, 497, 0.007213710914619913)
 
-julia> system.parallel = false
-false
+julia> update!(system; parallel=false)
 
 julia> @btime f($system)
   720.304 μs (0 allocations: 0 bytes)
@@ -88,9 +93,9 @@ parameter of the tuple) may improve the performance by reducing the idle time of
 threads.
 
 When the number of batches is left at the default (i.e., `nbatches=(0,0)` or omitted),
-it is automatically recomputed whenever `UpdateParticleSystem!` detects that the number
-of particles has changed. This allows adding or removing particles from the system
-without having to manually adjust the parallelization parameters:
+it is automatically recomputed whenever `pairwise!` detects that the number of particles
+has changed. This allows adding or removing particles from the system without having to
+manually adjust the parallelization parameters:
 
 ```julia-repl
 julia> system = ParticleSystem(
@@ -104,9 +109,9 @@ julia> system = ParticleSystem(
 julia> nbatches(system) # default batches for 1000 particles
 (2, 4)
 
-julia> system.xpositions = rand(SVector{3,Float64}, 100000); # resize
+julia> update!(system; xpositions=rand(SVector{3,Float64}, 100000)); # resize
 
-julia> UpdateParticleSystem!(system); # nbatches recomputed automatically
+julia> pairwise!((pair, out) -> out + pair.d2, system); # nbatches recomputed on next call
 
 julia> nbatches(system) # updated for 100000 particles
 (8, 32)

@@ -1,49 +1,14 @@
 """
     ParticleSystemPositions{N,T}
 
-Wrapper around a `Vector{SVector{N,T}}` that carries particle coordinates and an internal
-`updated` flag. When coordinates are mutated through the supported interface, the flag is
-set automatically, so that cell lists are recomputed on the next call to `pairwise!`.
+Internal type. Wrapper around a `Vector{SVector{N,T}}` that carries particle coordinates
+and an `updated::Ref{Bool}` flag. Any mutation through the standard array interface
+(indexing, `push!`, `resize!`, `empty!`, `append!`, in-place broadcast) sets the flag,
+triggering cell-list recomputation on the next `pairwise!` call.
 
-A `ParticleSystemPositions` can be constructed from:
-- A vector of vectors (e.g. `Vector{Vector{Float64}}`).
-- A vector of `SVector`s (e.g. `Vector{SVector{3,Float64}}`).
-- An `(D, M)` matrix, where `D` is the dimension and `M` the number of particles.
-
-## Mutating interface
-
-The following functions mutate the positions **and** flag the array as updated, triggering
-recomputation of the cell lists on the next `pairwise!` call:
-
-| Function      | Description                                     |
-|:------------- |:----------------------------------------------- |
-| `setindex!`   | Set the position of a single particle by index   |
-| `empty!`      | Remove all positions                             |
-| `resize!`     | Resize the number of positions                   |
-| `append!`     | Append positions from another collection         |
-| `push!`       | Add element                                      |
-| Broadcasting  | In-place broadcast (e.g. `p .= new_positions`)   |
-
-## Read-only interface
-
-| Function      | Description                                      |
-|:------------- |:------------------------------------------------ |
-| `getindex`    | Retrieve the position of a particle by index      |
-| `length`      | Number of particles                               |
-| `size`        | Size tuple `(length,)`                            |
-| `axes`        | Index axes of the underlying vector               |
-| `keys`        | Linear indices                                    |
-| `eachindex`   | Iterator over valid indices                       |
-| `firstindex`  | First valid index                                 |
-| `lastindex`   | Last valid index                                  |
-| `first`       | First position                                    |
-| `last`        | Last position                                     |
-| `ndims`       | Always returns `1`                                |
-| `iterate`     | Iteration protocol                                |
-| `copy`        | Shallow copy (preserves `updated` flag)           |
-| `similar`     | Allocate an uninitialized array of same shape      |
-| `view`        | Create a view sharing the `updated` flag          |
-| `show`        | Pretty-printing                                   |
+Users interact with this type only through `system.xpositions` / `system.ypositions`,
+treating it as an ordinary vector. To replace the entire coordinate array or update
+other system properties, use `update!`.
 
 """
 struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
