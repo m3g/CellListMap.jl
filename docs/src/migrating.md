@@ -2,7 +2,7 @@
 
 This guide helps users migrate from CellListMap version 0.9.x to version 0.10.0.
 
-## Neighbor lists
+## Neighbor lists changes
 
 The `neighborlist` and `neighborlist!` functions are now called with keyword parameters following the same interface of `ParticleSystem`. This means:
 
@@ -20,7 +20,7 @@ neighborlist(x, y, 0.01; unitcell=[1,1,1])
 neighborlist(xpositions=x, ypositions=y, cutoff=0.01, unitcell=[1,1,1])
 ```
 
-## InPlaceNeighborList
+## InPlaceNeighborList changes
 
 Similarly, `InPlaceNeighborList` constructor follows the same new keyword syntax:
 
@@ -46,7 +46,7 @@ The `autoswap` option, which was deprecated in version 0.9.16, has been complete
 
 **Migration**: If you were using `autoswap=true` (which was the default), you may experience some performance regression for smaller systems. For most use cases, simply remove the `autoswap` keyword argument.
 
-## ParticleSystem interface updates
+## ParticleSystem interface changes
 
 ### Renaming of `map_pairwise!` to `pairwise!`
 
