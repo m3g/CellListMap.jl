@@ -134,41 +134,6 @@ See the [ParticleSystem](@ref ParticleSystem-interface) and [Updating the system
 
 The Python interface has been discontinued in version 0.10.0.
 
-## Deprecations (current version)
-
-The following functions are deprecated and will be removed in a future version.
-They still work but emit a warning on first use.
-
-### `update_cutoff!` and `update_unitcell!`
-
-Use `update!` with the corresponding keyword argument instead:
-
-```julia
-# Deprecated
-update_cutoff!(system, 0.2)
-update_unitcell!(system, [1.2, 1.2, 1.2])
-
-# Preferred
-update!(system; cutoff=0.2)
-update!(system; unitcell=[1.2, 1.2, 1.2])
-```
-
-### Setting `parallel` directly
-
-```julia
-# Deprecated
-system.parallel = false
-
-# Preferred
-update!(system; parallel=false)
-```
-
-### `ParticleSystemPositions` as a user type
-
-`ParticleSystemPositions` is no longer part of the public API. Access coordinates
-through `system.xpositions` and `system.ypositions` as ordinary arrays, and use
-`update!` to replace the entire coordinate array.
-
 ## Summary of breaking changes
 
 | Change | 0.9.x | 0.10.0 |

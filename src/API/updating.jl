@@ -176,33 +176,3 @@ function update!(
     return sys
 end
 
-#
-# Deprecated public wrappers
-#
-"""
-    update_unitcell!(system, unitcell)
-
-!!! warning "Deprecated"
-    `update_unitcell!` is deprecated. Use `update!(sys; unitcell=unitcell)` instead.
-
-"""
-function update_unitcell!(sys, unitcell)
-    @warn """\n
-        `update_unitcell!` is deprecated. Use `update!(sys; unitcell=unitcell)` instead.
-    """ maxlog=1
-    _update_unitcell!(sys, unitcell)
-end
-
-"""
-    update_cutoff!(system, cutoff)
-
-!!! warning "Deprecated"
-    `update_cutoff!` is deprecated. Use `update!(sys; cutoff=cutoff)` instead.
-
-"""
-function update_cutoff!(sys, cutoff)
-    @warn """\n
-        `update_cutoff!` is deprecated. Use `update!(sys; cutoff=cutoff)` instead.
-    """ maxlog=1
-    _update_cutoff!(sys, cutoff)
-end

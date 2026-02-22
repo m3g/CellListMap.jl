@@ -167,38 +167,24 @@ julia> neighborlist!(system)
 function update!(
     system::InPlaceNeighborList,
     x::AbstractVecOrMat;
-    cutoff = system.sys.cutoff, 
-    unitcell = unitcelltype(system.sys) == NonPeriodicCell ? nothing : system.sys.unitcell 
+    cutoff = nothing,
+    unitcell = nothing,
 )
-    (; sys) = system
-    _x = _wrap_x(x, eltype(sys.xpositions.x))
-    resize!(sys.xpositions, length(_x))
-    sys.xpositions .= _x
-    update_cutoff!(sys, cutoff)
-    update_unitcell!(sys, unitcell)
+    update!(system.sys; xpositions=x, cutoff=cutoff, unitcell=unitcell)
     return system
 end
-_wrap_x(x::AbstractVector{<:AbstractVector}, _) = x
-_wrap_x(x::AbstractMatrix, ::Type{V}) where {V} = reinterpret(reshape, V, x)
 
 #
 # update system for cross-computations
 #
 function update!(
-        system::InPlaceNeighborList,
-        x::AbstractVecOrMat,
-        y::AbstractVecOrMat;
-        cutoff = nothing, unitcell = nothing
-    ) 
-    (; sys) = system
-    _x = _wrap_x(x, eltype(sys.xpositions.x))
-    _y = _wrap_x(y, eltype(sys.ypositions.x))
-    resize!(sys.xpositions, length(_x))
-    resize!(sys.ypositions, length(_y))
-    sys.xpositions .= _x
-    sys.ypositions .= _y
-    update_cutoff!(sys, cutoff)
-    update_unitcell!(sys, unitcell)
+    system::InPlaceNeighborList,
+    x::AbstractVecOrMat,
+    y::AbstractVecOrMat;
+    cutoff = nothing,
+    unitcell = nothing,
+)
+    update!(system.sys; xpositions=x, ypositions=y, cutoff=cutoff, unitcell=unitcell)
     return system
 end
 

@@ -217,13 +217,7 @@ import Base: setproperty!
 setproperty!(sys::AbstractParticleSystem, s::Symbol, x) = setproperty!(sys, Val(s), x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:unitcell}, x) = _update_unitcell!(sys, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:cutoff}, x) = _update_cutoff!(sys, x)
-function setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x)
-    @warn """\n
-        Setting `parallel` directly on a ParticleSystem is deprecated.
-        Use `update!(sys; parallel=value)` instead.
-    """ maxlog=1
-    setfield!(sys, :parallel, x)
-end
+setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
 # private properties
 setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)

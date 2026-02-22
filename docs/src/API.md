@@ -53,16 +53,6 @@ update!(::CellListMap.AbstractParticleSystem)
 resize_output!
 ```
 
-!!! note "Deprecated update functions"
-    `update_cutoff!` and `update_unitcell!` are deprecated. Use `update!(sys; cutoff=...)` and
-    `update!(sys; unitcell=...)` instead. Setting `sys.parallel` directly is also deprecated;
-    use `update!(sys; parallel=...)`.
-
-```@docs
-update_cutoff!
-update_unitcell!
-```
-
 ### Custom parallel reduction
 
 These are public, but not exported.

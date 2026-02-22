@@ -355,3 +355,41 @@ end
     pairwise!((pair, u) -> u += inv(pair.d), sys)
     @test sys.output ≈ u
 end
+
+@testitem "update! xpositions non-allocating" setup = [AllocTest] begin
+    using BenchmarkTools
+    using CellListMap, StaticArrays
+
+    # Vector{SVector}: same-size update must not allocate
+    sys = ParticleSystem(
+        xpositions = rand(SVector{3,Float64}, 100),
+        unitcell = [1.0, 1.0, 1.0],
+        cutoff = 0.1,
+        output = 0.0,
+    )
+    new_x_sv = rand(SVector{3,Float64}, 100)
+    a = @ballocated update!($sys; xpositions=$new_x_sv) evals=1 samples=1
+    @test a == Allocs(0)
+
+    # (D,N) matrix input: same-size update must not allocate
+    new_x_mat = rand(3, 100)
+    a = @ballocated update!($sys; xpositions=$new_x_mat) evals=1 samples=1
+    @test a == Allocs(0)
+
+    # vector-of-vectors input: same-size update must not allocate
+    new_x_vov = [rand(3) for _ in 1:100]
+    a = @ballocated update!($sys; xpositions=$new_x_vov) evals=1 samples=1
+    @test a == Allocs(0)
+
+    # Two-set system: same-size updates must not allocate
+    sys2 = ParticleSystem(
+        xpositions = rand(SVector{3,Float64}, 100),
+        ypositions = rand(SVector{3,Float64}, 50),
+        unitcell = [1.0, 1.0, 1.0],
+        cutoff = 0.1,
+        output = 0.0,
+    )
+    new_y_sv = rand(SVector{3,Float64}, 50)
+    a = @ballocated update!($sys2; xpositions=$new_x_sv, ypositions=$new_y_sv) evals=1 samples=1
+    @test a == Allocs(0)
+end
