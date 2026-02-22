@@ -49,29 +49,18 @@ This can be implemented as a particular usage case of `CellListMap`, but given i
 
 An example of the application of the `neighborlist` function follows:
 
-```julia-repl
-julia> using CellListMap
-
-julia> x = rand(3, 10_000); # 10,000 particles in 3D
-
-julia> neighborlist(xpositions=x, cutoff=0.05) # cutoff of 0.05
-209452-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 1055, 0.04770602450750023)
- (1, 1261, 0.048087995599677004)
- ⋮
- (9989, 8269, 0.0442616226498007)
- (9989, 6452, 0.042189574206507035)
+```@example nb_quick
+using CellListMap
+ x = rand(3, 10_000); # 10,000 particles in 3D
+neighborlist(positions=x, cutoff=0.01) # cutoff of 0.01
 ```
 
 Each element of the list is a tuple `(i, j, d)` containing the indices of the particles and their distance.
 
 `CellListMap` supports general periodic boundary conditions, by providing the unitcell as vector (for orthorhombic systems) or a unitcell matrix (for general triclinic systems):
 
-```julia-repl
-julia> neighborlist(xpositions=x, cutoff=0.05, unitcell=[1,1,1]) # periodic box of side 1
-305006-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 1055, 0.04770602450750023)
- ⋮
+```@example nb_quick
+neighborlist(positions=x, cutoff=0.01, unitcell=[1,1,1]) # periodic box of side 1
 ```
 
 See the [Neighbor lists](@ref) section for more details, including in-place computations for iterative workflows.
@@ -85,31 +74,26 @@ For more general pairwise computations (energies, forces, etc.) without the mate
 
 A concise example is the computation of the sum of the inverse of the distance between particles:
 
-```julia-repl
-julia> using CellListMap
-
-julia> x = rand(3, 10_000); # 10,000 particles in 3D
-
-julia> sys = ParticleSystem(positions=x, cutoff=0.05, unitcell=[1,1,1], output=0.0)
-
-julia> pairwise!((pair, u) -> u += 1/pair.d, sys)
-792925.6234732079
+```@example ps_quick
+using CellListMap
+x = rand(3, 10_000); # 10,000 particles in 3D
+sys = ParticleSystem(positions=x, cutoff=0.01, unitcell=[1,1,1], output=0.0)
+energy(pair, u) = u += 1/pair.d
+pairwise!(energy, sys)
 ```
 
-Note that in the above example the `pairwise` method is actually performing a `pairwise` operation, where the output value `u` is summed up over all neighboring pairs of particles. 
+Note that in the above example the `pairwise!` method is performing a sum of the computation of `energy` over all neighboring pairs of particles. 
 
 If you are familiar with Julia, the `do` syntax also provides a readable format for the `pairwise!` application:
-```julia-repl
-julia> pairwise!(sys) do pair, u 
+```@example ps_quick
+pairwise!(sys) do pair, u 
     u += 1/pair.d
 end
-792925.6234732079
 ```
 
 The `pairwise!` method mutates the `sys.output` field, which stores the result of the computation:
-```julia-repl
-julia> sys.output
-777632.9459487279
+```@example ps_quick
+sys.output
 ```
 
 Using initial values, customizing the field name, computing general compound properties, and mapping functions to disjoint sets of particles is possible. 

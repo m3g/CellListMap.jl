@@ -80,31 +80,6 @@ If the structure is used repeatedly for similar systems, the allocations will
 vanish, except for minor allocations used in the threading computation (if a
 non-parallel computation is executed, the allocations will vanish completely):
 
-```julia-repl
-julia> x = rand(SVector{3,Float64}, 10^4);
-
-julia> system = InPlaceNeighborList(xpositions=x, cutoff=0.1, unitcell=[1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.008004 seconds (228 allocations: 16.728 MiB)
-
-julia> update!(system; xpositions=rand(SVector{3,Float64}, 10^4), cutoff = 0.1, unitcell = [1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.024811 seconds (167 allocations: 7.887 MiB)
-
-julia> update!(system; xpositions=rand(SVector{3,Float64}, 10^4), cutoff = 0.1, unitcell = [1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.005213 seconds (164 allocations: 1.439 MiB)
-
-julia> update!(system; xpositions=rand(SVector{3,Float64}, 10^4), cutoff = 0.1, unitcell = [1,1,1]);
-
-julia> @time neighborlist!(system);
-  0.005276 seconds (162 allocations: 15.359 KiB)
-
-```
-
 """
 function InPlaceNeighborList(; show_progress::Bool = false, cutoff, unitcell = nothing, kargs...)
     T = _promote_types(unitcell, cutoff)
@@ -164,7 +139,10 @@ julia> neighborlist!(system)
 ```
 
 """
-update!(system::InPlaceNeighborList; kargs...) = update!(system.sys; kargs...)
+function update!(system::InPlaceNeighborList; kargs...) 
+    update!(system.sys; kargs...)
+    return system
+end
 
 function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
     _print(io, "InPlaceNeighborList with types: \n")

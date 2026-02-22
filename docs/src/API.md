@@ -9,8 +9,7 @@ CollapsedDocStrings = true
 ### Simple neighborlists
 
 ```@docs
-neighborlist(::Any, ::Any)
-neighborlist(::Any, ::Any, ::Any)
+neighborlist
 ```
 
 ### In-place neighborlists
@@ -71,4 +70,5 @@ These are public, but not exported.
 ```@docs
 CellListMap.wrap_relative_to
 CellListMap.get_computing_box
+CellListMap.get_nbatches
 ```
