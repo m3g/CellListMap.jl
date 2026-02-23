@@ -21,6 +21,8 @@
     @test sys.output == 0
     @test sys.test == 0
     @test sys.parallel == true
+    @test length(sys.xpositions) == 1000
+    @test length(sys.positions) == 1000
 
     update!(sys; parallel=false)
     @test sys.parallel == false
