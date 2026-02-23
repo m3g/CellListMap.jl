@@ -2,25 +2,51 @@
 
 This guide helps users migrate from CellListMap version 0.9.x to version 0.10.0.
 
-## Neighbor lists updates
+## Neighbor lists changes
 
-The `neighborlist` and `neighborlist!` functions remain mostly unchanged in their interface, except for the removal of the `autoswap` option.
+The `neighborlist` and `neighborlist!` functions are now called with keyword parameters following the same interface of `ParticleSystem`. This means:
+
+```julia
+# Before (0.9.x)
+neighborlist(x, 0.01; unitcell=[1,1,1])
+
+# After (0.10.x)
+neighborlist(positions=x, cutoff=0.01, unitcell=[1,1,1])
+
+# Before (0.9.x)
+neighborlist(x, y, 0.01; unitcell=[1,1,1])
+
+# After (0.10.x)
+neighborlist(xpositions=x, ypositions=y, cutoff=0.01, unitcell=[1,1,1])
+```
+
+## InPlaceNeighborList changes
+
+Similarly, `InPlaceNeighborList` constructor follows the same new keyword syntax:
+
+```julia
+# Before (0.9.x)
+InPlaceNeighborList(x, 0.01; unitcell=[1,1,1])
+
+# After (0.10.x)
+InPlaceNeighborList(positions=x, cutoff=0.01, unitcell=[1,1,1])
+
+# Before (0.9.x)
+InPlaceNeighborList(x, y, 0.01; unitcell=[1,1,1])
+
+# After (0.10.x)
+InPlaceNeighborList(xpositions=x, ypositions=y, cutoff=0.01, unitcell=[1,1,1])
+```
+
+The `update!` function was similarly updated, with the same keyword arguments.
 
 ### Removal of `autoswap`
 
 The `autoswap` option, which was deprecated in version 0.9.16, has been completely removed in 0.10.0. This option was previously used to automatically swap the sets of particles to optimize performance when computing neighbor lists between two sets of particles with different sizes.
 
-**Migration**: If you were using `autoswap=true` (which was the default), you may experience some performance regression for smaller systems. For most use cases, simply remove the `autoswap` keyword argument:
+**Migration**: If you were using `autoswap=true` (which was the default), you may experience some performance regression for smaller systems. For most use cases, simply remove the `autoswap` keyword argument.
 
-```julia
-# Before (0.9.x)
-neighborlist(x, y, cutoff; autoswap=true)
-
-# After (0.10.0)
-neighborlist(x, y, cutoff)
-```
-
-## ParticleSystem interface updates
+## ParticleSystem interface changes
 
 ### Renaming of `map_pairwise!` to `pairwise!`
 
@@ -91,6 +117,20 @@ pairwise!(f, system)
 pairwise!(f, system; reset=false)
 ```
 
+## `ParticleSystem` updating
+
+The interface for updating particle system was simplified. `update_cutoff!`, `update_unicell!` and direct access to the positions was removed. Now, all updates must be done through the `update!` function as, for example:
+
+```julia
+update(system; 
+    cutoff=0.02, p
+    positions=rand(3,1000), # or xpositions=
+    ypositions=rand(3,1000), # if ypositions were defined
+    unitcell=[1,1,1,2], 
+    parallel=false
+)
+```
+
 ## Low-level interface
 
 The previous "low-level interface" using `Box`, `CellList`, and `pairwise!(f, output, box, cl)` directly is now internal and no longer exported or part of the public API.
@@ -123,7 +163,7 @@ end
 # After (0.10.0)
 sys = ParticleSystem(positions=x, cutoff=cutoff, unitcell=sides, output=0.0)
 for step in 1:nsteps
-    sys.xpositions .= new_positions()  # update coordinates directly
+    update!(sys; xpositions=new_positions())
     u = pairwise!(f, sys)
 end
 ```
@@ -133,14 +173,3 @@ See the [ParticleSystem](@ref ParticleSystem-interface) and [Updating the system
 ## Python interface
 
 The Python interface has been discontinued in version 0.10.0.
-
-## Summary of breaking changes
-
-| Change | 0.9.x | 0.10.0 |
-|:-------|:------|:-------|
-| Pairwise mapping function | `map_pairwise!` | `pairwise!` |
-| Alias for "non-mutating" pairwise | `pairwise` | Removed |
-| Output reset behavior | Manual | Automatic (use `reset=false` to skip) |
-| Low-level interface | Exported | Internal (use `ParticleSystem`) |
-| `autoswap` option | Deprecated | Removed |
-| Python interface | Available | Discontinued |

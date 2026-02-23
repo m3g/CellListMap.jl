@@ -428,13 +428,13 @@ end
     # Test when we have pathologically few number of particles
     x = [Float64[1, 1, 1]]
     y = [Float64[1.05, 1, 1], Float64[0, 0, 0]]
-    @test all(CellListMap.neighborlist(x, y, 0.1)[1] .≈ (1, 1, 0.05))
+    @test all(CellListMap.neighborlist(xpositions=x, ypositions=y, cutoff=0.1)[1] .≈ (1, 1, 0.05))
     z = [Float64[1, 1, 1], Float64[1.05, 1, 1], Float64[0, 0, 0]]
-    @test all(CellListMap.neighborlist(z, 0.1)[1] .≈ (1, 2, 0.05))
+    @test all(CellListMap.neighborlist(xpositions=z, cutoff=0.1)[1] .≈ (1, 2, 0.05))
     x = SVector{3, Float64}[]
-    @test CellListMap.neighborlist(x, 0.1, unitcell = [1, 1, 1]) == Tuple{Int64, Int64, Float64}[]
+    @test CellListMap.neighborlist(positions=x, cutoff=0.1, unitcell=[1, 1, 1]) == Tuple{Int64, Int64, Float64}[]
     x = Vector{Float64}[]
-    @test CellListMap.neighborlist(x, 0.1, unitcell = [1, 1, 1]) == Tuple{Int64, Int64, Float64}[]
+    @test CellListMap.neighborlist(xpositions=x, cutoff=0.1, unitcell=[1, 1, 1]) == Tuple{Int64, Int64, Float64}[]
 
 end
 
@@ -483,7 +483,7 @@ end
     using StaticArrays: SVector
     p2d = SVector{2, Float64}[[0.0, 2.52], [0.02, 2.56], [3.98, 2.96], [4.0, 0.26], [4.0, 2.5]]
     r = 0.06788225099390856
-    @test length(neighborlist(p2d, r)) == 1
+    @test length(neighborlist(xpositions=p2d, cutoff=r)) == 1
 
 end
 

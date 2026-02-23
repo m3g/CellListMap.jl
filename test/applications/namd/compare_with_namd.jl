@@ -3,7 +3,6 @@
     import Chemfiles
     using CellListMap
     using StaticArrays
-    const PSP = ParticleSystemPositions
 
     function lj_NE(pair, u)
         (; d2) = pair
@@ -150,7 +149,7 @@
     @test u ≈ correct
 
     sys.xpositions .= getcoor("$dir/o2.dcd")
-    update_unitcell!(sys, [80.0, 70.0, 50.0])
+    update!(sys; unitcell=[80.0, 70.0, 50.0])
     u = pairwise!(lj_NE, sys)
     correct = 1093.7225407797744
     @test u ≈ correct
@@ -161,7 +160,7 @@
                  30.0 80.0  0.0
                   0.0 40.0 80.0]
     #! format: on
-    update_unitcell!(sys, unit_cell)
+    update!(sys; unitcell=unit_cell)
     correct = -116.53213607052128
     u = pairwise!(lj_NE, sys)
     @test u ≈ correct
@@ -243,18 +242,16 @@
     @test u ≈ correct
 
     sys.xpositions .= getcoor("$dir/o2.dcd")
-    update_unitcell!(sys, [80.0, 70.0, 50.0])
+    update!(sys; unitcell=[80.0, 70.0, 50.0])
     correct = 1093.7225407797744
     u = pairwise!(lj_NE, sys)
     @test u ≈ correct
 
     sys.xpositions .= getcoor("$dir/t1.dcd")
     #! format: off
-    update_unitcell!(sys,
-        [80.0  0.0 30.0
-         30.0 80.0  0.0
-         0.0 40.0 80.0]
-    )
+    update!(sys; unitcell=[80.0  0.0 30.0
+                            30.0 80.0  0.0
+                            0.0 40.0 80.0])
     #! format: on
     correct = -116.53213607052128
     u = pairwise!(lj_NE, sys)

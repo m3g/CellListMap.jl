@@ -99,9 +99,9 @@ function UpdateParticleSystem!(sys::ParticleSystem1)
             validate_coordinates = sys.validate_coordinates,
         )
         if n_particles_changed
-            _old_nbatches = nbatches(sys)
+            _old_nbatches = get_nbatches(sys)
             sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
-            _new_nbatches = nbatches(sys)
+            _new_nbatches = get_nbatches(sys)
             if _old_nbatches != _new_nbatches
                 sys._aux = AuxThreaded(sys._cell_list)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
@@ -146,9 +146,9 @@ function UpdateParticleSystem!(sys::ParticleSystem2)
             validate_coordinates = sys.validate_coordinates,
         )
         if n_particles_changed
-            _old_nbatches = nbatches(sys)
+            _old_nbatches = get_nbatches(sys)
             sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
-            _new_nbatches = nbatches(sys)
+            _new_nbatches = get_nbatches(sys)
             if _old_nbatches != _new_nbatches
                 sys._aux = AuxThreaded(sys._cell_list)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
@@ -161,5 +161,12 @@ function UpdateParticleSystem!(sys::ParticleSystem2)
 end
 
 # Return the number of batches for ParticleSystems
-nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
-nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.ref_list)
+"""
+    get_nbatches(sys::AbstractParticleSystem)
+
+Returns the number of batches for parallel computations of cell list construction
+and function mapping.
+
+"""
+get_nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
+get_nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.ref_list)

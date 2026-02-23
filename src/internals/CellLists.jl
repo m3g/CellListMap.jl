@@ -269,9 +269,7 @@ function set_number_of_batches!(cl::Union{CellList, CellListPair}, _nbatches::Tu
 end
 
 #=
-    nbatches(cl::CellList)
-    nbatches(cl::CellListPair)
-    nbatches(system::AbstractParticleSystem)
+    nbatches(system::AbstractParticleSystem, [:map|:build])
 
 Returns the number of batches for parallel processing that will be used. Returns a tuple, where 
 the first element is the number of batches for the construction of the cell lists, and the second

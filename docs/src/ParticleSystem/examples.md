@@ -139,16 +139,13 @@ system = ParticleSystem(
 pairwise!(minimum_distance, system)
 ```
 
-
 ## Particle simulation
 
 In this example, a complete particle simulation is illustrated, with a simple potential.  This example can illustrate how particle positions and forces can be updated. Run this
 simulation with:
 
 ```julia-repl
-julia> system = init_system(N=200); # number of particles
-
-julia> trajectory = simulate(system);
+julia> trajectory = simulate(200)
 
 julia> animate(trajectory)
 ```
@@ -169,29 +166,23 @@ function update_forces!(pair, forces, cutoff)
     forces[j] -= dudr
     return forces
 end
-# Function that initializes the system: it is preferable to initialize
-# the system outside the function that performs the simulation, because
-# the system (data)type is defined on initialization. Initializing it outside
-# the simulation function avoids possible type-instabilities.
-function init_system(;N::Int=200)
-    Vec2D = SVector{2,Float64}
-    positions = rand(Vec2D, N)
-    unitcell = [1.0, 1.0]
-    cutoff = 0.1
+function simulate(N; nsteps::Int=100, isave=1)
+    # initial velocities
+    velocities = randn(SVector{2,Float64}, N)
+    # Initial positions
+    positions = rand(SVector{2,Float64}, N)
+    # force array
+    forces = zeros(SVector{2,Float64}, N)
+    # initialize ParticleSystem
     system = ParticleSystem(
         positions=positions,
-        cutoff=cutoff,
-        unitcell=unitcell,
-        output=similar(positions),
+        cutoff=0.1,
+        unitcell=[1.0, 1.0],
+        output=forces,
         output_name=:forces,
     )
-    return system
-end
-function simulate(system=init_system(); nsteps::Int=100, isave=1)
-    # initial velocities
-    velocities = [ randn(eltype(system.positions)) for _ in 1:length(system.positions) ]
     dt = 1e-3
-    trajectory = typeof(system.positions)[]
+    trajectory = typeof(positions)[]
     for step in 1:nsteps
         # compute forces at this step
         pairwise!(
@@ -199,21 +190,23 @@ function simulate(system=init_system(); nsteps::Int=100, isave=1)
             system
         )
         # Update positions and velocities
-        for i in eachindex(system.positions, system.forces)
+        for i in eachindex(positions, velocities, system.forces)
             f = system.forces[i]
-            x = system.positions[i]
+            x = positions[i]
             v = velocities[i]
             x = x + v * dt + (f / 2) * dt^2
             v = v + f * dt
             # wrapping to origin for obtaining a pretty animation
             x = wrap_relative_to(x, SVector(0.0, 0.0), system.unitcell)
-            # !!! IMPORTANT: Update arrays of positions and velocities
-            system.positions[i] = x
+            # update positions and velocities
+            positions[i] = x
             velocities[i] = v
         end
+        # Update ParticleSystem positions
+        update!(system; positions=positions)
         # Save step for printing
         if step % isave == 0
-            push!(trajectory, copy(system.positions))
+            push!(trajectory, copy(positions))
         end
     end
     return trajectory

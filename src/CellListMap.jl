@@ -13,15 +13,13 @@ using ChunkSplitters: index_chunks, RoundRobin, Consecutive
 
 # Exported names of ParticleSystem interface
 export ParticleSystem
-export ParticleSystemPositions
 export NeighborPair
 export pairwise!
-export update_cutoff!
-export update_unitcell!
 export resize_output!
 @compat public AbstractParticleSystem, ParticleSystem1, ParticleSystem2
+@compat public ParticleSystemPositions
 @compat public copy_output, reset_output!, reset_output, reducer, reducer!, reduce_output!
-@compat public wrap_relative_to, get_computing_box
+@compat public wrap_relative_to, get_computing_box, get_nbatches
 
 # Specific for neighborlist interface
 export InPlaceNeighborList

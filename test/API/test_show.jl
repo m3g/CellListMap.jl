@@ -86,20 +86,20 @@
             Type of output variable (default_output_name): Float64
         """; int_match = (x1, x2) -> isapprox(x1, x2; rtol = 1))
 
-    @test parse_show(InPlaceNeighborList(x = x, cutoff = 0.1, unitcell = [1, 1, 1]); repl = Dict("CellListMap." => "")) ≈  
+    @test parse_show(InPlaceNeighborList(xpositions = x, cutoff = 0.1, unitcell = [1, 1, 1]); repl = Dict("CellListMap." => "")) ≈  
         """
             InPlaceNeighborList with types: 
             CellList{3, Float64}
             Box{CellListMap.OrthorhombicCell, 3, Float64, Float64, 9, Float64}
-            Current list buffer size: 0
+            Current list buffer length: 0
         """
 
-    @test parse_show(InPlaceNeighborList(x = x, y = x, cutoff = 0.1, unitcell = [1, 1, 1]); repl = Dict("CellListMap." => "")) ≈
+    @test parse_show(InPlaceNeighborList(xpositions = x, ypositions = x, cutoff = 0.1, unitcell = [1, 1, 1]); repl = Dict("CellListMap." => "")) ≈
         """
             InPlaceNeighborList with types: 
             CellListMap.CellListPair{3, Float64}
             Box{CellListMap.OrthorhombicCell, 3, Float64, Float64, 9, Float64}
-            Current list buffer size: 0
+            Current list buffer length: 0
         """
 
 end

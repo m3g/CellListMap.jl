@@ -81,9 +81,12 @@ For instance, if `output_name=:forces`, the forces can be retrieved from the
 structure using the `system.forces` notation.
 
 The `parallel` and `nbatches` flags control the parallelization scheme of
-computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
-By default the parallelization is turned on and `nbatches` is set with heuristics
-that may provide good efficiency in most cases.
+computations.  By default the parallelization is turned on and `nbatches` is set 
+with heuristics that provide good efficiency in most cases.
+
+After construction, use `update!(system; xpositions=..., ypositions=..., cutoff=...,
+unitcell=..., parallel=...)` to update any system properties before subsequent
+`pairwise!` calls.
 
 The `validate_coordinates` function can be used to validate the coordinates
 before computations, and throw appropriate error messages. By default the validation checks if
@@ -202,6 +205,7 @@ import Base: getproperty, propertynames
 getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractParticleSystem, ::Val{S}) where {S} = getfield(sys, S)
 # public properties
+getproperty(sys::AbstractParticleSystem, ::Val{:positions}) = getfield(sys, :xpositions)
 getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
 getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
 getproperty(sys::AbstractParticleSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
@@ -211,8 +215,8 @@ propertynames(::AbstractParticleSystem{OutputName}) where {OutputName} =
 import Base: setproperty!
 # public properties
 setproperty!(sys::AbstractParticleSystem, s::Symbol, x) = setproperty!(sys, Val(s), x)
-setproperty!(sys::AbstractParticleSystem, ::Val{:unitcell}, x) = update_unitcell!(sys, x)
-setproperty!(sys::AbstractParticleSystem, ::Val{:cutoff}, x) = update_cutoff!(sys, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:unitcell}, x) = _update_unitcell!(sys, x)
+setproperty!(sys::AbstractParticleSystem, ::Val{:cutoff}, x) = _update_cutoff!(sys, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
 # private properties
 setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)

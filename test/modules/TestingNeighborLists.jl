@@ -116,12 +116,11 @@ account the possibility of pairs appearing or not if they are at the cutoff dist
 ## Example
 
 ```julia-repl
-
 julia> using CellListMap
 
 julia> x = [ rand(3) for i in 1:10_000 ];
 
-julia> list1 = neighborlist(x,0.05);
+julia> list1 = neighborlist(positions=x, cutoff=0.05);
 
 julia> list2 = copy(list1)
 

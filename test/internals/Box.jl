@@ -43,20 +43,20 @@ end
 @testitem "Update box with Limits" begin
     using CellListMap
     r = [[1.0, 1.0, 1.0]]
-    system = InPlaceNeighborList(x = r, cutoff = 3.0, parallel = false)
+    system = InPlaceNeighborList(positions = r, cutoff = 3.0, parallel = false)
     list = neighborlist!(system)
-    update!(system, r)
+    update!(system; positions=r)
     @test list == Tuple{Int64, Int64, Float64}[]
     r = [[1.0, 1.0, 1.0], [10.0, 1.0, 1.0], [3.0, 1.0, 1.0]]
-    update!(system, r)
+    update!(system; xpositions=r)
     list = neighborlist!(system)
     @test list == [(1, 3, 2.0)]
     r = [[7.0, 10.0, 10.0], [18.0, 10.0, 10.0]]
-    system = InPlaceNeighborList(x = r, cutoff = 3.0, parallel = false)
+    system = InPlaceNeighborList(xpositions = r, cutoff = 3.0, parallel = false)
     list = neighborlist!(system)
     @test list == Tuple{Int64, Int64, Float64}[]
     r = [[10.89658911843461, 3.709237933444153, 10.0], [13.894156281793144, 11.054172259416013, 10.0]]
-    update!(system, r)
+    update!(system; xpositions=r)
     list = neighborlist!(system)
     @test list == Tuple{Int64, Int64, Float64}[]
 end

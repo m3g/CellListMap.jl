@@ -9,8 +9,7 @@ CollapsedDocStrings = true
 ### Simple neighborlists
 
 ```@docs
-neighborlist(::Any, ::Any)
-neighborlist(::Any, ::Any, ::Any)
+neighborlist
 ```
 
 ### In-place neighborlists
@@ -30,7 +29,7 @@ Public and exported:
 ```@docs
 NeighborPair
 ParticleSystem
-ParticleSystemPositions
+CellListMap.ParticleSystemPositions
 ```
 
 Public but not exported:
@@ -41,17 +40,16 @@ CellListMap.ParticleSystem1
 CellListMap.ParticleSystem2
 ```
 
-### The parwise! methods
+### The pairwise! methods
 
 ```@docs
-pairwise!(::F, ::CellListMap.AbstractParticleSystem) where {F<:Function} 
+pairwise!(::F, ::CellListMap.AbstractParticleSystem) where {F<:Function}
 ```
 
 ### Updating systems
 
 ```@docs
-update_cutoff!
-update_unitcell!
+update!(::CellListMap.AbstractParticleSystem)
 resize_output!
 ```
 
@@ -73,4 +71,5 @@ These are public, but not exported.
 ```@docs
 CellListMap.wrap_relative_to
 CellListMap.get_computing_box
+CellListMap.get_nbatches
 ```
