@@ -32,10 +32,12 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Remove deprecated code, improve code coverage.
 - ![INFO][badge-info] Remove internal coordinate swapping by size.
 - ![INFO][badge-info] Internal implementation of neighborlist moved to ParticleSystem interface.
-- ![INFO][badge-info] The internal representation of coordinantes is done with `ParticleSytemPositions` array type - which is not a subtype of abstract array. 
+- ![INFO][badge-info] The internal representation of coordinantes is done with `ParticleSystemPositions` array type - which is not a subtype of abstract array. 
 - ![INFO][badge-info] Add performance test.
 - ![INFO][badge-info] Default name for output in ParticleSystem is `default_output_name`, but it can be accessed though `sys.output`, as before.
 - ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges / do not modify input coordinates in `NonPeriodicCell`. This bug was never released, it was created and fixed in the development version.
+- ![BUGFIX][badge-bugfix] If the number of particles is reduced by updating and becomes smaller than nbatches, there was a crash. Fixed. Also fixed automatic updating of nbatches when first set of positions change (bug never released).
+- ![BUGFIX][badge-bugfix] Fix `nbatches` not being updated for the `:map` phase of `CellListPair` systems when the particle count changes (bug never released).
 
 Version 0.9.17
 --------------

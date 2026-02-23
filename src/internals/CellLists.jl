@@ -216,13 +216,17 @@ function update_number_of_batches!(
         _nbatches::Union{NumberOfBatches, Nothing} = nothing;
         parallel = true
     ) where {N, T}
-    # For CellListPair, compute nbatches independently for each set
-    # Build: based on each set's particle count
-    # Map: based on product of particle counts for cross-interactions
-    # If _nbatches is nothing (default), use auto=(true, true) for proper recalculation
-    # Otherwise, respect user-specified values
     if isnothing(_nbatches)
-        _nbatches = NumberOfBatches((true, true), (0, 0))
+        # Default call (e.g. when particle count changed): reconstruct auto flags from stored
+        # state. build_cell_lists.auto is correctly preserved across updates. map_computation.auto
+        # is always stored as false in individual lists (to prevent per-list recalculation based
+        # on individual particle counts), so we use build_auto as the pair-level map auto flag.
+        # This is correct for all documented use cases: (0,0) all-auto and (n,m) all-manual.
+        build_auto = first(cl.ref_list.nbatches.build_cell_lists)
+        _nbatches = NumberOfBatches(
+            (build_auto, build_auto),
+            (last(cl.ref_list.nbatches.build_cell_lists), last(cl.ref_list.nbatches.map_computation))
+        )
     end
     auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
     n_build_ref = last(_nbatches.build_cell_lists)
@@ -756,6 +760,7 @@ function UpdateCellList!(
         @sync for ibatch in eachindex(aux.idxs, aux.lists)
             @spawn begin
                 prange = aux.idxs[ibatch]
+                isempty(prange) && return
                 aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
                 xt = @view(x[prange])
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
