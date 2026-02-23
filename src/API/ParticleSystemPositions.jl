@@ -1,7 +1,7 @@
-#=
+"""
     ParticleSystemPositions{N,T}
 
-Internal type. Wrapper around a `Vector{SVector{N,T}}` that carries particle coordinates
+Wrapper around a `Vector{SVector{N,T}}` that carries particle coordinates
 and an `updated::Ref{Bool}` flag. Any mutation through the standard array interface
 (indexing, `push!`, `resize!`, `empty!`, `append!`, in-place broadcast) sets the flag,
 triggering cell-list recomputation on the next `pairwise!` call.
@@ -10,7 +10,7 @@ Users interact with this type only through `system.xpositions` / `system.ypositi
 treating it as an ordinary vector. To replace the entire coordinate array or update
 other system properties, use `update!`.
 
-=#
+"""
 struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
     x::V
     updated::Ref{Bool}

@@ -120,3 +120,41 @@ The `ParticleSystem` constructor receives the properties of the system and sets 
     - `Unitful` quantities are supported when appropriate unit types are provided for all input parameters.
 
 After construction, use [`update!`](@ref) to change coordinates, cutoff, unit cell, or parallelization between `pairwise!` calls. See the [Updating the system](@ref) section for details.
+
+### Properties
+
+The following properties can be read from a `ParticleSystem` object using dot notation:
+
+| Property | Read | Write | Description |
+|:---------|:----:|:-----:|:------------|
+| `xpositions` | ✓ | — | Coordinates of the first (or only) set of particles, as an array-like object. Individual elements can be set by indexing (`sys.xpositions[i] = ...`). |
+| `positions` | ✓ | — | Alias for `xpositions`. |
+| `ypositions` | ✓ | — | Coordinates of the second set of particles (two-set systems only). |
+| `cutoff` | ✓ | ✓ | Current cutoff distance. Assignment updates the internal box. |
+| `unitcell` | ✓ | ✓ | Current unit cell as a matrix. Assignment updates the internal box. |
+| `parallel` | ✓ | ✓ | Whether multi-threading is enabled. |
+| `output` | ✓ | ✓ | The output variable of the computation. |
+| `OutputName` | ✓ | — | Read-only alias for `output` using the name given in `output_name`. For example, `sys.energy` if `output_name=:energy`. |
+
+For example, using the system defined in the example above:
+
+```@example ps_intro
+system.energy # access output by its name
+```
+
+```@example ps_intro
+system.cutoff # read current cutoff
+```
+
+```@example ps_intro
+system.unitcell # read current unit cell
+```
+
+Writable properties can be assigned directly:
+
+```@example ps_intro
+system.cutoff = 0.2
+system.unitcell = [2, 2, 2]
+system.parallel = false
+system
+```

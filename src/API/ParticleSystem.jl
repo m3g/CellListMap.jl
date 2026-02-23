@@ -81,9 +81,8 @@ For instance, if `output_name=:forces`, the forces can be retrieved from the
 structure using the `system.forces` notation.
 
 The `parallel` and `nbatches` flags control the parallelization scheme of
-computations (see https://m3g.github.io/CellListMap.jl/stable/parallelization/#Number-of-batches)).
-By default the parallelization is turned on and `nbatches` is set with heuristics
-that may provide good efficiency in most cases.
+computations.  By default the parallelization is turned on and `nbatches` is set 
+with heuristics that provide good efficiency in most cases.
 
 After construction, use `update!(system; xpositions=..., ypositions=..., cutoff=...,
 unitcell=..., parallel=...)` to update any system properties before subsequent
@@ -206,6 +205,7 @@ import Base: getproperty, propertynames
 getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractParticleSystem, ::Val{S}) where {S} = getfield(sys, S)
 # public properties
+getproperty(sys::AbstractParticleSystem, ::Val{:positions}) = getfield(sys, :xpositions)
 getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
 getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
 getproperty(sys::AbstractParticleSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)

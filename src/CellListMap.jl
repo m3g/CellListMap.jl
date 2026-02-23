@@ -17,6 +17,7 @@ export NeighborPair
 export pairwise!
 export resize_output!
 @compat public AbstractParticleSystem, ParticleSystem1, ParticleSystem2
+@compat public ParticleSystemPositions
 @compat public copy_output, reset_output!, reset_output, reducer, reducer!, reduce_output!
 @compat public wrap_relative_to, get_computing_box, get_nbatches
 
@@ -30,9 +31,9 @@ include("./API/NeighborPair.jl")
 
 # ParticleSystemPositions type (needed by CellLists.jl)
 include("./API/AbstractParticleSystem.jl")
+include("./API/ParticleSystemPositions.jl")
 
 # Core-computing
-include("./internals/ParticleSystemPositions.jl")
 include("./internals/show.jl")
 include("./internals/Box.jl")
 include("./internals/CellLists.jl")

@@ -29,6 +29,7 @@ Public and exported:
 ```@docs
 NeighborPair
 ParticleSystem
+CellListMap.ParticleSystemPositions
 ```
 
 Public but not exported:
