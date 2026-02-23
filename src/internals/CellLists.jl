@@ -213,17 +213,9 @@ _nbatches_map_computation(n::Int) = _nbatches_default(n)
 
 function update_number_of_batches!(
         cl::CellListPair{N, T},
-        _nbatches::Union{NumberOfBatches, Nothing} = nothing;
+        _nbatches::NumberOfBatches = cl.ref_list.nbatches;
         parallel = true
     ) where {N, T}
-    # For CellListPair, compute nbatches independently for each set
-    # Build: based on each set's particle count
-    # Map: based on product of particle counts for cross-interactions
-    # If _nbatches is nothing (default), use auto=(true, true) for proper recalculation
-    # Otherwise, respect user-specified values
-    if isnothing(_nbatches)
-        _nbatches = NumberOfBatches((true, true), (0, 0))
-    end
     auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
     n_build_ref = last(_nbatches.build_cell_lists)
     n_build_target = last(cl.target_list.nbatches.build_cell_lists)
@@ -756,6 +748,7 @@ function UpdateCellList!(
         @sync for ibatch in eachindex(aux.idxs, aux.lists)
             @spawn begin
                 prange = aux.idxs[ibatch]
+                isempty(prange) && return
                 aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
                 xt = @view(x[prange])
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])

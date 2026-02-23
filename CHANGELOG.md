@@ -36,6 +36,7 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Add performance test.
 - ![INFO][badge-info] Default name for output in ParticleSystem is `default_output_name`, but it can be accessed though `sys.output`, as before.
 - ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges / do not modify input coordinates in `NonPeriodicCell`. This bug was never released, it was created and fixed in the development version.
+- ![BUGFIX][badge-bugfix] If the number of particles is reduced by updating and becomes smaller than nbatches, there was a crash. Fixed. Also fixed automatic updating of nbatches when first set of positions change.
 
 Version 0.9.17
 --------------
