@@ -106,6 +106,15 @@
         cutoff = 0.1, unitcell = [1, 1], output = 0.0,
     )
 
+    sys = ParticleSystem(
+        xpositions=rand(3,1000),
+        cutoff=0.01,
+        unitcell=[1,1,1],
+        output=0.0,
+    )
+    @test_throws "`positions` OR `xpositions`" update!(sys; xpositions=rand(3,1000), positions=rand(3,1000))
+    @test_throws "ypositions can only" update!(sys; ypositions=rand(3,1000))
+
 end
 
 @testitem "reducer method basics and errors" begin
