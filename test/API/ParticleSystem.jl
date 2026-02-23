@@ -293,6 +293,15 @@ end
             CellListMap._nbatches_map_computation(5000 * 10000)
     )
     @test CellListMap.get_nbatches(sys) == expected
+
+    # If the setting is manual, no changes are expected
+    sys = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0, nbatches=(2,2))
+    @test CellListMap.get_nbatches(sys) == (2,2)
+    x = rand(SVector{3, Float64}, 5000)
+    y = rand(SVector{3, Float64}, 10000)
+    update!(sys; xpositions=x, ypositions=y)
+    @test CellListMap.get_nbatches(sys) == (2,2)
+
 end
 
 @testitem "ParticleSystem - validate coordinates" begin
