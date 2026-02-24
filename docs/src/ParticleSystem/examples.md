@@ -8,7 +8,7 @@ and run directly.
 In this example, a simple potential energy defined as the sum of the
 inverse of the distance between the particles is computed.
 
-```julia
+```@example
 using CellListMap
 using StaticArrays
 system = ParticleSystem(
@@ -19,6 +19,7 @@ system = ParticleSystem(
     output_name = :energy
 )
 pairwise!((pair, energy) -> energy += 1 / pair.d, system)
+println(" Energy: $(system.energy)")
 ```
 
 ## Force computation
@@ -26,7 +27,7 @@ pairwise!((pair, energy) -> energy += 1 / pair.d, system)
 Here we compute the force vector associated to the potential energy
 function of the previous example.
 
-```julia
+```@example
 using CellListMap
 using StaticArrays
 positions = rand(SVector{3,Float64},1000)
@@ -45,6 +46,10 @@ function update_forces!(pair, forces)
     return forces
 end
 pairwise!(update_forces!, system)
+println(""" 
+    Force on particle 1: $(system.forces[1]))
+    Force on particle 2: $(system.forces[1]))
+""")
 ```
 
 ## Energy and forces
@@ -52,10 +57,10 @@ pairwise!(update_forces!, system)
 In this example, the potential energy and the forces are computed in a single
 run, and a custom data structure is defined to store both values.
 
-```julia
+```@example 
 using CellListMap
 using StaticArrays
-# Define custom type
+# Define custom type to store energy and force vector
 mutable struct EnergyAndForces
     energy::Float64
     forces::Vector{SVector{3,Float64}}
@@ -63,17 +68,15 @@ end
 # Custom copy, reset and reducer functions
 import CellListMap: copy_output, reset_output!, reducer
 copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
-function reset_output!(output::EnergyAndForces)
-    output.energy = 0.0
-    for i in eachindex(output.forces)
-        output.forces[i] = SVector(0.0, 0.0, 0.0)
-    end
-    return output
+function reset_output!(x::EnergyAndForces)
+    x.energy = 0.0
+    fill!(x.forces, SVector(0.0, 0.0, 0.0))
+    return x
 end
 function reducer(x::EnergyAndForces, y::EnergyAndForces)
-    e_tot = x.energy + y.energy
+    x.energy += y.energy
     x.forces .+= y.forces
-    return EnergyAndForces(e_tot, x.forces)
+    return x
 end
 # Function that updates energy and forces for each pair
 function energy_and_forces!(pair, output::EnergyAndForces)
@@ -95,6 +98,11 @@ system = ParticleSystem(
 )
 # Compute energy and forces
 pairwise!(energy_and_forces!, system)
+# Print some results
+println("""
+    Energy: $(system.energy_and_forces.energy)
+    Force on particle 1: $(system.energy_and_forces.forces[1])
+""")
 ```
 
 ## Two sets of particles
@@ -102,7 +110,7 @@ pairwise!(energy_and_forces!, system)
 In this example we illustrate the interface for the computation of properties
 of two sets of particles, by computing the minimum distance between the two sets.
 
-```julia
+```@example
 using CellListMap
 using StaticArrays
 # Custom structure to store the minimum distance pair
@@ -114,15 +122,13 @@ end
 # Function that updates the minimum distance found
 function minimum_distance(pair, md)
     (; i, j, d) = pair
-    if d < md.d
-        md = MinimumDistance(i, j, d)
-    end
+    md = d < md.d ? MinimumDistance(i, j, d) : md
     return md
 end
 # Define appropriate methods for copy, reset and reduce
 import CellListMap: copy_output, reset_output!, reducer!
 copy_output(md::MinimumDistance) = md
-reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
+reset_output!(::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d < md2.d ? md1 : md2
 # Build system
 xpositions = rand(SVector{3,Float64},100);
@@ -145,14 +151,16 @@ In this example, a complete particle simulation is illustrated, with a simple po
 simulation with:
 
 ```julia-repl
-julia> trajectory = simulate(200)
+julia> trajectory = simulate(200) # 200 particles
 
 julia> animate(trajectory)
 ```
 
-One important characteristic of this example is that the `system` is built outside the function that performs the simulation. This is done because the construction of the system is type-unstable (it is dimension, geometry and output-type dependent). Adding a function barrier avoids type-instabilities to propagate to the simulation causing possible performance problems.
+Forces are computed similarly to what is done in the [Force computation](@ref) example. Additionally, we use
+the public (but not exported) `CellListMap.wrap_relative_to` function, to keep the saved coordinates within
+the minimal periodic coordinates relative to the origin, to produce a nice animation at the end.
 
-```julia
+```@example ex_simulation
 using StaticArrays
 using CellListMap
 import CellListMap.wrap_relative_to
@@ -211,7 +219,11 @@ function simulate(N; nsteps::Int=100, isave=1)
     end
     return trajectory
 end
+```
 
+The following function will create an animation from the resulting trajectory of the simulation:
+
+```@example ex_simulation
 using Plots
 function animate(trajectory)
     anim = @animate for step in trajectory
@@ -221,8 +233,17 @@ function animate(trajectory)
             lims=(-0.5, 0.5),
             aspect_ratio=1,
             framestyle=:box,
+            size=(400,400),
+            ticks=nothing,
         )
     end
     gif(anim, "simulation.gif", fps=10)
 end
+```
+
+Now, running the simulation and creating an animation:
+
+```@example ex_simulation
+trajectory = simulate(200) # 200 particles
+animate(trajectory)
 ```
