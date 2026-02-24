@@ -3,6 +3,7 @@ using Documenter
 using CellListMap
 ENV["LINES"] = 10
 ENV["COLUMNS"] = 120
+ENV["GKSwstype"] = "nul"
 makedocs(
     modules = [CellListMap],
     sitename = "CellListMap.jl",

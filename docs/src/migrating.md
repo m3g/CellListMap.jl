@@ -66,10 +66,10 @@ The non-mutating `pairwise` function has been removed. This change emphasizes th
 
 ```julia
 # Before (0.9.x)
-u = pairwise(f, system)
+u = map_pairwise(f, system)
 
 # After (0.10.0)
-u = pairwise!(f, system)  # always use the mutating version
+u = pairwise!(f, system) # always use the mutating syntax
 ```
 
 ### Simplified mapped function signature

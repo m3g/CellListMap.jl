@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.0-DEV
 --------------
+- ![FEATURE][badge-feature] Automatic tracking of position mutations and updating of cell lists. 
 - ![FEATURE][badge-feature] `pairwise!(; reset=[true(default)/false]`: the optional `reset` keyword of `pairwise!`, when set to `false`, avoids resetting the initial value of `output` to `zero(typeof(output))`.
 - ![FEATURE][badge-feature] `update!(sys::AbstractParticleSystem;)` as cleaner and more convenient way to update system properties. 
 - ![FEATURE][badge-feature] `reduce_output!` is exposed API for advanced custom reductions. 
@@ -34,6 +35,7 @@ Version 0.10.0-DEV
 - ![INFO][badge-info] Internal implementation of neighborlist moved to ParticleSystem interface.
 - ![INFO][badge-info] The internal representation of coordinantes is done with `ParticleSystemPositions` array type - which is not a subtype of abstract array. 
 - ![INFO][badge-info] Add performance test.
+- ![INFO][badge-info] Update examples.
 - ![INFO][badge-info] Default name for output in ParticleSystem is `default_output_name`, but it can be accessed though `sys.output`, as before.
 - ![BUGFIX][badge-bugfix] Fix cross-computation (`pairwise!(f, x, sys)`) with `NonPeriodicCell` failing to find pairs when particle coordinates span negative values or large coordinate ranges / do not modify input coordinates in `NonPeriodicCell`. This bug was never released, it was created and fixed in the development version.
 - ![BUGFIX][badge-bugfix] If the number of particles is reduced by updating and becomes smaller than nbatches, there was a crash. Fixed. Also fixed automatic updating of nbatches when first set of positions change (bug never released).
