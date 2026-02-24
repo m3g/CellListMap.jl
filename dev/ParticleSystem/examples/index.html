@@ -8,7 +8,8 @@ system = ParticleSystem(
     output = 0.0,
     output_name = :energy
 )
-pairwise!((pair, energy) -&gt; energy += 1 / pair.d, system)</code></pre><h2 id="Force-computation"><a class="docs-heading-anchor" href="#Force-computation">Force computation</a><a id="Force-computation-1"></a><a class="docs-heading-anchor-permalink" href="#Force-computation" title="Permalink"></a></h2><p>Here we compute the force vector associated to the potential energy function of the previous example.</p><pre><code class="language-julia hljs">using CellListMap
+pairwise!((pair, energy) -&gt; energy += 1 / pair.d, system)
+println(&quot; Energy: $(system.energy)&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"> Energy: 32406.72271417392</code></pre><h2 id="Force-computation"><a class="docs-heading-anchor" href="#Force-computation">Force computation</a><a id="Force-computation-1"></a><a class="docs-heading-anchor-permalink" href="#Force-computation" title="Permalink"></a></h2><p>Here we compute the force vector associated to the potential energy function of the previous example.</p><pre><code class="language-julia hljs">using CellListMap
 using StaticArrays
 positions = rand(SVector{3,Float64},1000)
 system = ParticleSystem(
@@ -25,9 +26,15 @@ function update_forces!(pair, forces)
     forces[j] -= df
     return forces
 end
-pairwise!(update_forces!, system)</code></pre><h2 id="Energy-and-forces"><a class="docs-heading-anchor" href="#Energy-and-forces">Energy and forces</a><a id="Energy-and-forces-1"></a><a class="docs-heading-anchor-permalink" href="#Energy-and-forces" title="Permalink"></a></h2><p>In this example, the potential energy and the forces are computed in a single run, and a custom data structure is defined to store both values.</p><pre><code class="language-julia hljs">using CellListMap
+pairwise!(update_forces!, system)
+println(&quot;&quot;&quot;
+    Force on particle 1: $(system.forces[1]))
+    Force on particle 2: $(system.forces[1]))
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+    Force on particle 1: [575.5872265211384, -72.4462138141867, -579.8128669529415])
+    Force on particle 2: [575.5872265211384, -72.4462138141867, -579.8128669529415])</code></pre><h2 id="Energy-and-forces"><a class="docs-heading-anchor" href="#Energy-and-forces">Energy and forces</a><a id="Energy-and-forces-1"></a><a class="docs-heading-anchor-permalink" href="#Energy-and-forces" title="Permalink"></a></h2><p>In this example, the potential energy and the forces are computed in a single run, and a custom data structure is defined to store both values.</p><pre><code class="language-julia hljs">using CellListMap
 using StaticArrays
-# Define custom type
+# Define custom type to store energy and force vector
 mutable struct EnergyAndForces
     energy::Float64
     forces::Vector{SVector{3,Float64}}
@@ -35,17 +42,15 @@ end
 # Custom copy, reset and reducer functions
 import CellListMap: copy_output, reset_output!, reducer
 copy_output(x::EnergyAndForces) = EnergyAndForces(copy(x.energy), copy(x.forces))
-function reset_output!(output::EnergyAndForces)
-    output.energy = 0.0
-    for i in eachindex(output.forces)
-        output.forces[i] = SVector(0.0, 0.0, 0.0)
-    end
-    return output
+function reset_output!(x::EnergyAndForces)
+    x.energy = 0.0
+    fill!(x.forces, SVector(0.0, 0.0, 0.0))
+    return x
 end
 function reducer(x::EnergyAndForces, y::EnergyAndForces)
-    e_tot = x.energy + y.energy
+    x.energy += y.energy
     x.forces .+= y.forces
-    return EnergyAndForces(e_tot, x.forces)
+    return x
 end
 # Function that updates energy and forces for each pair
 function energy_and_forces!(pair, output::EnergyAndForces)
@@ -66,7 +71,13 @@ system = ParticleSystem(
     output_name = :energy_and_forces
 )
 # Compute energy and forces
-pairwise!(energy_and_forces!, system)</code></pre><h2 id="Two-sets-of-particles"><a class="docs-heading-anchor" href="#Two-sets-of-particles">Two sets of particles</a><a id="Two-sets-of-particles-1"></a><a class="docs-heading-anchor-permalink" href="#Two-sets-of-particles" title="Permalink"></a></h2><p>In this example we illustrate the interface for the computation of properties of two sets of particles, by computing the minimum distance between the two sets.</p><pre><code class="language-julia hljs">using CellListMap
+pairwise!(energy_and_forces!, system)
+# Print some results
+println(&quot;&quot;&quot;
+    Energy: $(system.energy_and_forces.energy)
+    Force on particle 1: $(system.energy_and_forces.forces[1])
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">    Energy: 31347.09812479539
+    Force on particle 1: [-318.76453802950005, -533.3935634268712, 57.75321711834704]</code></pre><h2 id="Two-sets-of-particles"><a class="docs-heading-anchor" href="#Two-sets-of-particles">Two sets of particles</a><a id="Two-sets-of-particles-1"></a><a class="docs-heading-anchor-permalink" href="#Two-sets-of-particles" title="Permalink"></a></h2><p>In this example we illustrate the interface for the computation of properties of two sets of particles, by computing the minimum distance between the two sets.</p><pre><code class="language-julia hljs">using CellListMap
 using StaticArrays
 # Custom structure to store the minimum distance pair
 struct MinimumDistance
@@ -77,15 +88,13 @@ end
 # Function that updates the minimum distance found
 function minimum_distance(pair, md)
     (; i, j, d) = pair
-    if d &lt; md.d
-        md = MinimumDistance(i, j, d)
-    end
+    md = d &lt; md.d ? MinimumDistance(i, j, d) : md
     return md
 end
 # Define appropriate methods for copy, reset and reduce
 import CellListMap: copy_output, reset_output!, reducer!
 copy_output(md::MinimumDistance) = md
-reset_output!(md::MinimumDistance) = MinimumDistance(0, 0, +Inf)
+reset_output!(::MinimumDistance) = MinimumDistance(0, 0, +Inf)
 reducer!(md1::MinimumDistance, md2::MinimumDistance) = md1.d &lt; md2.d ? md1 : md2
 # Build system
 xpositions = rand(SVector{3,Float64},100);
@@ -99,9 +108,9 @@ system = ParticleSystem(
        output_name = :minimum_distance,
 )
 # Compute the minimum distance
-pairwise!(minimum_distance, system)</code></pre><h2 id="Particle-simulation"><a class="docs-heading-anchor" href="#Particle-simulation">Particle simulation</a><a id="Particle-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Particle-simulation" title="Permalink"></a></h2><p>In this example, a complete particle simulation is illustrated, with a simple potential.  This example can illustrate how particle positions and forces can be updated. Run this simulation with:</p><pre><code class="language-julia-repl hljs">julia&gt; trajectory = simulate(200)
+pairwise!(minimum_distance, system)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.MinimumDistance(71, 564, 0.009046123325671266)</code></pre><h2 id="Particle-simulation"><a class="docs-heading-anchor" href="#Particle-simulation">Particle simulation</a><a id="Particle-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Particle-simulation" title="Permalink"></a></h2><p>In this example, a complete particle simulation is illustrated, with a simple potential.  This example can illustrate how particle positions and forces can be updated. Run this simulation with:</p><pre><code class="language-julia-repl hljs">julia&gt; trajectory = simulate(200) # 200 particles
 
-julia&gt; animate(trajectory)</code></pre><p>One important characteristic of this example is that the <code>system</code> is built outside the function that performs the simulation. This is done because the construction of the system is type-unstable (it is dimension, geometry and output-type dependent). Adding a function barrier avoids type-instabilities to propagate to the simulation causing possible performance problems.</p><pre><code class="language-julia hljs">using StaticArrays
+julia&gt; animate(trajectory)</code></pre><p>Forces are computed similarly to what is done in the <a href="#Force-computation">Force computation</a> example. Additionally, we use the public (but not exported) <code>CellListMap.wrap_relative_to</code> function, to keep the saved coordinates within the minimal periodic coordinates relative to the origin, to produce a nice animation at the end.</p><pre><code class="language-julia hljs">using StaticArrays
 using CellListMap
 import CellListMap.wrap_relative_to
 # Function that updates the forces, for potential of the form:
@@ -158,9 +167,7 @@ function simulate(N; nsteps::Int=100, isave=1)
         end
     end
     return trajectory
-end
-
-using Plots
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">simulate (generic function with 1 method)</code></pre><p>The following function will create an animation from the resulting trajectory of the simulation:</p><pre><code class="language-julia hljs">using Plots
 function animate(trajectory)
     anim = @animate for step in trajectory
         scatter(
@@ -169,7 +176,10 @@ function animate(trajectory)
             lims=(-0.5, 0.5),
             aspect_ratio=1,
             framestyle=:box,
+            size=(400,400),
+            ticks=nothing,
         )
     end
     gif(anim, &quot;simulation.gif&quot;, fps=10)
-end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../options/">« Options</a><a class="docs-footer-nextpage" href="../../unitcell/">Unitcell requirements »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 23 February 2026 18:27">Monday 23 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">animate (generic function with 1 method)</code></pre><p>Now, running the simulation and creating an animation:</p><pre><code class="language-julia hljs">trajectory = simulate(200) # 200 particles
+animate(trajectory)</code></pre><img src="833530b2.gif" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../options/">« Options</a><a class="docs-footer-nextpage" href="../../unitcell/">Unitcell requirements »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 24 February 2026 13:12">Tuesday 24 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
