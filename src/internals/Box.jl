@@ -5,7 +5,6 @@
 struct TriclinicCell end
 struct OrthorhombicCell end
 struct NonPeriodicCell end
-
 const OrthorhombicCellType = Union{OrthorhombicCell, NonPeriodicCell}
 const PeriodicCellType = Union{OrthorhombicCell, TriclinicCell}
 

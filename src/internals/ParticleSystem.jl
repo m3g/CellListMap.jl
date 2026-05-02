@@ -103,7 +103,7 @@ function UpdateParticleSystem!(sys::ParticleSystem1)
             sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
             _new_nbatches = get_nbatches(sys)
             if _old_nbatches != _new_nbatches
-                sys._aux = AuxThreaded(sys._cell_list)
+                sys._aux = _create_aux(sys._box, sys._cell_list)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
@@ -150,7 +150,7 @@ function UpdateParticleSystem!(sys::ParticleSystem2)
             sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
             _new_nbatches = get_nbatches(sys)
             if _old_nbatches != _new_nbatches
-                sys._aux = AuxThreaded(sys._cell_list)
+                sys._aux = _create_aux(sys._box, sys._cell_list)
                 sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
             end
         end
