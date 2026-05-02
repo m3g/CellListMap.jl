@@ -49,9 +49,7 @@ end
 # Used in ParticleSystem constructors and update methods so that NonPeriodicCell
 # systems get AuxNonPeriodic while periodic systems get the existing AuxThreaded.
 #
-_create_aux(::Box, cl::CellList) = AuxThreaded(cl)
 _create_aux(::Box{NonPeriodicCell}, cl::CellList) = AuxNonPeriodic(cl)
-_create_aux(::Box, cl::CellListPair) = AuxThreaded(cl)
 _create_aux(::Box{NonPeriodicCell}, cl::CellListPair) = AuxNonPeriodicPair(cl)
 
 #
@@ -353,11 +351,11 @@ inner_loop!(f::F, box::Box{NonPeriodicCell}, cellᵢ, cl::CellList, output, ibat
 function _current_cell_interactions!(box::Box{NonPeriodicCell}, f::F, cell, output) where {F<:Function}
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:(cell.n_particles-1)
-        @inbounds pᵢ = cell.particles[i]
+        pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
         xpᵢ_rot = inv_rotation * xpᵢ
         for j in (i+1):cell.n_particles
-            @inbounds pⱼ = cell.particles[j]
+            pⱼ = cell.particles[j]
             d2 = sum(abs2, xpᵢ - pⱼ.coordinates)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2)
@@ -376,11 +374,11 @@ function _current_cell_interactions!(
 ) where {F<:Function}
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
-        @inbounds pᵢ = cellᵢ.particles[i]
+        pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
         xpᵢ_rot = inv_rotation * xpᵢ
         for j in 1:cellⱼ.n_particles
-            @inbounds pⱼ = cellⱼ.particles[j]
+            pⱼ = cellⱼ.particles[j]
             d2 = sum(abs2, xpᵢ - pⱼ.coordinates)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2)
@@ -400,13 +398,13 @@ function _vinicial_cells!(
 ) where {F<:Function}
     (; cutoff, cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
-        @inbounds pᵢ = cellᵢ.particles[i]
+        pᵢ = cellᵢ.particles[i]
         xpᵢ = pᵢ.coordinates
         xpᵢ_rot = inv_rotation * xpᵢ
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
         for j in 1:n
-            @inbounds pⱼ = pp[j]
+            pⱼ = pp[j]
             d2 = sum(abs2, xpᵢ - pⱼ.coordinates)
             if d2 <= cutoff_sqr
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2)

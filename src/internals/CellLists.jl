@@ -343,6 +343,11 @@ function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreaded)
     return _print(io, " Auxiliary arrays for nbatches = ", length(aux.lists))
 end
 
+# Auxiliary constructors, to dispatch on different cell types (NonPeriodicCell has
+# a special auxiliary data structure)
+_create_aux(::Box, cl::CellList) = AuxThreaded(cl)
+_create_aux(::Box, cl::CellListPair) = AuxThreaded(cl)
+
 Base.@kwdef struct AuxThreadedPair{N, T}
     ref_list::AuxThreaded{N, T}
     target_list::AuxThreaded{N, T}
