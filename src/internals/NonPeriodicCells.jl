@@ -66,6 +66,19 @@ function add_particles!(x, box::Box{NonPeriodicCell}, ishift, cl::CellList{N, T}
     return cl
 end
 
+# Resize projected_particles to hold the largest cell; called after every cell list build.
+function _update_projected_particles!(cl::CellList)
+    maxnp = 0
+    for i in 1:cl.n_cells_with_particles
+        maxnp = max(maxnp, cl.cells[i].n_particles)
+    end
+    for i in eachindex(cl.projected_particles)
+        if maxnp > length(cl.projected_particles[i])
+            resize!(cl.projected_particles[i], maxnp)
+        end
+    end
+end
+
 #
 # UpdateCellList! for a single CellList.
 #
@@ -85,6 +98,8 @@ function UpdateCellList!(
     isnothing(validate_coordinates) || validate_coordinates(x)
     reset!(cl, box, length(x))
     add_particles!(x, box, 0, cl)
+    _update_projected_particles!(cl)
+    x.updated[] = false
     return cl
 end
 
@@ -111,8 +126,7 @@ function UpdateCellList!(
     if !parallel || _nbatches == 1
         reset!(cl, box, length(x))
         add_particles!(x, box, 0, cl)
-        return cl
-    end
+    else
 
     reset!(cl, box, 0)
     cl.n_real_particles = length(x)
@@ -229,17 +243,9 @@ function UpdateCellList!(
         end
     end
 
-    # Resize projected_particles auxiliary arrays
-    maxnp = 0
-    for i in 1:cl.n_cells_with_particles
-        maxnp = max(maxnp, cl.cells[i].n_particles)
-    end
-    for i in eachindex(cl.projected_particles)
-        if maxnp > length(cl.projected_particles[i])
-            resize!(cl.projected_particles[i], maxnp)
-        end
-    end
+    end # if/else parallel
 
+    _update_projected_particles!(cl)
     x.updated[] = false
     return cl
 end
