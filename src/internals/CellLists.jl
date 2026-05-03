@@ -643,7 +643,7 @@ julia> UpdateCellList!(x,box,cl); # update lists
 =#
 function UpdateCellList!(
         x::ParticleSystemPositions,
-        box::Box,
+        box::Box{<:PeriodicCellType},
         cl::CellList;
         parallel::Bool = true,
         validate_coordinates::F = _validate_coordinates,
@@ -726,7 +726,7 @@ CellList{3, Float64}
 =#
 function UpdateCellList!(
         x::ParticleSystemPositions,
-        box::Box,
+        box::Box{<:PeriodicCellType},
         cl::CellList{N, T},
         aux::Union{Nothing, AuxThreaded{N, T}};
         parallel::Bool = true,
@@ -1092,7 +1092,7 @@ julia> UpdateCellList!(x,y,box,cl); # update lists
 function UpdateCellList!(
         x::ParticleSystemPositions,
         y::ParticleSystemPositions,
-        box::Box,
+        box::Box{<:PeriodicCellType},
         cl_pair::CellListPair;
         parallel::Bool = true,
         kargs...
@@ -1178,7 +1178,7 @@ julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
 function UpdateCellList!(
         x::ParticleSystemPositions,
         y::ParticleSystemPositions,
-        box::Box,
+        box::Box{<:PeriodicCellType},
         cl_pair::CellListPair{N, T},
         aux::Union{Nothing, AuxThreadedPair};
         parallel::Bool = true,
