@@ -22,11 +22,6 @@ mutable struct AuxNonPeriodicPair{N,T}
     target_list::AuxNonPeriodic{N,T}
 end
 
-function Base.show(io::IO, ::MIME"text/plain", aux::AuxNonPeriodic)
-    _println(io, typeof(aux))
-    return _print(io, " Auxiliary arrays for nbatches = ", length(aux.idxs))
-end
-
 function AuxNonPeriodic(cl::CellList{N,T}) where {N,T}
     _nbatches = nbatches(cl, :build)
     ncells = cl.number_of_cells
@@ -37,11 +32,21 @@ function AuxNonPeriodic(cl::CellList{N,T}) where {N,T}
     return AuxNonPeriodic{N,T}(idxs, thread_counts, total_np)
 end
 
+function Base.show(io::IO, ::MIME"text/plain", aux::AuxNonPeriodic)
+    _println(io, typeof(aux))
+    return _print(io, " Auxiliary arrays for nbatches = ", length(aux.idxs))
+end
+
 function AuxNonPeriodicPair(cl_pair::CellListPair{N,T}) where {N,T}
     return AuxNonPeriodicPair{N,T}(
         AuxNonPeriodic(cl_pair.ref_list),
         AuxNonPeriodic(cl_pair.target_list),
     )
+end
+
+function Base.show(io::IO, ::MIME"text/plain", aux::AuxNonPeriodicPair)
+    _println(io, typeof(aux))
+    return _print(io, " Auxiliary arrays for nbatches = ", (length(aux.ref_list.idxs), length(aux.target_list.idxs)))
 end
 
 #
