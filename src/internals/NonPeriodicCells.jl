@@ -231,6 +231,27 @@ end
 
 function UpdateCellList!(
     x::ParticleSystemPositions,
+    box::Box{NonPeriodicCell},
+    cl::CellList;
+    parallel::Bool=true,
+    validate_coordinates::F=_validate_coordinates,
+) where {F<:Function}
+    if parallel
+        aux = AuxNonPeriodic(cl)
+        cl = UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
+    else
+        isnothing(validate_coordinates) || validate_coordinates(x)
+        reset!(cl, box, length(x))
+        add_particles!(x, box, 0, cl)
+        _update_projected_particles!(cl)
+        x.updated[] = false
+    end
+    cl = update_number_of_batches!(cl; parallel)
+    return cl
+end
+
+function UpdateCellList!(
+    x::ParticleSystemPositions,
     y::ParticleSystemPositions,
     box::Box{NonPeriodicCell},
     cl_pair::CellListPair{N,T},
