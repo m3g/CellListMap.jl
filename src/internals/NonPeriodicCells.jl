@@ -83,30 +83,6 @@ function _update_projected_particles!(cl::CellList)
 end
 
 #
-# UpdateCellList! for a single CellList.
-#
-# The Nothing overload resolves the ambiguity that would otherwise arise between
-# the generic CellLists.jl method (aux::Union{Nothing,AuxThreaded}) and the
-# AuxNonPeriodic method below: both unions contain Nothing, making them
-# incomparable to Julia's dispatch even though NonPeriodicCell is more specific.
-#
-function UpdateCellList!(
-    x::ParticleSystemPositions,
-    box::Box{NonPeriodicCell},
-    cl::CellList{N,T},
-    ::Nothing;
-    parallel::Bool=true,
-    validate_coordinates::F=_validate_coordinates,
-) where {N,T,F<:Function}
-    isnothing(validate_coordinates) || validate_coordinates(x)
-    reset!(cl, box, length(x))
-    add_particles!(x, box, 0, cl)
-    _update_projected_particles!(cl)
-    x.updated[] = false
-    return cl
-end
-
-#
 # Algorithm (parallel path):
 #   Phase 1 — each thread builds a local histogram over cell linear indices (no atomics).
 #   Phase 2a — serial reduction of thread histograms into total_np.
@@ -253,53 +229,6 @@ function UpdateCellList!(
     return cl
 end
 
-# No-aux version: allocates AuxNonPeriodic and delegates.
-function UpdateCellList!(
-    x::ParticleSystemPositions,
-    box::Box{NonPeriodicCell},
-    cl::CellList;
-    parallel::Bool=true,
-    kargs...
-)
-    if parallel
-        aux = AuxNonPeriodic(cl)
-        cl = UpdateCellList!(x, box, cl, aux; parallel, kargs...)
-    else
-        cl = UpdateCellList!(x, box, cl, nothing; parallel, kargs...)
-    end
-    cl = update_number_of_batches!(cl; parallel)
-    return cl
-end
-
-#
-# UpdateCellList! for a CellListPair — delegates each list to the single-list method.
-#
-# Nothing overload resolves the same ambiguity as for the single-list version.
-#
-function UpdateCellList!(
-    x::ParticleSystemPositions,
-    y::ParticleSystemPositions,
-    box::Box{NonPeriodicCell},
-    cl_pair::CellListPair{N,T},
-    ::Nothing;
-    parallel::Bool=true,
-    validate_coordinates::F=_validate_coordinates,
-) where {N,T,F<:Function}
-    isnothing(validate_coordinates) || validate_coordinates(x)
-    isnothing(validate_coordinates) || validate_coordinates(y)
-    ref_list = cl_pair.ref_list
-    target_list = cl_pair.target_list
-    if x.updated[]
-        UpdateCellList!(x, box, ref_list, nothing; validate_coordinates)
-        x.updated[] = false
-    end
-    if y.updated[]
-        UpdateCellList!(y, box, target_list, nothing; validate_coordinates)
-        y.updated[] = false
-    end
-    return CellListPair{N,T}(ref_list, target_list)
-end
-
 function UpdateCellList!(
     x::ParticleSystemPositions,
     y::ParticleSystemPositions,
@@ -322,25 +251,6 @@ function UpdateCellList!(
         y.updated[] = false
     end
     return CellListPair{N,T}(ref_list, target_list)
-end
-
-# No-aux CellListPair version: allocates AuxNonPeriodicPair and delegates.
-function UpdateCellList!(
-    x::ParticleSystemPositions,
-    y::ParticleSystemPositions,
-    box::Box{NonPeriodicCell},
-    cl_pair::CellListPair;
-    parallel::Bool=true,
-    kargs...
-)
-    cl_pair = if parallel
-        aux = AuxNonPeriodicPair(cl_pair)
-        UpdateCellList!(x, y, box, cl_pair, aux; parallel, kargs...)
-    else
-        UpdateCellList!(x, y, box, cl_pair, nothing; parallel, kargs...)
-    end
-    cl_pair = update_number_of_batches!(cl_pair; parallel)
-    return cl_pair
 end
 
 #
