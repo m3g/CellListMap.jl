@@ -230,7 +230,7 @@ function update_number_of_batches!(
     end
     auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
     n_build_ref = last(_nbatches.build_cell_lists)
-    n_build_target = last(cl.target_list.nbatches.build_cell_lists)
+    n_build_target = last(_nbatches.build_cell_lists)
     n_map = last(_nbatches.map_computation)
 
     if !parallel
