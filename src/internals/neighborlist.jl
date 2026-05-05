@@ -58,7 +58,7 @@ end
 # shrink=false ensures this is a no-op when capacity is already sufficient,
 # preventing spurious allocations on repeated calls.
 function _sizehint_neighbor_lists!(sys::AbstractParticleSystem)
-    n_pairs = _estimated_n_pairs(sys._box, sys._cell_list)
+    n_pairs = _estimated_n_pairs(box(sys), celllist(sys))
     resize_output!(sys, n_pairs)
     return nothing
 end

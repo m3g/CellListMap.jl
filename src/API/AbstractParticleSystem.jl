@@ -11,6 +11,13 @@ Use the `ParticleSystem` constructor and interface for anything else than dispat
 """
 abstract type AbstractParticleSystem{OutputName} end
 
+mutable struct PrivateParticleSystemData{B,C,O,A}
+    box::B
+    cell_list::C
+    output_threaded::Vector{O}
+    aux::A
+end
+
 """
 
     ParticleSystem1
@@ -22,16 +29,14 @@ pairs of particles of the set). Can be used to control dispatch.
 Use the `ParticleSystem` constructor and interface for anything else than dispatch.
 
 """
-mutable struct ParticleSystem1{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
+mutable struct ParticleSystem1{OutputName, V, O, VC, P<:PrivateParticleSystemData} <: AbstractParticleSystem{OutputName}
     xpositions::V
     output::O
-    _box::B
-    _cell_list::C
-    _output_threaded::Vector{O}
-    _aux::A
     parallel::Bool
     validate_coordinates::VC
+    private::P
 end
+
 
 """
 
@@ -45,16 +50,12 @@ Can be used to control dispatch.
 Use the `ParticleSystem` constructor and interface for anything else than dispatch.
 
 """
-mutable struct ParticleSystem2{OutputName, V, O, B, C, A, VC} <: AbstractParticleSystem{OutputName}
+mutable struct ParticleSystem2{OutputName, V, O, VC, P<:PrivateParticleSystemData} <: AbstractParticleSystem{OutputName}
     xpositions::V
     ypositions::V
     output::O
-    _box::B
-    _cell_list::C
-    _output_threaded::Vector{O}
-    _aux::A
     parallel::Bool
     validate_coordinates::VC
+    private::P
 end
-ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
-    ParticleSystem2{OutputName, V, O, B, C, A, VC}(vx, vy, o, b, c, vo, a, p, vc)
+

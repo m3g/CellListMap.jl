@@ -28,8 +28,15 @@
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
     update!(system; parallel=true)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
+    
     # Test fetching by output name
     @test system.gravitational_potential ≈ naive
+
+    # Test fetching coordinates x-coordinates with alias
+    @test system.positions === system.xpositions
+
+    # Test internal getter function - not currently used, but available for symmetry. 
+    @test CellListMap.celllist(system, :target) === system.private.cell_list.target_list
 
     # Same but for non-periodic systems
     system = ParticleSystem(
@@ -154,9 +161,9 @@
 
     # property names and output name
     sys = ParticleSystem(xpositions = rand(3,10), cutoff=0.1, output=0.0)
-    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :default_output_name)
+    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :private, :default_output_name)
     sys = ParticleSystem(xpositions = rand(3,10), cutoff=0.1, output=0.0, output_name=:energy)
-    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :energy)
+    @test propertynames(sys) == (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :private, :energy)
 
     # NeighborPair interface
     p = NeighborPair(1, 2, SVector(1.0, 1.0), SVector(1.0, 3.0), 4.0)

@@ -1,3 +1,4 @@
+
 # Types of variables that have support for multi-threading without having
 # to explicit add methods to copy_output, reset_output!, and reducer functions.
 const SupportedTypes = Union{Number, SVector, FieldVector}
@@ -5,16 +6,41 @@ const SupportedTypes = Union{Number, SVector, FieldVector}
 # Supported types for coordinates
 const SupportedCoordinatesTypes = Union{Nothing, AbstractVector{<:AbstractVector}, AbstractMatrix}
 
-#=
-    unitcelltype(sys::AbstractParticleSystem)
+#
+# Internal getters
+#
+box(sys::AbstractParticleSystem) = sys.private.box
+cutoff(sys::AbstractParticleSystem) = sys.private.box.cutoff
+unitcell(sys::AbstractParticleSystem) = sys.private.box.input_unit_cell.matrix
+unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys.private.box)
+dim(sys::AbstractParticleSystem) = size(unitcell(sys), 1)
+output_type(sys) = typeof(sys.output)
 
-Returns the type of a unitcell from the `ParticleSystem` structure.
+aux_threaded(sys) = sys.private.aux
+output_threaded(sys) = sys.private.output_threaded
 
-=#
-unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys._box)
+celllist(sys::AbstractParticleSystem) = sys.private.cell_list
+celllist(sys::ParticleSystem2, s::Symbol) = celllist(sys, Val(s))
+celllist(sys, ::Val{:ref}) = sys.private.cell_list.ref_list
+celllist(sys, ::Val{:target}) = sys.private.cell_list.target_list
 
-ParticleSystem1{OutputName}(v::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
-    ParticleSystem1{OutputName, V, O, B, C, A, VC}(v, o, b, c, vo, a, p, vc)
+n_real_particles(sys, s::Symbol) = n_real_particles(sys, Val(s)) 
+n_real_particles(sys, ::Val{:ref}) = sys.private.cell_list.ref_list.n_real_particles
+n_real_particles(sys, ::Val{:target}) = sys.private.cell_list.target_list.n_real_particles
+
+updated(sys, s::Symbol) = updated(sys, Val(s))
+updated(sys, ::Val{:x}) = sys.xpositions.updated[]
+updated(sys, ::Val{:y}) = sys.ypositions.updated[]
+
+# Constructor for ParticleSystem1
+ParticleSystem1{OutputName}(vx::V, o::O, b::B, c::C, vo::AbstractVector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
+    ParticleSystem1{OutputName, V, O, VC, PrivateParticleSystemData{B, C, O, A}}(vx, o, p, vc, PrivateParticleSystemData(b, c, vo, a))
+
+# Constructor for ParticleSystem2
+ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A, p::Bool, vc::VC) where {OutputName, V, O, B, C, A, VC} =
+    ParticleSystem2{OutputName, V, O, VC, PrivateParticleSystemData{B, C, O, A}}(vx, vy, o, p, vc, PrivateParticleSystemData(b, c, vo, a))
+
+# Alias "positions" to "xpositions"
 getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
 getproperty(sys::ParticleSystem2, ::Val{:positions}) = getfield(sys, :xpositions)
 
@@ -22,25 +48,23 @@ import Base.show
 function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
-    N = size(sys.unitcell, 1)
-    println(io, "ParticleSystem1{$OutputName} of dimension $N, composed of:")
-    show(IOContext(io, :indent => indent + 4), mime, sys._box)
+    println(io, "ParticleSystem1{$OutputName} of dimension $(dim(sys)), composed of:")
+    show(IOContext(io, :indent => indent + 4), mime, box(sys))
     println(io)
-    show(io_sub, mime, sys._cell_list)
-    print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
-    return print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+    show(io_sub, mime, celllist(sys))
+    print(io, "\n    Parallelization auxiliary data set for $(nbatches(celllist(sys), :build)) batch(es).")
+    return print(io, "\n    Type of output variable ($OutputName): $(output_type(sys))")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputName}) where {OutputName}
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
-    N = size(sys.unitcell, 1)
-    println(io, "ParticleSystem2{$OutputName} of dimension $N, composed of:")
-    show(IOContext(io, :indent => indent + 4), mime, sys._box)
+    println(io, "ParticleSystem2{$OutputName} of dimension $(dim(sys)), composed of:")
+    show(IOContext(io, :indent => indent + 4), mime, box(sys))
     println(io)
-    show(io_sub, mime, sys._cell_list)
-    print(io, "\n    Parallelization auxiliary data set for $(nbatches(sys._cell_list, :build)) batch(es).")
-    return print(io, "\n    Type of output variable ($OutputName): $(typeof(sys.output))")
+    show(io_sub, mime, celllist(sys))
+    print(io, "\n    Parallelization auxiliary data set for $(nbatches(celllist(sys), :build)) batch(es).")
+    return print(io, "\n    Type of output variable ($OutputName): $(output_type(sys))")
 end
 
 #=
@@ -78,36 +102,43 @@ function reduce_output!(
     return output
 end
 
+#
+# Internal updaters
+#
+_update!(sys::AbstractParticleSystem, box::Box) = sys.private.box = box
+function _update!(sys::ParticleSystem1, ::Type{CellList}) 
+    n_particles_changed = length(sys.xpositions) != sys.private.cell_list.n_real_particles
+    UpdateCellList!(
+        sys.xpositions,
+        box(sys),
+        celllist(sys),
+        aux_threaded(sys);
+        parallel = sys.parallel,
+        validate_coordinates = sys.validate_coordinates,
+    )
+    if n_particles_changed
+        _old_nbatches = get_nbatches(sys)
+        sys.private.cell_list = update_number_of_batches!(celllist(sys); parallel = sys.parallel)
+        _new_nbatches = get_nbatches(sys)
+        if _old_nbatches != _new_nbatches
+            sys.private.aux = _create_aux(box(sys), celllist(sys))
+            sys.private.output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+        end
+    end
+    sys.xpositions.updated[] = false
+    return sys
+end
+
 #=
     UpdateParticleSystem!
 
-Updates the cell lists for periodic systems.
+Updates the cell lists for ParticleSystem1
 
 =#
 function UpdateParticleSystem!(sys::ParticleSystem1)
-    if sys.xpositions.updated[]
-        if unitcelltype(sys) == NonPeriodicCell
-            sys._box = Box(limits(sys.xpositions), sys.cutoff)
-        end
-        n_particles_changed = length(sys.xpositions) != sys._cell_list.n_real_particles
-        sys._cell_list = UpdateCellList!(
-            sys.xpositions,
-            sys._box,
-            sys._cell_list,
-            sys._aux;
-            parallel = sys.parallel,
-            validate_coordinates = sys.validate_coordinates,
-        )
-        if n_particles_changed
-            _old_nbatches = get_nbatches(sys)
-            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
-            _new_nbatches = get_nbatches(sys)
-            if _old_nbatches != _new_nbatches
-                sys._aux = _create_aux(sys._box, sys._cell_list)
-                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
-            end
-        end
-        sys.xpositions.updated[] = false
+    if updated(sys, :x)
+        unitcelltype(sys) == NonPeriodicCell && _update!(sys, Box(limits(sys.xpositions), cutoff(sys)))
+        _update!(sys, CellList)
     end
     return sys
 end
@@ -122,40 +153,52 @@ function _limits_fit_in_box(new_limits::Limits{N}, box::Box) where {N}
     return all(new_limits.origin .>= old_origin) && all(new_upper .<= old_upper)
 end
 
+function _update!(sys::ParticleSystem2, ::Type{CellList})
+    n_particles_changed = 
+        (length(sys.xpositions) != n_real_particles(sys, :ref)) ||
+        (length(sys.ypositions) != n_real_particles(sys, :target))
+    sys.private.cell_list = UpdateCellList!(
+        sys.xpositions,
+        sys.ypositions,
+        box(sys),
+        celllist(sys),
+        aux_threaded(sys);
+        parallel = sys.parallel,
+        validate_coordinates = sys.validate_coordinates,
+    )
+    if n_particles_changed
+        _old_nbatches = get_nbatches(sys)
+        sys.private.cell_list = update_number_of_batches!(celllist(sys); parallel = sys.parallel)
+        _new_nbatches = get_nbatches(sys)
+        if _old_nbatches != _new_nbatches
+            sys.private.aux = _create_aux(box(sys), celllist(sys))
+            sys.private.output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
+        end
+    end
+    sys.xpositions.updated[] = false
+    sys.ypositions.updated[] = false
+    return sys
+end
+
+#=
+    UpdateParticleSystem!
+
+Updates the cell lists for ParticleSystem2
+
+=#
 function UpdateParticleSystem!(sys::ParticleSystem2)
-    if sys.xpositions.updated[] || sys.ypositions.updated[]
+    if updated(sys, :x) || updated(sys, :y) 
         if unitcelltype(sys) == NonPeriodicCell
             new_limits = limits(sys.xpositions, sys.ypositions)
-            if !_limits_fit_in_box(new_limits, sys._box)
-                sys._box = Box(new_limits, sys._box.cutoff)
+            if !_limits_fit_in_box(new_limits, box(sys))
+                _update!(sys, Box(new_limits, cutoff(sys)))
                 # Both cell lists must be rebuilt when the box changes,
                 # because the origin and sides changed.
                 sys.xpositions.updated[] = true
                 sys.ypositions.updated[] = true
             end
         end
-        n_particles_changed = (length(sys.xpositions) != sys._cell_list.ref_list.n_real_particles) ||
-            (length(sys.ypositions) != sys._cell_list.target_list.n_real_particles)
-        sys._cell_list = UpdateCellList!(
-            sys.xpositions,
-            sys.ypositions,
-            sys._box,
-            sys._cell_list,
-            sys._aux;
-            parallel = sys.parallel,
-            validate_coordinates = sys.validate_coordinates,
-        )
-        if n_particles_changed
-            _old_nbatches = get_nbatches(sys)
-            sys._cell_list = update_number_of_batches!(sys._cell_list; parallel = sys.parallel)
-            _new_nbatches = get_nbatches(sys)
-            if _old_nbatches != _new_nbatches
-                sys._aux = _create_aux(sys._box, sys._cell_list)
-                sys._output_threaded = [copy_output(sys.output) for _ in 1:_new_nbatches[2]]
-            end
-        end
-        sys.xpositions.updated[] = false
-        sys.ypositions.updated[] = false
+        _update!(sys, CellList)
     end
     return sys
 end
@@ -168,5 +211,5 @@ Returns the number of batches for parallel computations of cell list constructio
 and function mapping.
 
 """
-get_nbatches(sys::ParticleSystem1) = nbatches(sys._cell_list)
-get_nbatches(sys::ParticleSystem2) = nbatches(sys._cell_list.ref_list)
+get_nbatches(sys::ParticleSystem1) = nbatches(celllist(sys))
+get_nbatches(sys::ParticleSystem2) = nbatches(celllist(sys, :ref))

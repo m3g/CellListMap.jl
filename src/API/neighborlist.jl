@@ -146,8 +146,8 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
     _print(io, "InPlaceNeighborList with types: \n")
-    _print(io, typeof(system.sys._cell_list), "\n")
-    _print(io, typeof(system.sys._box), "\n")
+    _print(io, typeof(celllist(system.sys)), "\n")
+    _print(io, typeof(box(system.sys)), "\n")
     return _print(io, "Current list buffer length: $(length(system.sys.nb.list))")
 end
 
@@ -192,13 +192,13 @@ julia> @time neighborlist!(system; parallel=false)
 """
 function neighborlist!(system::InPlaceNeighborList)
     (; sys) = system
-    sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset = true)
+    sys.output = _reset_all_output!(sys.output, output_threaded(sys); reset = true)
     UpdateParticleSystem!(sys)
     _sizehint_neighbor_lists!(sys)
     sys.output = _pairwise!(
         push_pair!,
-        sys.output, sys._box, sys._cell_list;
-        output_threaded = sys._output_threaded,
+        sys.output, box(sys), celllist(sys);
+        output_threaded = output_threaded(sys),
         parallel = sys.parallel,
         show_progress = system.show_progress,
     )

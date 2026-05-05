@@ -17,8 +17,9 @@ must be implemented by the user.
 """
 function resize_output!(sys::AbstractParticleSystem, n::Int)
     resize!(sys.output, n)
-    for i in eachindex(sys._output_threaded)
-        resize!(sys._output_threaded[i], n)
+    _output_threaded = output_threaded(sys)
+    for i in eachindex(_output_threaded)
+        resize!(_output_threaded[i], n)
     end
     return sys
 end
@@ -38,12 +39,12 @@ function _update_unitcell!(sys, unitcell)
             )
         )
     end
-    sys._box = update_box(sys._box; unitcell)
-    _update_sys_box!(sys)
+    _update!(sys, update_box(box(sys); unitcell))
+    _updated_sys_coordinates!(sys)
     return sys
 end
-_update_sys_box!(sys::ParticleSystem1) = sys.xpositions.updated[] = true
-function _update_sys_box!(sys::ParticleSystem2)
+_updated_sys_coordinates!(sys::ParticleSystem1) = sys.xpositions.updated[] = true
+function _updated_sys_coordinates!(sys::ParticleSystem2)
     sys.xpositions.updated[] = true
     sys.ypositions.updated[] = true
 end
@@ -51,9 +52,9 @@ end
 function _update_cutoff!(sys::ParticleSystem1, cutoff)
     _cutoff = isnothing(cutoff) ? sys.cutoff : cutoff
     if unitcelltype(sys) == NonPeriodicCell
-        sys._box = Box(limits(sys.xpositions), _cutoff)
+        _update!(sys, Box(limits(sys.xpositions), _cutoff))
     else
-        sys._box = update_box(sys._box; cutoff=_cutoff)
+        _update!(sys, update_box(box(sys); cutoff=_cutoff))
     end
     sys.xpositions.updated[] = true
     return sys
@@ -61,9 +62,9 @@ end
 function _update_cutoff!(sys::ParticleSystem2, cutoff)
     _cutoff = isnothing(cutoff) ? sys.cutoff : cutoff
     if unitcelltype(sys) == NonPeriodicCell
-        sys._box = Box(limits(sys.xpositions, sys.ypositions), _cutoff)
+        _update!(sys, Box(limits(sys.xpositions, sys.ypositions), _cutoff))
     else
-        sys._box = update_box(sys._box; cutoff=_cutoff)
+        _update!(sys, update_box(box(sys); cutoff=_cutoff))
     end
     sys.xpositions.updated[] = true
     sys.ypositions.updated[] = true
