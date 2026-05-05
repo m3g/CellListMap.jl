@@ -206,11 +206,11 @@ getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractParticleSystem, ::Val{S}) where {S} = getfield(sys, S)
 # public properties
 getproperty(sys::AbstractParticleSystem, ::Val{:positions}) = getfield(sys, :xpositions)
-getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = getfield(getfield(getfield(sys, :_box), :input_unit_cell), :matrix)
-getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = getfield(getfield(sys, :_box), :cutoff)
+getproperty(sys::AbstractParticleSystem, ::Val{:unitcell}) = unitcell(sys)
+getproperty(sys::AbstractParticleSystem, ::Val{:cutoff}) = cutoff(sys)
 getproperty(sys::AbstractParticleSystem{OutputName}, ::Val{OutputName}) where {OutputName} = getfield(sys, :output)
 propertynames(::AbstractParticleSystem{OutputName}) where {OutputName} =
-    (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, OutputName)
+    (:xpositions, :ypositions, :unitcell, :cutoff, :positions, :output, :parallel, :private, OutputName)
 
 import Base: setproperty!
 # public properties
@@ -218,9 +218,4 @@ setproperty!(sys::AbstractParticleSystem, s::Symbol, x) = setproperty!(sys, Val(
 setproperty!(sys::AbstractParticleSystem, ::Val{:unitcell}, x) = _update_unitcell!(sys, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:cutoff}, x) = _update_cutoff!(sys, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:parallel}, x) = setfield!(sys, :parallel, x)
-# private properties
-setproperty!(sys::AbstractParticleSystem, ::Val{:_box}, x) = setfield!(sys, :_box, x)
-setproperty!(sys::AbstractParticleSystem, ::Val{:_cell_list}, x) = setfield!(sys, :_cell_list, x)
 setproperty!(sys::AbstractParticleSystem, ::Val{:output}, x) = setfield!(sys, :output, x)
-setproperty!(sys::AbstractParticleSystem, ::Val{:_aux}, x) = setfield!(sys, :_aux, x)
-setproperty!(sys::AbstractParticleSystem, ::Val{:_output_threaded}, x) = setfield!(sys, :_output_threaded, x)

@@ -60,9 +60,9 @@ Returns `x`, `y`, `sides` and `cutoff`.
     end
 
     map_naive!(f, sys::ParticleSystem1) =
-        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys._box)
+        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys.private.box)
     map_naive!(f, sys::ParticleSystem2) =
-        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys.ypositions.x, sys._box)
+        map_naive!(f, reset_output!(sys.output), sys.xpositions.x, sys.ypositions.x, sys.private.box)
 
     #=
     map_naive!(f::Function, output, x::AbstractVector, box::Box)

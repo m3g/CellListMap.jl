@@ -17,8 +17,9 @@ must be implemented by the user.
 """
 function resize_output!(sys::AbstractParticleSystem, n::Int)
     resize!(sys.output, n)
-    for i in eachindex(sys._output_threaded)
-        resize!(sys._output_threaded[i], n)
+    _output_threaded = output_threaded(sys)
+    for i in eachindex(_output_threaded)
+        resize!(_output_threaded[i], n)
     end
     return sys
 end
