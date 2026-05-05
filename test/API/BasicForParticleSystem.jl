@@ -28,8 +28,12 @@
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
     update!(system; parallel=true)
     @test pairwise!((pair, u) -> potential(pair.i, pair.j, pair.d2, u, mass), system) ≈ naive
+    
     # Test fetching by output name
     @test system.gravitational_potential ≈ naive
+
+    # Test fetching coordinates x-coordinates with alias
+    @test system.positions === system.xpositions
 
     # Same but for non-periodic systems
     system = ParticleSystem(
