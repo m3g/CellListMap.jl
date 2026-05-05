@@ -3,7 +3,7 @@ PrecompileTools.@setup_workload begin
     # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
     # precompile file and potentially make loading faster.
     import LinearAlgebra
-    cutoff = 0.05
+    r = 0.05
     x3d = rand(3, 3)
     x3d[:, 3] .= x3d[:, 2] .+ 1.0e-5
     y3d = copy(x3d)
@@ -14,25 +14,25 @@ PrecompileTools.@setup_workload begin
     u2d = [1.0 0.0; 0.0 1.0]
     f(pair, out) = out += pair.d2
     PrecompileTools.@compile_workload begin
-        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=cutoff, unitcell=u3d)
-        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=cutoff, unitcell=LinearAlgebra.diag(u3d))
-        neighborlist(xpositions=x3d, cutoff=cutoff, unitcell=u3d)
-        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=cutoff)
-        neighborlist(xpositions=x3d, cutoff=cutoff)
-        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=cutoff, unitcell=u2d)
-        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=cutoff, unitcell=LinearAlgebra.diag(u2d))
-        neighborlist(xpositions=x2d, cutoff=cutoff)
-        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=cutoff)
-        neighborlist(xpositions=x2d, cutoff=cutoff, unitcell=u2d)
+        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=r, unitcell=u3d)
+        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=r, unitcell=LinearAlgebra.diag(u3d))
+        neighborlist(xpositions=x3d, cutoff=r, unitcell=u3d)
+        neighborlist(xpositions=x3d, ypositions=y3d, cutoff=r)
+        neighborlist(xpositions=x3d, cutoff=r)
+        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=r, unitcell=u2d)
+        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=r, unitcell=LinearAlgebra.diag(u2d))
+        neighborlist(xpositions=x2d, cutoff=r)
+        neighborlist(xpositions=x2d, ypositions=y2d, cutoff=r)
+        neighborlist(xpositions=x2d, cutoff=r, unitcell=u2d)
         # 3D
-        sys = ParticleSystem(positions = x3d, unitcell = u3d, cutoff = cutoff, output = 0.0)
+        sys = ParticleSystem(positions=x3d, unitcell=u3d, cutoff=r, output=0.0)
         pairwise!(f, sys)
-        sys = ParticleSystem(xpositions = x3d, ypositions = y3d, unitcell = u3d, cutoff = cutoff, output = 0.0)
+        sys = ParticleSystem(xpositions=x3d, ypositions=y3d, unitcell=u3d, cutoff=r, output=0.0)
         pairwise!(f, sys)
         # 2D
-        sys = ParticleSystem(positions = x2d, unitcell = u2d, cutoff = cutoff, output = 0.0)
+        sys = ParticleSystem(positions=x2d, unitcell=u2d, cutoff=r, output=0.0)
         pairwise!(f, sys)
-        sys = ParticleSystem(xpositions = x2d, ypositions = y2d, unitcell = u2d, cutoff = cutoff, output = 0.0)
+        sys = ParticleSystem(xpositions=x2d, ypositions=y2d, unitcell=u2d, cutoff=r, output=0.0)
         pairwise!(f, sys)
     end
 end
