@@ -384,6 +384,24 @@ end
         @test is_unique(cl; self = false)
         @test compare_nb_lists(cl, nb, y, x, r)[1]
 
+        # Updating coordinates
+        x = [rand(SVector{N, Float64}) for _ in 1:500]
+        y = [rand(SVector{N, Float64}) for _ in 1:250]
+        nb = nl_NN(BallTree, inrange, x, y, r)
+
+        nbs = InPlaceNeighborList(xpositions=x, ypositions=y, cutoff=r)
+        cl = CellListMap.neighborlist!(nbs)
+        @test is_unique(cl; self = false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
+
+        x = [rand(SVector{N, Float64}) for _ in 1:250]
+        y = [rand(SVector{N, Float64}) for _ in 1:500]
+        nb = nl_NN(BallTree, inrange, x, y, r)
+        update!(nbs; xpositions=x, ypositions=y, cutoff=r)
+        cl = CellListMap.neighborlist!(nbs)
+        @test is_unique(cl; self = false)
+        @test compare_nb_lists(cl, nb, x, y, r)[1]
+
     end
 
 end

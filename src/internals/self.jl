@@ -103,7 +103,7 @@ end
 # Inner loop for Orthorhombic cells is faster because we can guarantee that
 # there are not repeated computations even if running over half of the cells.
 #
-inner_loop!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, cl::CellList, output, ibatch) where {F <: Function} =
+inner_loop!(f::F, box::Box{OrthorhombicCell}, cellᵢ, cl::CellList, output, ibatch) where {F <: Function} =
     inner_loop!(f, neighbor_cells_forward, box, cellᵢ, cl, output, ibatch)
 inner_loop!(f::F, box::Box{<:TriclinicCell}, cellᵢ, cl::CellList, output, ibatch) where {F <: Function} =
     inner_loop!(f, neighbor_cells, box, cellᵢ, cl, output, ibatch)
@@ -140,7 +140,7 @@ end
 
 # Call with single cell: this implies that this is a self-computation, and thus we loop over the
 # upper triangle only in the case of the Orthorhombic cell
-function _current_cell_interactions!(box::Box{<:OrthorhombicCellType}, f::F, cell, output) where {F <: Function}
+function _current_cell_interactions!(box::Box{OrthorhombicCell}, f::F, cell, output) where {F <: Function}
     (; cutoff_sqr, inv_rotation) = box
     # loop over list of non-repeated particles of cell ic.
     for i in 1:(cell.n_particles - 1)

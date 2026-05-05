@@ -18,7 +18,7 @@ end
 # first parameter (the type Self, or Cross, computation, is not needed here, because the symmetry
 # allows to never compute repeated interactions anyway.
 #
-function _vinicial_cells!(f::F, box::Box{<:OrthorhombicCellType}, cellᵢ, pp, Δc, output, ::Val{Skip}) where {F <: Function, Skip}
+function _vinicial_cells!(f::F, box::Box{OrthorhombicCell}, cellᵢ, pp, Δc, output, ::Val{Skip}) where {F <: Function, Skip}
     (; cutoff, cutoff_sqr, inv_rotation) = box
     # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
