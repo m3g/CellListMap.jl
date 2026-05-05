@@ -6,6 +6,8 @@
     x = rand(SVector{3,Float64}, 90)
     y = rand(SVector{3,Float64}, 130)
 
+    # These show methods are now internal and will be probably removed.
+
     sys = ParticleSystem(positions=x, cutoff=0.1, output=0.0, nbatches=(4,4))
     @test parse_show(sys._aux; repl = Dict("CellListMap." => "")) ≈ """ 
         CellListMap.AuxNonPeriodic{3, Float64}
