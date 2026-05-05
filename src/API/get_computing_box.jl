@@ -8,4 +8,4 @@ Retrieves the computing box of the system. The computing box is large enough to
 contain all coordinates of the particles, plus the cutoff.
 
 """
-get_computing_box(sys::AbstractParticleSystem) = sys._box.computing_box
+get_computing_box(sys::AbstractParticleSystem) = box(sys).computing_box

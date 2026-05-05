@@ -51,11 +51,11 @@ function pairwise!(
         show_progress::Bool = false,
         reset::Bool = true,
     ) where {F <: Function}
-    sys.output = _reset_all_output!(sys.output, sys._output_threaded; reset)
+    sys.output = _reset_all_output!(sys.output, output_threaded(sys); reset)
     UpdateParticleSystem!(sys)
     sys.output = _pairwise!(
-        f, sys.output, sys._box, sys._cell_list;
-        output_threaded = sys._output_threaded,
+        f, sys.output, box(sys), celllist(sys);
+        output_threaded = output_threaded(sys),
         parallel = sys.parallel,
         show_progress = show_progress
     )
