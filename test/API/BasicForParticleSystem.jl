@@ -35,6 +35,9 @@
     # Test fetching coordinates x-coordinates with alias
     @test system.positions === system.xpositions
 
+    # Test internal getter function - not currently used, but available for symmetry. 
+    @test CellListMap.celllist(system, :target) === system.private.cell_list.target_list
+
     # Same but for non-periodic systems
     system = ParticleSystem(
         xpositions = x,
