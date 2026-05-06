@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.1-DEV
 --------------
+- ![INFO][badge-info] Update CI setup-julia to v3.
 
 Version 0.10.0
 --------------
