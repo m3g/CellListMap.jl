@@ -15,7 +15,7 @@ mutable struct InPlaceNeighborList{P}
 end
 
 # getters
-get_unitcell(nb::InPlaceNeighborList) = nb.sys.unitcell 
+get_unitcell(nb::InPlaceNeighborList) = nb.sys.unitcell
 get_cutoff(nb::InPlaceNeighborList) = nb.sys.cutoff
 
 """
@@ -81,14 +81,31 @@ vanish, except for minor allocations used in the threading computation (if a
 non-parallel computation is executed, the allocations will vanish completely).
 
 """
-function InPlaceNeighborList(; show_progress::Bool = false, cutoff, unitcell = nothing, kargs...)
+function InPlaceNeighborList(;
+    xpositions=nothing,
+    positions=nothing,
+    ypositions=nothing,
+    cutoff,
+    unitcell=nothing,
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0, 0),
+    lcell=1,
+    validate_coordinates=_validate_coordinates,
+    show_progress::Bool=false,
+)
     T = _promote_types(unitcell, cutoff)
     sys = ParticleSystem(;
-        cutoff=cutoff,
-        unitcell=unitcell,
-        output=NeighborList{T}(0, Vector{Tuple{Int, Int, T}}[]),
+        xpositions,
+        positions,
+        ypositions,
+        cutoff,
+        unitcell,
+        output=NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[]),
         output_name=:nb,
-        kargs...
+        parallel,
+        nbatches,
+        lcell,
+        validate_coordinates,
     )
     return InPlaceNeighborList(sys, show_progress)
 end
@@ -139,8 +156,15 @@ julia> neighborlist!(system)
 ```
 
 """
-function update!(system::InPlaceNeighborList; kargs...) 
-    update!(system.sys; kargs...)
+function update!(system::InPlaceNeighborList;
+    xpositions=nothing,
+    positions=nothing,
+    ypositions=nothing,
+    cutoff=nothing,
+    unitcell=nothing,
+    parallel=nothing,
+)
+    update!(system.sys; xpositions, positions, ypositions, cutoff, unitcell, parallel)
     return system
 end
 
@@ -152,7 +176,7 @@ function Base.show(io::IO, ::MIME"text/plain", system::InPlaceNeighborList)
 end
 
 """
-    neighborlist(system::InPlaceNeighborList)
+    neighborlist!(system::InPlaceNeighborList)
 
 Computes the neighbor list in-place, given a `InPlaceNeighborList` system.
 
@@ -192,15 +216,15 @@ julia> @time neighborlist!(system; parallel=false)
 """
 function neighborlist!(system::InPlaceNeighborList)
     (; sys) = system
-    sys.output = _reset_all_output!(sys.output, output_threaded(sys); reset = true)
+    sys.output = _reset_all_output!(sys.output, output_threaded(sys); reset=true)
     UpdateParticleSystem!(sys)
     _sizehint_neighbor_lists!(sys)
     sys.output = _pairwise!(
         push_pair!,
         sys.output, box(sys), celllist(sys);
-        output_threaded = output_threaded(sys),
-        parallel = sys.parallel,
-        show_progress = system.show_progress,
+        output_threaded=output_threaded(sys),
+        parallel=sys.parallel,
+        show_progress=system.show_progress,
     )
     resize!(sys.output.list, sys.output.n)
     return sys.output.list
@@ -287,4 +311,30 @@ julia> CellListMap.neighborlist(xpositions=x, ypositions=y, cutoff=8.0, parallel
 ```
 
 """
-neighborlist(; kargs...) = neighborlist!(InPlaceNeighborList(; kargs...))
+function neighborlist(;
+    xpositions=nothing,
+    positions=nothing,
+    ypositions=nothing,
+    cutoff,
+    unitcell=nothing,
+    parallel::Bool=true,
+    nbatches::Tuple{Int,Int}=(0, 0),
+    lcell=1,
+    validate_coordinates=_validate_coordinates,
+    show_progress::Bool=false,
+)
+    return neighborlist!(
+        InPlaceNeighborList(; 
+            xpositions, 
+            positions, 
+            ypositions, 
+            cutoff, 
+            unitcell, 
+            parallel, 
+            nbatches, 
+            lcell, 
+            validate_coordinates, 
+            show_progress
+        )
+    )
+end
