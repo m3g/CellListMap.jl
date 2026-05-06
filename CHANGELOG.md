@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.1-DEV
 --------------
+- ![ENHANCEMENT][badge-enhancement] Improve type stability of getter functions of ParticleSystems.
 
 Version 0.10.0
 --------------
