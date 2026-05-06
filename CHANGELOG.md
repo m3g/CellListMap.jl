@@ -10,7 +10,7 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.10.0-DEV
+Version 0.10.0
 --------------
 - ![FEATURE][badge-feature] Automatic tracking of position mutations and updating of cell lists. 
 - ![FEATURE][badge-feature] `pairwise!(; reset=[true(default)/false]`: the optional `reset` keyword of `pairwise!`, when set to `false`, avoids resetting the initial value of `output` to `zero(typeof(output))`.
