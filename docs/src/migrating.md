@@ -122,7 +122,7 @@ pairwise!(f, system; reset=false)
 The interface for updating particle system was simplified. `update_cutoff!`, `update_unicell!` and direct access to the positions was removed. Now, all updates must be done through the `update!` function as, for example:
 
 ```julia
-update(system; 
+update!(system; 
     cutoff=0.02, p
     positions=rand(3,1000), # or xpositions=
     ypositions=rand(3,1000), # if ypositions were defined
