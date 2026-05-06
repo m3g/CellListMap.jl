@@ -23,7 +23,7 @@ output_threaded(sys) = getfield(getfield(sys, :private), :output_threaded)
 
 celllist(sys::AbstractParticleSystem) = getfield(getfield(sys, :private), :cell_list)
 celllist(sys::ParticleSystem2, s::Symbol) = celllist(sys, Val(s))
-celllist(sys, ::Val{:ref}) = getfield(getfield(sys, :private), :cell_list.ref_list)
+celllist(sys, ::Val{:ref}) = getfield(getfield(getfield(sys, :private), :cell_list), :ref_list)
 celllist(sys, ::Val{:target}) = getfield(getfield(getfield(sys, :private), :cell_list), :target_list)
 
 n_real_particles(sys, s::Symbol) = n_real_particles(sys, Val(s)) 
