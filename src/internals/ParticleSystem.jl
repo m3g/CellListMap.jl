@@ -9,24 +9,26 @@ const SupportedCoordinatesTypes = Union{Nothing, AbstractVector{<:AbstractVector
 #
 # Internal getters
 #
-box(sys::AbstractParticleSystem) = sys.private.box
-cutoff(sys::AbstractParticleSystem) = sys.private.box.cutoff
-unitcell(sys::AbstractParticleSystem) = sys.private.box.input_unit_cell.matrix
+# These ugly chains of getfield calls avoid type instabilities relative to the dot notation for getfield.
+#
+box(sys::AbstractParticleSystem) = getfield(getfield(sys, :private), :box)
+cutoff(sys::AbstractParticleSystem) = getfield(getfield(getfield(sys, :private), :box), :cutoff)
+unitcell(sys::AbstractParticleSystem) = getfield(getfield(getfield(getfield(sys, :private), :box), :input_unit_cell), :matrix)
 unitcelltype(sys::AbstractParticleSystem) = unitcelltype(sys.private.box)
 dim(sys::AbstractParticleSystem) = size(unitcell(sys), 1)
 output_type(sys) = typeof(sys.output)
 
-aux_threaded(sys) = sys.private.aux
-output_threaded(sys) = sys.private.output_threaded
+aux_threaded(sys) = getfield(getfield(sys, :private), :aux)
+output_threaded(sys) = getfield(getfield(sys, :private), :output_threaded)
 
-celllist(sys::AbstractParticleSystem) = sys.private.cell_list
+celllist(sys::AbstractParticleSystem) = getfield(getfield(sys, :private), :cell_list)
 celllist(sys::ParticleSystem2, s::Symbol) = celllist(sys, Val(s))
-celllist(sys, ::Val{:ref}) = sys.private.cell_list.ref_list
-celllist(sys, ::Val{:target}) = sys.private.cell_list.target_list
+celllist(sys, ::Val{:ref}) = getfield(getfield(getfield(sys, :private), :cell_list), :ref_list)
+celllist(sys, ::Val{:target}) = getfield(getfield(getfield(sys, :private), :cell_list), :target_list)
 
 n_real_particles(sys, s::Symbol) = n_real_particles(sys, Val(s)) 
-n_real_particles(sys, ::Val{:ref}) = sys.private.cell_list.ref_list.n_real_particles
-n_real_particles(sys, ::Val{:target}) = sys.private.cell_list.target_list.n_real_particles
+n_real_particles(sys, ::Val{:ref}) = getfield(getfield(getfield(getfield(sys, :private), :cell_list), :ref_list), :n_real_particles)
+n_real_particles(sys, ::Val{:target}) = getfield(getfield(getfield(getfield(sys, :private), :cell_list), :target_list), :n_real_particles)
 
 updated(sys, s::Symbol) = updated(sys, Val(s))
 updated(sys, ::Val{:x}) = sys.xpositions.updated[]
@@ -41,8 +43,8 @@ ParticleSystem2{OutputName}(vx::V, vy::V, o::O, b::B, c::C, vo::Vector{O}, a::A,
     ParticleSystem2{OutputName, V, O, VC, PrivateParticleSystemData{B, C, O, A}}(vx, vy, o, p, vc, PrivateParticleSystemData(b, c, vo, a))
 
 # Alias "positions" to "xpositions"
-getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
-getproperty(sys::ParticleSystem2, ::Val{:positions}) = getfield(sys, :xpositions)
+Base.getproperty(sys::ParticleSystem1, ::Val{:positions}) = getfield(sys, :xpositions)
+Base.getproperty(sys::ParticleSystem2, ::Val{:positions}) = getfield(sys, :xpositions)
 
 import Base.show
 function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputName}) where {OutputName}
