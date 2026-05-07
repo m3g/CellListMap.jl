@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.2-DEV
+--------------
+
 Version 0.10.1
 --------------
 - ![ENHANCEMENT][badge-enhancement] Improve type stability of getter functions of ParticleSystems.
