@@ -14,6 +14,7 @@ Version 0.10.2-DEV
 --------------
 - ![FEATURE][badge-feature] Support empty arrays of coordinates for `unitcell=nothing`. 
 - ![INFO][badge-info] Show methods of ParticleSystems now show the update status of the coordinates, expliciting the status of the cell lists (updated or not).
+- ![BUGFIX][badge-bugfix] If the number of particles was reduced to less than the number of batches of parallel computations, stale data remained in auxiliary threading arrays. This manifested when thesting removing all particles from the a system. 
 
 Version 0.10.1
 --------------

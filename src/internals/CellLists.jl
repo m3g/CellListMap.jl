@@ -765,8 +765,10 @@ function UpdateCellList!(
         @sync for ibatch in eachindex(aux.idxs, aux.lists)
             @spawn begin
                 prange = aux.idxs[ibatch]
-                isempty(prange) && return
+                # Reset before the early-exit check so stale data from a previous
+                # call (when this batch had particles) cannot leak into Phase 2.
                 aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
+                isempty(prange) && return
                 xt = @view(x[prange])
                 aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
             end
