@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.3-DEV
+--------------
+
 Version 0.10.2
 --------------
 - ![FEATURE][badge-feature] Support empty arrays of coordinates for `unitcell=nothing`. 
