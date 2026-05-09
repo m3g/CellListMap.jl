@@ -142,6 +142,11 @@
     @test_throws "`positions` OR `xpositions`" update!(sys; xpositions=rand(3,1000), positions=rand(3,1000))
     @test_throws "ypositions can only" update!(sys; ypositions=rand(3,1000))
 
+    # Initialize without coordinates and without unit cell
+    s = ParticleSystem(xpositions=SVector{3,Float64}[], cutoff = 0.1, unitcell=nothing, output = 0.0)
+    @test length(s.xpositions) == 0
+    @test s.unitcell ≈ [ 0.21 0 0 ; 0 0.21 0; 0 0 0.21 ]
+
 end
 
 @testitem "reducer method basics and errors" begin
