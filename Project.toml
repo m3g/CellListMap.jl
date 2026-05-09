@@ -1,6 +1,6 @@
 name = "CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
-version = "0.10.2-DEV"
+version = "0.10.2"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
 
 [deps]
