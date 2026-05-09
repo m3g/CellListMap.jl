@@ -51,11 +51,11 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem1{OutputNa
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
     println(io, "ParticleSystem1{$OutputName} of dimension $(dim(sys)), composed of:")
-    print("    $(length(sys.xpositions)) particles")
+    print(io, "    $(length(sys.xpositions)) particles")
     if sys.xpositions.updated[]
-        println(" - positions changed - cell lists are outdated.")
+        println(io, " - positions changed - cell lists are outdated.")
     else
-        println(" - cell lists are up to date.")
+        println(io, " - cell lists are up to date.")
     end
     show(IOContext(io, :indent => indent + 4), mime, box(sys))
     println(io)
@@ -68,17 +68,17 @@ function Base.show(io::IO, mime::MIME"text/plain", sys::ParticleSystem2{OutputNa
     indent = get(io, :indent, 0)
     io_sub = IOContext(io, :indent => indent + 4)
     println(io, "ParticleSystem2{$OutputName} of dimension $(dim(sys)), composed of:")
-    print("    $(length(sys.xpositions)) particles in the first set")
+    print(io, "    $(length(sys.xpositions)) particles in the first set")
     if sys.xpositions.updated[]
-        println(" - positions changed - cell lists are outdated.")
+        println(io, " - positions changed - cell lists are outdated.")
     else
-        println(" - cell lists are up to date.")
+        println(io, " - cell lists are up to date.")
     end
-    print("    $(length(sys.ypositions)) particles in the second set")
+    print(io, "    $(length(sys.ypositions)) particles in the second set")
     if sys.ypositions.updated[]
-        println(" - positions changed - cell lists are outdated.")
+        println(io, " - positions changed - cell lists are outdated.")
     else
-        println(" - cell lists are up to date.")
+        println(io, " - cell lists are up to date.")
     end
     show(IOContext(io, :indent => indent + 4), mime, box(sys))
     println(io)

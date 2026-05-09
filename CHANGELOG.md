@@ -12,6 +12,8 @@ CellListMap.jl Changelog
 
 Version 0.10.2-DEV
 --------------
+- ![FEATURE][badge-feature] Support empty arrays of coordinates for `unitcell=nothing`. 
+- ![INFO][badge-info] Show methods of ParticleSystems now show the update status of the coordinates, expliciting the status of the cell lists (updated or not).
 
 Version 0.10.1
 --------------
