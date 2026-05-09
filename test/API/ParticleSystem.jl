@@ -53,7 +53,6 @@
             )
                 continue
             end
-            uc = [1,1,1]; positions=SVector{3,Float64}[]
             _sys = ParticleSystem(
                 positions = x,
                 cutoff = 0.1,
