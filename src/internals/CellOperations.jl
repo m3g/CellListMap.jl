@@ -260,7 +260,9 @@ Returns the index of the cell, in the 1D representation, from its cartesian coor
 # Compute the maximum and minimum coordinates of the vectors composing the particle sets
 #
 function _minmax(x::ParticleSystemPositions)
-    length(x) <= 0 && throw(ArgumentError("Cannot set unitcell box from empty coordinates vector."))
+    if length(x) == 0 
+        return zero(eltype(x)), zero(eltype(x)) 
+    end
     N = size(x[begin], 1)
     T = eltype(x[begin])
     xmin = fill(typemax(T), MVector{N, T})

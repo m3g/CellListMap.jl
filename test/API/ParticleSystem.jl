@@ -34,22 +34,47 @@
     @test sys.unitcell == @SMatrix [1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]
 
     # test the construction with pathologically few particles
-    for x in [
-            SVector{3, Float64}[],
-            Vector{Float64}[],
-            Matrix{Float64}(undef, 3, 0),
-            [rand(SVector{3, Float64})],
-            [rand(3)],
-            rand(3, 1),
-        ]
-        _sys = ParticleSystem(
-            positions = x,
-            cutoff = 0.1,
-            unitcell = [1, 1, 1],
-            output = 0.0,
-            output_name = :test
-        )
-        @test CellListMap.pairwise!((pair, out) -> out += pair.d2, _sys) == 0.0
+    for uc in [ nothing, [1,1,1], [1 0.5 0 ; 0 1 0 ; 0 0 1]]
+        for x in [
+                Vector{Float64}[],
+                SVector{3, Float64}[],
+                Matrix{Float64}(undef, 3, 0),
+                [rand(SVector{3, Float64})],
+                [rand(3)],
+                rand(3, 1),
+            ]
+            if isnothing(uc) && x isa Vector{Vector{Float64}} && length(x) == 0
+                @test_throws "Could not infer dimension" ParticleSystem(
+                positions = x,
+                cutoff = 0.1,
+                unitcell = uc,
+                output = 0.0,
+                output_name = :test
+            )
+                continue
+            end
+            uc = [1,1,1]; positions=SVector{3,Float64}[]
+            _sys = ParticleSystem(
+                positions = x,
+                cutoff = 0.1,
+                unitcell = uc,
+                output = 0.0,
+                output_name = :test
+            )
+            @test CellListMap.pairwise!((pair, out) -> out += pair.d, _sys) == 0.0
+            # now add two particles to the sytem
+            update!(_sys; positions=[[0.0, 0.0, 0.0], [0.05, 0.0, 0.0]])
+            @test CellListMap.pairwise!((pair, out) -> out += pair.d, _sys) == 0.05
+            # now add another particle 
+            update!(_sys; positions=[[0.0, 0.0, 0.0], [0.05, 0.0, 0.0], [0.0, 0.05, 0.0]])
+            @test CellListMap.pairwise!((pair, out) -> out += pair.d, _sys) ≈ 0.1 + 0.05 * sqrt(2)
+            # remove one particle
+            update!(_sys; positions=[[0.05, 0.0, 0.0], [0.0, 0.05, 0.0]])
+            @test CellListMap.pairwise!((pair, out) -> out += pair.d, _sys) ≈ 0.05 * sqrt(2)
+            # remove all particles
+            update!(_sys; positions=Vector{Float64}[])
+            @test CellListMap.pairwise!((pair, out) -> out += pair.d, _sys) == 0.0
+        end
     end
 
     # unitcell type
