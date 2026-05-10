@@ -4,7 +4,7 @@ If the `pairwise!` function will compute energy and/or forces in an iterative pr
 
 ## The `update!` function
 
-All system properties can be updated with the single `update!` function. Only the keyword arguments that are provided are updated; the rest stay unchanged:
+System properties can be updated with the single `update!` function. Only the keyword arguments that are provided are updated; the rest stay unchanged:
 
 ```julia
 update!(system;
@@ -42,7 +42,7 @@ Updating only coordinates, without changing the number of particles, does not in
 
 ## Updating coordinates
 
-Coordinates are updated by passing `xpositions` (and/or `ypositions` for two-set systems)
+Coordinates are updated by passing `positions/xpositions` (and/or `ypositions` for two-set systems)
 to `update!`. The input can be a `Vector{SVector}`, a vector of plain vectors, or a `(D,N)`
 matrix — the same types accepted by the `ParticleSystem` constructor:
 
@@ -60,6 +60,26 @@ If the number of particles changes, the internal storage is resized automaticall
 julia> update!(system; xpositions=rand(SVector{3,Float64}, 1200))
 # system now has 1200 particles
 ```
+
+Additionally, the update of positions can be done with `setindex!`, which is 
+convenient in particular if 
+the position of a few particles will be updated. However, this interface only 
+accepts `SVector`s, as this is the internal representation of the positions in
+CellListMap:
+
+```julia-repl
+julia> using CellListMap, StaticArrays
+
+julia> s = ParticleSystem(positions=[[1,1,1]], cutoff=0.1, output=0.0);
+
+julia> s.positions[1] = SVector(2,2,2)
+3-element SVector{3, Int64} with indices SOneTo(3):
+ 2
+ 2
+ 2
+```
+
+The same applies to `xpositions` (for which `positions` is an alias), and `ypositions` in two-set systems.
 
 !!! warning
     The `output` variable may have to be resized accordingly when the number of particles

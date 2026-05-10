@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.3-DEV
 --------------
+- ![INFO][badge-info] Document the possibility of modifying individual positions with `setindex!` and `SVector`s. 
 
 Version 0.10.2
 --------------
