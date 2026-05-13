@@ -45,6 +45,16 @@ extract from the object using [destructuring syntax](https://docs.julialang.org/
 
     The `output` variable **must** be returned by the function, being it mutable or immutable.
 
+The figure below illustrates the meaning the coordinates in a `NeighborPair` object. 
+
+![../assets/NeighborPair.svg](../assets/NeighborPair.svg)
+
+Here $$\vec{x}$$ and $$\vec{y}_0$$ are the coordinates as provided by the user, which in this case fall inside the 
+reference unitcell. But the image $$\vec{y}$$ of $$\vec{y}_0$$ is closer to $$\vec{x}$$. The `NeighborPair` object
+will contain the coordinates `pair.x ==`$$\vec{x}$$ and `pair.y ==`$$\vec{y}$$, such that `pair.y - pair.x` will be
+tipicaly the vector used, for example, to compute the force between the particles. Also, `pair.d == norm(pair.y - pair.y)`
+and corresponds to the norm of $$\vec{y} - \vec{x}$$, as represented in the figure. 
+
 ### Basic examples
 
 For example, computing the energy, as the sum of the inverse of the distance between particles, can be done with a function like:
