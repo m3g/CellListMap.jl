@@ -11,6 +11,10 @@ Structure that holds the information of a pair of particles that are neighbors w
 - `d::T`: Euclidean distance between the particles (computed lazily).
 - `d2::T2`: squared Euclidean distance between the particles.
 
+Specifically, `pair.d == norm(pair.y - pair.x)`, and `pair.d` will be always equal or 
+smaller than the cutoff, as only pairs within the cutoff are considered `pair.y`
+is the minimum image position of particle `pair.i` relative to `pair.x`. 
+
 """
 struct NeighborPair{N, T, T2}
     i::Int
