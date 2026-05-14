@@ -45,7 +45,7 @@ extract from the object using [destructuring syntax](https://docs.julialang.org/
 
     The `output` variable **must** be returned by the function, being it mutable or immutable.
 
-The figure below illustrates the meaning the coordinates in a `NeighborPair` object. 
+The figure below illustrates the meaning of the coordinates in a `NeighborPair` object. 
 
 ![../assets/NeighborPair.svg](../assets/NeighborPair.svg)
 
