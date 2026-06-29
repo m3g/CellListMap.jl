@@ -20,12 +20,10 @@ end
 #
 function _vinicial_cells!(f::F, box::Box{OrthorhombicCell}, cellᵢ, pp, Δc, output, ::Val{Skip}) where {F <: Function, Skip}
     (; cutoff, cutoff_sqr, inv_rotation) = box
-    # Loop over particles of cell icell
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
         # project particle in vector connecting cell centers
         xpᵢ = pᵢ.coordinates
-        xpᵢ_rot = inv_rotation * xpᵢ
         xproj = dot(xpᵢ - cellᵢ.center, Δc)
         # Partition pp array according to the current projections
         n = partition!(el -> abs(el.xproj - xproj) <= cutoff, pp)
@@ -36,7 +34,8 @@ function _vinicial_cells!(f::F, box::Box{OrthorhombicCell}, cellᵢ, pp, Δc, ou
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
+                # `inv_rotation` is the identity here
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2)
                 output = f(pair, output)
             end
         end

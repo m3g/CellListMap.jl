@@ -142,18 +142,17 @@ end
 # upper triangle only in the case of the Orthorhombic cell
 function _current_cell_interactions!(box::Box{OrthorhombicCell}, f::F, cell, output) where {F <: Function}
     (; cutoff_sqr, inv_rotation) = box
-    # loop over list of non-repeated particles of cell ic.
     for i in 1:(cell.n_particles - 1)
         @inbounds pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
-        xpᵢ_rot = inv_rotation * xpᵢ
         for j in (i + 1):cell.n_particles
             @inbounds pⱼ = cell.particles[j]
             (pᵢ.real | pⱼ.real) || continue
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
+                # `inv_rotation` is the identity here
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2)
                 output = f(pair, output)
             end
         end
