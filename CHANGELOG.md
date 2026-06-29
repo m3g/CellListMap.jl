@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.3-DEV
 --------------
+- ![ENHANCEMENT][badge-enhancement] Skip `inv_rotation` for `OrthorhombicCell`s. 
 - ![INFO][badge-info] Clarifty the meaning of `NeighborPair` fields, specifically concerning the minimum-image consideration.
 - ![INFO][badge-info] Document the possibility of modifying individual positions with `setindex!` and `SVector`s. 
 
