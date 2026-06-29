@@ -20,9 +20,6 @@ end
 #
 function _vinicial_cells!(f::F, box::Box{OrthorhombicCell}, cellᵢ, pp, Δc, output, ::Val{Skip}) where {F <: Function, Skip}
     (; cutoff, cutoff_sqr, inv_rotation) = box
-    # For OrthorhombicCell `inv_rotation` is the identity (axis-aligned cell), so the
-    # minimum-image-adjusted coordinates are the stored coordinates and the per-pair
-    # `inv_rotation * x` products can be skipped.
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]
         # project particle in vector connecting cell centers
@@ -37,6 +34,7 @@ function _vinicial_cells!(f::F, box::Box{OrthorhombicCell}, cellᵢ, pp, Δc, ou
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
+                # `inv_rotation` is the identity here
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2)
                 output = f(pair, output)
             end
