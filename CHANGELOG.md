@@ -10,7 +10,7 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 0.10.3-DEV
+Version 0.10.3
 --------------
 - ![ENHANCEMENT][badge-enhancement] Skip `inv_rotation` for `OrthorhombicCell`s. 
 - ![INFO][badge-info] Clarifty the meaning of `NeighborPair` fields, specifically concerning the minimum-image consideration.
