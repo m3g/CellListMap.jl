@@ -142,9 +142,6 @@ end
 # upper triangle only in the case of the Orthorhombic cell
 function _current_cell_interactions!(box::Box{OrthorhombicCell}, f::F, cell, output) where {F <: Function}
     (; cutoff_sqr, inv_rotation) = box
-    # For OrthorhombicCell the cell is axis-aligned, so `inv_rotation` is the identity.
-    # The minimum-image-adjusted coordinates are therefore the stored coordinates, and the
-    # per-pair matrix-vector products `inv_rotation * x` can be skipped entirely.
     for i in 1:(cell.n_particles - 1)
         @inbounds pᵢ = cell.particles[i]
         xpᵢ = pᵢ.coordinates
@@ -154,6 +151,7 @@ function _current_cell_interactions!(box::Box{OrthorhombicCell}, f::F, cell, out
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
+                # `inv_rotation` is the identity here
                 pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2)
                 output = f(pair, output)
             end
