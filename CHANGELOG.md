@@ -12,6 +12,9 @@ CellListMap.jl Changelog
 
 Version 0.10.4-DEV
 --------------
+
+Version 0.10.3
+--------------
 - ![ENHANCEMENT][badge-enhancement] Skip `inv_rotation` for `OrthorhombicCell`s. 
 - ![INFO][badge-info] Clarifty the meaning of `NeighborPair` fields, specifically concerning the minimum-image consideration.
 - ![INFO][badge-info] Document the possibility of modifying individual positions with `setindex!` and `SVector`s. 
@@ -20,7 +23,7 @@ Version 0.10.2
 --------------
 - ![FEATURE][badge-feature] Support empty arrays of coordinates for `unitcell=nothing`. 
 - ![INFO][badge-info] Show methods of ParticleSystems now show the update status of the coordinates, expliciting the status of the cell lists (updated or not).
-- ![BUGFIX][badge-bugfix] If the number of particles was reduced to less than the number of batches of parallel computations, stale data remained in auxiliary threading arrays. This manifested when thesting removing all particles from the a system. 
+- ![BUGFIX][badge-bugfix] If the number of particles was reduced to less than the number of batches of parallel computations, stale data remained in auxiliary threading arrays. This manifested when testing removing all particles from the a system. 
 
 Version 0.10.1
 --------------
