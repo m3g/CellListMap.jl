@@ -165,7 +165,7 @@ function UpdateCellList!(
                         center=center_c,
                         contains_real=true,
                         n_particles=np,
-                        particles=Vector{ParticleWithIndex{N,T}}(undef, np),
+                        build_particles=Vector{ParticleWithIndex{N,T}}(undef, np),
                     )
                 )
             else
@@ -176,8 +176,8 @@ function UpdateCellList!(
                 @set! cell.contains_real = true
                 @set! cell.n_particles = np
                 cl.cells[cell_index] = cell
-                if np > length(cl.cells[cell_index].particles)
-                    resize!(cl.cells[cell_index].particles, np)
+                if np > length(cl.cells[cell_index].build_particles)
+                    resize!(cl.cells[cell_index].build_particles, np)
                 end
             end
             # All cells in a non-periodic system contain only real particles
@@ -217,7 +217,7 @@ function UpdateCellList!(
                     target_cell_idx = cl.cell_indices[li]
                     offset = offsets[li]
                     offsets[li] += 1
-                    cl.cells[target_cell_idx].particles[offset+1] = ParticleWithIndex(ip, true, p)
+                    cl.cells[target_cell_idx].build_particles[offset+1] = ParticleWithIndex(ip, true, p)
                 end
             end
         end
@@ -225,6 +225,7 @@ function UpdateCellList!(
     end # if/else parallel
 
     _update_projected_particles!(cl)
+    _compact_particles!(cl)
     x.updated[] = false
     return cl
 end
@@ -244,6 +245,7 @@ function UpdateCellList!(
         reset!(cl, box, length(x))
         add_particles!(x, box, 0, cl)
         _update_projected_particles!(cl)
+        _compact_particles!(cl)
         x.updated[] = false
     end
     cl = update_number_of_batches!(cl; parallel)

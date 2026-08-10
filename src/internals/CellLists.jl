@@ -64,20 +64,37 @@ about if this cell is in the border of the box (such that its
 neighboring cells need to be wrapped) 
 
 =#
+#
+# View type of the flat, compacted `CellList.particles` buffer that each
+# `Cell.particles` field points into after `_compact_particles!` runs. Keeping
+# this as a type alias ensures `Cell{N,T}` stays a concrete, allocated-inline
+# struct (verified with `Base.allocatedinline`).
+#
+const CellParticlesView{N,T} = SubArray{ParticleWithIndex{N,T},1,Vector{ParticleWithIndex{N,T}},Tuple{UnitRange{Int}},true}
+
 Base.@kwdef struct Cell{N,T}
     linear_index::Int = 0
     cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
     center::SVector{N,T} = zeros(SVector{N,T})
     contains_real::Bool = false
     n_particles::Int = 0
-    particles::Vector{ParticleWithIndex{N,T}} = Vector{ParticleWithIndex{N,T}}(undef, 0)
+    # Start index (0-based) of this cell's particles within the owning
+    # `CellList.particles` flat buffer, set by `_compact_particles!`.
+    offset::Int = 0
+    # Read-facing view into the owning `CellList.particles` flat buffer, kept
+    # up to date by `_compact_particles!` after every cell list build.
+    particles::CellParticlesView{N,T} = view(Vector{ParticleWithIndex{N,T}}(undef, 0), 1:0)
+    # Construction-time scratch/staging buffer: cell list builders write here
+    # incrementally (push!/resize!), exactly as they always have; this array
+    # is intentionally retained (not reallocated) across cell list updates.
+    build_particles::Vector{ParticleWithIndex{N,T}} = Vector{ParticleWithIndex{N,T}}(undef, 0)
 end
 function Cell{N,T}(cartesian_index::CartesianIndex, box::Box; sizehint::Int=0) where {N,T}
     return Cell{N,T}(
         linear_index=cell_linear_index(box.nc, cartesian_index),
         cartesian_index=cartesian_index,
         center=cell_center(cartesian_index, box),
-        particles=Vector{ParticleWithIndex{N,T}}(undef, sizehint)
+        build_particles=Vector{ParticleWithIndex{N,T}}(undef, sizehint)
     )
 end
 
@@ -129,6 +146,10 @@ Base.@kwdef mutable struct CellList{N,T}
     cell_indices_real::Vector{Int} = zeros(Int, 0)
     " Vector containing cell lists of cells with particles. "
     cells::Vector{Cell{N,T}} = Cell{N,T}[]
+    " Flat, contiguous buffer holding all particles (real + images) of all cells, laid out in linear cell index order; see `_compact_particles!`. "
+    particles::Vector{ParticleWithIndex{N,T}} = ParticleWithIndex{N,T}[]
+    " Scratch buffer used by `_compact_particles!` to reorder `cells` into linear cell index order (spatial order). "
+    cells_buffer::Vector{Cell{N,T}} = Cell{N,T}[]
     " Number of batches for the parallel calculations. "
     nbatches::NumberOfBatches = zero(NumberOfBatches)
     " Auxiliary array to store projected particles. "
@@ -544,7 +565,7 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     # Only reset cells that were populated — cells beyond n_cells_with_particles
     # retain stale data but are never accessed until re-initialised.
     for i in 1:cl.n_cells_with_particles
-        cl.cells[i] = Cell{N,T}(particles=cl.cells[i].particles)
+        cl.cells[i] = Cell{N,T}(build_particles=cl.cells[i].build_particles)
     end
     # cell_indices_real is written sequentially from position 1 as cells are
     # discovered, so stale entries beyond n_cells_with_real_particles are
@@ -554,6 +575,62 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     cl.number_of_cells = new_number_of_cells
     cl.n_cells_with_real_particles = 0
     cl.n_cells_with_particles = 0
+    return cl
+end
+
+#=
+    _compact_particles!(cl::CellList{N,T}) where {N,T}
+
+# Extended help
+
+Copies each cell's particles (currently in `cell.build_particles`, built
+incrementally and scattered across independent per-cell allocations) into a
+single flat, contiguous `cl.particles` buffer, and reorders `cl.cells` itself,
+visiting cells in increasing *linear cell index* order (not
+construction/discovery order — which, for the serial incremental build path,
+is effectively particle-arrival order) so that both the particle payload and
+the `cells` array itself are laid out spatially, and `cell_indices`/
+`cell_indices_real` (which index into `cells`) are remapped accordingly.
+Updates each cell's `offset` and `particles` (a view into `cl.particles`).
+Called once at the end of every cell list build, regardless of which build
+path (serial incremental, or parallel histogram+scatter) produced the
+(already correct) per-cell data in `build_particles`.
+
+This exists to avoid the traversal cost of chasing pointers into many
+small, independently-allocated per-cell arrays scattered across the heap, and
+of visiting the (otherwise contiguous) `cells` array in a scattered order —
+see `PERFORMANCE_NOTES_pairwise_scaling.md` for the motivating measurements.
+
+=#
+function _compact_particles!(cl::CellList{N,T}) where {N,T}
+    resize!(cl.particles, cl.n_particles)
+    resize!(cl.cells_buffer, cl.n_cells_with_particles)
+    write_pos = 0
+    new_pos = 0
+    n_real_seen = 0
+    for li in 1:cl.number_of_cells
+        cell_index = cl.cell_indices[li]
+        cell_index == 0 && continue
+        cell = cl.cells[cell_index]
+        np = cell.n_particles
+        if np > 0
+            copyto!(cl.particles, write_pos + 1, cell.build_particles, 1, np)
+        end
+        @set! cell.offset = write_pos
+        @set! cell.particles = view(cl.particles, write_pos+1:write_pos+np)
+        write_pos += np
+        new_pos += 1
+        cl.cells_buffer[new_pos] = cell
+        cl.cell_indices[li] = new_pos
+        if cell.contains_real
+            n_real_seen += 1
+            cl.cell_indices_real[n_real_seen] = new_pos
+        end
+    end
+    # `cells_buffer` now holds the reordered (spatial-order) cells; swap it in as
+    # `cells` (cheap: just exchanges the two Vector references). The old `cells`
+    # array becomes the scratch buffer for the next call.
+    cl.cells, cl.cells_buffer = cl.cells_buffer, cl.cells
     return cl
 end
 
@@ -841,7 +918,7 @@ function UpdateCellList!(
                         center=center,
                         contains_real=false,
                         n_particles=0,
-                        particles=Vector{ParticleWithIndex{N,T}}(undef, 0),
+                        build_particles=Vector{ParticleWithIndex{N,T}}(undef, 0),
                     )
                 )
             else
@@ -859,8 +936,8 @@ function UpdateCellList!(
         for i in 1:cl.n_cells_with_particles
             li = cl.cells[i].linear_index
             np = aux.total_np[li]
-            if np > length(cl.cells[i].particles)
-                resize!(cl.cells[i].particles, np)
+            if np > length(cl.cells[i].build_particles)
+                resize!(cl.cells[i].build_particles, np)
             end
             cell = cl.cells[i]
             @set! cell.n_particles = np
@@ -899,10 +976,10 @@ function UpdateCellList!(
                     aux_cell = list.cells[icell]
                     li = aux_cell.linear_index
                     target_cell_idx = cl.cell_indices[li]
-                    particles_dst = cl.cells[target_cell_idx].particles
+                    particles_dst = cl.cells[target_cell_idx].build_particles
                     offset = aux.thread_cell_offsets[ibatch][icell]
                     for ip in 1:aux_cell.n_particles
-                        particles_dst[offset+ip] = aux_cell.particles[ip]
+                        particles_dst[offset+ip] = aux_cell.build_particles[ip]
                     end
                 end
             end
@@ -919,6 +996,10 @@ function UpdateCellList!(
             resize!(cl.projected_particles[i], maxnp)
         end
     end
+
+    # Compact all cells' particles into one contiguous, cell-order buffer,
+    # for cache-friendly traversal (see `_compact_particles!`).
+    _compact_particles!(cl)
 
     # set updated to false, to indicate that the cell list was constructed
     # for these coordinates.
@@ -1042,10 +1123,10 @@ function add_particle_to_celllist!(
     # Add particle to cell list
     #
     p = ParticleWithIndex(ip, real_particle, x)
-    if cell.n_particles > length(cell.particles)
-        push!(cell.particles, p)
+    if cell.n_particles > length(cell.build_particles)
+        push!(cell.build_particles, p)
     else
-        cell.particles[cell.n_particles] = p
+        cell.build_particles[cell.n_particles] = p
     end
 
     #
