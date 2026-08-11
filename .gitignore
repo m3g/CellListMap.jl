@@ -41,4 +41,4 @@ test/gromacs/**/*1
 #test/gromacs/**/*log
 #test/gromacs/**/*mdp
 
-_perf_test/PERFORMANCE_NOTES_pairwise_scaling.md
+_perf_test/*
