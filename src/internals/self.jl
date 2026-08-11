@@ -108,7 +108,7 @@ function _pairwise_parallel!(
     end
     (; n_cells_with_real_particles) = cl
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
-    n_chunks = _n_workqueue_chunks(_nbatches)
+    n_chunks = _n_workqueue_chunks(_nbatches, n_cells_with_real_particles)
     chunks = collect(index_chunks(1:n_cells_with_real_particles; n = n_chunks, split = Consecutive()))
     next_chunk = Atomic{Int}(1)
     @sync for ibatch in 1:_nbatches

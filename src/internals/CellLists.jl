@@ -871,19 +871,40 @@ function UpdateCellList!(
     else
         # Reset cell list
         reset!(cl, box, 0)
-        # Update the aux.idxs ranges, for if the number of particles changed
-        set_idxs!(aux.idxs, length(x), _nbatches)
 
-        # Phase 1: build per-thread cell lists in parallel (no locking)
-        @sync for ibatch in eachindex(aux.idxs, aux.lists)
+        # Phase 1: build per-thread cell lists in parallel (no locking). Work-queue
+        # scheduled: the particle range is split into many small `Consecutive`
+        # chunks, and a fixed pool of `_nbatches` worker tasks (one per scratch
+        # list in `aux.lists`, so memory stays what it was) pulls chunks on demand
+        # from a shared atomic counter, instead of each worker owning one fixed,
+        # equal-sized range. This is Phase 1's analogue of the `batch`/
+        # `_pairwise_parallel!` work-queue in self.jl/cross.jl — it exists because
+        # Phase 1 (not the map/traversal step) is where most wall time goes for
+        # build-dominated workloads (e.g. a fresh `ParticleSystem` per call), so a
+        # straggling worker here (e.g. one scheduled on a slow core, on
+        # performance/efficiency hybrid CPUs) isn't rebalanced by the map-step fix
+        # alone — see PERFORMANCE_NOTES_pairwise_scaling.md. Phases 2/3 below
+        # already iterate per-worker over however many cells each worker actually
+        # ended up with, so they automatically inherit this balancing without
+        # further changes.
+        n_chunks = _n_workqueue_chunks(_nbatches, length(x))
+        chunks = collect(index_chunks(1:length(x); n = n_chunks, split = Consecutive()))
+        next_chunk = Atomic{Int}(1)
+        avg_share = length(x) ÷ _nbatches
+        @sync for ibatch in eachindex(aux.lists)
             @spawn begin
-                prange = aux.idxs[ibatch]
-                # Reset before the early-exit check so stale data from a previous
-                # call (when this batch had particles) cannot leak into Phase 2.
-                aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
-                isempty(prange) && return
-                xt = @view(x[prange])
-                aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
+                # Reset before pulling any chunk so stale data from a previous
+                # call (when this batch had particles) cannot leak into Phase 2,
+                # even if this worker ends up pulling zero chunks.
+                aux.lists[ibatch] = reset!(aux.lists[ibatch], box, avg_share)
+                while true
+                    ic = atomic_add!(next_chunk, 1)
+                    ic > length(chunks) && break
+                    prange = chunks[ic]
+                    isempty(prange) && continue
+                    xt = @view(x[prange])
+                    aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
+                end
             end
         end
 

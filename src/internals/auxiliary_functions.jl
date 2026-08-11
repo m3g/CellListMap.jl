@@ -51,22 +51,36 @@ _next!(::Nothing) = nothing
 _next!(p) = next!(p)
 
 #=
-    _n_workqueue_chunks(_nbatches)
+    _n_workqueue_chunks(_nbatches, n_items)
 
 # Extended help
 
-Number of small `Consecutive` cell chunks to split the map computation into
-for on-demand work-queue scheduling (see `batch`/`_pairwise_parallel!` in
-`self.jl`/`cross.jl`): enough that a fixed pool of `_nbatches` worker tasks
-can rebalance across cores of unequal speed (e.g. performance/efficiency
-hybrid CPUs — see Finding 2 in `PERFORMANCE_NOTES_pairwise_scaling.md`)
-without needlessly increasing task spawn/scheduling overhead. Only affects
-scheduling granularity, not the number of `output_threaded` accumulator
-slots (still `_nbatches`), so this does not change memory usage.
+Number of small `Consecutive` chunks to split a range of `n_items` elements
+into for on-demand work-queue scheduling — used both for the map computation
+(`batch`/`_pairwise_parallel!` in `self.jl`/`cross.jl`, `n_items` = number of
+real cells) and for cell list construction (`UpdateCellList!`'s Phase 1 in
+`CellLists.jl`/`NonPeriodicCells.jl`, `n_items` = number of particles): enough
+that a fixed pool of `_nbatches` worker tasks can rebalance across cores of
+unequal speed (e.g. performance/efficiency hybrid CPUs — see Finding 2 in
+`PERFORMANCE_NOTES_pairwise_scaling.md`), without needlessly increasing task
+spawn/scheduling overhead. Only affects scheduling granularity, not the
+number of accumulator slots (still `_nbatches`), so this does not change
+memory usage.
+
+Capped so each chunk has at least `WORKQUEUE_MIN_CHUNK_SIZE` elements on
+average — for small problems, oversubscribing by a fixed `_nbatches`
+multiple regardless of size produces chunks so small that per-chunk overhead
+(the atomic claim, task loop) dominates the (trivial) actual work in each
+chunk; this still gives every worker multiple chunks to pull from once
+`n_items` is large enough to matter for load balancing.
 
 =#
 const WORKQUEUE_OVERSUBSCRIPTION = 16
-_n_workqueue_chunks(_nbatches) = WORKQUEUE_OVERSUBSCRIPTION * _nbatches
+const WORKQUEUE_MIN_CHUNK_SIZE = 256
+function _n_workqueue_chunks(_nbatches, n_items)
+    max_chunks_by_size = max(1, n_items ÷ WORKQUEUE_MIN_CHUNK_SIZE)
+    return clamp(WORKQUEUE_OVERSUBSCRIPTION * _nbatches, 1, max_chunks_by_size)
+end
 
 #
 # Functions necessary for the projection/partition scheme
