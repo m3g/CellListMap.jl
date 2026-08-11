@@ -51,35 +51,50 @@ _next!(::Nothing) = nothing
 _next!(p) = next!(p)
 
 #=
-    _n_workqueue_chunks(_nbatches, n_items)
+    _n_workqueue_chunks(_nbatches, n_work_items)
 
 # Extended help
 
-Number of small `Consecutive` chunks to split a range of `n_items` elements
-into for on-demand work-queue scheduling — used both for the map computation
-(`batch`/`_pairwise_parallel!` in `self.jl`/`cross.jl`, `n_items` = number of
-real cells) and for cell list construction (`UpdateCellList!`'s Phase 1 in
-`CellLists.jl`/`NonPeriodicCells.jl`, `n_items` = number of particles): enough
-that a fixed pool of `_nbatches` worker tasks can rebalance across cores of
-unequal speed (e.g. performance/efficiency hybrid CPUs — see Finding 2 in
-`PERFORMANCE_NOTES_pairwise_scaling.md`), without needlessly increasing task
-spawn/scheduling overhead. Only affects scheduling granularity, not the
-number of accumulator slots (still `_nbatches`), so this does not change
-memory usage.
+Number of small `Consecutive` chunks to split a range into for on-demand
+work-queue scheduling — used both for the map computation (`batch`/
+`_pairwise_parallel!` in `self.jl`/`cross.jl`, which splits the *cell* range)
+and for cell list construction (`UpdateCellList!`'s Phase 1 in
+`CellLists.jl`/`NonPeriodicCells.jl`, which splits the *particle* range):
+enough that a fixed pool of `_nbatches` worker tasks can rebalance across
+cores of unequal speed (e.g. performance/efficiency hybrid CPUs — see
+Finding 2 in `PERFORMANCE_NOTES_pairwise_scaling.md`), without needlessly
+increasing task spawn/scheduling overhead. Only affects scheduling
+granularity, not the number of accumulator slots (still `_nbatches`), so
+this does not change memory usage.
 
-Capped so each chunk has at least `WORKQUEUE_MIN_CHUNK_SIZE` elements on
-average — for small problems, oversubscribing by a fixed `_nbatches`
-multiple regardless of size produces chunks so small that per-chunk overhead
-(the atomic claim, task loop) dominates the (trivial) actual work in each
-chunk; this still gives every worker multiple chunks to pull from once
-`n_items` is large enough to matter for load balancing.
+`n_work_items` is a proxy for the *actual amount of work*, used only to size
+the cap below — it is deliberately **not** required to be the same count as
+whatever range is being split into chunks. In particular, the map step
+splits the cell range, but sizes its cap using particle count: cell count
+alone would badly understate real work for a dense system (few, heavily
+populated cells — e.g. a water-density system can have ~100 particles/cell),
+capping oversubscription far below where it would actually help. Callers
+that split what they size by (construction splits and sizes by particle
+count) just pass the same count for both.
+
+Capped so each chunk represents at least `WORKQUEUE_MIN_CHUNK_SIZE` work
+items on average — for small problems, oversubscribing by a fixed
+`_nbatches` multiple regardless of size produces chunks so small that
+per-chunk overhead (the atomic claim, task loop) dominates the (trivial)
+actual work in each chunk; this still gives every worker multiple chunks to
+pull from once there's enough work to matter for load balancing.
+
+The size-based cap is never allowed to drop the chunk count below
+`_nbatches` itself — capping below that starves most workers of any chunk at
+all (some workers get zero chunks and sit idle for the whole call), which is
+worse than no oversubscription — see PERFORMANCE_NOTES_pairwise_scaling.md.
 
 =#
 const WORKQUEUE_OVERSUBSCRIPTION = 16
 const WORKQUEUE_MIN_CHUNK_SIZE = 256
-function _n_workqueue_chunks(_nbatches, n_items)
-    max_chunks_by_size = max(1, n_items ÷ WORKQUEUE_MIN_CHUNK_SIZE)
-    return clamp(WORKQUEUE_OVERSUBSCRIPTION * _nbatches, 1, max_chunks_by_size)
+function _n_workqueue_chunks(_nbatches, n_work_items)
+    max_chunks_by_size = max(_nbatches, n_work_items ÷ WORKQUEUE_MIN_CHUNK_SIZE)
+    return clamp(WORKQUEUE_OVERSUBSCRIPTION * _nbatches, _nbatches, max_chunks_by_size)
 end
 
 #
