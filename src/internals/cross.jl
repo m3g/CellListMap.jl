@@ -119,7 +119,7 @@ end
 # Providing two cells for this function indicates that this is a cross-interaction, thus we need
 # to loop over all pairs of particles.
 #
-function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cell, output) where {F <: Function}
+function _current_cell_interactions!(box::Box, f::F, cellᵢ::CompactCell, cellⱼ::CompactCell, output) where {F <: Function}
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]

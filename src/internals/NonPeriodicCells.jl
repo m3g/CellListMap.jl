@@ -73,7 +73,7 @@ end
 function _update_projected_particles!(cl::CellList)
     maxnp = 0
     for i in 1:cl.n_cells_with_particles
-        maxnp = max(maxnp, cl.cells[i].n_particles)
+        maxnp = max(maxnp, cl.build_cells[i].n_particles)
     end
     for i in eachindex(cl.projected_particles)
         if maxnp > length(cl.projected_particles[i])
@@ -157,27 +157,27 @@ function UpdateCellList!(
             cell_index = cl.n_cells_with_particles
             cartesian_idx = cell_cartesian_indices(box.nc, li)
             center_c = cell_center(cartesian_idx, box)
-            if cell_index > length(cl.cells)
+            if cell_index > length(cl.build_cells)
                 push!(
-                    cl.cells, Cell{N,T}(
+                    cl.build_cells, Cell{N,T}(
                         linear_index=li,
                         cartesian_index=cartesian_idx,
                         center=center_c,
                         contains_real=true,
                         n_particles=np,
-                        build_particles=Vector{ParticleWithIndex{N,T}}(undef, np),
+                        particles=Vector{ParticleWithIndex{N,T}}(undef, np),
                     )
                 )
             else
-                cell = cl.cells[cell_index]
+                cell = cl.build_cells[cell_index]
                 @set! cell.linear_index = li
                 @set! cell.cartesian_index = cartesian_idx
                 @set! cell.center = center_c
                 @set! cell.contains_real = true
                 @set! cell.n_particles = np
-                cl.cells[cell_index] = cell
-                if np > length(cl.cells[cell_index].build_particles)
-                    resize!(cl.cells[cell_index].build_particles, np)
+                cl.build_cells[cell_index] = cell
+                if np > length(cl.build_cells[cell_index].particles)
+                    resize!(cl.build_cells[cell_index].particles, np)
                 end
             end
             # All cells in a non-periodic system contain only real particles
@@ -217,7 +217,7 @@ function UpdateCellList!(
                     target_cell_idx = cl.cell_indices[li]
                     offset = offsets[li]
                     offsets[li] += 1
-                    cl.cells[target_cell_idx].build_particles[offset+1] = ParticleWithIndex(ip, true, p)
+                    cl.build_cells[target_cell_idx].particles[offset+1] = ParticleWithIndex(ip, true, p)
                 end
             end
         end
@@ -308,7 +308,7 @@ end
 # Cross interactions between two cells (CellListPair): all pairs, no real/image checks.
 #
 function _current_cell_interactions!(
-    box::Box{NonPeriodicCell}, f::F, cellᵢ::Cell, cellⱼ::Cell, output
+    box::Box{NonPeriodicCell}, f::F, cellᵢ::CompactCell, cellⱼ::CompactCell, output
 ) where {F<:Function}
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
