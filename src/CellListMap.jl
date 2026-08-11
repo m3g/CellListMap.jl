@@ -7,9 +7,9 @@ using ProgressMeter: Progress, next!
 using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector
 using Setfield: @set!
 using LinearAlgebra: cross, diagm, I, dot, norm
-using Base.Threads: nthreads, @spawn
+using Base.Threads: nthreads, @spawn, Atomic, atomic_add!
 using Base: @lock # not exported in 1.6
-using ChunkSplitters: index_chunks, RoundRobin, Consecutive
+using ChunkSplitters: index_chunks, Consecutive
 
 # Exported names of ParticleSystem interface
 export ParticleSystem

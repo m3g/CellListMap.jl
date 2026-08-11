@@ -50,6 +50,24 @@ get_dim(::ParticleSystemPositions{N}) where {N} = N
 _next!(::Nothing) = nothing
 _next!(p) = next!(p)
 
+#=
+    _n_workqueue_chunks(_nbatches)
+
+# Extended help
+
+Number of small `Consecutive` cell chunks to split the map computation into
+for on-demand work-queue scheduling (see `batch`/`_pairwise_parallel!` in
+`self.jl`/`cross.jl`): enough that a fixed pool of `_nbatches` worker tasks
+can rebalance across cores of unequal speed (e.g. performance/efficiency
+hybrid CPUs — see Finding 2 in `PERFORMANCE_NOTES_pairwise_scaling.md`)
+without needlessly increasing task spawn/scheduling overhead. Only affects
+scheduling granularity, not the number of `output_threaded` accumulator
+slots (still `_nbatches`), so this does not change memory usage.
+
+=#
+const WORKQUEUE_OVERSUBSCRIPTION = 16
+_n_workqueue_chunks(_nbatches) = WORKQUEUE_OVERSUBSCRIPTION * _nbatches
+
 #
 # Functions necessary for the projection/partition scheme
 #
