@@ -266,12 +266,12 @@ julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> neighborlist(xpositions=x, cutoff=8.0, parallel=false)
 857-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 20, 3.163779526466901)
- (1, 61, 4.08865164675529)
- (1, 67, 5.939772435456664)
+ (2, 5, 4.881879619165435)
+ (2, 10, 4.797620518224583)
+ (2, 27, 7.312039461220441)
  ⋮
- (78, 88, 7.0061163797598445)
- (88, 54, 7.933654063435482)
+ (51, 68, 2.2003568203767747)
+ (51, 22, 6.638020793543217)
 ```
 
 And now, considering the system periodic:
@@ -283,9 +283,9 @@ julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
 
 julia> neighborlist(xpositions=x, cutoff=8.0, unitcell=[21.0, 21.0, 21.0], parallel=false)
 1143-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 7, 3.3638756414119397)
- (1, 20, 3.163779526466901)
- (1, 47, 6.243868666689442)
+ (2, 5, 4.881879619165435)
+ (2, 10, 4.797620518224583)
+ (2, 24, 7.593879787917076)
  ⋮
  (68, 38, 7.409287768713663)
  (68, 90, 7.8758006026725464)
@@ -302,9 +302,9 @@ julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
 
 julia> CellListMap.neighborlist(xpositions=x, ypositions=y, cutoff=8.0, parallel=false)
 439-element Vector{Tuple{Int64, Int64, Float64}}:
- (1, 11, 4.08865164675529)
- (1, 17, 5.939772435456664)
- (1, 30, 2.4572288423012236)
+ (2, 2, 3.9973376115161146)
+ (2, 6, 5.355242532377853)
+ (2, 27, 2.1991995327213645)
  ⋮
  (46, 48, 4.9269093987894745)
  (46, 1, 7.99947286297016)
