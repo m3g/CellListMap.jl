@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.5-DEV
+--------------
+
 Version 0.10.4
 --------------
 - ![ENHANCEMENT][badge-enhancement] Improve scaling of cell list construction phases.
