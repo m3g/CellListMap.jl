@@ -73,7 +73,7 @@ end
 function _update_projected_particles!(cl::CellList)
     maxnp = 0
     for i in 1:cl.n_cells_with_particles
-        maxnp = max(maxnp, cl.cells[i].n_particles)
+        maxnp = max(maxnp, cl.build_cells[i].n_particles)
     end
     for i in eachindex(cl.projected_particles)
         if maxnp > length(cl.projected_particles[i])
@@ -109,7 +109,6 @@ function UpdateCellList!(
 
         reset!(cl, box, 0)
         cl.n_real_particles = length(x)
-        set_idxs!(aux.idxs, length(x), _nbatches)
 
         number_of_cells = cl.number_of_cells
         for ibatch in eachindex(aux.thread_counts)
@@ -123,18 +122,37 @@ function UpdateCellList!(
         end
         fill!(view(aux.total_np, 1:number_of_cells), 0)
 
-        # Phase 1: thread-local histograms — no atomic operations
-        @sync for ibatch in eachindex(aux.idxs)
+        # Phase 1: thread-local histograms — no atomic operations. Work-queue
+        # scheduled, mirroring the periodic build's Phase 1 (see
+        # CellLists.jl/UpdateCellList!): many small `Consecutive` chunks, pulled
+        # on demand by a fixed pool of `_nbatches` workers from a shared atomic
+        # counter, so a worker on a slow core (e.g. an E-core) simply claims
+        # fewer chunks instead of becoming a straggler the `@sync` waits on.
+        # Each worker records which chunks it claimed (`claimed[ibatch]`) so
+        # that Phase 4 below can replay the *exact same* per-worker particle
+        # set — required for Phase 3's per-worker offsets (computed from this
+        # phase's histograms) to line up with what each worker scatters.
+        n_chunks = _n_workqueue_chunks(_nbatches, length(x))
+        chunks = collect(index_chunks(1:length(x); n = n_chunks, split = Consecutive()))
+        next_chunk = Atomic{Int}(1)
+        claimed = [Int[] for _ in eachindex(aux.thread_counts)]
+        @sync for ibatch in eachindex(aux.thread_counts)
             @spawn begin
-                prange = aux.idxs[ibatch]
-                isempty(prange) && return
                 counts = aux.thread_counts[ibatch]
-                for ip in prange
-                    xp = x[ip]
-                    p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
-                    ci = real_particle_border_case(particle_cell(p, box), box)
-                    li = cell_linear_index(box.nc, ci)
-                    counts[li] += 1
+                my_claimed = claimed[ibatch]
+                while true
+                    ic = atomic_add!(next_chunk, 1)
+                    ic > length(chunks) && break
+                    push!(my_claimed, ic)
+                    prange = chunks[ic]
+                    isempty(prange) && continue
+                    for ip in prange
+                        xp = x[ip]
+                        p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
+                        ci = real_particle_border_case(particle_cell(p, box), box)
+                        li = cell_linear_index(box.nc, ci)
+                        counts[li] += 1
+                    end
                 end
             end
         end
@@ -157,9 +175,9 @@ function UpdateCellList!(
             cell_index = cl.n_cells_with_particles
             cartesian_idx = cell_cartesian_indices(box.nc, li)
             center_c = cell_center(cartesian_idx, box)
-            if cell_index > length(cl.cells)
+            if cell_index > length(cl.build_cells)
                 push!(
-                    cl.cells, Cell{N,T}(
+                    cl.build_cells, Cell{N,T}(
                         linear_index=li,
                         cartesian_index=cartesian_idx,
                         center=center_c,
@@ -169,15 +187,15 @@ function UpdateCellList!(
                     )
                 )
             else
-                cell = cl.cells[cell_index]
+                cell = cl.build_cells[cell_index]
                 @set! cell.linear_index = li
                 @set! cell.cartesian_index = cartesian_idx
                 @set! cell.center = center_c
                 @set! cell.contains_real = true
                 @set! cell.n_particles = np
-                cl.cells[cell_index] = cell
-                if np > length(cl.cells[cell_index].particles)
-                    resize!(cl.cells[cell_index].particles, np)
+                cl.build_cells[cell_index] = cell
+                if np > length(cl.build_cells[cell_index].particles)
+                    resize!(cl.build_cells[cell_index].particles, np)
                 end
             end
             # All cells in a non-periodic system contain only real particles
@@ -203,21 +221,25 @@ function UpdateCellList!(
             end
         end
 
-        # Phase 4: parallel scatter — write ranges are disjoint by construction
-        @sync for ibatch in eachindex(aux.idxs)
+        # Phase 4: parallel scatter — write ranges are disjoint by construction.
+        # Each worker replays the same chunks it claimed in Phase 1, so its
+        # `offsets` (derived from its own Phase 1 histogram) stay valid.
+        @sync for ibatch in eachindex(aux.thread_counts)
             @spawn begin
-                prange = aux.idxs[ibatch]
-                isempty(prange) && return
                 offsets = aux.thread_counts[ibatch]
-                for ip in prange
-                    xp = x[ip]
-                    p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
-                    ci = real_particle_border_case(particle_cell(p, box), box)
-                    li = cell_linear_index(box.nc, ci)
-                    target_cell_idx = cl.cell_indices[li]
-                    offset = offsets[li]
-                    offsets[li] += 1
-                    cl.cells[target_cell_idx].particles[offset+1] = ParticleWithIndex(ip, true, p)
+                for ic in claimed[ibatch]
+                    prange = chunks[ic]
+                    isempty(prange) && continue
+                    for ip in prange
+                        xp = x[ip]
+                        p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
+                        ci = real_particle_border_case(particle_cell(p, box), box)
+                        li = cell_linear_index(box.nc, ci)
+                        target_cell_idx = cl.cell_indices[li]
+                        offset = offsets[li]
+                        offsets[li] += 1
+                        cl.build_cells[target_cell_idx].particles[offset+1] = ParticleWithIndex(ip, true, p)
+                    end
                 end
             end
         end
@@ -225,6 +247,7 @@ function UpdateCellList!(
     end # if/else parallel
 
     _update_projected_particles!(cl)
+    _compact_particles!(cl)
     x.updated[] = false
     return cl
 end
@@ -244,6 +267,7 @@ function UpdateCellList!(
         reset!(cl, box, length(x))
         add_particles!(x, box, 0, cl)
         _update_projected_particles!(cl)
+        _compact_particles!(cl)
         x.updated[] = false
     end
     cl = update_number_of_batches!(cl; parallel)
@@ -306,7 +330,7 @@ end
 # Cross interactions between two cells (CellListPair): all pairs, no real/image checks.
 #
 function _current_cell_interactions!(
-    box::Box{NonPeriodicCell}, f::F, cellᵢ::Cell, cellⱼ::Cell, output
+    box::Box{NonPeriodicCell}, f::F, cellᵢ::CompactCell, cellⱼ::CompactCell, output
 ) where {F<:Function}
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles

@@ -41,3 +41,4 @@ test/gromacs/**/*1
 #test/gromacs/**/*log
 #test/gromacs/**/*mdp
 
+_perf_test/*

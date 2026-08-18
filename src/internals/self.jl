@@ -65,11 +65,30 @@ end
 #
 # Parallel version for self-pairwise computations
 #
-function batch(f::F, ibatch, cell_indices, output_threaded, box, cl::CellList, p) where {F}
-    for i in cell_indices
-        cellᵢ = cl.cells[cl.cell_indices_real[i]]
-        output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
-        _next!(p)
+# Work-queue scheduling: the cell range is split into many small `Consecutive`
+# chunks (`_n_workqueue_chunks`, oversubscribing `_nbatches`), and a fixed
+# pool of `_nbatches` worker tasks (one per `output_threaded` accumulator
+# slot, so memory stays exactly what it was before this change) repeatedly
+# claims the next unclaimed chunk from a shared atomic counter, instead of
+# each worker owning one fixed chunk. On a CPU with cores of unequal speed
+# (e.g. performance/efficiency hybrid CPUs — see Finding 2 in
+# PERFORMANCE_NOTES_pairwise_scaling.md), faster workers naturally pull more
+# chunks, so the total wall time tracks aggregate throughput instead of being
+# capped by the slowest worker's fixed, equal-sized share. `Consecutive`
+# chunks (rather than the previously used `RoundRobin`, which interleaves
+# cell indices with a stride equal to the chunk count) keep each chunk's
+# cells contiguous, and therefore nearby in the cell-order-compacted
+# `cl.particles` buffer — see `_compact_particles!`.
+#
+function batch(f::F, ibatch, chunks, next_chunk, output_threaded, box, cl::CellList, p) where {F}
+    while true
+        ic = atomic_add!(next_chunk, 1)
+        ic > length(chunks) && break
+        for i in chunks[ic]
+            cellᵢ = cl.cells[cl.cell_indices_real[i]]
+            output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
+            _next!(p)
+        end
     end
     return
 end
@@ -89,8 +108,11 @@ function _pairwise_parallel!(
     end
     (; n_cells_with_real_particles) = cl
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
-    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
-        @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
+    n_chunks = _n_workqueue_chunks(_nbatches, cl.n_real_particles)
+    chunks = collect(index_chunks(1:n_cells_with_real_particles; n = n_chunks, split = Consecutive()))
+    next_chunk = Atomic{Int}(1)
+    @sync for ibatch in 1:_nbatches
+        @spawn batch($f, $ibatch, $chunks, $next_chunk, $output_threaded, $box, $cl, $p)
     end
     return reduce_output!(output, output_threaded)
 end

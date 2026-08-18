@@ -45,11 +45,19 @@ end
 #
 # Parallel version for cross computations
 #
-function batch(f::F, ibatch, cell_indices, output_threaded, box, cl::CellListPair, p) where {F}
-    for i in cell_indices
-        cellᵢ = cl.ref_list.cells[cl.ref_list.cell_indices_real[i]]
-        output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
-        _next!(p)
+# Work-queue scheduling: see the equivalent `batch`/`_pairwise_parallel!` in
+# `self.jl` for the full rationale (on-demand rebalancing across cores of
+# unequal speed, at no extra memory cost).
+#
+function batch(f::F, ibatch, chunks, next_chunk, output_threaded, box, cl::CellListPair, p) where {F}
+    while true
+        ic = atomic_add!(next_chunk, 1)
+        ic > length(chunks) && break
+        for i in chunks[ic]
+            cellᵢ = cl.ref_list.cells[cl.ref_list.cell_indices_real[i]]
+            output_threaded[ibatch] = inner_loop!(f, box, cellᵢ, cl, output_threaded[ibatch], ibatch)
+            _next!(p)
+        end
     end
     return
 end
@@ -69,8 +77,11 @@ function _pairwise_parallel!(
     end
     (; n_cells_with_real_particles) = cl.ref_list
     p = show_progress ? Progress(n_cells_with_real_particles, dt = 1) : nothing
-    @sync for (ibatch, cell_indices) in enumerate(index_chunks(1:n_cells_with_real_particles; n = _nbatches, split = RoundRobin()))
-        @spawn batch($f, $ibatch, $cell_indices, $output_threaded, $box, $cl, $p)
+    n_chunks = _n_workqueue_chunks(_nbatches, cl.ref_list.n_real_particles)
+    chunks = collect(index_chunks(1:n_cells_with_real_particles; n = n_chunks, split = Consecutive()))
+    next_chunk = Atomic{Int}(1)
+    @sync for ibatch in 1:_nbatches
+        @spawn batch($f, $ibatch, $chunks, $next_chunk, $output_threaded, $box, $cl, $p)
     end
     return reduce_output!(output, output_threaded)
 end
@@ -108,7 +119,7 @@ end
 # Providing two cells for this function indicates that this is a cross-interaction, thus we need
 # to loop over all pairs of particles.
 #
-function _current_cell_interactions!(box::Box, f::F, cellᵢ::Cell, cellⱼ::Cell, output) where {F <: Function}
+function _current_cell_interactions!(box::Box, f::F, cellᵢ::CompactCell, cellⱼ::CompactCell, output) where {F <: Function}
     (; cutoff_sqr, inv_rotation) = box
     for i in 1:cellᵢ.n_particles
         @inbounds pᵢ = cellᵢ.particles[i]

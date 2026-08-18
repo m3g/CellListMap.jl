@@ -64,6 +64,19 @@ about if this cell is in the border of the box (such that its
 neighboring cells need to be wrapped) 
 
 =#
+#
+# Construction-time cell representation. Kept deliberately small (same shape
+# as the pre-flat-buffer `Cell`): cell list builders (the serial incremental
+# `add_particle_to_celllist!`, and the parallel build's Phase 1-3, including
+# the `AuxThreaded` scratch lists) do a full struct copy-modify-writeback
+# (`cell = cl.build_cells[i]; @set! cell.field = ...; cl.build_cells[i] =
+# cell`) on every single particle insertion, so this struct's size directly
+# multiplies construction cost. An earlier version of this struct also
+# carried the `offset`/view fields now on `CompactCell` below; that grew it
+# from 80 to 128 bytes and measurably slowed construction (~45% on Phase 1
+# alone) since those fields are dead weight until `_compact_particles!` runs
+# once at the very end — see PERFORMANCE_NOTES_pairwise_scaling.md.
+#
 Base.@kwdef struct Cell{N,T}
     linear_index::Int = 0
     cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
@@ -79,6 +92,34 @@ function Cell{N,T}(cartesian_index::CartesianIndex, box::Box; sizehint::Int=0) w
         center=cell_center(cartesian_index, box),
         particles=Vector{ParticleWithIndex{N,T}}(undef, sizehint)
     )
+end
+
+#
+# View type of the flat, compacted `CellList.particles` buffer that each
+# `CompactCell.particles` field points into after `_compact_particles!` runs.
+# Keeping this as a type alias ensures `CompactCell{N,T}` stays a concrete,
+# allocated-inline struct (verified with `Base.allocatedinline`).
+#
+const CellParticlesView{N,T} = SubArray{ParticleWithIndex{N,T},1,Vector{ParticleWithIndex{N,T}},Tuple{UnitRange{Int}},true}
+
+#
+# Read-facing cell representation, produced only by `_compact_particles!` and
+# stored in `CellList.cells` — this is what `pairwise!` traversal
+# (self.jl/cross.jl/vicinal_cells.jl/auxiliary_functions.jl) reads. Kept
+# separate from the small, mutation-heavy `Cell` above so that construction
+# never has to copy the (larger, due to the `particles` view) struct.
+#
+Base.@kwdef struct CompactCell{N,T}
+    linear_index::Int = 0
+    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
+    center::SVector{N,T} = zeros(SVector{N,T})
+    contains_real::Bool = false
+    n_particles::Int = 0
+    # Start index (0-based) of this cell's particles within the owning
+    # `CellList.particles` flat buffer.
+    offset::Int = 0
+    # View into the owning `CellList.particles` flat buffer.
+    particles::CellParticlesView{N,T} = view(Vector{ParticleWithIndex{N,T}}(undef, 0), 1:0)
 end
 
 #=
@@ -127,8 +168,18 @@ Base.@kwdef mutable struct CellList{N,T}
     cell_indices::Vector{Int} = zeros(Int, number_of_cells)
     " Auxiliary array that contains the indexes in the cells with real particles. "
     cell_indices_real::Vector{Int} = zeros(Int, 0)
-    " Vector containing cell lists of cells with particles. "
-    cells::Vector{Cell{N,T}} = Cell{N,T}[]
+    " Construction-time cells: written to incrementally by cell list builders (serial and parallel). "
+    build_cells::Vector{Cell{N,T}} = Cell{N,T}[]
+    " Read-facing, compacted cells (spatial order, flat particle buffer view) produced by `_compact_particles!`; this is what `pairwise!` traversal reads. "
+    cells::Vector{CompactCell{N,T}} = CompactCell{N,T}[]
+    " Flat, contiguous buffer holding all particles (real + images) of all cells, laid out in linear cell index order; see `_compact_particles!`. "
+    particles::Vector{ParticleWithIndex{N,T}} = ParticleWithIndex{N,T}[]
+    " Scratch buffer used by `_compact_particles!` to reorder `cells` into linear cell index order (spatial order). "
+    cells_buffer::Vector{CompactCell{N,T}} = CompactCell{N,T}[]
+    " Scratch buffer used by `_compact_particles!`: `build_cells` index of the cell now at position i in the compacted order. "
+    compact_source::Vector{Int} = Int[]
+    " Scratch buffer used by `_compact_particles!`: write offset (0-based) into `particles` for the cell now at position i in the compacted order. "
+    compact_offset::Vector{Int} = Int[]
     " Number of batches for the parallel calculations. "
     nbatches::NumberOfBatches = zero(NumberOfBatches)
     " Auxiliary array to store projected particles. "
@@ -538,13 +589,13 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
         # Only zero the entries that were actually set in the previous iteration,
         # rather than broadcasting over the entire cell_indices array.
         for i in 1:cl.n_cells_with_particles
-            cl.cell_indices[cl.cells[i].linear_index] = 0
+            cl.cell_indices[cl.build_cells[i].linear_index] = 0
         end
     end
     # Only reset cells that were populated — cells beyond n_cells_with_particles
     # retain stale data but are never accessed until re-initialised.
     for i in 1:cl.n_cells_with_particles
-        cl.cells[i] = Cell{N,T}(particles=cl.cells[i].particles)
+        cl.build_cells[i] = Cell{N,T}(particles=cl.build_cells[i].particles)
     end
     # cell_indices_real is written sequentially from position 1 as cells are
     # discovered, so stale entries beyond n_cells_with_real_particles are
@@ -555,6 +606,157 @@ function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
     cl.n_cells_with_real_particles = 0
     cl.n_cells_with_particles = 0
     return cl
+end
+
+#=
+    _compact_particles!(cl::CellList{N,T}) where {N,T}
+
+# Extended help
+
+Copies each cell's particles (currently in `cell.particles`, built
+incrementally in `cl.build_cells` and scattered across independent per-cell
+allocations) into a single flat, contiguous `cl.particles` buffer, and builds
+the read-facing `cl.cells` (as `CompactCell`s), visiting cells in increasing
+*linear cell index* order (not construction/discovery order — which, for the
+serial incremental build path, is effectively particle-arrival order) so
+that both the particle payload and the `cells` array itself are laid out
+spatially. `cell_indices`/`cell_indices_real` (which index into `cells`) are
+remapped accordingly. Called once at the end of every cell list build,
+regardless of which build path (serial incremental, or parallel
+histogram+scatter) produced the (already correct) per-cell data in
+`build_cells`.
+
+This exists to avoid the traversal cost of chasing pointers into many
+small, independently-allocated per-cell arrays scattered across the heap, and
+of visiting the (otherwise contiguous) `cells` array in a scattered order —
+see `PERFORMANCE_NOTES_pairwise_scaling.md` for the motivating measurements.
+`Cell` (used by `build_cells`) is kept small and separate from `CompactCell`
+(used by `cells`) so that the copy-heavy construction code, which rewrites a
+full cell struct on every particle insertion, never has to move the extra
+`offset`/view bytes that only this function needs to populate.
+
+Runs in two passes, mirroring the periodic build's own Phase 3 (offsets
+computed serially, then scatter done in parallel):
+
+  - Pass 1 (serial): an exclusive prefix sum over `build_cells`, in
+    increasing linear cell index order, computing each active cell's write
+    offset into the flat `particles` buffer and its compacted position
+    (`compact_source`/`compact_offset`). This only touches small per-cell
+    metadata (`n_particles`, `contains_real`) — not particle data — so it is
+    cheap even though inherently sequential (each offset depends on the
+    running total of all previous cells). `cell_indices`/`cell_indices_real`
+    are remapped to the new positions here too.
+  - Pass 2 (parallel): given the offsets from Pass 1, every cell's particle
+    data copy and `CompactCell` construction touches a disjoint destination
+    range, so cells can be processed independently, work-queue scheduled
+    like the rest of the parallel build (see `_n_workqueue_chunks`). This is
+    the expensive part — the actual particle data movement — and previously
+    ran entirely on one thread regardless of `nbatches`.
+
+=#
+function _compact_particles!(cl::CellList{N,T}) where {N,T}
+    resize!(cl.particles, cl.n_particles)
+    resize!(cl.cells_buffer, cl.n_cells_with_particles)
+    resize!(cl.compact_source, cl.n_cells_with_particles)
+    resize!(cl.compact_offset, cl.n_cells_with_particles)
+
+    # Pass 1: serial prefix sum over per-cell metadata only.
+    write_pos = 0
+    new_pos = 0
+    n_real_seen = 0
+    for li in 1:cl.number_of_cells
+        cell_index = cl.cell_indices[li]
+        cell_index == 0 && continue
+        cell = cl.build_cells[cell_index]
+        new_pos += 1
+        cl.compact_source[new_pos] = cell_index
+        cl.compact_offset[new_pos] = write_pos
+        cl.cell_indices[li] = new_pos
+        if cell.contains_real
+            n_real_seen += 1
+            cl.cell_indices_real[n_real_seen] = new_pos
+        end
+        write_pos += cell.n_particles
+    end
+
+    # Pass 2: parallel particle-data copy and CompactCell construction,
+    # work-queue scheduled over the compacted cell range (`n_real_particles`
+    # as the work-size proxy for the min-chunk-size cap, same rationale as
+    # Phase 1's build: cell count alone can badly understate real work for a
+    # dense system).
+    _nbatches = nbatches(cl, :build)
+    n_cells_with_particles = cl.n_cells_with_particles
+    if _nbatches <= 1 || n_cells_with_particles == 0
+        _compact_particles_range!(cl, 1:n_cells_with_particles)
+    else
+        n_chunks = _n_workqueue_chunks(_nbatches, cl.n_real_particles)
+        chunks = collect(index_chunks(1:n_cells_with_particles; n = n_chunks, split = Consecutive()))
+        next_chunk = Atomic{Int}(1)
+        @sync for _ in 1:_nbatches
+            @spawn begin
+                while true
+                    ic = atomic_add!(next_chunk, 1)
+                    ic > length(chunks) && break
+                    _compact_particles_range!(cl, chunks[ic])
+                end
+            end
+        end
+    end
+
+    # `cells_buffer` now holds the reordered (spatial-order) cells; swap it in as
+    # `cells` (cheap: just exchanges the two Vector references). The old `cells`
+    # array becomes the scratch buffer for the next call.
+    cl.cells, cl.cells_buffer = cl.cells_buffer, cl.cells
+    return cl
+end
+
+# Pass 2 worker body: copies particle data and writes `CompactCell`s for
+# `new_pos in positions`. Each `new_pos`'s destination range in `cl.particles`
+# and `cl.cells_buffer` is disjoint from every other's (fixed by Pass 1), so
+# this is safe to call concurrently for disjoint `positions` ranges.
+function _compact_particles_range!(cl::CellList{N,T}, positions) where {N,T}
+    for new_pos in positions
+        cell_index = cl.compact_source[new_pos]
+        cell = cl.build_cells[cell_index]
+        np = cell.n_particles
+        offset = cl.compact_offset[new_pos]
+        if np > 0
+            copyto!(cl.particles, offset + 1, cell.particles, 1, np)
+        end
+        cl.cells_buffer[new_pos] = CompactCell{N,T}(
+            linear_index=cell.linear_index,
+            cartesian_index=cell.cartesian_index,
+            center=cell.center,
+            contains_real=cell.contains_real,
+            n_particles=np,
+            offset=offset,
+            particles=view(cl.particles, offset+1:offset+np),
+        )
+    end
+    return nothing
+end
+
+# Phase 2b, Pass A worker body (periodic parallel build): for each cell index
+# `i in positions`, resize its `build_particles`/`particles` scratch buffer
+# if needed and update its `n_particles`/`contains_real` fields from `aux`.
+# Independent across cells (each `i` is only ever touched by one worker), so
+# safe to call concurrently for disjoint `positions` ranges. Does not touch
+# `cell_indices_real` — that's a prefix sum over the `contains_real` flags
+# this sets, done afterward in a cheap serial pass once every cell has been
+# updated.
+function _finalize_cells_range!(cl::CellList{N,T}, aux::AuxThreaded{N,T}, positions) where {N,T}
+    for i in positions
+        li = cl.build_cells[i].linear_index
+        np = aux.total_np[li]
+        if np > length(cl.build_cells[i].particles)
+            resize!(cl.build_cells[i].particles, np)
+        end
+        cell = cl.build_cells[i]
+        @set! cell.n_particles = np
+        @set! cell.contains_real = (aux.contains_real_flags[li] == 2)  # 2 = has real particles
+        cl.build_cells[i] = cell
+    end
+    return nothing
 end
 
 #=
@@ -758,19 +960,40 @@ function UpdateCellList!(
     else
         # Reset cell list
         reset!(cl, box, 0)
-        # Update the aux.idxs ranges, for if the number of particles changed
-        set_idxs!(aux.idxs, length(x), _nbatches)
 
-        # Phase 1: build per-thread cell lists in parallel (no locking)
-        @sync for ibatch in eachindex(aux.idxs, aux.lists)
+        # Phase 1: build per-thread cell lists in parallel (no locking). Work-queue
+        # scheduled: the particle range is split into many small `Consecutive`
+        # chunks, and a fixed pool of `_nbatches` worker tasks (one per scratch
+        # list in `aux.lists`, so memory stays what it was) pulls chunks on demand
+        # from a shared atomic counter, instead of each worker owning one fixed,
+        # equal-sized range. This is Phase 1's analogue of the `batch`/
+        # `_pairwise_parallel!` work-queue in self.jl/cross.jl — it exists because
+        # Phase 1 (not the map/traversal step) is where most wall time goes for
+        # build-dominated workloads (e.g. a fresh `ParticleSystem` per call), so a
+        # straggling worker here (e.g. one scheduled on a slow core, on
+        # performance/efficiency hybrid CPUs) isn't rebalanced by the map-step fix
+        # alone — see PERFORMANCE_NOTES_pairwise_scaling.md. Phases 2/3 below
+        # already iterate per-worker over however many cells each worker actually
+        # ended up with, so they automatically inherit this balancing without
+        # further changes.
+        n_chunks = _n_workqueue_chunks(_nbatches, length(x))
+        chunks = collect(index_chunks(1:length(x); n = n_chunks, split = Consecutive()))
+        next_chunk = Atomic{Int}(1)
+        avg_share = length(x) ÷ _nbatches
+        @sync for ibatch in eachindex(aux.lists)
             @spawn begin
-                prange = aux.idxs[ibatch]
-                # Reset before the early-exit check so stale data from a previous
-                # call (when this batch had particles) cannot leak into Phase 2.
-                aux.lists[ibatch] = reset!(aux.lists[ibatch], box, length(prange))
-                isempty(prange) && return
-                xt = @view(x[prange])
-                aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
+                # Reset before pulling any chunk so stale data from a previous
+                # call (when this batch had particles) cannot leak into Phase 2,
+                # even if this worker ends up pulling zero chunks.
+                aux.lists[ibatch] = reset!(aux.lists[ibatch], box, avg_share)
+                while true
+                    ic = atomic_add!(next_chunk, 1)
+                    ic > length(chunks) && break
+                    prange = chunks[ic]
+                    isempty(prange) && continue
+                    xt = @view(x[prange])
+                    aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
+                end
             end
         end
 
@@ -792,7 +1015,7 @@ function UpdateCellList!(
                 list = aux.lists[ibatch]
                 resize!(aux.thread_cell_offsets[ibatch], list.n_cells_with_particles)
                 for icell in 1:list.n_cells_with_particles
-                    aux_cell = list.cells[icell]
+                    aux_cell = list.build_cells[icell]
                     li = aux_cell.linear_index
                     # Non-atomic write to per-batch offset storage
                     aux.thread_cell_offsets[ibatch][icell] = aux_cell.n_particles
@@ -833,9 +1056,9 @@ function UpdateCellList!(
             cell_index = cl.n_cells_with_particles
             cartesian_idx = cell_cartesian_indices(nc, li)
             center = cell_center(cartesian_idx, box)
-            if cell_index > length(cl.cells)
+            if cell_index > length(cl.build_cells)
                 push!(
-                    cl.cells, Cell{N,T}(
+                    cl.build_cells, Cell{N,T}(
                         linear_index=li,
                         cartesian_index=cartesian_idx,
                         center=center,
@@ -845,28 +1068,44 @@ function UpdateCellList!(
                     )
                 )
             else
-                cell = cl.cells[cell_index]
+                cell = cl.build_cells[cell_index]
                 @set! cell.linear_index = li
                 @set! cell.cartesian_index = cartesian_idx
                 @set! cell.center = center
                 @set! cell.contains_real = false
                 @set! cell.n_particles = 0
-                cl.cells[cell_index] = cell
+                cl.build_cells[cell_index] = cell
             end
         end
 
-        # Phase 2b: Finalise cells and pre-size particle vectors - O(n_cells_with_particles)
-        for i in 1:cl.n_cells_with_particles
-            li = cl.cells[i].linear_index
-            np = aux.total_np[li]
-            if np > length(cl.cells[i].particles)
-                resize!(cl.cells[i].particles, np)
+        # Phase 2b: Finalise cells and pre-size particle vectors. Split into a
+        # parallel per-cell update pass (Pass A: field updates and resizing,
+        # independent across cells, work-queue scheduled like
+        # `_compact_particles!`) and a cheap serial prefix sum (Pass B: rank
+        # among cells that contain real particles, to fill
+        # `cell_indices_real`) — same two-pass structure as
+        # `_compact_particles!`, for the same reason: Pass A's per-cell work
+        # was previously running entirely on one thread regardless of
+        # `nbatches`.
+        if _nbatches <= 1 || cl.n_cells_with_particles == 0
+            _finalize_cells_range!(cl, aux, 1:cl.n_cells_with_particles)
+        else
+            n_chunks_2b = _n_workqueue_chunks(_nbatches, cl.n_real_particles)
+            chunks_2b = collect(index_chunks(1:cl.n_cells_with_particles; n = n_chunks_2b, split = Consecutive()))
+            next_chunk_2b = Atomic{Int}(1)
+            @sync for _ in 1:_nbatches
+                @spawn begin
+                    while true
+                        ic = atomic_add!(next_chunk_2b, 1)
+                        ic > length(chunks_2b) && break
+                        _finalize_cells_range!(cl, aux, chunks_2b[ic])
+                    end
+                end
             end
-            cell = cl.cells[i]
-            @set! cell.n_particles = np
-            @set! cell.contains_real = (aux.contains_real_flags[li] == 2)  # 2 = has real particles
-            cl.cells[i] = cell
-            if cell.contains_real
+        end
+        # Pass B (serial, cheap: only reads the `contains_real` flag Pass A just set).
+        for i in 1:cl.n_cells_with_particles
+            if cl.build_cells[i].contains_real
                 cl.n_cells_with_real_particles += 1
                 if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
                     push!(cl.cell_indices_real, i)
@@ -876,18 +1115,31 @@ function UpdateCellList!(
             end
         end
 
-        # Phase 3: Compute offsets serially, then scatter in parallel.
-        # Serial offset computation: O(n_cell_batch_pairs) simple integer ops.
-        # thread_cell_offsets[ibatch][icell] = offset within the cell for this batch
+        # Phase 3: Compute offsets in parallel, then scatter in parallel.
+        # Offset computation uses the same atomic-fetch-and-add technique as
+        # Phase 2's count accumulation (each (ibatch,icell) pair contributing
+        # to a shared cell `li` atomically claims an exclusive sub-range of
+        # that cell's particle slots) — this was previously a serial
+        # O(n_cell_batch_pairs) loop over all batches regardless of
+        # `nbatches`.
         fill!(aux.total_np, 0)  # Reuse as running offset counter
-        for ibatch in eachindex(aux.lists)
-            list = aux.lists[ibatch]
-            for icell in 1:list.n_cells_with_particles
-                aux_cell = list.cells[icell]
-                li = aux_cell.linear_index
-                # Store the offset for this batch-cell pair
-                aux.thread_cell_offsets[ibatch][icell] = aux.total_np[li]
-                aux.total_np[li] += aux_cell.n_particles
+        @sync for ibatch in eachindex(aux.lists)
+            @spawn begin
+                list = aux.lists[ibatch]
+                offsets = aux.thread_cell_offsets[ibatch]
+                for icell in 1:list.n_cells_with_particles
+                    aux_cell = list.build_cells[icell]
+                    li = aux_cell.linear_index
+                    np = aux_cell.n_particles
+                    ptr = pointer(aux.total_np) + (li - 1) * sizeof(Int)
+                    local old_val
+                    while true
+                        old_val = unsafe_load(ptr)
+                        _, success = Core.Intrinsics.atomic_pointerreplace(ptr, old_val, old_val + np, :sequentially_consistent, :sequentially_consistent)
+                        success && break
+                    end
+                    offsets[icell] = old_val
+                end
             end
         end
 
@@ -896,10 +1148,10 @@ function UpdateCellList!(
             @spawn begin
                 list = aux.lists[ibatch]
                 for icell in 1:list.n_cells_with_particles
-                    aux_cell = list.cells[icell]
+                    aux_cell = list.build_cells[icell]
                     li = aux_cell.linear_index
                     target_cell_idx = cl.cell_indices[li]
-                    particles_dst = cl.cells[target_cell_idx].particles
+                    particles_dst = cl.build_cells[target_cell_idx].particles
                     offset = aux.thread_cell_offsets[ibatch][icell]
                     for ip in 1:aux_cell.n_particles
                         particles_dst[offset+ip] = aux_cell.particles[ip]
@@ -912,13 +1164,17 @@ function UpdateCellList!(
     # allocate, or update the auxiliary projected_particles arrays
     maxnp = 0
     for i in 1:cl.n_cells_with_particles
-        maxnp = max(maxnp, cl.cells[i].n_particles)
+        maxnp = max(maxnp, cl.build_cells[i].n_particles)
     end
     for i in eachindex(cl.projected_particles)
         if maxnp > length(cl.projected_particles[i])
             resize!(cl.projected_particles[i], maxnp)
         end
     end
+
+    # Compact all cells' particles into one contiguous, cell-order buffer,
+    # for cache-friendly traversal (see `_compact_particles!`).
+    _compact_particles!(cl)
 
     # set updated to false, to indicate that the cell list was constructed
     # for these coordinates.
@@ -1007,22 +1263,22 @@ function add_particle_to_celllist!(
         cl.n_cells_with_particles += 1
         cell_index = cl.n_cells_with_particles
         cl.cell_indices[linear_index] = cell_index
-        if cell_index > length(cl.cells)
+        if cell_index > length(cl.build_cells)
             particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
-            push!(cl.cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
+            push!(cl.build_cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
         else
-            cell = cl.cells[cell_index]
+            cell = cl.build_cells[cell_index]
             @set! cell.linear_index = linear_index
             @set! cell.cartesian_index = cartesian_index
             @set! cell.center = cell_center(cell.cartesian_index, box)
             @set! cell.contains_real = false
             @set! cell.n_particles = 0
-            cl.cells[cell_index] = cell
+            cl.build_cells[cell_index] = cell
         end
     end
 
     # Increase particle counter for this cell
-    cell = cl.cells[cell_index]
+    cell = cl.build_cells[cell_index]
     @set! cell.n_particles += 1
 
     #
@@ -1051,7 +1307,7 @@ function add_particle_to_celllist!(
     #
     # Update (imutable) cell in list
     #
-    cl.cells[cell_index] = cell
+    cl.build_cells[cell_index] = cell
 
     return cl
 end

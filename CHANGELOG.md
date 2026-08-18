@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.4-DEV
 --------------
+- ![ENHANCEMENT][badge-enhancement] Improve scaling of cell list construction phases.
 
 Version 0.10.3
 --------------
