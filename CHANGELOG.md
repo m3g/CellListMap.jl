@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.5-DEV
 --------------
+- ![FEATURE][badge-feature] Add `rebuild` keyword argument to `update!` to rebuild the cell lists immediately. 
 
 Version 0.10.4
 --------------

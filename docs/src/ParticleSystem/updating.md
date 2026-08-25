@@ -13,6 +13,7 @@ update!(system;
     cutoff     = ...,   # new cutoff distance
     unitcell   = ...,   # new unit cell
     parallel   = ...,   # true or false
+    rebuild    = ...,   # true or false (default false)
 )
 ```
 
@@ -117,3 +118,23 @@ update!(system; parallel=false) # disable multi-threading
 
 update!(system; parallel=true) # enable multi-threading
 ```
+
+## Triggering an immediate cell list rebuild
+
+By default, `update!` only records the new properties (coordinates, cutoff, unitcell);
+the cell lists themselves are rebuilt lazily, the next time `pairwise!` or `neighborlist!`
+is called. This avoids redundant rebuilds when several properties are updated across
+multiple `update!` calls before the next pairwise computation.
+
+If the cell lists need to be up to date *immediately* — for instance to inspect them,
+or to time the rebuild separately from a pairwise computation — pass `rebuild=true`.
+This also picks up any pending changes made directly through the positions array
+interface (e.g. `setindex!`), not just the kwargs passed in the same call:
+
+```julia-repl
+julia> update!(system; cutoff=0.2, rebuild=true) # cutoff is updated and cell lists are rebuilt now
+```
+
+`update!(system)` (no keyword arguments) remains a documented no-op; it does not
+change any property, and therefore does not trigger a rebuild on its own — `rebuild=true`
+must be passed explicitly.

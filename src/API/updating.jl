@@ -122,6 +122,7 @@ end
         cutoff = nothing,
         unitcell = nothing,
         parallel = nothing,
+        rebuild = false,
     )
 
 Update one or more properties of `sys` in a single call. Only the keyword
@@ -144,6 +145,11 @@ arguments that are provided (i.e. not `nothing`) are updated.
 
 - `parallel`: whether to use multi-threading (`true` or `false`).
 
+- `rebuild`: if `true`, the cell lists are rebuilt immediately, reflecting any
+  pending changes (from this call or from prior direct mutations of
+  `sys.xpositions`/`sys.ypositions`). By default (`false`), the rebuild is
+  deferred to the next call of `pairwise!` or `neighborlist!`, as usual.
+
 # Example
 
 ```jldoctest ;filter = r"( +Parallelization.*)" => ""
@@ -160,6 +166,8 @@ julia> new_x = rand(SVector{3,Float64}, 100);
 
 julia> update!(sys; xpositions=new_x, cutoff=0.2, unitcell=[2,2,2], parallel=false);
 
+julia> update!(sys; rebuild=true); # force the cell lists to be rebuilt now
+
 ```
 """
 function update!(
@@ -170,6 +178,7 @@ function update!(
     cutoff = nothing,
     unitcell = nothing,
     parallel = nothing,
+    rebuild = false,
 )
     if !isnothing(positions) && !isnothing(xpositions)
         throw(ArgumentError("Either `positions` OR `xpositions` must be provided, not both."))
@@ -183,6 +192,7 @@ function update!(
     !isnothing(cutoff) && _update_cutoff!(sys, cutoff)
     !isnothing(unitcell) && _update_unitcell!(sys, unitcell)
     !isnothing(parallel) && setfield!(sys, :parallel, parallel)
+    rebuild && UpdateParticleSystem!(sys)
     return sys
 end
 

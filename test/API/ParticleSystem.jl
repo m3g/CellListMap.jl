@@ -225,6 +225,62 @@ end
     @test a == Allocs(0)
 end
 
+@testitem "update! rebuild" setup = [AllocTest] begin
+    using BenchmarkTools
+    using StaticArrays
+    using CellListMap
+    x = rand(SVector{3, Float64}, 1000)
+
+    # update!(sys) with no kwargs is a no-op: it does not touch the dirty flag
+    sys = ParticleSystem(xpositions = x, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
+    @test sys.xpositions.updated[] == false
+    update!(sys)
+    @test sys.xpositions.updated[] == false
+
+    # a property update marks the cell lists as outdated, but does not rebuild them
+    new_x = rand(SVector{3, Float64}, 1000)
+    update!(sys; xpositions = new_x)
+    @test sys.xpositions.updated[] == true
+
+    # rebuild=true forces the rebuild immediately
+    update!(sys; rebuild = true)
+    @test sys.xpositions.updated[] == false
+
+    # rebuild=true also picks up pending changes from a previous call, or from
+    # direct mutation through the positions array interface
+    sys.xpositions[1] = SVector(0.0, 0.0, 0.0)
+    @test sys.xpositions.updated[] == true
+    update!(sys; rebuild = true)
+    @test sys.xpositions.updated[] == false
+
+    # rebuild can be combined with other kwargs in the same call
+    update!(sys; cutoff = 0.2, rebuild = true)
+    @test sys.cutoff == 0.2
+    @test sys.xpositions.updated[] == false
+
+    # rebuild=true is non-allocating when nothing is actually pending
+    a = @ballocated update!($sys; rebuild = true) evals = 1 samples = 1
+    @test a == Allocs(0)
+
+    # two-set systems: rebuild clears both x and y dirty flags
+    y = rand(SVector{3, Float64}, 1000)
+    sys2 = ParticleSystem(xpositions = x, ypositions = y, unitcell = [1, 1, 1], cutoff = 0.1, output = 0.0)
+    update!(sys2; ypositions = rand(SVector{3, Float64}, 1000))
+    @test sys2.xpositions.updated[] == false
+    @test sys2.ypositions.updated[] == true
+    update!(sys2; rebuild = true)
+    @test sys2.xpositions.updated[] == false
+    @test sys2.ypositions.updated[] == false
+
+    # rebuild=true actually rebuilds the cell lists: pairwise! sees the new positions
+    sys3 = ParticleSystem(
+        positions = [SVector(0.0, 0.0, 0.0), SVector(0.05, 0.0, 0.0)],
+        cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0,
+    )
+    update!(sys3; positions = [SVector(0.0, 0.0, 0.0), SVector(0.08, 0.0, 0.0)], rebuild = true)
+    @test CellListMap.pairwise!((pair, out) -> out += pair.d, sys3) ≈ 0.08
+end
+
 @testitem "get_computing_box" begin
     using StaticArrays
     using CellListMap
