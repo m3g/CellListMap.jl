@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.6-DEV
+--------------
+
 Version 0.10.5
 --------------
 - ![FEATURE][badge-feature] Add `rebuild` keyword argument to `update!` to rebuild the cell lists immediately. 
