@@ -37,7 +37,9 @@ Because `output_name` was set to `:energy`, the `system.energy` field accesses t
 ```@example energy
 system.energy
 ```
-If the `output_name` field is not provided, the output value from the `system.output` field.
+If the `output_name` field is not provided, the output value is accessed with the `system.output` field.
+The name can also be given as a `Val`, as in `output_name = Val(:energy)`, which makes the construction
+of the system fully type-stable (see [Type-stable construction](@ref)).
 
 ## The initial value of output
 
