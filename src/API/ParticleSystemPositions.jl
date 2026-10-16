@@ -2,7 +2,7 @@
     ParticleSystemPositions{N,T}
 
 Wrapper around a `Vector{SVector{N,T}}` that carries particle coordinates
-and an `updated::Ref{Bool}` flag. Any mutation through the standard array interface
+and an `updated::Base.RefValue{Bool}` flag. Any mutation through the standard array interface
 (indexing, `push!`, `resize!`, `empty!`, `append!`, in-place broadcast) sets the flag,
 triggering cell-list recomputation on the next `pairwise!` call.
 
@@ -13,7 +13,7 @@ other system properties, use `update!`.
 """
 struct ParticleSystemPositions{N,T,V<:AbstractVector{SVector{N,T}}}
     x::V
-    updated::Ref{Bool}
+    updated::Base.RefValue{Bool}
 end
 
 function ParticleSystemPositions(x::AbstractVector{SVector{N,T}}) where {N,T}

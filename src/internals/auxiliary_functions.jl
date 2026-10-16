@@ -35,6 +35,23 @@ function get_dim(unitcell, x, y=nothing)
     end
     return D
 end
+
+# When the coordinates are vectors of static vectors the dimension is known
+# from their type, so it is returned as a compile-time constant (the unitcell,
+# if given as a dynamic array, is only checked for consistency at runtime).
+function get_dim(unitcell, x::AbstractVector{<:SVector{N}}, y::Union{Nothing,AbstractVector{<:SVector{N}}}=nothing) where {N}
+    if !(N in (2,3))
+        throw(ArgumentError("Dimension must be 2 or 3. Got: x: $N"))
+    end
+    if !isnothing(unitcell) && size(unitcell, 1) != N
+        throw(ArgumentError("""\n
+            Incompatible dimensions between unitcell and/or coordinates. 
+            Got: unitcell: $(size(unitcell, 1)); x: $N
+
+        """))
+    end
+    return N
+end
 _element_length(::Nothing) = 0
 _element_length(::AbstractVector{<:SVector{N}}) where {N} = N
 _element_length(x::AbstractVector{<:AbstractVector}) = isempty(x) ? 0 : length(first(x))

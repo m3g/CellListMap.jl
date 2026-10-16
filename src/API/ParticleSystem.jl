@@ -12,6 +12,10 @@ _to_static_unitcell(::Val, ::Nothing) = nothing
 _to_static_unitcell(::Val{N}, uc::AbstractVector) where {N} = SVector{N,eltype(uc)}(uc)
 _to_static_unitcell(::Val{N}, uc::AbstractMatrix) where {N} = SMatrix{N,N,eltype(uc),N*N}(uc)
 
+# `output_name` may be given as a Symbol or as a Val; the Val form is inferable.
+_output_name(s::Symbol) = s
+_output_name(::Val{S}) where {S} = S
+
 """
     ParticleSystem(
         xpositions::AbstractVector{SVector{N,T}};
@@ -19,7 +23,7 @@ _to_static_unitcell(::Val{N}, uc::AbstractMatrix) where {N} = SMatrix{N,N,eltype
         unitcell::Union{SVector, SMatrix, Nothing} = nothing,
         cutoff::Number,
         output,
-        output_name::Symbol = :output,
+        output_name::Union{Symbol,Val} = Val(:output),
         parallel::Bool = true,
         nbatches::Tuple{Int,Int} = (0, 0),
         lcell = 1,
@@ -39,7 +43,7 @@ for the unit cell. All type parameters are resolved at compile time.
         unitcell::Union{Nothing,AbstractVecOrMat} = nothing,
         cutoff::Number,
         output,
-        output_name::Symbol = :output,
+        output_name::Union{Symbol,Val} = Val(:output),
         parallel::Bool = true,
         nbatches::Tuple{Int,Int} = (0, 0),
         validate_coordinates = _validate_coordinates,
@@ -78,7 +82,10 @@ are farther from each other than the cutoff.
 
 `output_name` can be set to a symbol that best identifies the output variable.
 For instance, if `output_name=:forces`, the forces can be retrieved from the
-structure using the `system.forces` notation.
+structure using the `system.forces` notation. The name can also be given as a
+`Val`, e.g. `output_name=Val(:forces)`, which keeps the constructor fully
+type-stable (inferable without constant propagation), as required, for instance,
+when compiling with `juliac --trim`.
 
 The `parallel` and `nbatches` flags control the parallelization scheme of
 computations.  By default the parallelization is turned on and `nbatches` is set 
@@ -145,7 +152,7 @@ function ParticleSystem(
         unitcell::Union{SVector, SMatrix, Nothing} = nothing,
         cutoff::Number,
         output,
-        output_name::Symbol = :output,
+        output_name::Union{Symbol,Val} = Val(:output),
         parallel::Bool = true,
         nbatches::Tuple{Int,Int} = (0, 0),
         lcell = 1,
@@ -158,8 +165,8 @@ function ParticleSystem(
         _cell_list = CellList(_x, _box; parallel, nbatches, validate_coordinates)
         _aux = _create_aux(_box, _cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
-        output = _reset_all_output!(output, _output_threaded; reset = false)
-        return ParticleSystem1{output_name}(_x, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
+        _reset_all_output!(output, _output_threaded; reset = false)
+        return ParticleSystem1{_output_name(output_name)}(_x, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
     else
         _x = ParticleSystemPositions(xpositions)
         _y = ParticleSystemPositions(ypositions)
@@ -168,8 +175,8 @@ function ParticleSystem(
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)
         _aux = _create_aux(_box, _cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
-        output = _reset_all_output!(output, _output_threaded; reset = false)
-        return ParticleSystem2{output_name}(_x, _y, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
+        _reset_all_output!(output, _output_threaded; reset = false)
+        return ParticleSystem2{_output_name(output_name)}(_x, _y, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
     end
 end
 
@@ -182,7 +189,7 @@ function ParticleSystem(;
         unitcell::Union{AbstractVecOrMat, Nothing} = nothing,
         cutoff::Number,
         output,
-        output_name::Symbol = :default_output_name,
+        output_name::Union{Symbol,Val} = Val(:default_output_name),
         parallel::Bool = true,
         nbatches::Tuple{Int, Int} = (0, 0),
         lcell = 1,

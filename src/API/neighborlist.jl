@@ -101,7 +101,7 @@ function InPlaceNeighborList(;
         cutoff,
         unitcell,
         output=NeighborList{T}(0, Vector{Tuple{Int,Int,T}}[]),
-        output_name=:nb,
+        output_name=Val(:nb),
         parallel,
         nbatches,
         lcell,
