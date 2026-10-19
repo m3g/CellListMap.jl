@@ -126,3 +126,35 @@ system = ParticleSystem(
     output=0.0,
 )
 ```
+
+## Type-stable construction
+
+The `ParticleSystem` constructors are type-stable, meaning that the concrete type of
+the system can be inferred by the compiler from the types of the input arguments, if:
+
+1. The coordinates are provided as vectors of static vectors (`Vector{SVector{N,T}}`),
+   such that the dimension of the system is known from their type. The unit cell can
+   be given as any type (a `Vector`, a `Matrix`, a static array, or `nothing`).
+2. The `output_name` is not set, or is given as a `Val`, as in `output_name = Val(:energy)`,
+   instead of a `Symbol`. The name of the output is a parameter of the type of the
+   system, such that, when given as a `Symbol`, it is only known at runtime.
+
+For example:
+
+```@example typestable
+using CellListMap, StaticArrays
+system = ParticleSystem(
+    xpositions = rand(SVector{3,Float64}, 1000),
+    unitcell = [1.0, 1.0, 1.0],
+    cutoff = 0.1,
+    output = 0.0,
+    output_name = Val(:energy),
+)
+pairwise!((pair, energy) -> energy += 1 / pair.d, system)
+system.energy
+```
+
+This is usually not important for performance, since constructing the system is
+not frequently part of a critical loop, but it is required for compiling code that
+uses CellListMap into standalone executables or libraries with `juliac --trim`,
+which requires all calls to be statically resolvable.

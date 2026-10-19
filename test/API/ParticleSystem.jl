@@ -493,3 +493,27 @@ end
     a = @ballocated update!($sys2; xpositions=$new_x_sv, ypositions=$new_y_sv) evals=1 samples=1
     @test a == Allocs(0)
 end
+
+@testitem "ParticleSystem constructor type stability" begin
+    using CellListMap
+    using StaticArrays
+    # With SVector coordinates and `output_name` given as a `Val` (or not given),
+    # the constructors must be inferable for any unitcell input type, so that
+    # they can be compiled with `juliac --trim`.
+    x = rand(SVector{3,Float64}, 100)
+    y = rand(SVector{3,Float64}, 50)
+    for uc in ([1.0, 1.0, 1.0], [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0], SVector(1.0, 1.0, 1.0), nothing)
+        sys = @inferred ParticleSystem(; xpositions=x, unitcell=uc, cutoff=0.1, output=0.0, output_name=Val(:energy))
+        @test sys.energy == 0.0
+        sys = @inferred ParticleSystem(; xpositions=x, ypositions=y, unitcell=uc, cutoff=0.1, output=0.0, output_name=Val(:energy))
+        @test sys.energy == 0.0
+        sys = @inferred ParticleSystem(; xpositions=x, unitcell=uc, cutoff=0.1, output=0.0)
+        @test sys.output == 0.0
+    end
+    # Symbol names are still accepted
+    sys = ParticleSystem(; xpositions=x, unitcell=[1.0, 1.0, 1.0], cutoff=0.1, output=0.0, output_name=:energy)
+    @test sys.energy == 0.0
+    @test sys isa CellListMap.ParticleSystem1{:energy}
+    # Dimension mismatch between SVector coordinates and unitcell
+    @test_throws ArgumentError ParticleSystem(; xpositions=x, unitcell=[1.0, 1.0], cutoff=0.1, output=0.0)
+end

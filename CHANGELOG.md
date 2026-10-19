@@ -12,6 +12,8 @@ CellListMap.jl Changelog
 
 Version 0.10.6-DEV
 --------------
+- ![FEATURE][badge-feature] `output_name` can be given as a `Val` (e.g. `output_name = Val(:energy)`), in addition to a `Symbol`, making the `ParticleSystem` constructors fully inferable. Passing a `Symbol` works as before.
+- ![ENHANCEMENT][badge-enhancement] `ParticleSystem` construction is type-stable when coordinates are vectors of `SVector`s, for any type of unit cell input (`Vector`, `Matrix`, static arrays, or `nothing`), allowing code using CellListMap to be compiled with `juliac --trim`.
 
 Version 0.10.5
 --------------
