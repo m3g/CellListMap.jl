@@ -93,35 +93,6 @@ julia> wrap_to_first(x,unit_cell_matrix)
     return unit_cell_matrix * p
 end
 
-#=
-    wrap_to_first_with_shift(x::SVector{N}, unit_cell_matrix)
-
-# Extended help
-
-Same as `wrap_to_first`, but also returns the integer lattice translation `s`
-applied by the wrapping, such that `wrap_to_first(x) == x + unit_cell_matrix * s`.
-The translation is stored as `Int16` (see `ParticleWithIndex`), thus an error
-is thrown if the coordinates are more than 30000 cells away from the first
-unit cell (leaving room for the image translations added to it).
-
-=#
-@inline function wrap_to_first_with_shift(x::SVector{N, T}, unit_cell_matrix) where {N, T}
-    x_stripped = x ./ oneunit(T)
-    m_stripped = unit_cell_matrix ./ oneunit(T)
-    f = m_stripped \ x_stripped
-    fl = floor.(f)
-    p = f - fl
-    # Boundary coordinates belong to the lower boundary
-    at_upper = p .== one(eltype(f))
-    p = ifelse.(at_upper, zero(eltype(f)), p)
-    fl = ifelse.(at_upper, fl .+ one(eltype(f)), fl)
-    if any(abs.(fl) .> 30000)
-        throw(ArgumentError("Coordinates are too far from the unit cell (more than 30000 cell vectors away)."))
-    end
-    # range checked above, thus `unsafe_trunc` is safe
-    return unit_cell_matrix * p, SVector{N, Int16}(unsafe_trunc.(Int16, -fl))
-end
-
 """
     wrap_relative_to(x, xref, unit_cell_matrix::AbstractMatrix)
 

@@ -22,6 +22,8 @@ copy_output(nb::NeighborList) = NeighborList(nb.n, copy(nb.list))
 
 # Specialized reduce to avoid O(nbatches²) work from incremental resize! calls:
 # compute total once, resize output.list once, then copyto! from each batch.
+# Large lists are copied in parallel (each batch to its own range of the output).
+const PARALLEL_REDUCE_MIN_PAIRS = 2^16
 function reduce_output!(output::NeighborList, output_threaded::Vector{<:NeighborList})
     ntot = output.n
     for nb in output_threaded
@@ -30,10 +32,20 @@ function reduce_output!(output::NeighborList, output_threaded::Vector{<:Neighbor
     if length(output.list) < ntot
         resize!(output.list, ntot)
     end
-    offset = output.n
-    for nb in output_threaded
-        output.list[offset + 1:offset + nb.n] .= @view(nb.list[1:nb.n])
-        offset += nb.n
+    if nthreads() > 1 && length(output_threaded) > 1 && ntot - output.n >= PARALLEL_REDUCE_MIN_PAIRS
+        tasks = Vector{Task}(undef, length(output_threaded))
+        offset = output.n
+        for (k, nb) in enumerate(output_threaded)
+            tasks[k] = @spawn copyto!($output.list, $offset + 1, $nb.list, 1, $nb.n)
+            offset += nb.n
+        end
+        foreach(wait, tasks)
+    else
+        offset = output.n
+        for nb in output_threaded
+            copyto!(output.list, offset + 1, nb.list, 1, nb.n)
+            offset += nb.n
+        end
     end
     output.n = ntot
     return output
@@ -54,12 +66,18 @@ function _estimated_n_pairs(box::Box{<:UnitCellType, N}, cl::CellListPair) where
     return max(0, round(Int, n_x * n_y * sphere_vol / vol))
 end
 
-# Pre-allocate capacity for neighbor lists based on the estimated pair count.
-# shrink=false ensures this is a no-op when capacity is already sufficient,
-# preventing spurious allocations on repeated calls.
+# Pre-allocate capacity for neighbor lists based on the estimated pair count: the
+# output list holds all pairs, and each threaded list holds the pairs of one batch
+# (with a margin for load imbalance). Resizing to a smaller length keeps the
+# capacity, such that repeated calls do not allocate.
 function _sizehint_neighbor_lists!(sys::AbstractParticleSystem)
     n_pairs = _estimated_n_pairs(box(sys), celllist(sys))
-    resize_output!(sys, n_pairs)
+    resize!(sys.output, n_pairs)
+    _output_threaded = output_threaded(sys)
+    n_per_batch = min(n_pairs, cld(n_pairs, max(1, length(_output_threaded))) * 5 ÷ 4)
+    for nb in _output_threaded
+        resize!(nb, max(length(nb.list), n_per_batch))
+    end
     return nothing
 end
 

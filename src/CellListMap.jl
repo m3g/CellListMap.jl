@@ -3,7 +3,7 @@ module CellListMap
 using TestItems: @testitem, @testmodule
 using Compat: @compat
 using ProgressMeter: Progress, next!
-using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector
+using StaticArrays: SVector, SMatrix, @SVector, @SMatrix, MVector, MMatrix, FieldVector, setindex
 using Setfield: @set!
 using LinearAlgebra: cross, diagm, I, dot, norm
 using Base.Threads: nthreads, @spawn, Atomic, atomic_add!
@@ -38,10 +38,7 @@ include("./internals/Box.jl")
 include("./internals/CellLists.jl")
 include("./internals/CellOperations.jl")
 include("./internals/auxiliary_functions.jl")
-include("./internals/vicinal_cells.jl")
-include("./internals/self.jl")
-include("./internals/cross.jl")
-include("./internals/NonPeriodicCells.jl")
+include("./internals/pairs.jl")
 include("./internals/ParticleSystem.jl")
 include("./API/ParticleSystem.jl")
 include("./API/parallel_custom.jl")

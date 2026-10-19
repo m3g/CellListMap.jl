@@ -212,22 +212,45 @@ The full example can be run with `Examples.neighborlist()`, available in the fil
 
 ## Periodic boundary conditions
 
+- [How the cell lists are built](@ref)
 - [Orthorhombic periodic boundary conditions](@ref)
 - [Triclinic periodic boundary conditions](@ref)
 - [Without periodic boundary conditions](@ref)
 
+### How the cell lists are built
+
+The unit cell is divided into a grid of computing cells in *fractional* coordinates: along each
+lattice vector, the cell is divided into `lcell * h / cutoff` slices (rounded down, and at least one),
+where `h` is the distance between the faces of the unit cell associated with that lattice vector.
+Each computing cell is, thus, a small parallelepiped similar to the unit cell, and the grid
+is compatible with the periodicity of the system for any (orthorhombic or triclinic) unit cell.
+
+Each particle is stored only once in the cell lists, with its coordinates wrapped into the unit
+cell, and the lattice translation (shift) applied by the wrapping. The particles are sorted by
+cell, such that the particles of each cell are contiguous in memory. Periodic images of the particles
+are not replicated: in the pairwise computation, the neighboring cells of each cell are visited through
+a list of cell offsets, and the index of a neighboring cell that falls outside of the grid is wrapped. The
+number of unit cells by which it was wrapped gives the lattice translation that brings the particles of
+that cell close to the particles of the current cell (this is the origin of the `shift` field of the 
+`NeighborPair` object). The same mechanism finds multiple images of the same particle when the unit cell
+is smaller than the cutoff (see [Unit cell size and cutoff](@ref)).
+
+For computations within a single set of particles, only one of each pair of opposite offsets is visited,
+such that every pair of particles is computed only once. Offsets for which the minimum distance between
+the cells is greater than the cutoff are discarded.
+
 ### Orthorhombic periodic boundary conditions
 
-Orthorhombic periodic boundary conditions allow some special methods that are faster than those for general cells. To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the cutoff. For example:
+To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the cutoff. For example:
 
 ```julia-repl
 julia> box = Box([100,70,130],12)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [100.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 130.0]
-  cutoff: 12.0
-  number of computing cells on each dimension: [10, 7, 12]
-  computing cell sizes: [12.5, 14.0, 13.0] (lcell: 1)
-  Total number of cells: 840
+Box{OrthorhombicCell, 3}
+  unit cell matrix = [ 100.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 130.0 ]
+  cutoff = 12.0
+  number of computing cells on each dimension = [8, 5, 10]
+  computing cell sizes = [12.5, 14.0, 13.0] (lcell: 1)
+  Total number of cells = 400
 ```
 
 ### Triclinic periodic boundary conditions
@@ -244,28 +267,16 @@ julia> box = Box([ 1.0  0.5
 
 julia> x = 10*rand(SVector{2,Float64},1000);
 ```
-We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. We can see the coordinates in the minimum image cell with:
-```julia-repl
-julia> using Plots
-
-julia> CellListMap.draw_computing_cell(x,box)
-```
-
-```@raw html
-<img src=../assets/lattice.png>
-```
-
-The construction of the cell list is, as always, done with:
+We have created random coordinates for `1000` particles, that are not necessarily wrapped according to the periodic boundary conditions. The construction of the cell list is, as always, done with:
 
 ```julia-repl
 julia> cl = CellList(x,box)
 CellList{2, Float64}
-  109 cells with real particles.
-  2041 particles in computing box, including images.
-
+  1000 particles.
+  80 cells with particles.
 ```
 
-Upon construction of the cell lists, the cell is rotated such that the longest axis becomes oriented along the x-axis, and the particles are replicated to fill a rectangular box (or orthorhombic box, in three-dimensions), with boundaries that exceed the actual system size. This improves the performance of the pairwise computations by avoiding the necessity of wrapping coordinates on the main loop (these is an implementation detail only).
+The particles are wrapped into the unit cell and classified into a grid of parallelepiped cells defined in fractional coordinates (see [How the cell lists are built](@ref)). The treatment of orthorhombic and triclinic cells is, thus, identical.
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors *as columns*. In three dimensions, for example, one could use:
 
@@ -299,11 +310,11 @@ julia> x = [ [100,100,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x),12)
 Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 112.0, 0.0, 0.0; 0.0, 112.0, 0.0; 0.0, 0.0, 112.0 ]
+  unit cell matrix = [ 125.2 0.0 0.0; 0.0 125.2 0.0; 0.0 0.0 125.2 ]
   cutoff = 12.0
-  number of computing cells on each dimension = [11, 11, 11]
-  computing cell sizes = [12.44, 12.44, 12.44] (lcell: 1)
-  Total number of cells = 1331
+  number of computing cells on each dimension = [10, 10, 10]
+  computing cell sizes = [12.52, 12.52, 12.52] (lcell: 1)
+  Total number of cells = 1000
 ```
 
 or, for computing the interaction between two disjoint sets of particles, call the `limits` function with two arguments:
@@ -315,14 +326,14 @@ julia> y = [ [120,180,100] .* rand(3) for i in 1:100_000 ];
 
 julia> box = Box(limits(x,y),12)
 Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 132.0, 0.0, 0.0; 0.0, 192.0, 0.0; 0.0, 0.0, 112.0 ]
+  unit cell matrix = [ 145.2 0.0 0.0; 0.0 205.2 0.0; 0.0 0.0 125.2 ]
   cutoff = 12.0
-  number of computing cells on each dimension = [12, 17, 11]
-  computing cell sizes = [13.2, 12.8, 12.44] (lcell: 1)
-  Total number of cells = 2244
+  number of computing cells on each dimension = [12, 17, 10]
+  computing cell sizes = [12.1, 12.07, 12.52] (lcell: 1)
+  Total number of cells = 2040
 ```
 
-Note that the unit cell length is, on each direction, the maximum coordinates of all particles plus the cutoff. This will avoid the computation of pairs of periodic images. The algorithms used for computing interactions in Orthorhombic cells will then be used.
+Note that the unit cell length is, on each direction, the range of coordinates of all particles plus a margin greater than the cutoff. For non-periodic boxes, the neighboring cells are never wrapped, thus no periodic images are considered.
 
 ## Parallelization splitting and reduction
 
@@ -509,10 +520,7 @@ for i in 1:nsteps
 end
 ```
 
-By passing the `aux` auxiliary structure, the `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater.
-
-!!! warning
-    If the number of batches of threading is changed, the structure of auxiliary arrays must be reinitialized. Otherwise, incorrect results can be obtained.
+The `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater. (The `aux` structure is currently not used, all buffers are part of the cell lists, and it is kept for compatibility.)
 
 ### Preallocating threaded output auxiliary arrays
 
@@ -540,9 +548,7 @@ box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell. For low-density systems, greater meshes are better, because each cell will have only a few particles and the computations loop over a smaller number of cells. For dense systems, it is better to run over more cells with less particles per cell. It is a good idea to test different values of `lcell` to check which is the optimal choice for your system. Usually the best value is `lcell=1`, because in `CellListMap` implements a method to avoid spurious computations of distances on top of the cell lists, but for very dense systems, or for very large cutoffs (meaning, for situations in which the number of particles per cell may be very large), a greater `lcell` may provide a better performance. It is unlikely that `lcell > 3` is useful in any practical situation. For molecular systems with normal densities `lcell=1` is likely the optimal choice. The performance can be tested using the progress meter, as explained below.
-
-As a rough guide, `lcell > 1` is only worthwhile if the number of particles per cell is greater than  `~200-400`.
+This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell: with `lcell=1` each cell has sides of about the cutoff, and 27 cells (in 3D) are visited for each cell, while with `lcell=2` the cells are smaller, which reduces the number of distances computed between particles that are not within the cutoff, but 125 cells are visited for each cell. For molecular systems with normal densities `lcell=1` is the optimal choice. Greater values of `lcell` may be useful only for very dense systems, or very large cutoffs, for which the number of particles per cell is very large (as a rough guide, greater than `~200-400`). The performance can be tested using the progress meter, as explained below.
 
 !!! note
     The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.

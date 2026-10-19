@@ -72,6 +72,5 @@ neighborlist(; positions = x, cutoff = 1.5, unitcell = [1.0, 1.0, 1.0])
 ```
 
 !!! note
-    The cost of the computation increases with the number of images within the cutoff, as each image is 
-    explicitly replicated in the cell lists. For cells much smaller than the cutoff, the
-    number of images per particle grows with $(r_{cut}/L)^3$, where $L$ is the size of the cell. 
+    The cost of the computation increases with the number of images within the cutoff. For cells much smaller
+    than the cutoff, the number of images of each particle within the cutoff grows with $(r_{cut}/L)^3$, where $L$ is the size of the cell. 

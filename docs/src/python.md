@@ -317,18 +317,17 @@ Out[41]:
 Box{OrthorhombicCell, 3}
   unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
   cutoff = 0.05
-  number of computing cells on each dimension = [22, 22, 22]
+  number of computing cells on each dimension = [20, 20, 20]
   computing cell sizes = [0.05, 0.05, 0.05] (lcell: 1)
-  Total number of cells = 10648
+  Total number of cells = 8000
 
 In [41]: cl = jl.CellList(x_t,box)
 
 In [42]: cl
 Out[42]: 
 CellList{3, Float64}
-  50000 real particles.
-  7985 cells with real particles.
-  66594 particles in computing box, including images.
+  50000 particles.
+  8000 cells with particles.
 ```
 
 The function to be mapped, however, has to be defined in Julia, using `seval`. For example, here we define a function that computes the histogram of the distances within the cutoff. 

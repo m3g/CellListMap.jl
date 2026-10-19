@@ -41,27 +41,6 @@ end
 NeighborPair(i, j, x::SVector{N, T}, y::SVector{N, T}, d2) where {N, T} =
     NeighborPair(i, j, x, y, d2, zero(SVector{N, Int}))
 
-# Lattice translation of particle `pⱼ` relative to particle `pᵢ` (see `ParticleWithIndex`).
-@inline _pair_shift(pᵢ, pⱼ) = SVector{length(pⱼ.shift), Int}(pⱼ.shift) - SVector{length(pᵢ.shift), Int}(pᵢ.shift)
-
-# In self-computations where all neighboring cells are visited (triclinic cells), each pair
-# is found from both particles, and only the one with `i < j` is kept. A particle and its own
-# periodic image (possible when the cell is small relative to the cutoff) are found
-# with opposite shifts, and only the one with a lexicographically positive shift is kept
-# (which also skips the particle with itself, with a zero shift).
-@inline function _skip_self_pair(pᵢ, pⱼ)
-    pᵢ.index < pⱼ.index && return false
-    pᵢ.index > pⱼ.index && return true
-    return !_lexicographically_positive(pⱼ.shift - pᵢ.shift)
-end
-@inline function _lexicographically_positive(s::SVector{N}) where {N}
-    for k in 1:N
-        s[k] > 0 && return true
-        s[k] < 0 && return false
-    end
-    return false
-end
-
 import Base: getproperty, propertynames
 getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))
 getproperty(p::NeighborPair, ::Val{S}) where {S} = getfield(p, S)

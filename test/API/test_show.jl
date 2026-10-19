@@ -15,24 +15,22 @@
             Box{CellListMap.OrthorhombicCell, 3}
             unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
             cutoff = 1.0
-            number of computing cells on each dimension = [13, 13, 13]
+            number of computing cells on each dimension = [10, 10, 10]
             computing cell sizes = [1.0, 1.0, 1.0] (lcell: 1)
-            Total number of cells = 2197    
+            Total number of cells = 1000
         """
 
     cl = CellListMap.CellList(CellListMap.ParticleSystemPositions(x), box; nbatches = (2, 4))
     @test parse_show(cl; repl = Dict("CellListMap." => "")) ≈ """
             CellList{3, Float64}
-            100 real particles.
-            1 cells with real particles.
-            800 particles in computing box, including images.
+            100 particles.
+            1 cells with particles.
         """
 
     @test parse_show(CellListMap.nbatches(cl)) ≈ "(2, 4)"
     @test parse_show(CellListMap.AuxThreaded(cl); repl = Dict("CellListMap." => "")) ≈ 
         """
         CellListMap.AuxThreaded{3, Float64}
-        Auxiliary arrays for nbatches = 2
         """
 
     PSP = CellListMap.ParticleSystemPositions
@@ -40,15 +38,14 @@
     @test parse_show(cl; repl = Dict("CellListMap." => "")) ≈  
         """
             CellListMap.CellListPair{3, Float64}
-            1 cells with real particles in reference set.
-            1 cells with real particles in target set.
+            1 cells with particles in reference set.
+            1 cells with particles in target set.
         """
 
     @test parse_show(CellListMap.nbatches(cl); repl = Dict("CellListMap." => "")) ≈ "(2, 4)"
     @test parse_show(CellListMap.AuxThreaded(cl); repl = Dict("CellListMap." => "")) ≈ 
         """
         CellListMap.AuxThreadedPair{3, Float64}
-        Auxiliary arrays for nbatches = 2
         """
 
     s = ParticleSystem(xpositions = x, cutoff = 0.1, unitcell = [10, 10, 10], output = 0.0, nbatches = (2, 2))
@@ -59,13 +56,12 @@
             Box{CellListMap.OrthorhombicCell, 3}
             unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
             cutoff = 0.1
-            number of computing cells on each dimension = [103, 103, 103]
+            number of computing cells on each dimension = [100, 100, 100]
             computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-            Total number of cells = 1092727
+            Total number of cells = 1000000
         CellListMap.CellList{3, Float64}
-            100 real particles.
-            95 cells with real particles.
-            123 particles in computing box, including images.
+            100 particles.
+            95 cells with particles.
             Parallelization auxiliary data set for 2 batch(es).
         Type of output variable (default_output_name): Float64
         """; int_match = (x1, x2) -> isapprox(x1, x2; rtol = 1))
@@ -78,13 +74,12 @@
         Box{CellListMap.OrthorhombicCell, 3}
         unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
         cutoff = 0.1
-        number of computing cells on each dimension = [103, 103, 103]
+        number of computing cells on each dimension = [100, 100, 100]
         computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-        Total number of cells = 1092727
+        Total number of cells = 1000000
         CellListMap.CellList{3, Float64}
-        100 real particles.
-        95 cells with real particles.
-        123 particles in computing box, including images.
+        100 particles.
+        95 cells with particles.
         Parallelization auxiliary data set for 2 batch(es).
         Type of output variable (default_output_name): Float64
         """; int_match = (x1, x2) -> isapprox(x1, x2; rtol = 1))
@@ -98,12 +93,12 @@
         Box{CellListMap.OrthorhombicCell, 3}
         unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
         cutoff = 0.1
-        number of computing cells on each dimension = [103, 103, 103]
+        number of computing cells on each dimension = [100, 100, 100]
         computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-        Total number of cells = 1092727
+        Total number of cells = 1000000
         CellListMap.CellListPair{3, Float64}
-        95 cells with real particles in reference set.
-        10 cells with real particles in target set.
+        95 cells with particles in reference set.
+        10 cells with particles in target set.
         Parallelization auxiliary data set for 2 batch(es).
         Type of output variable (default_output_name): Float64
         """; int_match = (x1, x2) -> isapprox(x1, x2; rtol = 1))
@@ -117,12 +112,12 @@
         Box{CellListMap.OrthorhombicCell, 3}
         unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
         cutoff = 0.1
-        number of computing cells on each dimension = [103, 103, 103]
+        number of computing cells on each dimension = [100, 100, 100]
         computing cell sizes = [0.1, 0.1, 0.1] (lcell: 1)
-        Total number of cells = 1092727
+        Total number of cells = 1000000
         CellListMap.CellListPair{3, Float64}
-        95 cells with real particles in reference set.
-        10 cells with real particles in target set.
+        95 cells with particles in reference set.
+        10 cells with particles in target set.
         Parallelization auxiliary data set for 2 batch(es).
         Type of output variable (default_output_name): Float64
         """; int_match = (x1, x2) -> isapprox(x1, x2; rtol = 1))

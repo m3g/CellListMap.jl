@@ -49,6 +49,11 @@
     @test length(brute) > 0
     @test sort(sys.output) == sort(brute)
 
-    # Coordinates too far from the unit cell for the Int16 storage of shifts
-    @test_throws ArgumentError ParticleSystem(; xpositions = [SVector(1.0e6, 0.0, 0.0), SVector(0.0, 0.0, 0.0)], cutoff = 4.0, unitcell = [10.0, 10.0, 10.0], output = 0.0, parallel = false)
+    # Coordinates far from the unit cell
+    x = [SVector(1.0e6 + 1.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0)]
+    sys = ParticleSystem(; xpositions = x, cutoff = 4.0, unitcell = [10.0, 10.0, 10.0], output = Tuple{Int, Int, SVector{3, Int}}[], parallel = false)
+    pairwise!((p, list) -> push!(list, (p.i, p.j, p.shift)), sys)
+    @test length(sys.output) == 1
+    i, j, S = only(sys.output)
+    @test norm(x[j] + 10.0 * S - x[i]) ≈ 1.0
 end

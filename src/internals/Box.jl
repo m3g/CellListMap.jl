@@ -1,6 +1,9 @@
 #
-# This difference is important because for Orthorhombic cells it is possible to run over
-# only half of the cells, and wrapping coordinates in Orthorhombic cells is slightly cheaper.
+# Types of unit cells. Orthorhombic and triclinic cells are treated identically by the
+# cell lists (the grid is defined in fractional coordinates), but the type is kept for
+# dispatch and for the interpretation of the `unitcell` input (sides vs. matrix).
+# Non-periodic systems are represented by an orthorhombic box enclosing all particles,
+# in which neighboring cells are never wrapped.
 #
 struct TriclinicCell end
 struct OrthorhombicCell end
@@ -26,65 +29,50 @@ end
 Limits(limits::SVector{N, T}) where {N, T} = Limits(limits, zeros(SVector{N, T}))
 
 # Set cell size from Limits, when no periodic boundary conditions are
-# used. Adding a fraction of the cutoff to the result avoids
-# the condition of 2*cutoff and the unit cell check check fail
+# used. A margin larger than the cutoff is added, such that particles
+# are always far from the boundaries of the box.
 _sides_from_limits(unitcell, cutoff::T) where {T} = unitcell.limits .+ (210 * cutoff / 100)
 
 #=
-Structure that contains some data required to compute the linked cells. To
-be initialized with the box size and cutoff. 
+Structure that contains the data required to compute the cell lists: the unit cell,
+the cutoff, and the grid of computing cells.
+
+The computing cells are defined in fractional coordinates: the unit cell is divided into
+`nc[i]` slices along each lattice vector `i`, such that each computing cell is a small
+parallelepiped similar to the unit cell. The number of cells is chosen such that the distance
+between opposite faces of the computing cells is at least `cutoff / lcell`, and the number
+of neighboring cells that must be searched in each direction is `n_search[i]`. There is no
+restriction on the size of the unit cell relative to the cutoff.
 
 ## Examples
 
 ```julia-repl
 julia> using CellListMap
 
-julia> sides = [250,250,250];
-
-julia> cutoff = 10;
-
-julia> box = Box(sides,cutoff)
-Box{OrthorhombicCell, 3, Float64, 9}
-  unit cell matrix: [250.0 0.0 0.0; 0.0 250.0 0.0; 0.0 0.0 250.0]
-  cutoff: 10.0
-  number of computing cells on each dimension: [27, 27, 27]
-  computing cell sizes: [10.0, 10.0, 10.0] (lcell: 1)
-  Total number of cells: 19683
-
-```
-
-```julia-repl
-julia> box = Box([ 10  0  0 
-                    0 10  5
-                    0  0 10 ], 1)
-Box{TriclinicCell, 3, Float64, 9}
-unit cell matrix: [10.0 0.0 0.0; 0.0 10.0 5.0; 0.0 0.0 10.0]
-cutoff: 1.0
-number of computing cells on each dimension: [12, 17, 12]
-computing cell sizes: [1.0, 1.0, 1.0] (lcell: 1)
-Total number of cells: 2448
-
+julia> box = Box([250, 250, 250], 10)
+Box{OrthorhombicCell, 3}
+  unit cell matrix = [ 250.0 0.0 0.0; 0.0 250.0 0.0; 0.0 0.0 250.0 ]
+  cutoff = 10.0
+  number of computing cells on each dimension = [25, 25, 25]
+  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
+  Total number of cells = 15625
 ```
 
 =#
-Base.@kwdef struct Box{UnitCellType, N, T, TSQ, M, TR}
+Base.@kwdef struct Box{UnitCellType, N, T, TSQ, M, TI}
     input_unit_cell::UnitCell{UnitCellType, N, T, M}
-    aligned_unit_cell::UnitCell{UnitCellType, N, T, M}
-    rotation::SMatrix{N, N, TR, M}
-    inv_rotation::SMatrix{N, N, TR, M}
+    # inverse of the unit cell matrix (without units), to compute fractional coordinates
+    inv_unit_cell::SMatrix{N, N, TI, M}
     lcell::Int
-    # Number of neighboring computing cells visited in each direction
-    reach::SVector{N, Int}
-    # Range of periodic images (-n_images:n_images) replicated in the direction of each lattice vector
-    n_images::SVector{N, Int}
+    # number of computing cells along each lattice vector
     nc::SVector{N, Int}
+    # number of neighboring cells to search along each lattice vector
+    n_search::SVector{N, Int}
     cutoff::T
     cutoff_sqr::TSQ
     computing_box::Tuple{SVector{N, T}, SVector{N, T}}
-    cell_size::SVector{N, T}
     origin::SVector{N, T}
 end
-
 
 #=
     unitcelltype(::Box{T}) where T = T
@@ -116,7 +104,7 @@ unitcelltype(::Box{T}) where {T} = T
 # Extended help
 
 Promotes the types of the unit cell matrix (or sides) and cutoff to floats if one or both were input as integers,
-returns the minimum float type necessary. 
+returns the minimum float type necessary.
 
 =#
 function _promote_types(unitcell, cutoff)
@@ -135,47 +123,9 @@ end
     Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)
 
 Construct box structure given the cell matrix, where
-columns correspond to the lattice vectors. This constructor will always return 
-a `TriclinicCell` box type, unless the `UnitCellType` parameter is set 
+columns correspond to the lattice vectors. This constructor will always return
+a `TriclinicCell` box type, unless the `UnitCellType` parameter is set
 manually to `OrthorhombicCell`
-
-## Examples
-
-Building a box with a triclinic unit cell matrix:
-
-```jldoctest
-julia> using CellListMap 
-
-julia> unit_cell = [ 100   50    0 
-                       0  120    0
-                       0    0  130 ];
-
-julia> box = Box(unit_cell, 10.0)
-Box{TriclinicCell, 3}
-  unit cell matrix = [ 100.0 0.0 0.0; 50.0 120.0 0.0; 0.0 0.0 130.0 ]
-  cutoff = 10.0
-  number of computing cells on each dimension = [20, 13, 16]
-  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
-  Total number of cells = 4160
-
-```
-
-Building a box with a orthorhombic unit cell matrix, from a square matrix:
-
-```jldoctest
-julia> using CellListMap
-
-julia> unit_cell = [ 100 0 0; 0 120 0; 0 0 150 ]; # cell is orthorhombic
-
-julia> box = Box(unit_cell, 10.0, UnitCellType=OrthorhombicCell) # forcing OrthorhombicCell
-Box{OrthorhombicCell, 3}
-  unit cell matrix = [ 100.0 0.0 0.0; 0.0 120.0 0.0; 0.0 0.0 150.0 ]
-  cutoff = 10.0
-  number of computing cells on each dimension = [13, 15, 18]
-  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
-  Total number of cells = 3510
-
-```
 
 =#
 function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}; origin = nothing) where {UnitCellType}
@@ -192,88 +142,41 @@ end
 Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int = 1, UnitCellType = TriclinicCell) =
     Box(unit_cell_matrix, cutoff, lcell, UnitCellType)
 
-# Number of computing cells: for Orthorhombic cells we adjust the cell size such that
-# the system has dimensions multiple of cell_size, such that we can use the forward-cell
-# method of running over computing cells without complications associated to boundaries
-# having fractional cells. If a side of the unit cell is smaller than `cutoff/lcell`,
-# a single computing cell spans that side, and the number of neighboring cells that
-# must be visited in that direction (the `reach`) is increased accordingly.
-function _compute_nc_and_cell_size(::Type{<:OrthorhombicCellType}, xmin::SVector{N, T}, xmax::SVector{N, T}, cutoff, lcell) where {N, T}
-    sides = xmax .- xmin
-    _nc = max.(1, floor.(Int, sides / (cutoff / lcell)))
-    cell_size = sides ./ _nc
-    reach = SVector{N, Int}(ntuple(i -> sides[i] < cutoff / lcell ? ceil(Int, cutoff / sides[i]) : lcell, Val(N)))
-    nc = _nc .+ 2 .* reach .+ 1
-    return nc, cell_size, reach
-end
-function _compute_nc_and_cell_size(::Type{TriclinicCell}, xmin::SVector{N, T}, xmax::SVector{N, T}, cutoff, lcell) where {N, T}
-    _nc = ceil.(Int, (xmax .- xmin) / (cutoff / lcell))
-    cell_size = SVector{N, T}(ntuple(_ -> cutoff / lcell, Val(N)))
-    reach = SVector{N, Int}(ntuple(_ -> lcell, Val(N)))
-    nc = _nc .+ 2 .* reach .+ 1
-    return nc, cell_size, reach
-end
-
-# Triclinic cells are aligned such that the largest axis is aligned to x
-_align_cell(::Type{TriclinicCell}, m) = align_cell(m)
-_align_cell(::Type{<:OrthorhombicCellType}, m) = m, _identity_smatrix(m)
-
-# Creates an identity SMatrix without units
-function _identity_smatrix(::SMatrix{N, N, T}) where {N, T}
-    oneT = one(T) * inv(one(T)) # remove units
-    I = zeros(MMatrix{N, N, typeof(oneT), N * N})
-    for i in 1:N
-        I[i, i] = oneT
-    end
-    return SMatrix(I)
-end
-
 #
 # This function construct the box once the concrete type of the unit cell was obtained.
 # This function is useful to perform non-allocating box updates.
 #
 function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cutoff; origin::SVector{N, T} = zeros(SVector{N, T})) where {UnitCellType, N, T}
-
-    aligned_unit_cell_matrix, rotation = _align_cell(UnitCellType, input_unit_cell.matrix)
-
-    # Number of periodic images, in the direction of each lattice vector, that may be
-    # within the cutoff of a particle in the unit cell. This is 1 if the distances between
-    # opposite faces of the unit cell are greater than the cutoff, but there is no
-    # restriction on the size of the cell relative to the cutoff.
-    face_distances = _face_distances(aligned_unit_cell_matrix)
+    m = input_unit_cell.matrix
+    face_distances = _face_distances(m)
     if !all(>(zero(T)), face_distances)
         throw(ArgumentError("Unit cell matrix is singular: the unit cell has zero volume."))
     end
-    n_images = SVector{N, Int}(ntuple(i -> max(1, ceil(Int, cutoff / face_distances[i])), Val(N)))
-
-    aligned_unit_cell = UnitCell{UnitCellType, N, T, N * N}(aligned_unit_cell_matrix)
-
-    # The computing limits are the minimum and maximum coordinates where all particles must be found,
-    # including images away from the primitive cell but within the cutoff
-    xmin, xmax = cell_limits(aligned_unit_cell.matrix)
-
-    nc, cell_size, reach = _compute_nc_and_cell_size(UnitCellType, xmin, xmax, cutoff, lcell)
-    computing_box = (xmin .+ origin .- reach .* cell_size, xmax .+ origin .+ reach .* cell_size)
-
-    # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
+    # Number of computing cells along each lattice vector, such that the distance between
+    # the faces of the cells is at least cutoff / lcell, and number of cells to be searched
+    # in each direction to cover the cutoff.
+    nc = SVector{N, Int}(ntuple(i -> max(1, floor(Int, lcell * face_distances[i] / cutoff)), Val(N)))
+    n_search = SVector{N, Int}(ntuple(i -> max(1, ceil(Int, cutoff * nc[i] / face_distances[i])), Val(N)))
+    inv_unit_cell = inv(m ./ oneunit(T))
+    # The computing box contains all particles (wrapped to the unit cell), plus the cutoff
+    xmin, xmax = cell_limits(m)
+    computing_box = (xmin .+ origin .- cutoff, xmax .+ origin .+ cutoff)
     cutoff_sqr = cutoff^2
-
-    return Box{UnitCellType, N, T, typeof(cutoff_sqr), N * N, eltype(rotation)}(
+    return Box{UnitCellType, N, T, typeof(cutoff_sqr), N * N, eltype(inv_unit_cell)}(
         input_unit_cell = input_unit_cell,
-        aligned_unit_cell = aligned_unit_cell,
-        rotation = rotation,
-        inv_rotation = inv(rotation),
+        inv_unit_cell = inv_unit_cell,
         lcell = lcell,
-        reach = reach,
-        n_images = n_images,
         nc = nc,
+        n_search = n_search,
         cutoff = cutoff,
         cutoff_sqr = cutoff_sqr,
         computing_box = computing_box,
-        cell_size = cell_size,
-        origin = origin
+        origin = origin,
     )
 end
+
+# Size of the computing cells: distances between their opposite faces
+cell_sizes(box::Box) = _face_distances(box.input_unit_cell.matrix) ./ box.nc
 
 function Base.show(io::IO, ::MIME"text/plain", box::Box{UnitCellType, N}) where {UnitCellType, N}
     _println(io, "Box{$UnitCellType, $N}")
@@ -287,7 +190,7 @@ function Base.show(io::IO, ::MIME"text/plain", box::Box{UnitCellType, N}) where 
     _println(io, "  number of computing cells on each dimension = ", box.nc)
     _println(
         io, "  computing cell sizes = [",
-        join(_uround.(box.cell_size), ", "), "] (lcell: ", box.lcell, ")"
+        join(_uround.(cell_sizes(box)), ", "), "] (lcell: ", box.lcell, ")"
     )
     return _print(io, "  Total number of cells = ", prod(box.nc))
 end
@@ -317,20 +220,7 @@ cell_matrix_from_sides(sides::Tuple) = cell_matrix_from_sides(SVector(sides))
 #=
     Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=OrthorhombicCell)
 
-For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side. 
-
-## Example
-```jldoctest
-julia> using CellListMap
-
-julia> box = Box([120,150,100],10)
-Box{OrthorhombicCell, 3}
-  unit cell matrix = [ 120.0 0.0 0.0; 0.0 150.0 0.0; 0.0 0.0 100.0 ]
-  cutoff = 10.0
-  number of computing cells on each dimension = [15, 18, 13]
-  computing cell sizes = [10.0, 10.0, 10.0] (lcell: 1)
-  Total number of cells = 3510
-```
+For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side.
 
 =#
 function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}; origin = nothing) where {UnitCellType}
@@ -345,36 +235,9 @@ Box(sides::AbstractVector, cutoff; lcell::Int = 1, UnitCellType = OrthorhombicCe
 
 This constructor receives the output of `limits(x)` or `limits(x,y)` where `x` and `y` are
 the coordinates of the particles involved, and constructs a `Box` with size larger than
-the maximum coordinates ranges of all particles plus twice the cutoff. This is used to 
-emulate pairwise interactions in non-periodic boxes. The output box is an `NonPeriodicCell`
-box type, which internally is treated as Orthorhombic with boundaries that guarantee that
-particles do not see images of each other. 
-
-## Examples
-
-```jldoctest ;filter = r"\\d+" => ""
-julia> using CellListMap, PDBTools
-
-julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
-
-julia> box = Box(limits(x), 10.0)
-Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 39.83 0.0 0.0; 0.0 39.96 0.0; 0.0 0.0 39.99 ]
-  cutoff = 10.0
-  number of computing cells on each dimension = [6, 6, 6]
-  computing cell sizes = [13.28, 13.32, 13.33] (lcell: 1)
-  Total number of cells = 216
-
-julia> y = 1.2 .* x;
-
-julia> box = Box(limits(x,y),10)
-Box{NonPeriodicCell, 3}
-  unit cell matrix = [ 43.6 0.0 0.0; 0.0 43.76 0.0; 0.0 0.0 43.79 ]
-  cutoff = 10.0
-  number of computing cells on each dimension = [7, 7, 7]
-  computing cell sizes = [10.9, 10.94, 10.95] (lcell: 1)
-  Total number of cells = 343
-```
+the maximum coordinates ranges of all particles plus twice the cutoff. This is used to
+compute pairwise interactions in non-periodic systems. The output box is an `NonPeriodicCell`
+box type, for which neighboring cells are never wrapped.
 
 =#
 function Box(unitcell::Limits, cutoff::T; lcell::Int = 1) where {T}
@@ -394,8 +257,8 @@ const InputUnitCellTypes = Union{Nothing, AbstractVector, AbstractMatrix, Limits
         lcell::Union{Nothing,Int}=nothing
     )
 
-Function that returns an updated system box in a type-stable manner, given possible 
-variations in the `unitcell`, `cutoff`, or `lcell` parameters. 
+Function that returns an updated system box in a type-stable manner, given possible
+variations in the `unitcell`, `cutoff`, or `lcell` parameters.
 
 =#
 function update_box(
@@ -429,164 +292,13 @@ function update_box(
 end
 
 #=
-    neighbor_cells_forward(box::Box{UnitCellType,N}) where UnitCellType 
-
-# Extended help
-
-Function that returns the iterator of the cartesian indices of the cells that must be 
-evaluated (forward, i. e. to avoid repeated interactions) 
-if the cells have sides of length `box.cell_size`. `N` can be
-`2` or `3`, for two- or three-dimensional systems.
-
-=#
-function neighbor_cells_forward(box::Box{UnitCellType, 3}) where {UnitCellType}
-    r1, r2, r3 = box.reach
-    nb = Iterators.flatten(
-        (
-            CartesianIndices((1:r1, -r2:r2, -r3:r3)),
-            CartesianIndices((0:0, 1:r2, -r3:r3)),
-            CartesianIndices((0:0, 0:0, 1:r3)),
-        )
-    )
-    return nb
-end
-
-function neighbor_cells_forward(box::Box{UnitCellType, 2}) where {UnitCellType}
-    r1, r2 = box.reach
-    nb = Iterators.flatten(
-        (
-            CartesianIndices((1:r1, -r2:r2)),
-            CartesianIndices((0:0, 1:r2)),
-        )
-    )
-    return nb
-end
-
-#=
-    neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-
-# Extended help
-
-Function that returns the iterator of the cartesian indices of all neighboring
-cells of a cell, up to `box.reach` cells away in each direction.
-
-=#
-function neighbor_cells(box::Box{UnitCellType, N}) where {UnitCellType, N}
-    (; reach) = box
-    return Iterators.filter(
-        !isequal(CartesianIndex(ntuple(i -> 0, Val(N)))),
-        CartesianIndices(ntuple(i -> -reach[i]:reach[i], Val(N)))
-    )
-end
-
-#=
-    current_and_neighbor_cells(box::Box{UnitCellType,N}) where {UnitCellType,N}
-
-# Extended help
-
-Returns an iterator over all neighbor cells, including the center one.
-
-=#
-function current_and_neighbor_cells(box::Box{UnitCellType, N}) where {UnitCellType, N}
-    (; reach) = box
-    return CartesianIndices(ntuple(i -> -reach[i]:reach[i], Val(N)))
-end
-
-#=
-    particle_cell(x::SVector{N,T}, box::Box) where {N,T}
-
-# Extended help
-
-Returns the coordinates of the *computing cell* to which a particle belongs, given its coordinates
-and the `cell_size` vector. The computing box is always Orthorhombic, and the first
-computing box with positive coordinates has indexes `box.reach .+ 1`.
-
-=#
-@inline function particle_cell(x::SVector{N}, box::Box) where {N}
-    return CartesianIndex(
-        ntuple(Val(N)) do i
-            xmin = box.computing_box[1][i]
-            xi = (x[i] - xmin) / box.cell_size[i]
-            index = floor(Int, xi) + 1
-            return index
-        end
-    )
-end
-
-#=
-    cell_center(c::CartesianIndex{N},box::Box{UnitCellType,N,T}) where {UnitCellType,N,T}
-
-Computes the geometric center of a computing cell, to be used in the projection
-of points. Returns a `SVector{N,T}`
-
-=#
-@inline function cell_center(c::CartesianIndex{N}, box::Box{UnitCellType, N, T}) where {UnitCellType, N, T}
-    return SVector{N, T}(
-        ntuple(Val(N)) do i
-            xmin = box.computing_box[1][i]
-            ci = xmin + box.cell_size[i] * c[i] - box.cell_size[i] / 2
-            return ci
-        end
-    )
-end
-
-#=
-    in_computing_box(x::SVector{N},box::Box) where N
-
-# Extended help
-
-Function that evaluates if a particle is inside the computing bounding box,
-defined by the maximum and minimum unit aligned cell coordinates.
-
-=#
-function in_computing_box(x::SVector{N}, box::Box) where {N}
-    min = box.computing_box[1]
-    max = box.computing_box[2]
-    inbox = true
-    for i in 1:N
-        if !(min[i] <= x[i] < max[i])
-            inbox = false
-        end
-    end
-    return inbox
-end
-
-#=
-    replicate_particle!(ip,p::SVector{N},shift,box,cl) where N
-
-# Extended help
-
-Replicates the particle as many times as necessary to fill the computing box.
-`shift` is the lattice translation of the real particle (see `ParticleWithIndex`),
-to which the translation of each image is added. If the unit cell is small relative 
-to the cutoff, more than one image of the particle in each direction may be within
-the cutoff of the particles in the unit cell (`box.n_images`).
-
-=#
-function replicate_particle!(ip, p::SVector{N}, shift::SVector{N, Int16}, box, cl) where {N}
-    (; n_images) = box
-    itr = Iterators.product(ntuple(i -> -n_images[i]:n_images[i], Val(N))...)
-    for indices in itr
-        (count(isequal(0), indices) == N) && continue
-        x = translation_image(p, box.aligned_unit_cell.matrix, indices)
-        if in_computing_box(x, box)
-            image_shift = shift + SVector{N, Int16}(indices)
-            cl = add_particle_to_celllist!(ip, x, box, cl; real_particle = false, shift = image_shift)
-        end
-    end
-    return cl
-end
-
-#=
     _face_distances(unit_cell_matrix::SMatrix)
 
 # Extended help
 
 Returns the distances between opposite faces of the unit cell, associated with each
 lattice vector (the height of the cell in the direction normal to the face spanned by
-the other lattice vectors). The number of periodic images of a particle that can be
-within the cutoff, in each direction, depends on the ratio between the cutoff and these
-distances.
+the other lattice vectors).
 
 =#
 function _face_distances(unit_cell_matrix::SMatrix{3, 3, T, 9}) where {T}
@@ -618,5 +330,70 @@ cutoff of any other particle. This is not required (smaller cells are supported)
 in that case pairs are reported once for each image within the cutoff.
 
 =#
-check_unit_cell(box::Box) = check_unit_cell(box.aligned_unit_cell.matrix, box.cutoff)
+check_unit_cell(box::Box) = check_unit_cell(box.input_unit_cell.matrix, box.cutoff)
 check_unit_cell(unit_cell_matrix::SMatrix, cutoff) = all(>(2 * cutoff), _face_distances(unit_cell_matrix))
+
+#=
+    _cell_offsets!(half, full, box)
+
+# Extended help
+
+Computes the offsets (in units of computing cells) of the neighboring cells that may contain
+particles within the cutoff of the particles of a cell. `full` contains all such offsets, including
+the zero offset, and `half` contains one of each pair `{v, -v}` of nonzero offsets (the one with
+the first nonzero component positive), to visit each pair of cells only once in self-computations.
+Offsets for which the minimum distance between the cells is greater than the cutoff are discarded.
+The vectors are emptied and filled in place (not allocating if they have enough capacity).
+
+=#
+function _cell_offsets!(half::Vector{SVector{N, Int}}, full::Vector{SVector{N, Int}}, box::Box{UnitCellType, N, T}) where {UnitCellType, N, T}
+    empty!(half)
+    empty!(full)
+    m = box.input_unit_cell.matrix ./ oneunit(T)
+    # vectors spanning a computing cell
+    C = m .* (1 ./ box.nc')
+    cutoff = box.cutoff / oneunit(T)
+    for I in CartesianIndices(ntuple(i -> -box.n_search[i]:box.n_search[i], Val(N)))
+        o = SVector{N, Int}(Tuple(I))
+        _min_cell_distance(C, o) > cutoff * (1 + sqrt(eps(typeof(cutoff)))) && continue
+        push!(full, o)
+        _lexicographically_positive(o) && push!(half, o)
+    end
+    return half, full
+end
+
+@inline function _lexicographically_positive(s::SVector{N}) where {N}
+    for k in 1:N
+        s[k] > 0 && return true
+        s[k] < 0 && return false
+    end
+    return false
+end
+
+#=
+    _min_cell_distance(C, o)
+
+# Extended help
+
+Minimum distance between two parallelepiped cells spanned by the columns of `C`, separated
+by the integer offset `o`, that is, the minimum of `|C t|` for `t` in `o .+ [-1, 1]^N`.
+This is a box-constrained convex quadratic problem, solved by coordinate descent.
+
+=#
+function _min_cell_distance(C::SMatrix{N, N, T}, o::SVector{N, Int}) where {N, T}
+    G = C' * C
+    lo = SVector{N, T}(o) .- 1
+    hi = SVector{N, T}(o) .+ 1
+    t = clamp.(zero(SVector{N, T}), lo, hi)
+    for _ in 1:100
+        for d in 1:N
+            s = zero(T)
+            for e in 1:N
+                e == d && continue
+                s += G[d, e] * t[e]
+            end
+            t = setindex(t, clamp(-s / G[d, d], lo[d], hi[d]), d)
+        end
+    end
+    return sqrt(max(zero(T), dot(t, G * t)))
+end
