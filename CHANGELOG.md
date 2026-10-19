@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.7-DEV
+--------------
+
 Version 0.10.6
 --------------
 - ![FEATURE][badge-feature] `output_name` can be given as a `Val` (e.g. `output_name = Val(:energy)`), in addition to a `Symbol`, making the `ParticleSystem` constructors fully inferable. Passing a `Symbol` works as before.
