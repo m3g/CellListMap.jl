@@ -14,13 +14,6 @@ struct UnitCell{UnitCellType, N, T, M}
 end
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Structure that contains the maximum lengths on each direction,
 to dispatch on the construction of boxes without periodic boundary
 conditions.
@@ -38,13 +31,6 @@ Limits(limits::SVector{N, T}) where {N, T} = Limits(limits, zeros(SVector{N, T})
 _sides_from_limits(unitcell, cutoff::T) where {T} = unitcell.limits .+ (210 * cutoff / 100)
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Structure that contains some data required to compute the linked cells. To
 be initialized with the box size and cutoff. 
 

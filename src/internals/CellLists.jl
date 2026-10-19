@@ -4,13 +4,6 @@
 #
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Copies particle coordinates and associated index, to build contiguous particle lists
 in memory when building the cell lists. This strategy duplicates the particle coordinates
 data, but is probably worth the effort. 
@@ -23,13 +16,6 @@ struct ParticleWithIndex{N,T}
 end
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Structure to define the number of batches used in the parallel splitting of the calculations
 of the cell list construction and of the `pairwise` computation. It is initialized with
 a standard heuristic that returns at most the number of threads, but may return a smaller
@@ -52,13 +38,6 @@ function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
 end
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 This structure contains the cell linear index and the information 
 about if this cell is in the border of the box (such that its 
 neighboring cells need to be wrapped) 
@@ -123,13 +102,6 @@ Base.@kwdef struct CompactCell{N,T}
 end
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Auxiliary structure to contain projected particles. Types of 
 scalars are chosen such that with a `SVector{3,Float64}` the
 complete struct has 32bytes.
@@ -143,13 +115,6 @@ Base.@kwdef struct ProjectedParticle{N,T}
 end
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Structure that contains the cell lists information.
 
 =#
@@ -195,13 +160,6 @@ function Base.show(io::IO, ::MIME"text/plain", cl::CellList)
 end
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Structure that will contains the cell lists of two independent sets of
 particles for cross-computation of interactions
 
@@ -367,13 +325,6 @@ nbatches(cl::CellListPair) = nbatches(cl.ref_list)
 nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.ref_list, s)
 
 #=
-
-$(TYPEDEF)
-
-# Extended help
-
-$(TYPEDFIELDS)
-
 Auxiliary structure to carry threaded lists and ranges of particles to 
 be considered by each thread on parallel construction. 
 

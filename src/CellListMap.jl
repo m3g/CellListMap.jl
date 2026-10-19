@@ -1,6 +1,5 @@
 module CellListMap
 
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using TestItems: @testitem, @testmodule
 using Compat: @compat
 using ProgressMeter: Progress, next!

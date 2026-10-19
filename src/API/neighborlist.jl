@@ -1,13 +1,5 @@
 #=
-
-$(TYPEDEF)
-
-Structure that containst the system information for neighborlist computations. All fields are internal.
-
-## Extended help
-
-$(TYPEDFIELDS)
-
+Structure that contains the system information for neighborlist computations. All fields are internal.
 =#
 mutable struct InPlaceNeighborList{P}
     sys::P
