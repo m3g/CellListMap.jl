@@ -14,16 +14,16 @@ function f(pair, output)
 end
 ```
 
-where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2` and `d`, which here we
+where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2`, `d` and `shift`, which here we
 extract from the object using [destructuring syntax](https://docs.julialang.org/en/v1/manual/functions/#Property-destructuring). 
 
-`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
+`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions, if the unit cell is large enough relative to the cutoff; see [Unit cell size and cutoff](@ref)), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
 
 !!! info
     #### Details of the mapped function interface
 
     The `pair` input of the function contains the  data that the user may use to update the `output` variable.
-    The `NeighborPair` object contains fields `x`, `y`, `i`, `j`, `d2` and the lazily computed `d`, meaning:
+    The `NeighborPair` object contains fields `x`, `y`, `i`, `j`, `d2`, `shift`, and the lazily computed `d`, meaning:
 
     |  Input/Output |  Type   |  Meaning   |
     |:----------------:|:-------:|:-----------|
@@ -32,7 +32,8 @@ extract from the object using [destructuring syntax](https://docs.julialang.org/
     | `i`              |  `Int`       |  Index of first particle in the original array of coordinates. |
     | `j`              |  `Int`       |  Index of second particle in the original array of coordinates. |
     | `d2`             |  `<:Real`    |  Squared distance between the particles. |
-    | `d`             |  `<:Real`    |  Squared distance between the particles (computed lazily). |
+    | `d`             |  `<:Real`    |  Distance between the particles (computed lazily). |
+    | `shift`          |  `SVector{N,Int}` |  Lattice translation of particle `j` relative to particle `i` (see [Unit cell size and cutoff](@ref)). |
     | `output`         |  user defined   |  the name of the variable to be updated.  |
 
     **Notes:** `x` and `y` may be 2D or 3D vectors, depending on the dimension of the system. The type of

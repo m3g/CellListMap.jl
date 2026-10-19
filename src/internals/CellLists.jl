@@ -1172,10 +1172,10 @@ end
 function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
     cidxs = ntuple(i -> cartesian_index[i], Val(N))
     for i in 1:N
-        if cidxs[i] == box.lcell
+        if cidxs[i] == box.reach[i]
             @set! cidxs[i] += 1
         end
-        if cidxs[i] == box.nc[i] - box.lcell + 1
+        if cidxs[i] == box.nc[i] - box.reach[i] + 1
             @set! cidxs[i] -= 1
         end
     end

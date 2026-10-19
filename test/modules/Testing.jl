@@ -182,7 +182,7 @@ for computing purposes.
             end
             cutoff = 1 + rand()
             try
-                if !(CellListMap.check_unit_cell(unit_cell_matrix, cutoff, printerr = false))
+                if !(CellListMap.check_unit_cell(unit_cell_matrix, cutoff))
                     continue
                 end
             catch

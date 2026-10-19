@@ -131,5 +131,10 @@ The neighbor list is a `Vector{Tuple{Int,Int,T}}`, where each element `(i, j, d)
 the indices of the two particles and their distance `d`. The floating-point type `T` is
 promoted from the `cutoff` and `unitcell` types.
 
+If the unit cell is small relative to the cutoff (distances between opposite faces
+smaller than twice the cutoff), the list contains one entry for each periodic image
+within the cutoff: the same pair `(i, j)` may appear more than once, and pairs with
+`i == j` (a particle and its own image) may appear. See [Unit cell size and cutoff](@ref).
+
 All neighborlist functions return this vector directly. 
 

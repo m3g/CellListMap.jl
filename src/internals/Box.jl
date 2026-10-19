@@ -73,6 +73,10 @@ Base.@kwdef struct Box{UnitCellType, N, T, TSQ, M, TR}
     rotation::SMatrix{N, N, TR, M}
     inv_rotation::SMatrix{N, N, TR, M}
     lcell::Int
+    # Number of neighboring computing cells visited in each direction
+    reach::SVector{N, Int}
+    # Range of periodic images (-n_images:n_images) replicated in the direction of each lattice vector
+    n_images::SVector{N, Int}
     nc::SVector{N, Int}
     cutoff::T
     cutoff_sqr::TSQ
@@ -191,18 +195,23 @@ Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int = 1, UnitCellType = Tri
 # Number of computing cells: for Orthorhombic cells we adjust the cell size such that
 # the system has dimensions multiple of cell_size, such that we can use the forward-cell
 # method of running over computing cells without complications associated to boundaries
-# having fractional cells.
-function _compute_nc_and_cell_size(::Type{<:OrthorhombicCellType}, xmin, xmax, cutoff, lcell)
-    _nc = floor.(Int, (xmax .- xmin) / (cutoff / lcell))
-    cell_size = (xmax .- xmin) ./ _nc
-    nc = _nc .+ 2 * lcell .+ 1
-    return nc, cell_size
+# having fractional cells. If a side of the unit cell is smaller than `cutoff/lcell`,
+# a single computing cell spans that side, and the number of neighboring cells that
+# must be visited in that direction (the `reach`) is increased accordingly.
+function _compute_nc_and_cell_size(::Type{<:OrthorhombicCellType}, xmin::SVector{N, T}, xmax::SVector{N, T}, cutoff, lcell) where {N, T}
+    sides = xmax .- xmin
+    _nc = max.(1, floor.(Int, sides / (cutoff / lcell)))
+    cell_size = sides ./ _nc
+    reach = SVector{N, Int}(ntuple(i -> sides[i] < cutoff / lcell ? ceil(Int, cutoff / sides[i]) : lcell, Val(N)))
+    nc = _nc .+ 2 .* reach .+ 1
+    return nc, cell_size, reach
 end
 function _compute_nc_and_cell_size(::Type{TriclinicCell}, xmin::SVector{N, T}, xmax::SVector{N, T}, cutoff, lcell) where {N, T}
     _nc = ceil.(Int, (xmax .- xmin) / (cutoff / lcell))
     cell_size = SVector{N, T}(ntuple(_ -> cutoff / lcell, Val(N)))
-    nc = _nc .+ 2 * lcell .+ 1
-    return nc, cell_size
+    reach = SVector{N, Int}(ntuple(_ -> lcell, Val(N)))
+    nc = _nc .+ 2 .* reach .+ 1
+    return nc, cell_size, reach
 end
 
 # Triclinic cells are aligned such that the largest axis is aligned to x
@@ -226,7 +235,16 @@ end
 function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cutoff; origin::SVector{N, T} = zeros(SVector{N, T})) where {UnitCellType, N, T}
 
     aligned_unit_cell_matrix, rotation = _align_cell(UnitCellType, input_unit_cell.matrix)
-    check_unit_cell(aligned_unit_cell_matrix, cutoff) || throw(ArgumentError(" Unit cell matrix does not satisfy required conditions."))
+
+    # Number of periodic images, in the direction of each lattice vector, that may be
+    # within the cutoff of a particle in the unit cell. This is 1 if the distances between
+    # opposite faces of the unit cell are greater than the cutoff, but there is no
+    # restriction on the size of the cell relative to the cutoff.
+    face_distances = _face_distances(aligned_unit_cell_matrix)
+    if !all(>(zero(T)), face_distances)
+        throw(ArgumentError("Unit cell matrix is singular: the unit cell has zero volume."))
+    end
+    n_images = SVector{N, Int}(ntuple(i -> max(1, ceil(Int, cutoff / face_distances[i])), Val(N)))
 
     aligned_unit_cell = UnitCell{UnitCellType, N, T, N * N}(aligned_unit_cell_matrix)
 
@@ -234,8 +252,8 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cu
     # including images away from the primitive cell but within the cutoff
     xmin, xmax = cell_limits(aligned_unit_cell.matrix)
 
-    nc, cell_size = _compute_nc_and_cell_size(UnitCellType, xmin, xmax, cutoff, lcell)
-    computing_box = (xmin .+ origin .- lcell * cell_size, xmax .+ origin .+ lcell * cell_size)
+    nc, cell_size, reach = _compute_nc_and_cell_size(UnitCellType, xmin, xmax, cutoff, lcell)
+    computing_box = (xmin .+ origin .- reach .* cell_size, xmax .+ origin .+ reach .* cell_size)
 
     # Carry on the squared cutoff, to avoid repeated computation at hot inner loop
     cutoff_sqr = cutoff^2
@@ -246,6 +264,8 @@ function _construct_box(input_unit_cell::UnitCell{UnitCellType, N, T}, lcell, cu
         rotation = rotation,
         inv_rotation = inv(rotation),
         lcell = lcell,
+        reach = reach,
+        n_images = n_images,
         nc = nc,
         cutoff = cutoff,
         cutoff_sqr = cutoff_sqr,
@@ -420,23 +440,23 @@ if the cells have sides of length `box.cell_size`. `N` can be
 
 =#
 function neighbor_cells_forward(box::Box{UnitCellType, 3}) where {UnitCellType}
-    (; lcell) = box
+    r1, r2, r3 = box.reach
     nb = Iterators.flatten(
         (
-            CartesianIndices((1:lcell, -lcell:lcell, -lcell:lcell)),
-            CartesianIndices((0:0, 1:lcell, -lcell:lcell)),
-            CartesianIndices((0:0, 0:0, 1:lcell)),
+            CartesianIndices((1:r1, -r2:r2, -r3:r3)),
+            CartesianIndices((0:0, 1:r2, -r3:r3)),
+            CartesianIndices((0:0, 0:0, 1:r3)),
         )
     )
     return nb
 end
 
 function neighbor_cells_forward(box::Box{UnitCellType, 2}) where {UnitCellType}
-    (; lcell) = box
+    r1, r2 = box.reach
     nb = Iterators.flatten(
         (
-            CartesianIndices((1:lcell, -lcell:lcell)),
-            CartesianIndices((0:0, 1:lcell)),
+            CartesianIndices((1:r1, -r2:r2)),
+            CartesianIndices((0:0, 1:r2)),
         )
     )
     return nb
@@ -448,14 +468,14 @@ end
 # Extended help
 
 Function that returns the iterator of the cartesian indices of all neighboring
-cells of a cell where the computing cell index is `box.lcell`.
+cells of a cell, up to `box.reach` cells away in each direction.
 
 =#
 function neighbor_cells(box::Box{UnitCellType, N}) where {UnitCellType, N}
-    (; lcell) = box
+    (; reach) = box
     return Iterators.filter(
         !isequal(CartesianIndex(ntuple(i -> 0, Val(N)))),
-        CartesianIndices(ntuple(i -> -lcell:lcell, Val(N)))
+        CartesianIndices(ntuple(i -> -reach[i]:reach[i], Val(N)))
     )
 end
 
@@ -468,8 +488,8 @@ Returns an iterator over all neighbor cells, including the center one.
 
 =#
 function current_and_neighbor_cells(box::Box{UnitCellType, N}) where {UnitCellType, N}
-    (; lcell) = box
-    return CartesianIndices(ntuple(i -> -lcell:lcell, Val(N)))
+    (; reach) = box
+    return CartesianIndices(ntuple(i -> -reach[i]:reach[i], Val(N)))
 end
 
 #=
@@ -479,7 +499,7 @@ end
 
 Returns the coordinates of the *computing cell* to which a particle belongs, given its coordinates
 and the `cell_size` vector. The computing box is always Orthorhombic, and the first
-computing box with positive coordinates has indexes `Box.lcell + 1`.
+computing box with positive coordinates has indexes `box.reach .+ 1`.
 
 =#
 @inline function particle_cell(x::SVector{N}, box::Box) where {N}
@@ -538,11 +558,14 @@ end
 
 Replicates the particle as many times as necessary to fill the computing box.
 `shift` is the lattice translation of the real particle (see `ParticleWithIndex`),
-to which the translation of each image is added.
+to which the translation of each image is added. If the unit cell is small relative 
+to the cutoff, more than one image of the particle in each direction may be within
+the cutoff of the particles in the unit cell (`box.n_images`).
 
 =#
 function replicate_particle!(ip, p::SVector{N}, shift::SVector{N, Int16}, box, cl) where {N}
-    itr = Iterators.product(ntuple(i -> -1:1, Val(N))...)
+    (; n_images) = box
+    itr = Iterators.product(ntuple(i -> -n_images[i]:n_images[i], Val(N))...)
     for indices in itr
         (count(isequal(0), indices) == N) && continue
         x = translation_image(p, box.aligned_unit_cell.matrix, indices)
@@ -555,71 +578,45 @@ function replicate_particle!(ip, p::SVector{N}, shift::SVector{N, Int16}, box, c
 end
 
 #=
-    check_unit_cell(box::Box)
+    _face_distances(unit_cell_matrix::SMatrix)
 
 # Extended help
 
-Checks if the unit cell satisfies the conditions for using the minimum-image
-convention. 
+Returns the distances between opposite faces of the unit cell, associated with each
+lattice vector (the height of the cell in the direction normal to the face spanned by
+the other lattice vectors). The number of periodic images of a particle that can be
+within the cutoff, in each direction, depends on the ratio between the cutoff and these
+distances.
+
+=#
+function _face_distances(unit_cell_matrix::SMatrix{3, 3, T, 9}) where {T}
+    a = unit_cell_matrix[:, 1]
+    b = unit_cell_matrix[:, 2]
+    c = unit_cell_matrix[:, 3]
+    bc = cross(b, c)
+    ca = cross(c, a)
+    ab = cross(a, b)
+    return SVector(abs(dot(a, bc)) / norm(bc), abs(dot(b, ca)) / norm(ca), abs(dot(c, ab)) / norm(ab))
+end
+
+function _face_distances(unit_cell_matrix::SMatrix{2, 2, T, 4}) where {T}
+    a = unit_cell_matrix[:, 1]
+    b = unit_cell_matrix[:, 2]
+    i = a / norm(a)
+    j = b / norm(b)
+    return SVector(sqrt(max(zero(T)^2, sum(abs2, a) - dot(a, j)^2)), sqrt(max(zero(T)^2, sum(abs2, b) - dot(b, i)^2)))
+end
+
+#=
+    check_unit_cell(unit_cell_matrix, cutoff)
+
+# Extended help
+
+Checks if the unit cell is large enough relative to the cutoff for the minimum-image
+convention to apply, that is, if at most one image of each particle can be within the
+cutoff of any other particle. This is not required (smaller cells are supported), but
+in that case pairs are reported once for each image within the cutoff.
 
 =#
 check_unit_cell(box::Box) = check_unit_cell(box.aligned_unit_cell.matrix, box.cutoff)
-
-function check_unit_cell(unit_cell_matrix::SMatrix{3, 3, T, 9}, cutoff; printerr = true) where {T}
-    a = @view(unit_cell_matrix[:, 1])
-    b = @view(unit_cell_matrix[:, 2])
-    c = @view(unit_cell_matrix[:, 3])
-    check = true
-
-    bc = cross(b, c)
-    bc = bc / norm(bc)
-    aproj = dot(a, bc)
-
-    ab = cross(a, b)
-    ab = ab / norm(ab)
-    cproj = dot(c, ab)
-
-    ca = cross(c, a)
-    ca = ca / norm(ca)
-    bproj = dot(b, ca)
-
-    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff) || (cproj <= 2 * cutoff)
-        printerr && println(
-            """\n
-                UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.
-                Got: a⋅(b×c)/|b×c|=$aproj; b⋅(c×a)/|c×a|=$bproj; c⋅(a×b)/|a×b|=$cproj
-                with: cutoff = $cutoff (above distances must be greater than 2*cutoff = $(2 * cutoff))
-                
-            """
-        )
-        check = false
-    end
-
-    return check
-end
-
-function check_unit_cell(unit_cell_matrix::SMatrix{2, 2, T, 4}, cutoff; printerr = true) where {T}
-    a = @view(unit_cell_matrix[:, 1])
-    b = @view(unit_cell_matrix[:, 2])
-    check = true
-
-    i = a / norm(a)
-    bproj = sqrt(sum(abs2, b) - dot(b, i)^2)
-
-    j = b / norm(b)
-    aproj = sqrt(sum(abs2, a) - dot(a, j)^2)
-
-    if (aproj <= 2 * cutoff) || (bproj <= 2 * cutoff)
-        printerr && println(
-            """\n
-                UNIT CELL CHECK FAILED: distance between cell planes too small relative to cutoff.
-                   Got: √(|a|²-(a⋅b/|b|)²)=$aproj; √(|b|²-(b⋅a/|a|)²)=$bproj 
-                   with: cutoff = $cutoff (above distances must be greater than 2*cutoff = $(2 * cutoff))
-                
-            """
-        )
-        check = false
-    end
-
-    return check
-end
+check_unit_cell(unit_cell_matrix::SMatrix, cutoff) = all(>(2 * cutoff), _face_distances(unit_cell_matrix))

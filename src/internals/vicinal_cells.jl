@@ -61,7 +61,7 @@ function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, out
         for j in 1:n
             @inbounds pⱼ = pp[j]
             if Skip
-                pᵢ.index >= pⱼ.index && continue
+                _skip_self_pair(pᵢ, pⱼ) && continue
             end
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)

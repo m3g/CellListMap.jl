@@ -18,7 +18,7 @@ The function `f` receives two arguments as input:
     f(pair, output)
 Where `pair` is a `NeighborPair` struct with fields:
 - `pair.i`, `pair.j`: indices of the particles
-- `pair.x`, `pair.y`: coordinates (minimum-image adjusted)
+- `pair.x`, `pair.y`: coordinates (of the image of `j` within the cutoff of `i`)
 - `pair.d`: distance between particles
 - `pair.d2`: squared distance
 
@@ -193,7 +193,7 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
         xpᵢ_rot = inv_rotation * xpᵢ
         for j in 1:cell.n_particles
             @inbounds pⱼ = cell.particles[j]
-            (pᵢ.index >= pⱼ.index) && continue
+            _skip_self_pair(pᵢ, pⱼ) && continue
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr

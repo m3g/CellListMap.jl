@@ -19,7 +19,7 @@ makedocs(
         "Updating the system" => "ParticleSystem/updating.md",
         "Options" => "ParticleSystem/options.md",
         "Complete examples" => "ParticleSystem/examples.md",
-        "Unitcell requirements" => "unitcell.md",
+        "Unit cell size and cutoff" => "unitcell.md",
         "Ecosystem integration" => "ecosystem.md",
         "Public Interface" => "API.md",
         #"From Python" => "python.md",

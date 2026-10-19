@@ -232,7 +232,7 @@ Box{OrthorhombicCell, 3, Float64, 9}
 
 ### Triclinic periodic boundary conditions
 
-Triclinic periodic boundary conditions of any kind can be used. However, the input has some limitations for the moment. The lattice vectors must have strictly positive coordinates, and the smallest distance within the cell cannot be smaller than twice the size of the cutoff. An error will be produced if the cell does not satisfy these conditions.
+Triclinic periodic boundary conditions of any kind can be used, with no restriction on the size of the cell relative to the cutoff (see [Unit cell size and cutoff](@ref)).
 
 Let us illustrate building a two-dimensional cell, for easier visualization. A matrix of column-wise lattice vectors is provided in the construction of the box, and that is all.
 

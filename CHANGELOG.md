@@ -12,8 +12,10 @@ CellListMap.jl Changelog
 
 Version 0.10.7-DEV
 --------------
-- ![FEATURE][badge-feature] `NeighborPair` has a new `shift` field: the integer lattice translation of particle `j` relative to particle `i`, such that `y[pair.j] + unitcell * pair.shift - x[pair.i] ≈ pair.y - pair.x`. It is always zero for non-periodic systems.
-- ![INFO][badge-info] Particle coordinates more than 30000 unit cells away from the first unit cell now throw an `ArgumentError`.
+- ![FEATURE][badge-feature] Unit cells can be of any size relative to the cutoff. The previous requirement that the distances between opposite faces of the unit cell be greater than twice the cutoff was removed. For smaller cells, pairs are reported once for each periodic image within the cutoff (thus the same pair `(i, j)` may appear more than once, and `i == j` pairs, of a particle with its own images, may appear). For cells satisfying the previous requirement, results are unchanged.
+- ![FEATURE][badge-feature] `NeighborPair` has a new `shift` field: the integer lattice translation of particle `j` relative to particle `i`, such that `y[pair.j] + unitcell * pair.shift - x[pair.i] ≈ pair.y - pair.x`. It identifies the image of each pair, and is always zero for non-periodic systems.
+- ![INFO][badge-info] Particle coordinates more than 30000 unit cells away from the first unit cell now throw an `ArgumentError`. Degenerate (zero-volume) unit cells throw an `ArgumentError`.
+- ![INFO][badge-info] Serial cell list construction is ~25% slower due to the bookkeeping of the lattice shifts of the particles (parallel construction and the pairwise mapping are not measurably affected).
 
 Version 0.10.6
 --------------
