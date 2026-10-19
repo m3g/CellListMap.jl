@@ -35,7 +35,7 @@ function _vinicial_cells!(f::F, box::Box{OrthorhombicCell}, cellᵢ, pp, Δc, ou
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 # `inv_rotation` is the identity here
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end
@@ -66,7 +66,7 @@ function _vinicial_cells!(f::F, box::Box{<:TriclinicCell}, cellᵢ, pp, Δc, out
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end

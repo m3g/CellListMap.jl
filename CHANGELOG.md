@@ -12,6 +12,8 @@ CellListMap.jl Changelog
 
 Version 0.10.7-DEV
 --------------
+- ![FEATURE][badge-feature] `NeighborPair` has a new `shift` field: the integer lattice translation of particle `j` relative to particle `i`, such that `y[pair.j] + unitcell * pair.shift - x[pair.i] ≈ pair.y - pair.x`. It is always zero for non-periodic systems.
+- ![INFO][badge-info] Particle coordinates more than 30000 unit cells away from the first unit cell now throw an `ArgumentError`.
 
 Version 0.10.6
 --------------

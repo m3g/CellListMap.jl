@@ -174,7 +174,7 @@ function _current_cell_interactions!(box::Box{OrthorhombicCell}, f::F, cell, out
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
                 # `inv_rotation` is the identity here
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ, xpⱼ, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end
@@ -197,7 +197,7 @@ function _current_cell_interactions!(box::Box{TriclinicCell}, f::F, cell, output
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end

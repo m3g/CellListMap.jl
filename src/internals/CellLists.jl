@@ -6,12 +6,19 @@
 #=
 Copies particle coordinates and associated index, to build contiguous particle lists
 in memory when building the cell lists. This strategy duplicates the particle coordinates
-data, but is probably worth the effort. 
+data, but is probably worth the effort.
+
+`shift` is the integer lattice translation (in units of the input unit cell vectors)
+that maps the original coordinates of the particle to the stored ones (wrapping plus,
+for images, the image translation): `coordinates == rotation * (x[index] + unit_cell_matrix * shift)`.
+It is placed after `real` such that it fits in the padding of the struct, and does
+not increase its size for `SVector{3,Float64}` coordinates.
 
 =#
 struct ParticleWithIndex{N,T}
     index::Int
     real::Bool
+    shift::SVector{N,Int16}
     coordinates::SVector{N,T}
 end
 
@@ -102,9 +109,9 @@ Base.@kwdef struct CompactCell{N,T}
 end
 
 #=
-Auxiliary structure to contain projected particles. Types of 
-scalars are chosen such that with a `SVector{3,Float64}` the
-complete struct has 32bytes.
+Auxiliary structure to contain projected particles. With a `SVector{3,Float64}`
+the struct has 48 bytes; `shift` (see `ParticleWithIndex`) fits in the padding
+after `real`.
 
 =#
 Base.@kwdef struct ProjectedParticle{N,T}
@@ -112,6 +119,7 @@ Base.@kwdef struct ProjectedParticle{N,T}
     xproj::T
     coordinates::SVector{N,T}
     real::Bool
+    shift::SVector{N,Int16}
 end
 
 #=
@@ -1149,9 +1157,10 @@ function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
         xp = x[ip]
         # This converts the coordinates to static arrays, if necessary
         p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
-        p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
-        add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
-        replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
+        p, shift = wrap_to_first_with_shift(p, box.input_unit_cell.matrix)
+        p = box.rotation * p
+        add_particle_to_celllist!(ishift + ip, p, box, cl; shift) # add real particle
+        replicate_particle!(ishift + ip, p, shift, box, cl) # add virtual particles to border cells
     end
     return cl
 end
@@ -1179,12 +1188,14 @@ end
         x::SVector{N,T},
         box,
         cl::CellList{N,T};
-        real_particle::Bool=true
+        real_particle::Bool=true,
+        shift::SVector{N,Int16}=zero(SVector{N,Int16})
     ) where {N,T}
 
 # Extended help
 
-Adds one particle to the cell lists, updating all necessary arrays.
+Adds one particle to the cell lists, updating all necessary arrays. `shift`
+is the lattice translation of the stored coordinates (see `ParticleWithIndex`).
 
 =#
 function add_particle_to_celllist!(
@@ -1192,7 +1203,8 @@ function add_particle_to_celllist!(
     x::SVector{N,T},
     box,
     cl::CellList{N,T};
-    real_particle::Bool=true
+    real_particle::Bool=true,
+    shift::SVector{N,Int16}=zero(SVector{N,Int16})
 ) where {N,T}
 
     # Increase the counter of number of particles of this list
@@ -1248,7 +1260,7 @@ function add_particle_to_celllist!(
     #
     # Add particle to cell list
     #
-    p = ParticleWithIndex(ip, real_particle, x)
+    p = ParticleWithIndex(ip, real_particle, shift, x)
     if cell.n_particles > length(cell.particles)
         push!(cell.particles, p)
     else

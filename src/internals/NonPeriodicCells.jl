@@ -238,7 +238,7 @@ function UpdateCellList!(
                         target_cell_idx = cl.cell_indices[li]
                         offset = offsets[li]
                         offsets[li] += 1
-                        cl.build_cells[target_cell_idx].particles[offset+1] = ParticleWithIndex(ip, true, p)
+                        cl.build_cells[target_cell_idx].particles[offset+1] = ParticleWithIndex(ip, true, zero(SVector{N,Int16}), p)
                     end
                 end
             end
@@ -318,7 +318,7 @@ function _current_cell_interactions!(box::Box{NonPeriodicCell}, f::F, cell, outp
             pⱼ = cell.particles[j]
             d2 = sum(abs2, xpᵢ - pⱼ.coordinates)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end
@@ -341,7 +341,7 @@ function _current_cell_interactions!(
             pⱼ = cellⱼ.particles[j]
             d2 = sum(abs2, xpᵢ - pⱼ.coordinates)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end
@@ -367,7 +367,7 @@ function _vinicial_cells!(
             pⱼ = pp[j]
             d2 = sum(abs2, xpᵢ - pⱼ.coordinates)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * pⱼ.coordinates, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end

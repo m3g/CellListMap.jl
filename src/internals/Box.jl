@@ -532,20 +532,23 @@ function in_computing_box(x::SVector{N}, box::Box) where {N}
 end
 
 #=
-    replicate_particle!(ip,p::SVector{N},box,cl) where N
+    replicate_particle!(ip,p::SVector{N},shift,box,cl) where N
 
 # Extended help
 
 Replicates the particle as many times as necessary to fill the computing box.
+`shift` is the lattice translation of the real particle (see `ParticleWithIndex`),
+to which the translation of each image is added.
 
 =#
-function replicate_particle!(ip, p::SVector{N}, box, cl) where {N}
+function replicate_particle!(ip, p::SVector{N}, shift::SVector{N, Int16}, box, cl) where {N}
     itr = Iterators.product(ntuple(i -> -1:1, Val(N))...)
     for indices in itr
         (count(isequal(0), indices) == N) && continue
         x = translation_image(p, box.aligned_unit_cell.matrix, indices)
         if in_computing_box(x, box)
-            cl = add_particle_to_celllist!(ip, x, box, cl; real_particle = false)
+            image_shift = shift + SVector{N, Int16}(indices)
+            cl = add_particle_to_celllist!(ip, x, box, cl; real_particle = false, shift = image_shift)
         end
     end
     return cl

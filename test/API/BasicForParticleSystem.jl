@@ -169,7 +169,7 @@
     p = NeighborPair(1, 2, SVector(1.0, 1.0), SVector(1.0, 3.0), 4.0)
     @test (p.i, p.j, p.x, p.y, p.d2) == (1, 2, SVector(1.0, 1.0), SVector(1.0, 3.0), 4.0)
     @test p.d == 2.0
-    @test propertynames(p) == (:i, :j, :x, :y, :d, :d2)
+    @test propertynames(p) == (:i, :j, :x, :y, :d, :d2, :shift)
 
 end
 

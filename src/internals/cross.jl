@@ -131,7 +131,7 @@ function _current_cell_interactions!(box::Box, f::F, cellᵢ::CompactCell, cell�
             xpⱼ = pⱼ.coordinates
             d2 = sum(abs2, xpᵢ - xpⱼ)
             if d2 <= cutoff_sqr
-                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2)
+                pair = NeighborPair(pᵢ.index, pⱼ.index, xpᵢ_rot, inv_rotation * xpⱼ, d2, _pair_shift(pᵢ, pⱼ))
                 output = f(pair, output)
             end
         end
