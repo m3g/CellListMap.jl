@@ -212,42 +212,9 @@ The full example can be run with `Examples.neighborlist()`, available in the fil
 
 ## Periodic boundary conditions
 
-- [How the cell lists are built](@ref)
 - [Orthorhombic periodic boundary conditions](@ref)
 - [Triclinic periodic boundary conditions](@ref)
 - [Without periodic boundary conditions](@ref)
-
-### How the cell lists are built
-
-The unit cell is divided into a grid of computing cells in *fractional* coordinates: along each
-lattice vector, the cell is divided into `lcell * h / cutoff` slices (rounded down, and at least one),
-where `h` is the distance between the faces of the unit cell associated with that lattice vector.
-Each computing cell is, thus, a small parallelepiped similar to the unit cell, and the grid
-is compatible with the periodicity of the system for any (orthorhombic or triclinic) unit cell.
-
-Each particle is stored only once in the cell lists, with its coordinates wrapped into the unit
-cell, and the lattice translation (shift) applied by the wrapping. The particles are sorted by
-cell, such that the particles of each cell are contiguous in memory. Periodic images of the particles
-are not replicated: in the pairwise computation, the neighboring cells of each cell are visited through
-a list of cell offsets, and the index of a neighboring cell that falls outside of the grid is wrapped. The
-number of unit cells by which it was wrapped gives the lattice translation that brings the particles of
-that cell close to the particles of the current cell (this is the origin of the `shift` field of the 
-`NeighborPair` object). The same mechanism finds multiple images of the same particle when the unit cell
-is smaller than the cutoff (see [Unit cell size and cutoff](@ref)).
-
-For computations within a single set of particles, only one of each pair of opposite offsets is visited,
-such that every pair of particles is computed only once. Offsets for which the minimum distance between
-the cells is greater than the cutoff are discarded.
-
-For pairs of cells with many particles, the candidate pairs are filtered by a projection on the axis
-connecting the centers of the two cells (which, since all computing cells are identical, depends only on
-the offset between the cells). The separation of two particles along this axis is a lower bound of their
-distance. Thus, the particles of the neighboring cell are projected on the axis, those that cannot be within
-the cutoff of any particle of the current cell are discarded, and the remaining ones are sorted by their
-projections. Then, for each particle of the current cell, distances are computed only for the particles
-with projections within the cutoff of its own projection. This reduces the number of distances computed
-by a factor of about 4 relative to computing all distances between particles of neighboring cells, which is
-important for dense systems or large cutoffs. For cells with few particles, all distances are computed directly.
 
 ### Orthorhombic periodic boundary conditions
 
@@ -286,7 +253,7 @@ CellList{2, Float64}
   80 cells with particles.
 ```
 
-The particles are wrapped into the unit cell and classified into a grid of parallelepiped cells defined in fractional coordinates (see [How the cell lists are built](@ref)). The treatment of orthorhombic and triclinic cells is, thus, identical.
+There is no performance penalty for using triclinic cells relative to orthorhombic ones.
 
 In summary, to use arbitrary periodic boundary conditions, just initialize the box with the matrix of lattice vectors *as columns*. In three dimensions, for example, one could use:
 
@@ -558,7 +525,7 @@ box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. With `lcell=1` each cell has sides of about the cutoff, and 27 cells (in 3D) are visited for each cell, while with `lcell=2` the cells are smaller, but 125 cells are visited for each cell. Since the distances between particles of neighboring cells are filtered by projection (see [How the cell lists are built](@ref)), smaller cells rarely reduce the number of distances computed significantly, and `lcell=1` is the optimal choice in most cases. Greater values of `lcell` may be useful only if the cells contain many hundreds of particles, which occurs for dense systems with large cutoffs. For example, for water (about 0.1 atoms/Å³) and a cutoff of 20 Å, each cell contains about 800 atoms, and `lcell=2` was found to be about 10% faster. With 64 particles per cell, `lcell=2` was already slower than `lcell=1`. The performance can be tested using the progress meter, as explained below.
+This parameter determines how fine is the mesh of cells. With `lcell=1` each cell has sides of about the cutoff, and 27 cells (in 3D) are visited for each cell, while with `lcell=2` the cells are smaller, but 125 cells are visited for each cell. `lcell=1` is the optimal choice in most cases. Greater values of `lcell` may be useful only if the cells contain many hundreds of particles, which occurs for dense systems with large cutoffs. For example, for water (about 0.1 atoms/Å³) and a cutoff of 20 Å, each cell contains about 800 atoms, and `lcell=2` was found to be about 10% faster. With 64 particles per cell, `lcell=2` was already slower than `lcell=1`. The performance can be tested using the progress meter, as explained below.
 
 !!! note
     The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.
