@@ -64,8 +64,13 @@ Base.@kwdef mutable struct CellList{N, T}
     " Offsets of neighboring cells: one of each {v,-v} (self-computations) and all of them (cross-computations). "
     offsets_half::Vector{SVector{N, Int}} = SVector{N, Int}[]
     offsets_full::Vector{SVector{N, Int}} = SVector{N, Int}[]
+    " Unit vectors connecting the centers of the cells separated by each offset (zero for the zero offset). "
+    axes_half::Vector{SVector{N, Float64}} = SVector{N, Float64}[]
+    axes_full::Vector{SVector{N, Float64}} = SVector{N, Float64}[]
     " Key of the box for which the offsets were computed. "
     offsets_key::UInt = UInt(0)
+    " Per-batch buffers of (projection, particle position) used to filter candidate pairs between cells. "
+    projection_buffers::Vector{Vector{Tuple{T, Int}}} = Vector{Tuple{T, Int}}[]
     " Number of batches for the parallel calculations. "
     nbatches::NumberOfBatches = zero(NumberOfBatches)
 end
@@ -388,9 +393,43 @@ function _update_offsets!(cl::CellList, box::Box)
     key = hash((box.input_unit_cell.matrix, box.cutoff, box.nc, box.n_search))
     if key != cl.offsets_key
         _cell_offsets!(cl.offsets_half, cl.offsets_full, box)
+        _offset_axes!(cl.axes_half, cl.offsets_half, box)
+        _offset_axes!(cl.axes_full, cl.offsets_full, box)
         cl.offsets_key = key
     end
     return cl
+end
+
+#
+# Unit vectors (in cartesian coordinates, without units) connecting the centers of two
+# computing cells separated by each offset. All computing cells are identical parallelepipeds,
+# thus these vectors depend only on the offsets.
+#
+#
+# The projection filter is only used for standard floating point types: for other number types
+# (e.g. dual numbers or numbers with uncertainties) the axes are set to zero, which disables
+# the filter (all candidate pairs are computed).
+#
+function _offset_axes!(axes::Vector{SVector{N, Float64}}, offsets::Vector{SVector{N, Int}}, box::Box{UnitCellType, N, T}) where {UnitCellType, N, T}
+    resize!(axes, length(offsets))
+    m = box.input_unit_cell.matrix ./ oneunit(T)
+    if !(eltype(m) <: Base.IEEEFloat)
+        fill!(axes, zero(SVector{N, Float64}))
+        return axes
+    end
+    for (k, o) in enumerate(offsets)
+        d = SVector{N, Float64}(m * (o ./ box.nc))
+        axes[k] = iszero(o) ? zero(SVector{N, Float64}) : d / norm(d)
+    end
+    return axes
+end
+
+# Per-batch projection buffer (created on first use)
+function _projection_buffer(cl::CellList{N, T}, ibatch::Int) where {N, T}
+    while length(cl.projection_buffers) < ibatch
+        push!(cl.projection_buffers, Tuple{T, Int}[])
+    end
+    return cl.projection_buffers[ibatch]
 end
 
 #

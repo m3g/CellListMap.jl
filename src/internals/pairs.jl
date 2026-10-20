@@ -62,9 +62,10 @@ function _pairwise_serial!(
         show_progress::Bool = false
     ) where {F}
     cells = _outer_list(cl).nonempty_cells
+    buffer = _projection_buffer(_outer_list(cl), 1)
     p = show_progress ? Progress(length(cells), dt = 1) : nothing
     for c in cells
-        output = _cell_pairs!(f, output, box, cl, c)
+        output = _cell_pairs!(f, output, box, cl, c, buffer)
         _next!(p)
     end
     return output
@@ -78,11 +79,12 @@ end
 #
 function _batch!(f::F, ibatch, chunks, next_chunk, output_threaded, box, cl, p) where {F}
     cells = _outer_list(cl).nonempty_cells
+    buffer = _outer_list(cl).projection_buffers[ibatch]
     while true
         ic = atomic_add!(next_chunk, 1)
         ic > length(chunks) && break
         for k in chunks[ic]
-            output_threaded[ibatch] = _cell_pairs!(f, output_threaded[ibatch], box, cl, cells[k])
+            output_threaded[ibatch] = _cell_pairs!(f, output_threaded[ibatch], box, cl, cells[k], buffer)
             _next!(p)
         end
     end
@@ -103,6 +105,7 @@ function _pairwise_parallel!(
     n_chunks = _n_workqueue_chunks(_nbatches, _outer_list(cl).n_real_particles)
     chunks = collect(index_chunks(1:length(cells); n = n_chunks, split = Consecutive()))
     next_chunk = Atomic{Int}(1)
+    _projection_buffer(_outer_list(cl), _nbatches) # create buffers before spawning
     tasks = Vector{Task}(undef, _nbatches)
     for ibatch in 1:_nbatches
         tasks[ibatch] = @spawn _batch!($f, $ibatch, $chunks, $next_chunk, $output_threaded, $box, $cl, $p)
@@ -137,7 +140,7 @@ end
 # half set of offsets (each pair of cells once, including the images of the cell itself
 # in small unit cells).
 #
-function _cell_pairs!(f::F, output, box::Box{UnitCellType, N, T}, cl::CellList{N, T}, c::Int) where {F, UnitCellType, N, T}
+function _cell_pairs!(f::F, output, box::Box{UnitCellType, N, T}, cl::CellList{N, T}, c::Int, buffer) where {F, UnitCellType, N, T}
     (; cutoff_sqr, nc) = box
     m = box.input_unit_cell.matrix
     particles = cl.particles
@@ -160,26 +163,15 @@ function _cell_pairs!(f::F, output, box::Box{UnitCellType, N, T}, cl::CellList{N
     end
     # Pairs with the particles of neighboring cells
     ci = _cell_cartesian_index(c, nc)
-    @inbounds for o in cl.offsets_half
-        exists, cj, q = _neighbor_cell(box, ci, o)
+    @inbounds for k in eachindex(cl.offsets_half)
+        exists, cj, q = _neighbor_cell(box, ci, cl.offsets_half[k])
         exists || continue
         first_j, last_j = cell_start[cj], cell_start[cj + 1] - 1
         first_j > last_j && continue
-        cell_shift = m * q
-        for a in first_i:last_i
-            pa = particles[a]
-            xa = pa.coordinates
-            # shifting `xa` instead of `xb` such that the translation is applied once per particle
-            xa_shifted = xa - cell_shift
-            for b in first_j:last_j
-                pb = particles[b]
-                d2 = sum(abs2, pb.coordinates - xa_shifted)
-                if d2 <= cutoff_sqr
-                    shift = q + _shift(shifts[b]) - _shift(shifts[a])
-                    output = f(NeighborPair(pa.index, pb.index, xa, pb.coordinates + cell_shift, d2, shift), output)
-                end
-            end
-        end
+        output = _neighbor_cell_pairs!(
+            f, output, box, cl, first_i:last_i, cl, first_j:last_j,
+            q, m * q, cl.axes_half[k], buffer
+        )
     end
     return output
 end
@@ -188,31 +180,109 @@ end
 # Pairs involving the particles of cell `c` of the reference list, and the particles
 # of the target list in the same and neighboring cells (all offsets).
 #
-function _cell_pairs!(f::F, output, box::Box{UnitCellType, N, T}, cl::CellListPair{N, T}, c::Int) where {F, UnitCellType, N, T}
-    (; cutoff_sqr, nc) = box
+function _cell_pairs!(f::F, output, box::Box{UnitCellType, N, T}, cl::CellListPair{N, T}, c::Int, buffer) where {F, UnitCellType, N, T}
+    (; nc) = box
     m = box.input_unit_cell.matrix
     ref = cl.ref_list
     target = cl.target_list
     @inbounds first_i, last_i = ref.cell_start[c], ref.cell_start[c + 1] - 1
     ci = _cell_cartesian_index(c, nc)
-    @inbounds for o in ref.offsets_full
-        exists, cj, q = _neighbor_cell(box, ci, o)
+    @inbounds for k in eachindex(ref.offsets_full)
+        exists, cj, q = _neighbor_cell(box, ci, ref.offsets_full[k])
         exists || continue
         first_j, last_j = target.cell_start[cj], target.cell_start[cj + 1] - 1
         first_j > last_j && continue
-        cell_shift = m * q
-        for a in first_i:last_i
-            pa = ref.particles[a]
+        output = _neighbor_cell_pairs!(
+            f, output, box, ref, first_i:last_i, target, first_j:last_j,
+            q, m * q, ref.axes_full[k], buffer
+        )
+    end
+    return output
+end
+
+#
+# Minimum number of candidate pairs between two cells for the projection filter to be used.
+# For smaller cells, all pairs are computed directly.
+#
+const PROJECTION_FILTER_MIN_PAIRS = 256
+
+#
+# Pairs between the particles `range_i` of list `li` and the particles `range_j` of list `lj`,
+# where the particles of `lj` belong to a cell translated by `cell_shift` (lattice translation `q`)
+# relative to the cell of the particles of `li`. `axis` is the unit vector connecting the centers
+# of the two cells.
+#
+# For cells with many particles, candidate pairs are filtered by their separation along `axis`, which
+# is a lower bound of their distance: the particles of `lj` are projected on the axis, those
+# that cannot be within the cutoff of any particle of `li` are discarded, and the remaining ones
+# are sorted by projection. Then, for each particle of `li`, only the particles of `lj` with
+# projections within the cutoff of its own projection are considered.
+#
+@inline function _neighbor_cell_pairs!(
+        f::F, output, box::Box{UnitCellType, N, T},
+        li::CellList{N, T}, range_i, lj::CellList{N, T}, range_j,
+        q, cell_shift, axis, buffer
+    ) where {F, UnitCellType, N, T}
+    (; cutoff, cutoff_sqr) = box
+    if iszero(axis) || length(range_i) * length(range_j) < PROJECTION_FILTER_MIN_PAIRS
+        @inbounds for a in range_i
+            pa = li.particles[a]
             xa = pa.coordinates
+            # shifting `xa` instead of `xb` such that the translation is applied once per particle
             xa_shifted = xa - cell_shift
-            for b in first_j:last_j
-                pb = target.particles[b]
+            for b in range_j
+                pb = lj.particles[b]
                 d2 = sum(abs2, pb.coordinates - xa_shifted)
                 if d2 <= cutoff_sqr
-                    shift = q + _shift(target.shifts[b]) - _shift(ref.shifts[a])
+                    shift = q + _shift(lj.shifts[b]) - _shift(li.shifts[a])
                     output = f(NeighborPair(pa.index, pb.index, xa, pb.coordinates + cell_shift, d2, shift), output)
                 end
             end
+        end
+        return output
+    end
+    # Range of projections of the particles of `li` (shifted)
+    pmin = typemax(T)
+    pmax = typemin(T)
+    @inbounds for a in range_i
+        p = T(dot(axis, li.particles[a].coordinates - cell_shift))
+        pmin = min(pmin, p)
+        pmax = max(pmax, p)
+    end
+    # Project the particles of `lj`, and keep only those that can be within the cutoff
+    n = 0
+    @inbounds for b in range_j
+        p = T(dot(axis, lj.particles[b].coordinates))
+        if (pmin - cutoff) <= p <= (pmax + cutoff)
+            n += 1
+            if n > length(buffer)
+                push!(buffer, (p, b))
+            else
+                buffer[n] = (p, b)
+            end
+        end
+    end
+    n == 0 && return output
+    projected = @view(buffer[1:n])
+    sort!(projected; by = first, alg = QuickSort)
+    # For each particle of `li`, compute the distances only to the particles of `lj`
+    # with projections within the cutoff
+    @inbounds for a in range_i
+        pa = li.particles[a]
+        xa = pa.coordinates
+        xa_shifted = xa - cell_shift
+        p = T(dot(axis, xa_shifted))
+        k = searchsortedfirst(projected, (p - cutoff, 0); by = first)
+        while k <= n
+            pb_proj, b = projected[k]
+            pb_proj > p + cutoff && break
+            pb = lj.particles[b]
+            d2 = sum(abs2, pb.coordinates - xa_shifted)
+            if d2 <= cutoff_sqr
+                shift = q + _shift(lj.shifts[b]) - _shift(li.shifts[a])
+                output = f(NeighborPair(pa.index, pb.index, xa, pb.coordinates + cell_shift, d2, shift), output)
+            end
+            k += 1
         end
     end
     return output

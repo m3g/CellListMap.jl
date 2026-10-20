@@ -102,7 +102,7 @@ julia> system = ParticleSystem(
            lcell=2,
        );
 ```
-Most times using `lcell=1` (default) will provide the optimal performance. For very dense systems, or systems for which the number of particles within the cutoff is very large, larger values of `lcell` may improve the performance. To be tested by the user.
+Most times using `lcell=1` (default) will provide the optimal performance. Larger values of `lcell` may improve the performance only if the cells contain many hundreds of particles (cells have sides of about the cutoff), as for dense systems with large cutoffs. To be tested by the user.
 
 !!! note
     The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.

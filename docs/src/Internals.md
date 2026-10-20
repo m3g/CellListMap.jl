@@ -239,6 +239,16 @@ For computations within a single set of particles, only one of each pair of oppo
 such that every pair of particles is computed only once. Offsets for which the minimum distance between
 the cells is greater than the cutoff are discarded.
 
+For pairs of cells with many particles, the candidate pairs are filtered by a projection on the axis
+connecting the centers of the two cells (which, since all computing cells are identical, depends only on
+the offset between the cells). The separation of two particles along this axis is a lower bound of their
+distance. Thus, the particles of the neighboring cell are projected on the axis, those that cannot be within
+the cutoff of any particle of the current cell are discarded, and the remaining ones are sorted by their
+projections. Then, for each particle of the current cell, distances are computed only for the particles
+with projections within the cutoff of its own projection. This reduces the number of distances computed
+by a factor of about 4 relative to computing all distances between particles of neighboring cells, which is
+important for dense systems or large cutoffs. For cells with few particles, all distances are computed directly.
+
 ### Orthorhombic periodic boundary conditions
 
 To initialize an Orthorhombic cell, just provide the length of the cell on each side, and the cutoff. For example:
@@ -548,7 +558,7 @@ box = Box(x,box,lcell=2)
 cl = CellList(x,box)
 pairwise!(...)
 ```
-This parameter determines how fine is the mesh of cells. There is a trade-off between the number of cells and the number of particles per cell: with `lcell=1` each cell has sides of about the cutoff, and 27 cells (in 3D) are visited for each cell, while with `lcell=2` the cells are smaller, which reduces the number of distances computed between particles that are not within the cutoff, but 125 cells are visited for each cell. For molecular systems with normal densities `lcell=1` is the optimal choice. Greater values of `lcell` may be useful only for very dense systems, or very large cutoffs, for which the number of particles per cell is very large (as a rough guide, greater than `~200-400`). The performance can be tested using the progress meter, as explained below.
+This parameter determines how fine is the mesh of cells. With `lcell=1` each cell has sides of about the cutoff, and 27 cells (in 3D) are visited for each cell, while with `lcell=2` the cells are smaller, but 125 cells are visited for each cell. Since the distances between particles of neighboring cells are filtered by projection (see [How the cell lists are built](@ref)), smaller cells rarely reduce the number of distances computed significantly, and `lcell=1` is the optimal choice in most cases. Greater values of `lcell` may be useful only if the cells contain many hundreds of particles, which occurs for dense systems with large cutoffs. For example, for water (about 0.1 atoms/Å³) and a cutoff of 20 Å, each cell contains about 800 atoms, and `lcell=2` was found to be about 10% faster. With 64 particles per cell, `lcell=2` was already slower than `lcell=1`. The performance can be tested using the progress meter, as explained below.
 
 !!! note
     The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.
