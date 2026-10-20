@@ -78,6 +78,9 @@ end
 # faster workers pull more chunks.
 #
 function _batch!(f::F, ibatch, chunks, next_chunk, output_threaded, box, cl, p) where {F}
+    # Each worker resets its own accumulator: the copies are reset in parallel,
+    # without additional tasks, and are first touched by the thread that uses them.
+    output_threaded[ibatch] = reset_output!(output_threaded[ibatch])
     cells = _outer_list(cl).nonempty_cells
     buffer = _outer_list(cl).projection_buffers[ibatch]
     while true
