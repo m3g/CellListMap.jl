@@ -57,10 +57,10 @@ Base.@kwdef mutable struct CellList{N, T}
     " Linear indices of the cells that contain particles. "
     nonempty_cells::Vector{Int} = Int[]
     " Scratch buffers used in the construction of the lists. "
-    cell_of::Vector{Int} = Int[]
+    cell_of::Vector{Int32} = Int32[]
     wrapped::Vector{SVector{N, T}} = SVector{N, T}[]
     wrap_shift::Vector{SVector{N, Int32}} = SVector{N, Int32}[]
-    write_pos::Vector{Int} = Int[]
+    write_pos::Vector{Int32} = Int32[]
     " Offsets of neighboring cells: one of each {v,-v} (self-computations) and all of them (cross-computations). "
     offsets_half::Vector{SVector{N, Int}} = SVector{N, Int}[]
     offsets_full::Vector{SVector{N, Int}} = SVector{N, Int}[]
@@ -453,6 +453,10 @@ cell, such that all steps run in parallel, and the result is identical to the se
 function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; parallel::Bool) where {N, T}
     n = length(x)
     ncell = cl.number_of_cells
+    # Cell indices and positions in the sorted arrays are stored as Int32
+    if n >= typemax(Int32) || ncell >= typemax(Int32)
+        throw(ArgumentError("The number of particles ($n) and of cells ($ncell) must be smaller than $(typemax(Int32))."))
+    end
     resize!(cl.cell_of, n)
     resize!(cl.wrapped, n)
     resize!(cl.wrap_shift, n)
@@ -564,17 +568,17 @@ function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::B
     return cl
 end
 
-function _locate_and_count!(cl::CellList, x::ParticleSystemPositions, box::Box, counts::Vector{Int}, offset::Int, range)
+function _locate_and_count!(cl::CellList, x::ParticleSystemPositions, box::Box, counts::Vector{Int32}, offset::Int, range)
     ncell = cl.number_of_cells
-    fill!(view(counts, (offset + 1):(offset + ncell)), 0)
+    fill!(view(counts, (offset + 1):(offset + ncell)), zero(Int32))
     _locate_range!(cl, x, box, range)
     @inbounds for i in range
-        counts[offset + cl.cell_of[i]] += 1
+        counts[offset + cl.cell_of[i]] += one(Int32)
     end
     return counts
 end
 
-function _count_cell_range(counts::Vector{Int}, ncell::Int, _nbatches::Int, crange)
+function _count_cell_range(counts::Vector{Int32}, ncell::Int, _nbatches::Int, crange)
     s = 0
     @inbounds for ib in 1:_nbatches
         offset = (ib - 1) * ncell
@@ -587,7 +591,7 @@ end
 
 # Replaces the counts of the cells of `crange` by the write positions of each batch,
 # and sets the first index of each cell.
-function _write_positions!(cl::CellList, counts::Vector{Int}, _nbatches::Int, crange, first_index::Int)
+function _write_positions!(cl::CellList, counts::Vector{Int32}, _nbatches::Int, crange, first_index::Int)
     ncell = cl.number_of_cells
     p = first_index
     @inbounds for c in crange
@@ -595,7 +599,7 @@ function _write_positions!(cl::CellList, counts::Vector{Int}, _nbatches::Int, cr
         for ib in 1:_nbatches
             k = (ib - 1) * ncell + c
             count = counts[k]
-            counts[k] = p
+            counts[k] = p % Int32
             p += count
         end
     end
@@ -604,11 +608,11 @@ end
 
 # Scatter the particles of `range` into the cell-sorted arrays, given the write
 # positions `write_pos[offset + c]` of each cell `c`.
-function _scatter_range!(cl::CellList, write_pos::Vector{Int}, offset::Int, range)
+function _scatter_range!(cl::CellList, write_pos::Vector{Int32}, offset::Int, range)
     @inbounds for i in range
         k = offset + cl.cell_of[i]
         p = write_pos[k]
-        write_pos[k] = p + 1
+        write_pos[k] = p + one(Int32)
         cl.particles[p] = ParticleWithIndex(i, cl.wrapped[i])
         cl.shifts[p] = cl.wrap_shift[i]
     end
@@ -620,7 +624,8 @@ function _locate_range!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box
         xi = x[i]
         # This converts the coordinates to static arrays of the type of the cell list, if necessary
         p = SVector{N, T}(ntuple(k -> xi[k], Val(N)))
-        cl.cell_of[i], cl.wrapped[i], cl.wrap_shift[i] = _locate(p, box)
+        c, cl.wrapped[i], cl.wrap_shift[i] = _locate(p, box)
+        cl.cell_of[i] = c % Int32
     end
     return cl
 end
