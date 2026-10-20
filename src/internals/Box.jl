@@ -26,7 +26,6 @@ struct Limits{N, T}
     limits::SVector{N, T}
     origin::SVector{N, T}
 end
-Limits(limits::SVector{N, T}) where {N, T} = Limits(limits, zeros(SVector{N, T}))
 
 # Set cell size from Limits, when no periodic boundary conditions are
 # used. A margin larger than the cutoff is added, such that particles
@@ -330,7 +329,6 @@ cutoff of any other particle. This is not required (smaller cells are supported)
 in that case pairs are reported once for each image within the cutoff.
 
 =#
-check_unit_cell(box::Box) = check_unit_cell(box.input_unit_cell.matrix, box.cutoff)
 check_unit_cell(unit_cell_matrix::SMatrix, cutoff) = all(>(2 * cutoff), _face_distances(unit_cell_matrix))
 
 #=

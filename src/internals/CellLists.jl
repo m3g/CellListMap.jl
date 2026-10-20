@@ -232,38 +232,6 @@ end
 _create_aux(::Box, cl::Union{CellList, CellListPair}) = AuxThreaded(cl)
 
 #=
-    set_idxs!(idxs, n_particles, nbatches)
-
-# Extended help
-
-Sets the indexes of the particles that will be considered for each batch in parallel runs.
-
-=#
-function set_idxs!(idxs, n_particles, nbatches)
-    if length(idxs) != nbatches
-        throw(
-            ArgumentError(
-                """\n
-                    Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array.
-
-                """
-            )
-        )
-    end
-    nperthread, nrem = divrem(n_particles, nbatches)
-    first = 1
-    for ibatch in eachindex(idxs)
-        nx = nperthread
-        if ibatch <= nrem
-            nx += 1
-        end
-        idxs[ibatch] = first:((first - 1) + nx)
-        first += nx
-    end
-    return nothing
-end
-
-#=
     CellList(
         x::ParticleSystemPositions,
         box::Box{UnitCellType,N,T};

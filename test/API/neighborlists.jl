@@ -418,3 +418,22 @@ end
     list1 = neighborlist!(system)
     @test length(list1) == 0
 end
+
+@testitem "parallel reduction of large lists" begin
+    using CellListMap
+    using StaticArrays
+    # More pairs than CellListMap.PARALLEL_REDUCE_MIN_PAIRS, such that the per-batch
+    # lists are merged in parallel (when running with more than one thread)
+    x = rand(SVector{3, Float64}, 20_000)
+    serial = neighborlist(; xpositions = x, cutoff = 0.05, unitcell = [1, 1, 1], parallel = false)
+    parallel = neighborlist(; xpositions = x, cutoff = 0.05, unitcell = [1, 1, 1], parallel = true)
+    @test length(serial) > CellListMap.PARALLEL_REDUCE_MIN_PAIRS
+    canonical(list) = sort!([(min(i, j), max(i, j)) for (i, j, _) in list])
+    @test canonical(serial) == canonical(parallel)
+    # The same, for two sets of particles
+    y = rand(SVector{3, Float64}, 20_000)
+    serial = neighborlist(; xpositions = x, ypositions = y, cutoff = 0.05, unitcell = [1, 1, 1], parallel = false)
+    parallel = neighborlist(; xpositions = x, ypositions = y, cutoff = 0.05, unitcell = [1, 1, 1], parallel = true)
+    @test length(serial) > CellListMap.PARALLEL_REDUCE_MIN_PAIRS
+    @test sort!([(i, j) for (i, j, _) in serial]) == sort!([(i, j) for (i, j, _) in parallel])
+end

@@ -97,12 +97,6 @@ end
     @test CellListMap.nbatches(cl_pair, :map) == CellListMap.nbatches(cl_pair.ref_list, :map)
 end
 
-@testitem "set_idxs! error on nbatches mismatch" begin
-    using CellListMap
-    idxs = [1:10, 11:20]
-    @test_throws ArgumentError CellListMap.set_idxs!(idxs, 100, 3)
-end
-
 @testitem "UpdateCellList! for CellListPair" setup = [Testing] begin
     using CellListMap, StaticArrays
     x = rand(SVector{3,Float64}, 100)
