@@ -30,6 +30,9 @@ function reduce_output!(output::NeighborList, output_threaded::Vector{<:Neighbor
         ntot += nb.n
     end
     if length(output.list) < ntot
+        # Only the first output.n elements are kept: shrinking first avoids copying
+        # the (possibly large) rest of the buffer when the list grows.
+        resize!(output.list, output.n)
         resize!(output.list, ntot)
     end
     if nthreads() > 1 && length(output_threaded) > 1 && ntot - output.n >= PARALLEL_REDUCE_MIN_PAIRS
@@ -68,11 +71,12 @@ end
 
 # Pre-allocate capacity for neighbor lists based on the estimated pair count: the
 # output list holds all pairs, and each threaded list holds the pairs of one batch
-# (with a margin for load imbalance). Resizing to a smaller length keeps the
-# capacity, such that repeated calls do not allocate.
+# (with a margin for load imbalance). The output list also gets a margin, because
+# overflowing the estimate even by a few pairs triggers a copy of the whole list.
+# Resizing to a smaller length keeps the capacity, such that repeated calls do not allocate.
 function _sizehint_neighbor_lists!(sys::AbstractParticleSystem)
     n_pairs = _estimated_n_pairs(box(sys), celllist(sys))
-    resize!(sys.output, n_pairs)
+    resize!(sys.output, max(length(sys.output.list), n_pairs + n_pairs ÷ 20))
     _output_threaded = output_threaded(sys)
     n_per_batch = min(n_pairs, cld(n_pairs, max(1, length(_output_threaded))) * 5 ÷ 4)
     for nb in _output_threaded
