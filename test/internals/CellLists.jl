@@ -151,3 +151,44 @@ end
     box = CellListMap.Box([1.0, 1.0, 1.0], 0.1)
     @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
 end
+
+@testitem "parallel counting sort" begin
+    using CellListMap, StaticArrays
+    PSP = CellListMap.ParticleSystemPositions
+    # Number of batches of the counting sort
+    @test CellListMap._nbatches_counting_sort(8, 10_000, 100) == 1
+    @test CellListMap._nbatches_counting_sort(8, 10^6, 10^5) == 8
+    @test CellListMap._nbatches_counting_sort(8, 10^6, 2 * 10^6) == 4
+    @test CellListMap._nbatches_counting_sort(8, 10^6, 3 * 10^6) == 1
+    @test CellListMap._nbatches_counting_sort(1, 10^6, 10^5) == 1
+    # The parallel build must be identical to the serial one (called directly, to
+    # run independently of the number of threads)
+    function same_build(x, box)
+        cl = CellListMap.CellList(PSP(x), box; parallel = false)
+        ref = deepcopy(cl)
+        for nb in (2, 3, 8)
+            CellListMap._build_parallel!(cl, PSP(x), box, nb)
+            cl.particles == ref.particles || return false
+            cl.shifts == ref.shifts || return false
+            cl.cell_start == ref.cell_start || return false
+        end
+        return true
+    end
+    x = [10 * rand(SVector{3, Float64}) .- 2 for _ in 1:5000]
+    @test same_build(x, CellListMap.Box([8, 8, 8], 1.0))
+    @test same_build(x, CellListMap.Box([8, 8, 8], 1.0; lcell = 2))
+    @test same_build(x, CellListMap.Box([8 1 0; 0 8 1; 0 0 8], 1.0))
+    @test same_build(x, CellListMap.Box(CellListMap.limits(PSP(x)), 1.0))
+    x = [10 * rand(SVector{2, Float64}) for _ in 1:5000]
+    @test same_build(x, CellListMap.Box([10, 10], 0.5))
+    @test same_build(x[1:3], CellListMap.Box([10, 10], 0.5))
+    # Through UpdateCellList!, with enough particles to use the parallel sort
+    x = [50 * rand(SVector{3, Float64}) for _ in 1:CellListMap.COUNTING_SORT_MIN_PARTICLES]
+    box = CellListMap.Box([50, 50, 50], 2.0)
+    cl_serial = CellListMap.CellList(PSP(x), box; parallel = false)
+    cl_parallel = CellListMap.CellList(PSP(x), box; parallel = true)
+    @test cl_parallel.particles == cl_serial.particles
+    @test cl_parallel.shifts == cl_serial.shifts
+    @test cl_parallel.cell_start == cl_serial.cell_start
+    @test cl_parallel.nonempty_cells == cl_serial.nonempty_cells
+end

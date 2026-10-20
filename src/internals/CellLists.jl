@@ -459,9 +459,14 @@ end
 
 # Extended help
 
-Builds the cell lists: (1) computes the cell, wrapped coordinates, and wrap shift of
-each particle (in parallel, if requested); (2) counts the particles in each cell;
-(3) scatters the particles into the cell-sorted arrays.
+Builds the cell lists by a counting sort of the particles by cell: (1) computes the cell,
+wrapped coordinates, and wrap shift of each particle, and counts the particles in each cell;
+(2) computes the first index of each cell (prefix sum of the counts); (3) scatters the particles
+into the cell-sorted arrays. The particles of each cell are kept in the order of their indices.
+
+In parallel, each batch handles a consecutive range of particles, and keeps its own counts per
+cell. The prefix sum over (cell, batch) then gives each batch its own write positions in each
+cell, such that all steps run in parallel, and the result is identical to the serial build.
 
 =#
 function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; parallel::Bool) where {N, T}
@@ -473,11 +478,45 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
     resize!(cl.particles, n)
     resize!(cl.shifts, n)
     resize!(cl.cell_start, ncell + 1)
-    resize!(cl.write_pos, ncell)
+    _nbatches = parallel ? nbatches(cl, :build) : 1
+    nb_sort = _nbatches_counting_sort(_nbatches, n, ncell)
+    if nb_sort == 1
+        _build_serial!(cl, x, box, _nbatches)
+    else
+        _build_parallel!(cl, x, box, nb_sort)
+    end
+    # Indices of the nonempty cells (branchless: most cells may be empty or not)
+    nonempty_cells = resize!(cl.nonempty_cells, ncell)
+    k = 0
+    @inbounds for c in 1:ncell
+        nonempty_cells[k + 1] = c
+        k += cl.cell_start[c + 1] > cl.cell_start[c]
+    end
+    resize!(nonempty_cells, k)
+    return cl
+end
 
-    # 1. Locate particles
-    _nbatches = nbatches(cl, :build)
-    if !parallel || _nbatches == 1 || n == 0
+#
+# Number of batches of the parallel counting sort (1 means the serial counting sort).
+# Each batch keeps one count per cell, thus the number of batches is reduced for
+# systems with many cells per particle, to bound the memory to COUNTING_SORT_MAX_COUNTS_PER_PARTICLE
+# counts per particle. If that leaves less than half of the batches, the serial sort is faster,
+# because then the particles are located with fewer threads. For small systems, the overhead
+# of the additional passes over the data is larger than the gain.
+#
+const COUNTING_SORT_MIN_PARTICLES = 2^16
+const COUNTING_SORT_MAX_COUNTS_PER_PARTICLE = 8
+function _nbatches_counting_sort(_nbatches::Int, n::Int, ncell::Int)
+    n < COUNTING_SORT_MIN_PARTICLES && return 1
+    nb = min(_nbatches, COUNTING_SORT_MAX_COUNTS_PER_PARTICLE * n ÷ max(1, ncell))
+    return nb < max(2, _nbatches ÷ 2) ? 1 : nb
+end
+
+# Serial counting sort (the particles are located in parallel if _nbatches > 1)
+function _build_serial!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, _nbatches::Int) where {N, T}
+    n = length(x)
+    ncell = cl.number_of_cells
+    if _nbatches == 1 || n == 0
         _locate_range!(cl, x, box, 1:n)
     else
         n_chunks = _n_workqueue_chunks(_nbatches, n)
@@ -495,26 +534,100 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
         end
         foreach(wait, tasks)
     end
-
-    # 2. Count particles per cell, and compute the first index of each cell
+    # Count particles per cell, and compute the first index of each cell
     cell_start = cl.cell_start
     fill!(cell_start, 0)
     @inbounds for i in 1:n
         cell_start[cl.cell_of[i] + 1] += 1
     end
-    empty!(cl.nonempty_cells)
     cell_start[1] = 1
     @inbounds for c in 1:ncell
-        cell_start[c + 1] > 0 && push!(cl.nonempty_cells, c)
         cell_start[c + 1] += cell_start[c]
     end
+    # Scatter particles into the cell-sorted arrays
+    write_pos = resize!(cl.write_pos, ncell)
+    copyto!(write_pos, 1, cell_start, 1, ncell)
+    _scatter_range!(cl, write_pos, 0, 1:n)
+    return cl
+end
 
-    # 3. Scatter particles into the cell-sorted arrays
-    copyto!(cl.write_pos, 1, cell_start, 1, ncell)
-    @inbounds for i in 1:n
-        c = cl.cell_of[i]
-        p = cl.write_pos[c]
-        cl.write_pos[c] = p + 1
+function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, _nbatches::Int) where {N, T}
+    n = length(x)
+    ncell = cl.number_of_cells
+    # Each batch must have at least one particle
+    _nbatches = min(_nbatches, n)
+    # counts[(ib - 1) * ncell + c]: number of particles of batch ib in cell c, and later the
+    # position where batch ib writes its next particle of cell c.
+    counts = resize!(cl.write_pos, ncell * _nbatches)
+    particle_ranges = index_chunks(1:n; n = _nbatches, split = Consecutive())
+    cell_ranges = index_chunks(1:ncell; n = _nbatches, split = Consecutive())
+    # 1. Locate and count the particles of each batch
+    @sync for (ib, range) in enumerate(particle_ranges)
+        @spawn _locate_and_count!($cl, $x, $box, $counts, ($ib - 1) * $ncell, $range)
+    end
+    # 2. Prefix sum over (cell, batch), in cell-major order: first the number of
+    # particles in each range of cells, then the positions within each range.
+    range_count = zeros(Int, _nbatches)
+    @sync for (ir, crange) in enumerate(cell_ranges)
+        @spawn $range_count[$ir] = _count_cell_range($counts, $ncell, $_nbatches, $crange)
+    end
+    @sync for (ir, crange) in enumerate(cell_ranges)
+        first_index = 1 + sum(view(range_count, 1:(ir - 1)); init = 0)
+        @spawn _write_positions!($cl, $counts, $_nbatches, $crange, $first_index)
+    end
+    cl.cell_start[ncell + 1] = n + 1
+    # 3. Scatter the particles of each batch
+    @sync for (ib, range) in enumerate(particle_ranges)
+        @spawn _scatter_range!($cl, $counts, ($ib - 1) * $ncell, $range)
+    end
+    return cl
+end
+
+function _locate_and_count!(cl::CellList, x::ParticleSystemPositions, box::Box, counts::Vector{Int}, offset::Int, range)
+    ncell = cl.number_of_cells
+    fill!(view(counts, (offset + 1):(offset + ncell)), 0)
+    _locate_range!(cl, x, box, range)
+    @inbounds for i in range
+        counts[offset + cl.cell_of[i]] += 1
+    end
+    return counts
+end
+
+function _count_cell_range(counts::Vector{Int}, ncell::Int, _nbatches::Int, crange)
+    s = 0
+    @inbounds for ib in 1:_nbatches
+        offset = (ib - 1) * ncell
+        for c in crange
+            s += counts[offset + c]
+        end
+    end
+    return s
+end
+
+# Replaces the counts of the cells of `crange` by the write positions of each batch,
+# and sets the first index of each cell.
+function _write_positions!(cl::CellList, counts::Vector{Int}, _nbatches::Int, crange, first_index::Int)
+    ncell = cl.number_of_cells
+    p = first_index
+    @inbounds for c in crange
+        cl.cell_start[c] = p
+        for ib in 1:_nbatches
+            k = (ib - 1) * ncell + c
+            count = counts[k]
+            counts[k] = p
+            p += count
+        end
+    end
+    return cl
+end
+
+# Scatter the particles of `range` into the cell-sorted arrays, given the write
+# positions `write_pos[offset + c]` of each cell `c`.
+function _scatter_range!(cl::CellList, write_pos::Vector{Int}, offset::Int, range)
+    @inbounds for i in range
+        k = offset + cl.cell_of[i]
+        p = write_pos[k]
+        write_pos[k] = p + 1
         cl.particles[p] = ParticleWithIndex(i, cl.wrapped[i])
         cl.shifts[p] = cl.wrap_shift[i]
     end
