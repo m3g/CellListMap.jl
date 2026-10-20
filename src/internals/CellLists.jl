@@ -470,16 +470,20 @@ end
     return li + 1
 end
 
-# 0-based cartesian indices of a cell given its (1-based) linear index
+# 0-based cartesian indices of a cell given its (1-based) linear index.
+# (Written without mutating a variable captured by a closure, which would be
+# heap-allocated on every call.)
 @inline function _cell_cartesian_index(li::Int, nc::SVector{N, Int}) where {N}
-    r = li - 1
-    return SVector{N, Int}(
-        ntuple(Val(N)) do d
-            q, m = divrem(r, nc[d])
-            r = q
-            m
-        end
-    )
+    return SVector{N, Int}(ntuple(d -> rem(div(li - 1, _cell_stride(nc, d)), nc[d]), Val(N)))
+end
+
+# Number of cells spanned by a unit step of the cartesian index `d` in the linear index
+@inline function _cell_stride(nc::SVector{N, Int}, d::Int) where {N}
+    s = 1
+    for k in 1:(d - 1)
+        s *= nc[k]
+    end
+    return s
 end
 
 #=
