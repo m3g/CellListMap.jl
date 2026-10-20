@@ -11,7 +11,7 @@ The function `f` receives a `NeighborPair` struct and the output:
 ```
 function f(pair, output)
     # pair.i, pair.j: indices of the particles
-    # pair.x, pair.y: coordinates (minimum-image adjusted)
+    # pair.x, pair.y: coordinates (pair.y is the image of j within the cutoff of pair.x)
     # pair.d: distance between particles
     # pair.d2: squared distance
     # pair.shift: lattice translation of particle j relative to particle i

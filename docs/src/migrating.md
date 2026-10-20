@@ -93,7 +93,7 @@ end
 ```
 
 The `NeighborPair` object contains the fields:
-- `x`, `y`: positions of the two particles (minimum-image convention applied, for unit cells larger than twice the cutoff)
+- `x`, `y`: positions of the two particles (`y` is the image of particle `j` within the cutoff of `x`: the minimum image, unless the unit cell is smaller than twice the cutoff)
 - `i`, `j`: indices of the particles in the original arrays
 - `d2`: squared distance between the particles
 - `d`: distance between the particles (**lazily computed** - only calculated when accessed)

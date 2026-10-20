@@ -17,7 +17,7 @@ end
 where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2`, `d` and `shift`, which here we
 extract from the object using [destructuring syntax](https://docs.julialang.org/en/v1/manual/functions/#Property-destructuring). 
 
-`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions, if the unit cell is large enough relative to the cutoff; see [Unit cell size and cutoff](@ref)), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
+`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (`y` is the position of the image of particle `j` within the cutoff of `x`, which is the minimum image unless the unit cell is smaller than twice the cutoff; see [Unit cell size and cutoff](@ref)), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
 
 !!! info
     #### Details of the mapped function interface
@@ -28,7 +28,7 @@ extract from the object using [destructuring syntax](https://docs.julialang.org/
     |  Input/Output |  Type   |  Meaning   |
     |:----------------:|:-------:|:-----------|
     | `x`              |  `SVector`   |  The coordinates of particle `i` of the pair.  |
-    | `y`              |  `SVector`   |  The coordinates of particle `j` of the pair (minimum-image relative to `x`).  |
+    | `y`              |  `SVector`   |  The coordinates of the image of particle `j` within the cutoff of `x` (the minimum image, unless the unit cell is smaller than twice the cutoff; see [Unit cell size and cutoff](@ref)).  |
     | `i`              |  `Int`       |  Index of first particle in the original array of coordinates. |
     | `j`              |  `Int`       |  Index of second particle in the original array of coordinates. |
     | `d2`             |  `<:Real`    |  Squared distance between the particles. |
