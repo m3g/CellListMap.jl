@@ -61,14 +61,14 @@ might be necessary for other custom types
 for advanced control over the reduction strategy).
 ```julia
 function CellListMap.reducer(x::EnergyAndForces, y::EnergyAndForces)
-    e_tot = x.energy + y.energy
+    x.energy += y.energy
     x.forces .+= y.forces
-    return EnergyAndForces(e_tot, x.forces)
+    return x
 end
 ```
-Note that in the above example, we reuse the `x.forces` array in the return instance
-of `EnergyAndForces`. You must always reduce from right to left, and reuse the
-possible buffers of the first argument of the reducer (in this case, `x`).
+Note that in the above example, the reduction is accumulated in `x`, which is modified and
+returned. You must always reduce from right to left, accumulating the result in the first
+argument of the reducer (in this case, `x`), and reusing its possible buffers.
 
 !!! warning
     - All these functions **must** return the modified `output` variable, to adhere to the interface.

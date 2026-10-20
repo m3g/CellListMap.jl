@@ -314,7 +314,7 @@ In [39]: box = jl.Box(np.array([1,1,1]), 0.05)
 
 In [40]: box
 Out[41]: 
-Box{OrthorhombicCell, 3}
+Box{PeriodicCell, 3}
   unit cell matrix = [ 1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0 ]
   cutoff = 0.05
   number of computing cells on each dimension = [20, 20, 20]

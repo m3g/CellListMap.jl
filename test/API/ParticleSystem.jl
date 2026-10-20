@@ -78,8 +78,8 @@
 
     # unitcell type
     x = rand(SVector{3, Float64}, 100)
-    @test CellListMap.unitcelltype(ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)) == CellListMap.OrthorhombicCell
-    @test CellListMap.unitcelltype(ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1], output = 0.0)) == CellListMap.TriclinicCell
+    @test CellListMap.unitcelltype(ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1, 1, 1], output = 0.0)) == CellListMap.PeriodicCell
+    @test CellListMap.unitcelltype(ParticleSystem(positions = x, cutoff = 0.1, unitcell = [1 0 0; 0 1 0; 0 0 1], output = 0.0)) == CellListMap.PeriodicCell
     @test CellListMap.unitcelltype(ParticleSystem(positions = x, cutoff = 0.1, output = 0.0)) == CellListMap.NonPeriodicCell
 
     # Argument errors
@@ -187,6 +187,35 @@ end
     @test_throws ArgumentError update!(sys; unitcell=[1, 1, 1])
     sys = ParticleSystem(xpositions = x, ypositions = y, cutoff = 0.1, output = 0.0)
     @test_throws ArgumentError update!(sys; unitcell=[1, 1, 1])
+end
+
+@testitem "update! unitcell shape" setup = [AllocTest] begin
+    using BenchmarkTools
+    using StaticArrays
+    using CellListMap
+    # The unit cell of a periodic system can be updated to a cell of any shape
+    x = [10 * rand(SVector{3, Float64}) for _ in 1:2000]
+    y = [10 * rand(SVector{3, Float64}) for _ in 1:1000]
+    sides = [10.0, 10.0, 10.0]
+    m = [10.0 2.0 1.0; 0.0 10.0 3.0; 0.0 0.0 10.0]
+    npairs(sys) = pairwise!((pair, n) -> n + 1, sys)
+    for (initial, final) in ((1.2 .* sides, m), (1.2 .* m, sides))
+        # single set
+        ref = npairs(ParticleSystem(xpositions = x, unitcell = final, cutoff = 1.0, output = 0))
+        sys = ParticleSystem(xpositions = x, unitcell = initial, cutoff = 1.0, output = 0)
+        update!(sys; unitcell = final)
+        @test npairs(sys) == ref
+        # two sets
+        ref = npairs(ParticleSystem(xpositions = x, ypositions = y, unitcell = final, cutoff = 1.0, output = 0))
+        sys = ParticleSystem(xpositions = x, ypositions = y, unitcell = initial, cutoff = 1.0, output = 0)
+        update!(sys; unitcell = final)
+        @test npairs(sys) == ref
+    end
+    # Updating to a cell of a different shape does not allocate
+    sys = ParticleSystem(xpositions = x, unitcell = sides, cutoff = 1.0, output = 0)
+    msm = SMatrix{3, 3}(m)
+    a = @ballocated update!($sys; unitcell = $msm) evals = 1 samples = 1
+    @test a == Allocs(0)
 end
 
 @testitem "update! cutoff" setup = [AllocTest, Testing] begin

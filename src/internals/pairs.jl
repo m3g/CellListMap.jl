@@ -119,7 +119,7 @@ end
 # Returns a flag indicating if the cell exists, its linear index, and the lattice translation
 # (in units of unit cells) of the neighboring cell.
 #
-@inline function _neighbor_cell(box::Box{<:PeriodicCellType, N}, ci::SVector{N, Int}, o::SVector{N, Int}) where {N}
+@inline function _neighbor_cell(box::Box{PeriodicCell, N}, ci::SVector{N, Int}, o::SVector{N, Int}) where {N}
     (; nc) = box
     t = ci + o
     q = fld.(t, nc)

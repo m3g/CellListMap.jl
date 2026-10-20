@@ -1,15 +1,11 @@
 #
-# Types of unit cells. Orthorhombic and triclinic cells are treated identically by the
-# cell lists (the grid is defined in fractional coordinates), but the type is kept for
-# dispatch and for the interpretation of the `unitcell` input (sides vs. matrix).
-# Non-periodic systems are represented by an orthorhombic box enclosing all particles,
-# in which neighboring cells are never wrapped.
+# Types of unit cells. Periodic cells can have any shape (the unit cell can be given as a
+# vector of sides, for orthorhombic cells, or as a matrix of lattice vectors, and both are
+# treated identically). Non-periodic systems are represented by an orthorhombic box
+# enclosing all particles, in which neighboring cells are never wrapped.
 #
-struct TriclinicCell end
-struct OrthorhombicCell end
+struct PeriodicCell end
 struct NonPeriodicCell end
-const OrthorhombicCellType = Union{OrthorhombicCell, NonPeriodicCell}
-const PeriodicCellType = Union{OrthorhombicCell, TriclinicCell}
 
 # Wrapper for the unitcell matrix, to be able to dispatch on the unitcell type that contains it
 struct UnitCell{UnitCellType, N, T, M}
@@ -49,7 +45,7 @@ restriction on the size of the unit cell relative to the cutoff.
 julia> using CellListMap
 
 julia> box = Box([250, 250, 250], 10)
-Box{OrthorhombicCell, 3}
+Box{PeriodicCell, 3}
   unit cell matrix = [ 250.0 0.0 0.0; 0.0 250.0 0.0; 0.0 0.0 250.0 ]
   cutoff = 10.0
   number of computing cells on each dimension = [25, 25, 25]
@@ -86,13 +82,10 @@ julia> using CellListMap
 julia> box = Box([1,1,1], 0.1);
 
 julia> unitcelltype(box)
-OrthorhombicCell
-
-julia> box = Box([1 0 0; 0 1 0; 0 0 1], 0.1);
-
-julia> unitcelltype(box)
-TriclinicCell
+PeriodicCell
 ```
+
+For non-periodic systems (boxes built from `limits`), the type is `NonPeriodicCell`.
 
 =#
 unitcelltype(::Box{T}) where {T} = T
@@ -119,12 +112,10 @@ function _promote_types(unitcell, cutoff)
 end
 
 #=
-    Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=TriclinicCell)
+    Box(unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int=1, UnitCellType=PeriodicCell)
 
 Construct box structure given the cell matrix, where
-columns correspond to the lattice vectors. This constructor will always return
-a `TriclinicCell` box type, unless the `UnitCellType` parameter is set
-manually to `OrthorhombicCell`
+columns correspond to the lattice vectors.
 
 =#
 function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{UnitCellType}; origin = nothing) where {UnitCellType}
@@ -138,7 +129,7 @@ function Box(input_unit_cell_matrix::AbstractMatrix, cutoff, lcell::Int, ::Type{
     return _construct_box(unit_cell, lcell, T(cutoff); origin = _origin)
 end
 
-Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int = 1, UnitCellType = TriclinicCell) =
+Box(unit_cell_matrix::AbstractMatrix, cutoff; lcell::Int = 1, UnitCellType = PeriodicCell) =
     Box(unit_cell_matrix, cutoff, lcell, UnitCellType)
 
 #
@@ -217,7 +208,7 @@ cell_matrix_from_sides(sides::AbstractVector) = oneunit(eltype(sides)) * diagm(s
 cell_matrix_from_sides(sides::Tuple) = cell_matrix_from_sides(SVector(sides))
 
 #=
-    Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=OrthorhombicCell)
+    Box(sides::AbstractVector, cutoff, lcell::Int=1, UnitCellType=PeriodicCell)
 
 For orthorhombic unit cells, `Box` can be initialized with a vector of the length of each side.
 
@@ -227,7 +218,7 @@ function Box(sides::AbstractVector, cutoff, lcell::Int, ::Type{UnitCellType}; or
     unit_cell_matrix = cell_matrix_from_sides(T.(sides))
     return Box(unit_cell_matrix, T(cutoff), lcell, UnitCellType; origin)
 end
-Box(sides::AbstractVector, cutoff; lcell::Int = 1, UnitCellType = OrthorhombicCell) = Box(sides, cutoff, lcell, UnitCellType)
+Box(sides::AbstractVector, cutoff; lcell::Int = 1, UnitCellType = PeriodicCell) = Box(sides, cutoff, lcell, UnitCellType)
 
 #=
     Box(unitcell::Limits, cutoff; lcell::Int=1)

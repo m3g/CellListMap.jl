@@ -6,7 +6,7 @@ import Random
 #
 # In this example we test the implementation in a simple packmol-like soft potential
 #
-function packmol(; parallel = false, sides = [46.4, 31.5, 18.7], tol = 2.0, UnitCellType = CellListMap.OrthorhombicCell)
+function packmol(; parallel = false, sides = [46.4, 31.5, 18.7], tol = 2.0, unitcell_as_matrix = false)
 
     function wrap(x, side)
         x = rem(x, side)
@@ -41,7 +41,7 @@ function packmol(; parallel = false, sides = [46.4, 31.5, 18.7], tol = 2.0, Unit
 
     sys = ParticleSystem(
         positions = x,
-        unitcell = sides,
+        unitcell = unitcell_as_matrix ? [sides[1] 0 0; 0 sides[2] 0; 0 0 sides[3]] : sides,
         cutoff = tol,
         parallel = parallel,
         output = 0.0,

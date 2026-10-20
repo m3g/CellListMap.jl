@@ -53,8 +53,16 @@ The figure below illustrates the meaning of the coordinates in a `NeighborPair` 
 Here $$\vec{x}$$ and $$\vec{y}_0$$ are the coordinates as provided by the user, which in this case fall inside the 
 reference unitcell. But the image $$\vec{y}$$ of $$\vec{y}_0$$ is closer to $$\vec{x}$$. The `NeighborPair` object
 will contain the coordinates `pair.x ==`$$\vec{x}$$ and `pair.y ==`$$\vec{y}$$, such that `pair.y - pair.x` will be
-tipicaly the vector used, for example, to compute the force between the particles. Also, `pair.d == norm(pair.y - pair.y)`
-and corresponds to the norm of $$\vec{y} - \vec{x}$$, as represented in the figure. 
+typically the vector used, for example, to compute the force between the particles. Also, `pair.d == norm(pair.y - pair.x)`
+and corresponds to the norm of $$\vec{y} - \vec{x}$$, as represented in the first figure. 
+
+The second figure illustrates the case of a cutoff greater than the size of the cell. Then, more than one image of 
+particle `j` may be within the cutoff of particle `i`, and the same pair `(i, j)` is reported once for each of these 
+images. In every case, `pair.x` is the position of particle `i` (wrapped into the unit cell), `pair.y` is the position 
+of the corresponding image of particle `j`, and `pair.d` is the distance between them. A particle may also be within 
+the cutoff of its own images, in which case pairs with `pair.i == pair.j` are reported (once for each pair of opposite 
+images). The image is identified by `pair.shift`, and repeated pairs may occur whenever the unit cell is smaller than 
+twice the cutoff (see [Unit cell size and cutoff](@ref)).
 
 ### Basic examples
 
@@ -134,18 +142,37 @@ After construction, use [`update!`](@ref) to change coordinates, cutoff, unit ce
 
 ### Properties
 
-The following properties can be read from a `ParticleSystem` object using dot notation:
+The following properties of a `ParticleSystem` object can be read using dot notation:
 
-| Property | Read | Write | Description |
-|:---------|:----:|:-----:|:------------|
-| `xpositions` | ✓ | — | Coordinates of the first (or only) set of particles, as an array-like object. Individual elements can be set by indexing (`sys.xpositions[i] = ...`). |
-| `positions` | ✓ | — | Alias for `xpositions`. |
-| `ypositions` | ✓ | — | Coordinates of the second set of particles (two-set systems only). |
-| `cutoff` | ✓ | ✓ | Current cutoff distance. Assignment updates the internal box. |
-| `unitcell` | ✓ | ✓ | Current unit cell as a matrix. Assignment updates the internal box. |
-| `parallel` | ✓ | ✓ | Whether multi-threading is enabled. |
-| `output` | ✓ | ✓ | The output variable of the computation. |
-| `OutputName` | ✓ | — | Read-only alias for `output` using the name given in `output_name`. For example, `sys.energy` if `output_name=:energy`. |
+| Property | Description |
+|:---------|:------------|
+| `xpositions` | Coordinates of the first (or only) set of particles, as a vector of `SVector`s. It can be mutated in place (see below). |
+| `positions` | Alias for `xpositions`. |
+| `ypositions` | Coordinates of the second set of particles (two-set systems only). It can be mutated in place (see below). |
+| `cutoff` | Current cutoff distance. |
+| `unitcell` | Current unit cell, as a matrix. |
+| `parallel` | Whether multi-threading is enabled. |
+| `output` | The output variable of the computation. |
+| `OutputName` | Alias for `output` using the name given in `output_name`. For example, `sys.energy` if `output_name=:energy`. |
+
+The cutoff, the unit cell, and the parallelization flag are modified with the [`update!`](@ref)
+function (see [Updating the system](@ref)).
+
+The position arrays can be mutated in place, and also resized, with the usual array
+operations. The elements must be `SVector`s:
+
+- `sys.xpositions[i] = SVector(...)` sets the position of one particle;
+- `sys.xpositions .= x` copies the positions of a vector `x` of the same length;
+- `push!`, `append!`, `resize!` and `empty!` change the number of particles.
+
+Any of these marks the cell lists as outdated, and they are rebuilt automatically in the next
+call to `pairwise!`. To replace the positions by an array of any of the supported input types
+(for example a `(D,N)` matrix), with any number of particles, use [`update!`](@ref).
+
+!!! warning
+    If the number of particles changes, an `output` that depends on the number of particles
+    (for example, an array of forces) must be resized accordingly with `resize_output!`.
+    See [Updating coordinates](@ref).
 
 For example, using the system defined in the example above:
 
@@ -161,11 +188,9 @@ system.cutoff # read current cutoff
 system.unitcell # read current unit cell
 ```
 
-Writable properties can be assigned directly:
+The cutoff, unit cell, and parallelization flag are modified with `update!`:
 
 ```@example ps_intro
-system.cutoff = 0.2
-system.unitcell = [2, 2, 2]
-system.parallel = false
+update!(system; cutoff = 0.2, unitcell = [2, 2, 2], parallel = false)
 system
 ```

@@ -1,8 +1,8 @@
 @testitem "CellListMap.unitcelltype" begin
     using CellListMap
     using StaticArrays
-    @test CellListMap.unitcelltype(CellListMap.Box([1, 1, 1], 0.1)) == CellListMap.OrthorhombicCell
-    @test CellListMap.unitcelltype(CellListMap.Box([1 0 0; 0 1 0; 0 0 1], 0.1)) == CellListMap.TriclinicCell
+    @test CellListMap.unitcelltype(CellListMap.Box([1, 1, 1], 0.1)) == CellListMap.PeriodicCell
+    @test CellListMap.unitcelltype(CellListMap.Box([1 0 0; 0 1 0; 0 0 1], 0.1)) == CellListMap.PeriodicCell
     const PSP = CellListMap.ParticleSystemPositions
     x = rand(SVector{3,Float64}, 100)
     @test CellListMap.unitcelltype(CellListMap.Box(CellListMap.limits(PSP(x)), 0.1)) == CellListMap.NonPeriodicCell

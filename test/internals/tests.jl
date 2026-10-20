@@ -416,10 +416,10 @@ end
     @test (ixy[1] == iyx[2] && ixy[2] == iyx[1] && ixy[3] ≈ iyx[3])
 
     # Test some fractional box lengths with the packmol test
-    @test Examples.packmol(parallel = false, sides = [46.4, 32.1, 44.7], tol = 3.14, UnitCellType = CellListMap.TriclinicCell)[1]
-    @test Examples.packmol(parallel = true, sides = [18.4, 30.1, 44], tol = 2, UnitCellType = CellListMap.TriclinicCell)[1]
-    @test Examples.packmol(parallel = false, sides = [46.4, 32.1, 44.7], tol = 3.14, UnitCellType = CellListMap.OrthorhombicCell)[1]
-    @test Examples.packmol(parallel = true, sides = [18.4, 30.1, 44], tol = 2, UnitCellType = CellListMap.OrthorhombicCell)[1]
+    @test Examples.packmol(parallel = false, sides = [46.4, 32.1, 44.7], tol = 3.14, unitcell_as_matrix = true)[1]
+    @test Examples.packmol(parallel = true, sides = [18.4, 30.1, 44], tol = 2, unitcell_as_matrix = true)[1]
+    @test Examples.packmol(parallel = false, sides = [46.4, 32.1, 44.7], tol = 3.14, unitcell_as_matrix = false)[1]
+    @test Examples.packmol(parallel = true, sides = [18.4, 30.1, 44], tol = 2, unitcell_as_matrix = false)[1]
 
     # Testing the propagation of types in automatic differentiation
     @test Examples.generic_types(false) == (true, u"nm^2", Measurement{Float64})
@@ -683,18 +683,18 @@ end
     @test n_cell >= 3  # At least the 3 pairs we explicitly created
 end
 
-@testitem "random cells - Orthorhombic" setup = [Testing] begin
+@testitem "random cells - orthorhombic" setup = [Testing] begin
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    @test test_random_cells(CellListMap.OrthorhombicCell) == (nothing, nothing, nothing)
+    @test test_random_cells(:orthorhombic) == (nothing, nothing, nothing)
 end
 
-@testitem "random cells - Triclinic" setup = [Testing] begin
+@testitem "random cells - triclinic" setup = [Testing] begin
     using CellListMap
     using StaticArrays
     # Test random cells of all possible types
-    @test test_random_cells(CellListMap.TriclinicCell) == (nothing, nothing, nothing)
+    @test test_random_cells(:triclinic) == (nothing, nothing, nothing)
 end
 
 @testitem "test_pathological2D" setup = [Testing] begin

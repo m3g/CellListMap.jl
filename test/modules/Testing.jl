@@ -144,14 +144,14 @@ Returns `x`, `y`, `sides` and `cutoff`.
             show_progress = true,
             lcell = 1,
             parallel = false,
-            UnitCellType = CellListMap.OrthorhombicCell
+            shape = :orthorhombic
         )
         local x, box
         ntrial = 0
         show_progress && (p = Progress(10000, 0.5))
         while ntrial < 2000
             unit_cell_matrix = zeros(SMatrix{N, N, Float64})
-            if UnitCellType == CellListMap.OrthorhombicCell
+            if shape == :orthorhombic
                 for i in 1:N
                     @set! unit_cell_matrix[i, i] = -10 + 20 * rand()
                 end
@@ -169,13 +169,13 @@ Returns `x`, `y`, `sides` and `cutoff`.
                 return false, unit_cell_matrix, cutoff
             end
             box = try
-                if UnitCellType == CellListMap.OrthorhombicCell
+                if shape == :orthorhombic
                     box = CellListMap.Box([unit_cell_matrix[i, i] for i in 1:N], cutoff, lcell = lcell)
                 else
                     box = CellListMap.Box(unit_cell_matrix, cutoff, lcell = lcell)
                 end
             catch
-                return false, CellListMap.UnitCellType, (unit_cell_matrix, cutoff, lcell)
+                return false, shape, (unit_cell_matrix, cutoff, lcell)
             end
             if prod(box.nc) > 100000
                 continue
@@ -216,7 +216,7 @@ Returns `x`, `y`, `sides` and `cutoff`.
         return true, nothing, nothing
     end
 
-    function test_random_cells(::Type{T}) where {T}
+    function test_random_cells(shape::Symbol)
         for N in 2:3,
                 M in rand(10:20),
                 parallel in [false, true],
@@ -224,7 +224,7 @@ Returns `x`, `y`, `sides` and `cutoff`.
 
             test = check_random_cells(
                 N, M,
-                UnitCellType = T,
+                shape = shape,
                 parallel = parallel,
                 lcell = lcell,
                 show_progress = false

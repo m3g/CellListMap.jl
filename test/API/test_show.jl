@@ -12,7 +12,7 @@
 
     @test parse_show(box; repl = Dict("CellListMap." => "")) ≈
         """
-            Box{CellListMap.OrthorhombicCell, 3}
+            Box{CellListMap.PeriodicCell, 3}
             unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
             cutoff = 1.0
             number of computing cells on each dimension = [10, 10, 10]
@@ -53,7 +53,7 @@
         """ 
         ParticleSystem1{default_output_name} of dimension 3, composed of:
         100 particles - cell lists are up to date.
-            Box{CellListMap.OrthorhombicCell, 3}
+            Box{CellListMap.PeriodicCell, 3}
             unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
             cutoff = 0.1
             number of computing cells on each dimension = [100, 100, 100]
@@ -71,7 +71,7 @@
         """
         ParticleSystem1{default_output_name} of dimension 3, composed of:
         0 particles - positions changed - cell lists are outdated.
-        Box{CellListMap.OrthorhombicCell, 3}
+        Box{CellListMap.PeriodicCell, 3}
         unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
         cutoff = 0.1
         number of computing cells on each dimension = [100, 100, 100]
@@ -90,7 +90,7 @@
         ParticleSystem2{default_output_name} of dimension 3, composed of:
         100 particles in the first set - cell lists are up to date.
         10 particles in the second set - cell lists are up to date.
-        Box{CellListMap.OrthorhombicCell, 3}
+        Box{CellListMap.PeriodicCell, 3}
         unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
         cutoff = 0.1
         number of computing cells on each dimension = [100, 100, 100]
@@ -109,7 +109,7 @@
         ParticleSystem2{default_output_name} of dimension 3, composed of:
         0 particles in the first set - positions changed - cell lists are outdated.
         0 particles in the second set - positions changed - cell lists are outdated.
-        Box{CellListMap.OrthorhombicCell, 3}
+        Box{CellListMap.PeriodicCell, 3}
         unit cell matrix = [ 10.0 0.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0 ]
         cutoff = 0.1
         number of computing cells on each dimension = [100, 100, 100]
@@ -126,7 +126,7 @@
         """
             InPlaceNeighborList with types: 
             CellList{3, Float64}
-            Box{CellListMap.OrthorhombicCell, 3, Float64, Float64, 9, Float64}
+            Box{CellListMap.PeriodicCell, 3, Float64, Float64, 9, Float64}
             Current list buffer length: 0
         """
 
@@ -134,7 +134,7 @@
         """
             InPlaceNeighborList with types: 
             CellListMap.CellListPair{3, Float64}
-            Box{CellListMap.OrthorhombicCell, 3, Float64, Float64, 9, Float64}
+            Box{CellListMap.PeriodicCell, 3, Float64, Float64, 9, Float64}
             Current list buffer length: 0
         """
 

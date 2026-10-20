@@ -405,7 +405,7 @@ end
 # and the lattice translation applied by the wrapping, such that
 # wrapped == x + unitcell * shift.
 #
-@inline function _locate(x::SVector{N, T}, box::Box{<:PeriodicCellType, N, T}) where {N, T}
+@inline function _locate(x::SVector{N, T}, box::Box{PeriodicCell, N, T}) where {N, T}
     (; nc) = box
     m = box.input_unit_cell.matrix
     f = box.inv_unit_cell * ((x - box.origin) ./ oneunit(T))

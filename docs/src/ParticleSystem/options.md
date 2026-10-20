@@ -40,7 +40,7 @@ MinimumDistance(783, 497, 0.007213710914619913)
 
 Displaying a progress bar: for very long runs, the user might want to see the progress of the computation. Use the `show_progress` keyword parameter of the `pairwise!` function for that.
 
-For example, we execute the computation above, but with much more particles:
+For example, we execute the computation above, but with many more particles:
 
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},10^6);

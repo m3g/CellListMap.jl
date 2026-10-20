@@ -222,7 +222,7 @@ To initialize an Orthorhombic cell, just provide the length of the cell on each 
 
 ```julia-repl
 julia> box = Box([100,70,130],12)
-Box{OrthorhombicCell, 3}
+Box{PeriodicCell, 3}
   unit cell matrix = [ 100.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 130.0 ]
   cutoff = 12.0
   number of computing cells on each dimension = [8, 5, 10]
