@@ -464,23 +464,21 @@ julia> cl = UpdateCellList!(x[1:end-100], box, cl); # fewer particles: nbatches 
 
 ## Performance tuning and additional options
 
-- [Preallocating the cell lists and cell list auxiliary arrays](@ref)
+- [Preallocating the cell lists](@ref)
 - [Preallocating threaded output auxiliary arrays](@ref)
 - [Optimizing the cell grid](@ref)
 
-### Preallocating the cell lists and cell list auxiliary arrays
+### Preallocating the cell lists
 
 The arrays containing the cell lists can be initialized only once, and then updated. This is useful for iterative runs. Note that, since the list size depends on the box size and cutoff, if the box properties changes some arrays might be increased (never shrink) on this update.
 
 ```julia
 # Initialize cell lists with initial coordinates
 cl = CellList(x,box)
-# Allocate auxiliary arrays for threaded cell list construction
-aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
-    UpdateCellList!(x,box,cl,aux) # modifies cl
+    UpdateCellList!(x,box,cl) # modifies cl
     pairwise!(...)
 end
 ```
@@ -488,16 +486,15 @@ end
 The procedure is identical if using two sets of coordinates, in which case, one would do:
 ```julia
 cl = CellList(x,y,box)
-aux = CellListMap.AuxThreaded(cl)
 for i in 1:nsteps
     x = ... # new coordinates
     box = Box(sides,cutoff) # perhaps the box has changed
-    UpdateCellList!(x,y,box,cl,aux) # modifies cl
+    UpdateCellList!(x,y,box,cl) # modifies cl
     pairwise!(...)
 end
 ```
 
-The `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater. (The `aux` structure is currently not used, all buffers are part of the cell lists, and it is kept for compatibility.)
+The `UpdateCellList!` functions will only allocate some minor variables associated to the launching of multiple threads and, possibly, to the expansion of the cell lists if the box or the number of particles became greater.
 
 ### Preallocating threaded output auxiliary arrays
 

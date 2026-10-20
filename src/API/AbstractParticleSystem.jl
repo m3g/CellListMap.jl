@@ -11,11 +11,10 @@ Use the `ParticleSystem` constructor and interface for anything else than dispat
 """
 abstract type AbstractParticleSystem{OutputName} end
 
-mutable struct PrivateParticleSystemData{B,C,O,A}
+mutable struct PrivateParticleSystemData{B,C,O}
     box::B
     cell_list::C
     output_threaded::Vector{O}
-    aux::A
 end
 
 """

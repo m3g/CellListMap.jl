@@ -28,10 +28,6 @@
         """
 
     @test parse_show(CellListMap.nbatches(cl)) ≈ "(2, 4)"
-    @test parse_show(CellListMap.AuxThreaded(cl); repl = Dict("CellListMap." => "")) ≈ 
-        """
-        CellListMap.AuxThreaded{3, Float64}
-        """
 
     PSP = CellListMap.ParticleSystemPositions
     cl = CellListMap.CellList(PSP(x), PSP(y), box; nbatches = (2, 4))
@@ -43,10 +39,6 @@
         """
 
     @test parse_show(CellListMap.nbatches(cl); repl = Dict("CellListMap." => "")) ≈ "(2, 4)"
-    @test parse_show(CellListMap.AuxThreaded(cl); repl = Dict("CellListMap." => "")) ≈ 
-        """
-        CellListMap.AuxThreadedPair{3, Float64}
-        """
 
     s = ParticleSystem(xpositions = x, cutoff = 0.1, unitcell = [10, 10, 10], output = 0.0, nbatches = (2, 2))
     @test isapprox(parse_show(s; repl = Dict("CellListMap." => "")),

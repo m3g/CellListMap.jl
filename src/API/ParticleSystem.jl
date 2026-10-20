@@ -163,20 +163,18 @@ function ParticleSystem(
         _uc = isnothing(unitcell) ? limits(_x; validate_coordinates) : unitcell
         _box = Box(_uc, cutoff; lcell)
         _cell_list = CellList(_x, _box; parallel, nbatches, validate_coordinates)
-        _aux = _create_aux(_box, _cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         _reset_all_output!(output, _output_threaded; reset = false)
-        return ParticleSystem1{_output_name(output_name)}(_x, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
+        return ParticleSystem1{_output_name(output_name)}(_x, output, _box, _cell_list, _output_threaded, parallel, validate_coordinates)
     else
         _x = ParticleSystemPositions(xpositions)
         _y = ParticleSystemPositions(ypositions)
         _uc = isnothing(unitcell) ? limits(_x, _y; validate_coordinates) : unitcell
         _box = Box(_uc, cutoff; lcell)
         _cell_list = CellList(_x, _y, _box; parallel, nbatches, validate_coordinates)
-        _aux = _create_aux(_box, _cell_list)
         _output_threaded = [copy_output(output) for _ in 1:CellListMap.nbatches(_cell_list, :map)]
         _reset_all_output!(output, _output_threaded; reset = false)
-        return ParticleSystem2{_output_name(output_name)}(_x, _y, output, _box, _cell_list, _output_threaded, _aux, parallel, validate_coordinates)
+        return ParticleSystem2{_output_name(output_name)}(_x, _y, output, _box, _cell_list, _output_threaded, parallel, validate_coordinates)
     end
 end
 

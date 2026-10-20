@@ -201,12 +201,7 @@ Returns `x`, `y`, `sides` and `cutoff`.
             else
 
             end
-            if parallel
-                aux = CellListMap.AuxThreaded(cl)
-                cl = CellListMap.UpdateCellList!(PSP(x), box, cl, aux, parallel = parallel)
-            else
-                cl = CellListMap.UpdateCellList!(PSP(x), box, cl, parallel = parallel)
-            end
+            cl = CellListMap.UpdateCellList!(PSP(x), box, cl, parallel = parallel)
             if !(test_map(box, cl, parallel = parallel) ≈ test_naive(x, box))
                 show_progress && println("FOUND PROBLEMATIC SETUP.")
                 return false, x, box

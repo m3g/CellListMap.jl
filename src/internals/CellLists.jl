@@ -214,24 +214,6 @@ nbatches(cl::CellListPair) = nbatches(cl.ref_list)
 nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.ref_list, s)
 
 #=
-Auxiliary structures for the parallel construction of the cell lists. The construction
-does not require auxiliary data in the current implementation (all buffers are part of the
-`CellList` structure), but the types are kept for compatibility of the internal interface.
-
-=#
-struct AuxThreaded{N, T} end
-struct AuxThreadedPair{N, T}
-    ref_list::AuxThreaded{N, T}
-    target_list::AuxThreaded{N, T}
-end
-AuxThreaded(::CellList{N, T}) where {N, T} = AuxThreaded{N, T}()
-AuxThreaded(::CellListPair{N, T}) where {N, T} = AuxThreadedPair{N, T}(AuxThreaded{N, T}(), AuxThreaded{N, T}())
-function Base.show(io::IO, ::MIME"text/plain", aux::Union{AuxThreaded, AuxThreadedPair})
-    return _print(io, typeof(aux))
-end
-_create_aux(::Box, cl::Union{CellList, CellListPair}) = AuxThreaded(cl)
-
-#=
     CellList(
         x::ParticleSystemPositions,
         box::Box{UnitCellType,N,T};
@@ -253,7 +235,7 @@ function CellList(
     ) where {UnitCellType, N, T, F <: Function}
     cl = CellList{N, T}(n_real_particles = length(x), number_of_cells = prod(box.nc))
     set_number_of_batches!(cl, nbatches; parallel)
-    return UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
+    return _update_cell_list!(x, box, cl; parallel, validate_coordinates)
 end
 
 #=
@@ -291,16 +273,15 @@ end
     UpdateCellList!(
         x::ParticleSystemPositions,
         box::Box,
-        cl::CellList,
-        [aux::Union{Nothing,AuxThreaded}];
+        cl::CellList;
         parallel=true,
         validate_coordinates::Function=_validate_coordinates,
     )
 
 Function that will update a previously allocated `CellList` structure, given new
-updated particle positions. The method without the `aux` argument only updates
-the cell lists if the positions were flagged as updated, and updates the number of
-batches for parallel computations (which depends on the number of particles).
+updated particle positions. The cell lists are only updated if the positions were
+flagged as updated, in which case the number of batches for parallel computations
+(which depends on the number of particles) is also updated.
 
 The `validate_coordinates` function is called before the update of the cell list, and
 should throw an error if the coordinates are invalid. By default, this function
@@ -316,17 +297,17 @@ function UpdateCellList!(
         validate_coordinates::F = _validate_coordinates,
     ) where {F <: Function}
     if x.updated[]
-        cl = UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
+        cl = _update_cell_list!(x, box, cl; parallel, validate_coordinates)
         cl = update_number_of_batches!(cl; parallel)
     end
     return cl
 end
 
-function UpdateCellList!(
+# Unconditional update of the cell list (does not update the number of batches).
+function _update_cell_list!(
         x::ParticleSystemPositions,
         box::Box{UnitCellType, N},
-        cl::CellList{N, T},
-        ::Union{Nothing, AuxThreaded};
+        cl::CellList{N, T};
         parallel::Bool = true,
         validate_coordinates::F = _validate_coordinates,
     ) where {UnitCellType, N, T, F <: Function}
@@ -649,16 +630,15 @@ end
         x::ParticleSystemPositions,
         y::ParticleSystemPositions,
         box::Box,
-        cl_pair::CellListPair,
-        [aux::Union{Nothing,AuxThreadedPair}];
+        cl_pair::CellListPair;
         parallel=true,
         validate_coordinates::Function=_validate_coordinates,
     )
 
 Function that will update a previously allocated `CellListPair` structure, given
-updated particle positions. The method without `aux` only updates the lists of the
-sets for which the positions were flagged as updated, and updates the number of batches
-for parallel computations.
+updated particle positions. Only the lists of the sets for which the positions were
+flagged as updated are updated, and the number of batches for parallel computations
+is updated accordingly.
 
 =#
 function UpdateCellList!(
@@ -670,8 +650,8 @@ function UpdateCellList!(
         validate_coordinates::F = _validate_coordinates,
     ) where {F <: Function}
     x_updated, y_updated = x.updated[], y.updated[]
-    ref_list = x_updated ? UpdateCellList!(x, box, cl_pair.ref_list, nothing; parallel, validate_coordinates) : cl_pair.ref_list
-    target_list = y_updated ? UpdateCellList!(y, box, cl_pair.target_list, nothing; parallel, validate_coordinates) : cl_pair.target_list
+    ref_list = x_updated ? _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates) : cl_pair.ref_list
+    target_list = y_updated ? _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates) : cl_pair.target_list
     cl_pair = CellListPair(ref_list, target_list)
     if x_updated || y_updated
         cl_pair = update_number_of_batches!(cl_pair; parallel)
@@ -679,18 +659,16 @@ function UpdateCellList!(
     return cl_pair
 end
 
-function UpdateCellList!(
+# Unconditional update of both cell lists (does not update the number of batches).
+function _update_cell_list!(
         x::ParticleSystemPositions,
         y::ParticleSystemPositions,
         box::Box,
-        cl_pair::CellListPair{N, T},
-        aux::Union{Nothing, AuxThreadedPair};
+        cl_pair::CellListPair{N, T};
         parallel::Bool = true,
         validate_coordinates::F = _validate_coordinates,
     ) where {N, T, F <: Function}
-    ref_aux = isnothing(aux) ? nothing : aux.ref_list
-    target_aux = isnothing(aux) ? nothing : aux.target_list
-    ref_list = UpdateCellList!(x, box, cl_pair.ref_list, ref_aux; parallel, validate_coordinates)
-    target_list = UpdateCellList!(y, box, cl_pair.target_list, target_aux; parallel, validate_coordinates)
+    ref_list = _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates)
+    target_list = _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates)
     return CellListPair{N, T}(ref_list, target_list)
 end
