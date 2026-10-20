@@ -26,6 +26,8 @@ end
     @test_throws "Incompatible dimensions" get_dim([1,2], [[1,2,3]])
     @test_throws "2 or 3" get_dim([1,2,3,4], [[1,2,3,4]])
     @test_throws "Could not infer" get_dim(nothing, [[]])
+    @test_throws "2 or 3" get_dim(nothing, SVector{4,Float64}[[1,2,3,4]])
+    @test_throws "Incompatible dimensions" get_dim([1,2], SVector{3,Float64}[[1,2,3]])
 
     sys = ParticleSystem(
         xpositions=rand(3,10),

@@ -1,35 +1,37 @@
 #
-# This file contains all structure types and functions necessary for building
-# the CellList and CellListPair structures.
+# This file contains the structures and functions for the construction of the
+# cell lists (`CellList` and `CellListPair`).
+#
+# The cell lists are built on a grid defined in fractional coordinates of the unit
+# cell (see `Box`). Each particle is stored once, wrapped into the unit cell, together
+# with the lattice translation (`shift`) applied by the wrapping. The particles are
+# sorted by cell (counting sort), such that the particles of each cell are contiguous
+# in memory. Periodic images are not replicated: they are reached in the pairwise
+# computation by wrapping the index of the neighboring cells.
 #
 
 #=
-Copies particle coordinates and associated index, to build contiguous particle lists
-in memory when building the cell lists. This strategy duplicates the particle coordinates
-data, but is probably worth the effort. 
+Coordinates of a particle (wrapped into the unit cell) and its index in the
+original array of coordinates.
 
 =#
-struct ParticleWithIndex{N,T}
+struct ParticleWithIndex{N, T}
     index::Int
-    real::Bool
-    coordinates::SVector{N,T}
+    coordinates::SVector{N, T}
 end
 
 #=
 Structure to define the number of batches used in the parallel splitting of the calculations
 of the cell list construction and of the `pairwise` computation. It is initialized with
 a standard heuristic that returns at most the number of threads, but may return a smaller
-number if the system is small. The two parameters can be tuned for optimal performance of each
-step of the calculation (cell list construction and mapping of interactions). The construction
-of the cell lists require a larger number of particles for threading to be effective, Thus
-by default the system size that allows multi-threading is greater for this part of the calculation.  
+number if the system is small.
 
 =#
 struct NumberOfBatches
-    build_cell_lists::Tuple{Bool,Int}
-    map_computation::Tuple{Bool,Int}
+    build_cell_lists::Tuple{Bool, Int}
+    map_computation::Tuple{Bool, Int}
 end
-NumberOfBatches(auto::Tuple{Bool,Bool}, n::Tuple{Int,Int}) =
+NumberOfBatches(auto::Tuple{Bool, Bool}, n::Tuple{Int, Int}) =
     NumberOfBatches((first(auto), first(n)), (last(auto), last(n)))
 Base.zero(::Type{NumberOfBatches}) = NumberOfBatches((true, 0), (true, 0))
 function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
@@ -38,125 +40,45 @@ function Base.show(io::IO, ::MIME"text/plain", nbatches::NumberOfBatches)
 end
 
 #=
-This structure contains the cell linear index and the information 
-about if this cell is in the border of the box (such that its 
-neighboring cells need to be wrapped) 
+Structure that contains the cell lists of one set of particles.
 
 =#
-#
-# Construction-time cell representation. Kept deliberately small (same shape
-# as the pre-flat-buffer `Cell`): cell list builders (the serial incremental
-# `add_particle_to_celllist!`, and the parallel build's Phase 1-3, including
-# the `AuxThreaded` scratch lists) do a full struct copy-modify-writeback
-# (`cell = cl.build_cells[i]; @set! cell.field = ...; cl.build_cells[i] =
-# cell`) on every single particle insertion, so this struct's size directly
-# multiplies construction cost. An earlier version of this struct also
-# carried the `offset`/view fields now on `CompactCell` below; that grew it
-# from 80 to 128 bytes and measurably slowed construction (~45% on Phase 1
-# alone) since those fields are dead weight until `_compact_particles!` runs
-# once at the very end — see PERFORMANCE_NOTES_pairwise_scaling.md.
-#
-Base.@kwdef struct Cell{N,T}
-    linear_index::Int = 0
-    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
-    center::SVector{N,T} = zeros(SVector{N,T})
-    contains_real::Bool = false
-    n_particles::Int = 0
-    particles::Vector{ParticleWithIndex{N,T}} = Vector{ParticleWithIndex{N,T}}(undef, 0)
-end
-function Cell{N,T}(cartesian_index::CartesianIndex, box::Box; sizehint::Int=0) where {N,T}
-    return Cell{N,T}(
-        linear_index=cell_linear_index(box.nc, cartesian_index),
-        cartesian_index=cartesian_index,
-        center=cell_center(cartesian_index, box),
-        particles=Vector{ParticleWithIndex{N,T}}(undef, sizehint)
-    )
-end
-
-#
-# View type of the flat, compacted `CellList.particles` buffer that each
-# `CompactCell.particles` field points into after `_compact_particles!` runs.
-# Keeping this as a type alias ensures `CompactCell{N,T}` stays a concrete,
-# allocated-inline struct (verified with `Base.allocatedinline`).
-#
-const CellParticlesView{N,T} = SubArray{ParticleWithIndex{N,T},1,Vector{ParticleWithIndex{N,T}},Tuple{UnitRange{Int}},true}
-
-#
-# Read-facing cell representation, produced only by `_compact_particles!` and
-# stored in `CellList.cells` — this is what `pairwise!` traversal
-# (self.jl/cross.jl/vicinal_cells.jl/auxiliary_functions.jl) reads. Kept
-# separate from the small, mutation-heavy `Cell` above so that construction
-# never has to copy the (larger, due to the `particles` view) struct.
-#
-Base.@kwdef struct CompactCell{N,T}
-    linear_index::Int = 0
-    cartesian_index::CartesianIndex{N} = CartesianIndex{N}(ntuple(i -> 0, Val(N)))
-    center::SVector{N,T} = zeros(SVector{N,T})
-    contains_real::Bool = false
-    n_particles::Int = 0
-    # Start index (0-based) of this cell's particles within the owning
-    # `CellList.particles` flat buffer.
-    offset::Int = 0
-    # View into the owning `CellList.particles` flat buffer.
-    particles::CellParticlesView{N,T} = view(Vector{ParticleWithIndex{N,T}}(undef, 0), 1:0)
-end
-
-#=
-Auxiliary structure to contain projected particles. Types of 
-scalars are chosen such that with a `SVector{3,Float64}` the
-complete struct has 32bytes.
-
-=#
-Base.@kwdef struct ProjectedParticle{N,T}
-    index::Int
-    xproj::T
-    coordinates::SVector{N,T}
-    real::Bool
-end
-
-#=
-Structure that contains the cell lists information.
-
-=#
-Base.@kwdef mutable struct CellList{N,T}
-    " Number of real particles. "
+Base.@kwdef mutable struct CellList{N, T}
+    " Number of particles. "
     n_real_particles::Int = 0
-    " Number of cells. "
+    " Number of computing cells. "
     number_of_cells::Int = 0
-    " *mutable* number of particles in the computing box. "
-    n_particles::Int = 0
-    " *mutable* number of cells with real particles. "
-    n_cells_with_real_particles::Int = 0
-    " *mutable* number of cells with particles, real or images. "
-    n_cells_with_particles::Int = 0
-    " Auxiliary array that contains the indexes in list of the cells with particles, real or images. "
-    cell_indices::Vector{Int} = zeros(Int, number_of_cells)
-    " Auxiliary array that contains the indexes in the cells with real particles. "
-    cell_indices_real::Vector{Int} = zeros(Int, 0)
-    " Construction-time cells: written to incrementally by cell list builders (serial and parallel). "
-    build_cells::Vector{Cell{N,T}} = Cell{N,T}[]
-    " Read-facing, compacted cells (spatial order, flat particle buffer view) produced by `_compact_particles!`; this is what `pairwise!` traversal reads. "
-    cells::Vector{CompactCell{N,T}} = CompactCell{N,T}[]
-    " Flat, contiguous buffer holding all particles (real + images) of all cells, laid out in linear cell index order; see `_compact_particles!`. "
-    particles::Vector{ParticleWithIndex{N,T}} = ParticleWithIndex{N,T}[]
-    " Scratch buffer used by `_compact_particles!` to reorder `cells` into linear cell index order (spatial order). "
-    cells_buffer::Vector{CompactCell{N,T}} = CompactCell{N,T}[]
-    " Scratch buffer used by `_compact_particles!`: `build_cells` index of the cell now at position i in the compacted order. "
-    compact_source::Vector{Int} = Int[]
-    " Scratch buffer used by `_compact_particles!`: write offset (0-based) into `particles` for the cell now at position i in the compacted order. "
-    compact_offset::Vector{Int} = Int[]
+    " Particles (wrapped coordinates and original index), sorted by cell. "
+    particles::Vector{ParticleWithIndex{N, T}} = ParticleWithIndex{N, T}[]
+    " Lattice translation applied to each particle by the wrapping (sorted as `particles`): `particles[k].coordinates = x[index] + unitcell * shifts[k]`. "
+    shifts::Vector{SVector{N, Int32}} = SVector{N, Int32}[]
+    " Particles of cell `c` are `particles[cell_start[c]:cell_start[c+1]-1]`. "
+    cell_start::Vector{Int} = [1]
+    " Linear indices of the cells that contain particles. "
+    nonempty_cells::Vector{Int} = Int[]
+    " Scratch buffers used in the construction of the lists. "
+    cell_of::Vector{Int32} = Int32[]
+    wrapped::Vector{SVector{N, T}} = SVector{N, T}[]
+    wrap_shift::Vector{SVector{N, Int32}} = SVector{N, Int32}[]
+    write_pos::Vector{Int32} = Int32[]
+    " Offsets of neighboring cells: one of each {v,-v} (self-computations) and all of them (cross-computations). "
+    offsets_half::Vector{SVector{N, Int}} = SVector{N, Int}[]
+    offsets_full::Vector{SVector{N, Int}} = SVector{N, Int}[]
+    " Unit vectors connecting the centers of the cells separated by each offset (zero for the zero offset). "
+    axes_half::Vector{SVector{N, Float64}} = SVector{N, Float64}[]
+    axes_full::Vector{SVector{N, Float64}} = SVector{N, Float64}[]
+    " Key of the box for which the offsets were computed. "
+    offsets_key::UInt = UInt(0)
+    " Per-batch buffers of (projection, particle position) used to filter candidate pairs between cells. "
+    projection_buffers::Vector{Vector{Tuple{T, Int}}} = Vector{Tuple{T, Int}}[]
     " Number of batches for the parallel calculations. "
     nbatches::NumberOfBatches = zero(NumberOfBatches)
-    " Auxiliary array to store projected particles. "
-    projected_particles::Vector{Vector{ProjectedParticle{N,T}}} =
-        Vector{Vector{ProjectedParticle{N,T}}}(undef, 0)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", cl::CellList)
     _println(io, typeof(cl))
-    _println(io, "  $(cl.n_real_particles) real particles.")
-    _println(io, "  $(cl.n_cells_with_real_particles) cells with real particles.")
-    return _print(io, "  $(cl.n_particles) particles in computing box, including images.")
+    _println(io, "  $(cl.n_real_particles) particles.")
+    return _print(io, "  $(length(cl.nonempty_cells)) cells with particles.")
 end
 
 #=
@@ -164,27 +86,27 @@ Structure that will contains the cell lists of two independent sets of
 particles for cross-computation of interactions
 
 =#
-struct CellListPair{N,T}
-    ref_list::CellList{N,T}  # Reference list (iterated in outer loop)
-    target_list::CellList{N,T}  # Target list (searched for neighbors)
+struct CellListPair{N, T}
+    ref_list::CellList{N, T}  # Reference list (iterated in outer loop)
+    target_list::CellList{N, T}  # Target list (searched for neighbors)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", cl::CellListPair)
     _print(io, typeof(cl), "\n")
-    _print(io, "   $(cl.ref_list.n_cells_with_real_particles) cells with real particles in reference set.\n")
-    return _print(io, "   $(cl.target_list.n_cells_with_real_particles) cells with real particles in target set.")
+    _print(io, "   $(length(cl.ref_list.nonempty_cells)) cells with particles in reference set.\n")
+    return _print(io, "   $(length(cl.target_list.nonempty_cells)) cells with particles in target set.")
 end
 
 #=
-    update_number_of_batches!(cl, nbatches::NumberOfBatches; parallel=true)  
+    update_number_of_batches!(cl, nbatches::NumberOfBatches; parallel=true)
 
-Set the default number of batches for the construction of the cell lists, 
+Set the default number of batches for the construction of the cell lists,
 and mapping computations. This is of course heuristic, and may not be the best choice for
-every problem. See the parameter `nbatches` of the construction of the cell lists for 
+every problem. See the parameter `nbatches` of the construction of the cell lists for
 tuning this.
 
 =#
-function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; parallel=true) where {N,T}
+function update_number_of_batches!(cl::CellList{N, T}, _nbatches = cl.nbatches; parallel = true) where {N, T}
     auto = (first(_nbatches.build_cell_lists), first(_nbatches.map_computation))
     n1 = last(_nbatches.build_cell_lists)
     n2 = last(_nbatches.map_computation)
@@ -207,10 +129,6 @@ function update_number_of_batches!(cl::CellList{N,T}, _nbatches=cl.nbatches; par
         end
         nbatches = NumberOfBatches(auto, (n1, n2))
     end
-    _size = isempty(cl.projected_particles) ? 0 : length(cl.projected_particles[1])
-    for _ in (length(cl.projected_particles)+1):last(nbatches.map_computation)
-        push!(cl.projected_particles, Vector{ProjectedParticle{N,T}}(undef, _size))
-    end
     cl.nbatches = nbatches
     return cl
 end
@@ -221,16 +139,15 @@ _nbatches_build_cell_lists(n::Int) = _nbatches_default(n)
 _nbatches_map_computation(n::Int) = _nbatches_default(n)
 
 function update_number_of_batches!(
-    cl::CellListPair{N,T},
-    _nbatches::Union{NumberOfBatches,Nothing}=nothing;
-    parallel=true
-) where {N,T}
+        cl::CellListPair{N, T},
+        _nbatches::Union{NumberOfBatches, Nothing} = nothing;
+        parallel = true
+    ) where {N, T}
     if isnothing(_nbatches)
         # Default call (e.g. when particle count changed): reconstruct auto flags from stored
         # state. build_cell_lists.auto is correctly preserved across updates. map_computation.auto
         # is always stored as false in individual lists (to prevent per-list recalculation based
         # on individual particle counts), so we use build_auto as the pair-level map auto flag.
-        # This is correct for all documented use cases: (0,0) all-auto and (n,m) all-manual.
         build_auto = first(cl.ref_list.nbatches.build_cell_lists)
         _nbatches = NumberOfBatches(
             (build_auto, build_auto),
@@ -256,17 +173,13 @@ function update_number_of_batches!(
             n_total = cl.ref_list.n_real_particles * cl.target_list.n_real_particles
             n_map = _nbatches_map_computation(n_total)
         end
-        # Pass computed values to individual lists
-        # For map, we disable auto to prevent individual lists from recalculating based on their own
-        # particle counts. Map for CellListPair should always be based on the product, which we compute above.
-        # Build auto is preserved so it can be recalculated if needed.
         nbatches_ref = NumberOfBatches((first(auto), false), (n_build_ref, n_map))
         nbatches_target = NumberOfBatches((first(auto), false), (n_build_target, n_map))
     end
 
     ref_list = update_number_of_batches!(cl.ref_list, nbatches_ref; parallel)
     target_list = update_number_of_batches!(cl.target_list, nbatches_target; parallel)
-    return CellListPair{N,T}(ref_list, target_list)
+    return CellListPair{N, T}(ref_list, target_list)
 end
 
 #
@@ -275,42 +188,18 @@ end
 # If the number of batches are smaller than 1, the function will set the number of batches
 # in automatic mode.
 #
-function set_number_of_batches!(cl::Union{CellList,CellListPair}, _nbatches::Tuple{Int,Int}; parallel=true)
+function set_number_of_batches!(cl::Union{CellList, CellListPair}, _nbatches::Tuple{Int, Int}; parallel = true)
     auto = _nbatches .<= 0
     nbatches = NumberOfBatches((first(auto), first(_nbatches)), (last(auto), last(_nbatches)))
     return update_number_of_batches!(cl, nbatches; parallel)
 end
 
 #=
-    nbatches(system::AbstractParticleSystem, [:map|:build])
+    nbatches(cl, [:map|:build])
 
-Returns the number of batches for parallel processing that will be used. Returns a tuple, where 
+Returns the number of batches for parallel processing that will be used. Returns a tuple, where
 the first element is the number of batches for the construction of the cell lists, and the second
 element is the number of batches for the pairwise mapping.
-
-A second argument can be provided, which may be `:map` or `:build`, in which case the function returns either the number of batches used 
-for pairwise mapping or for the construction of the cell lists. Since this second value is internal and does not affect the interface, 
-it can be usually ignored. 
-
-## Example
-
-```jldoctest
-julia> using CellListMap
-
-julia> x = rand(3,1000); box = Box([1,1,1],0.1);
-
-julia> cl = CellList(x, box, nbatches=(2,16));
-
-julia> nbatches(cl)
-(2, 16)
-
-julia> nbatches(cl,:build)
-2
-
-julia> nbatches(cl,:map)
-16
-
-```
 
 =#
 function nbatches(cl::CellList, s::Symbol)
@@ -325,163 +214,8 @@ nbatches(cl::CellListPair) = nbatches(cl.ref_list)
 nbatches(cl::CellListPair, s::Symbol) = nbatches(cl.ref_list, s)
 
 #=
-Auxiliary structure to carry threaded lists and ranges of particles to 
-be considered by each thread on parallel construction. 
-
-=#
-Base.@kwdef struct AuxThreaded{N,T}
-    idxs::Vector{UnitRange{Int}} = Vector{UnitRange{Int}}(undef, 0)
-    lists::Vector{CellList{N,T}} = Vector{CellList{N,T}}(undef, 0)
-    # Accumulators for parallel UpdateCellList! — indexed by cell linear_index.
-    # total_np: atomic accumulator for particle count; reused as write_pos scratch.
-    # contains_real_flags: atomic-or accumulator (0/1) for contains_real.
-    total_np::Vector{Int} = Int[]
-    contains_real_flags::Vector{Int} = Int[]
-    # Pre-allocated per-batch write-offset vectors (avoids per-call allocation).
-    thread_cell_offsets::Vector{Vector{Int}} = Vector{Vector{Int}}(undef, 0)
-end
-function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreaded)
-    _println(io, typeof(aux))
-    return _print(io, " Auxiliary arrays for nbatches = ", length(aux.lists))
-end
-
-# Auxiliary constructors, to dispatch on different cell types (NonPeriodicCell has
-# a special auxiliary data structure)
-_create_aux(::Box, cl::CellList) = AuxThreaded(cl)
-_create_aux(::Box, cl::CellListPair) = AuxThreaded(cl)
-
-Base.@kwdef struct AuxThreadedPair{N,T}
-    ref_list::AuxThreaded{N,T}
-    target_list::AuxThreaded{N,T}
-end
-function Base.show(io::IO, ::MIME"text/plain", aux::AuxThreadedPair)
-    _println(io, typeof(aux))
-    return _print(io, " Auxiliary arrays for nbatches = ", length(aux.ref_list.lists))
-end
-
-"""
-    AuxThreaded(cl::CellList{N,T}) where {N,T}
-
-Constructor for the `AuxThreaded` type, to be passed to `UpdateCellList!` for in-place 
-update of cell lists. 
-
-## Example
-```julia-repl
-julia> using CellListMap
-
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(3) for i in 1:10000 ];
-
-julia> cl = CellList(x,box);
-
-julia> aux = CellListMap.AuxThreaded(cl)
-CellListMap.AuxThreaded{3, Float64}
- Auxiliary arrays for nthreads = 8
-
-julia> UpdateCellList!(x,box,cl,aux)
-CellList{3, Float64}
-  100000 real particles.
-  31190 cells with real particles.
-  1134378 particles in computing box, including images.
-
-```
-"""
-function AuxThreaded(cl::CellList{N,T}) where {N,T}
-    _nbatches = nbatches(cl, :build)
-    aux = AuxThreaded{N,T}(
-        idxs=Vector{UnitRange{Int}}(undef, _nbatches),
-        lists=Vector{CellList{N,T}}(undef, _nbatches),
-        total_np=zeros(Int, cl.number_of_cells),
-        contains_real_flags=zeros(Int, cl.number_of_cells),
-        thread_cell_offsets=[Int[] for _ in 1:_nbatches],
-    )
-    # If the calculation is not parallel, no need to initialize this
-    _nbatches == 1 && return aux
-    @sync for ibatch in eachindex(aux.lists)
-        @spawn begin
-            cl_batch = CellList{N,T}(number_of_cells=cl.number_of_cells)
-            aux.lists[ibatch] = cl_batch
-        end
-    end
-    # Set indices of the atoms that will be considered by each thread
-    # these indices may be updated by an update of cell lists, if the number
-    # of particles change.
-    set_idxs!(aux.idxs, cl.n_real_particles, _nbatches)
-    return aux
-end
-
-
-#=
-    set_idxs!(idxs, n_particles, nbatches)
-
-# Extended help
-
-Sets the indexes of the particles that will be considered for each batch in parallel runs.
-Modifies the `idxs` array of ranges, which is usually the `aux.idxs` array of the the 
-corresponding `AuxThreaded` structure.
-
-=#
-function set_idxs!(idxs, n_particles, nbatches)
-    if length(idxs) != nbatches
-        throw(
-            ArgumentError(
-                """\n 
-                    Modifying `nbatches` requires an explicit update of the AuxThreaded auxiliary array.
-
-                """
-            )
-        )
-    end
-    nperthread, nrem = divrem(n_particles, nbatches)
-    first = 1
-    for ibatch in eachindex(idxs)
-        nx = nperthread
-        if ibatch <= nrem
-            nx += 1
-        end
-        idxs[ibatch] = first:((first-1)+nx)
-        first += nx
-    end
-    return nothing
-end
-
-"""
-    AuxThreaded(cl::CellListPair{N,T}) where {N,T}
-
-Constructor for the `AuxThreaded` type for lists of disjoint particle sets, 
-to be passed to `UpdateCellList!` for in-place update of cell lists. 
-
-## Example
-```julia-repl
-julia> using CellListMap
-
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(3) for i in 1:50_000 ];
-
-julia> y = [ 250*rand(3) for i in 1:10_000 ];
-
-julia> cl = CellList(x,y,box);
-
-julia> aux = CellListMap.AuxThreaded(cl)
-CellListMap.AuxThreaded{3, Float64}
- Auxiliary arrays for nthreads = 8
-
-julia> UpdateCellList!(x,y,box,cl,aux)
-CellList{3, Float64}
-  100000 real particles.
-  31190 cells with real particles.
-  1134378 particles in computing box, including images.
-
-```
-"""
-AuxThreaded(cl_pair::CellListPair) =
-    AuxThreadedPair(AuxThreaded(cl_pair.ref_list), AuxThreaded(cl_pair.target_list))
-
-#=
     CellList(
-        x::AbstractVector{AbstractVector},
+        x::ParticleSystemPositions,
         box::Box{UnitCellType,N,T};
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
@@ -489,231 +223,25 @@ AuxThreaded(cl_pair::CellListPair) =
     ) where {UnitCellType,N,T}
 
 Function that will initialize a `CellList` structure from scratch, given a vector
-or particle coordinates (a vector of vectors, typically of static vectors)
-and a `Box`, which contain the size ofthe system, cutoff, etc. Except for small
-systems, the number of parallel batches is equal to the number of threads, but it can
-be tuned for optimal performance in some cases.
-
-## Example
-
-```julia-repl
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
-
-julia> cl = CellList(x,box)
-CellList{3, Float64}
-  100000 real particles.
-  15600 cells with real particles.
-  126276 particles in computing box, including images.
-
-```
+or particle coordinates and a `Box`, which contain the size of the system, cutoff, etc.
 
 =#
 function CellList(
-    x::ParticleSystemPositions,
-    box::Box{UnitCellType,N,T};
-    parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0),
-    validate_coordinates::F=_validate_coordinates,
-) where {UnitCellType,N,T,F<:Function}
-    cl = CellList{N,T}(n_real_particles=length(x), number_of_cells=prod(box.nc))
+        x::ParticleSystemPositions,
+        box::Box{UnitCellType, N, T};
+        parallel::Bool = true,
+        nbatches::Tuple{Int, Int} = (0, 0),
+        validate_coordinates::F = _validate_coordinates,
+    ) where {UnitCellType, N, T, F <: Function}
+    cl = CellList{N, T}(n_real_particles = length(x), number_of_cells = prod(box.nc))
     set_number_of_batches!(cl, nbatches; parallel)
-    return UpdateCellList!(x, box, cl; parallel, validate_coordinates)
-end
-
-#=
-    reset!(cl::CellList{N,T},box,n_real_particles) where{N,T}
-
-# Extended help
-
-Resets a cell list, by setting everything to zero, but retaining
-the allocated `particles` and `projected_particles` vectors.
-
-=#
-function reset!(cl::CellList{N,T}, box, n_real_particles) where {N,T}
-    new_number_of_cells = prod(box.nc)
-    if new_number_of_cells > cl.number_of_cells
-        resize!(cl.cell_indices, new_number_of_cells)
-        fill!(cl.cell_indices, 0)
-    else
-        # Only zero the entries that were actually set in the previous iteration,
-        # rather than broadcasting over the entire cell_indices array.
-        for i in 1:cl.n_cells_with_particles
-            cl.cell_indices[cl.build_cells[i].linear_index] = 0
-        end
-    end
-    # Only reset cells that were populated — cells beyond n_cells_with_particles
-    # retain stale data but are never accessed until re-initialised.
-    for i in 1:cl.n_cells_with_particles
-        cl.build_cells[i] = Cell{N,T}(particles=cl.build_cells[i].particles)
-    end
-    # cell_indices_real is written sequentially from position 1 as cells are
-    # discovered, so stale entries beyond n_cells_with_real_particles are
-    # harmless and don't need zeroing.
-    cl.n_real_particles = n_real_particles
-    cl.n_particles = 0
-    cl.number_of_cells = new_number_of_cells
-    cl.n_cells_with_real_particles = 0
-    cl.n_cells_with_particles = 0
-    return cl
-end
-
-#=
-    _compact_particles!(cl::CellList{N,T}) where {N,T}
-
-# Extended help
-
-Copies each cell's particles (currently in `cell.particles`, built
-incrementally in `cl.build_cells` and scattered across independent per-cell
-allocations) into a single flat, contiguous `cl.particles` buffer, and builds
-the read-facing `cl.cells` (as `CompactCell`s), visiting cells in increasing
-*linear cell index* order (not construction/discovery order — which, for the
-serial incremental build path, is effectively particle-arrival order) so
-that both the particle payload and the `cells` array itself are laid out
-spatially. `cell_indices`/`cell_indices_real` (which index into `cells`) are
-remapped accordingly. Called once at the end of every cell list build,
-regardless of which build path (serial incremental, or parallel
-histogram+scatter) produced the (already correct) per-cell data in
-`build_cells`.
-
-This exists to avoid the traversal cost of chasing pointers into many
-small, independently-allocated per-cell arrays scattered across the heap, and
-of visiting the (otherwise contiguous) `cells` array in a scattered order —
-see `PERFORMANCE_NOTES_pairwise_scaling.md` for the motivating measurements.
-`Cell` (used by `build_cells`) is kept small and separate from `CompactCell`
-(used by `cells`) so that the copy-heavy construction code, which rewrites a
-full cell struct on every particle insertion, never has to move the extra
-`offset`/view bytes that only this function needs to populate.
-
-Runs in two passes, mirroring the periodic build's own Phase 3 (offsets
-computed serially, then scatter done in parallel):
-
-  - Pass 1 (serial): an exclusive prefix sum over `build_cells`, in
-    increasing linear cell index order, computing each active cell's write
-    offset into the flat `particles` buffer and its compacted position
-    (`compact_source`/`compact_offset`). This only touches small per-cell
-    metadata (`n_particles`, `contains_real`) — not particle data — so it is
-    cheap even though inherently sequential (each offset depends on the
-    running total of all previous cells). `cell_indices`/`cell_indices_real`
-    are remapped to the new positions here too.
-  - Pass 2 (parallel): given the offsets from Pass 1, every cell's particle
-    data copy and `CompactCell` construction touches a disjoint destination
-    range, so cells can be processed independently, work-queue scheduled
-    like the rest of the parallel build (see `_n_workqueue_chunks`). This is
-    the expensive part — the actual particle data movement — and previously
-    ran entirely on one thread regardless of `nbatches`.
-
-=#
-function _compact_particles!(cl::CellList{N,T}) where {N,T}
-    resize!(cl.particles, cl.n_particles)
-    resize!(cl.cells_buffer, cl.n_cells_with_particles)
-    resize!(cl.compact_source, cl.n_cells_with_particles)
-    resize!(cl.compact_offset, cl.n_cells_with_particles)
-
-    # Pass 1: serial prefix sum over per-cell metadata only.
-    write_pos = 0
-    new_pos = 0
-    n_real_seen = 0
-    for li in 1:cl.number_of_cells
-        cell_index = cl.cell_indices[li]
-        cell_index == 0 && continue
-        cell = cl.build_cells[cell_index]
-        new_pos += 1
-        cl.compact_source[new_pos] = cell_index
-        cl.compact_offset[new_pos] = write_pos
-        cl.cell_indices[li] = new_pos
-        if cell.contains_real
-            n_real_seen += 1
-            cl.cell_indices_real[n_real_seen] = new_pos
-        end
-        write_pos += cell.n_particles
-    end
-
-    # Pass 2: parallel particle-data copy and CompactCell construction,
-    # work-queue scheduled over the compacted cell range (`n_real_particles`
-    # as the work-size proxy for the min-chunk-size cap, same rationale as
-    # Phase 1's build: cell count alone can badly understate real work for a
-    # dense system).
-    _nbatches = nbatches(cl, :build)
-    n_cells_with_particles = cl.n_cells_with_particles
-    if _nbatches <= 1 || n_cells_with_particles == 0
-        _compact_particles_range!(cl, 1:n_cells_with_particles)
-    else
-        n_chunks = _n_workqueue_chunks(_nbatches, cl.n_real_particles)
-        chunks = collect(index_chunks(1:n_cells_with_particles; n = n_chunks, split = Consecutive()))
-        next_chunk = Atomic{Int}(1)
-        @sync for _ in 1:_nbatches
-            @spawn begin
-                while true
-                    ic = atomic_add!(next_chunk, 1)
-                    ic > length(chunks) && break
-                    _compact_particles_range!(cl, chunks[ic])
-                end
-            end
-        end
-    end
-
-    # `cells_buffer` now holds the reordered (spatial-order) cells; swap it in as
-    # `cells` (cheap: just exchanges the two Vector references). The old `cells`
-    # array becomes the scratch buffer for the next call.
-    cl.cells, cl.cells_buffer = cl.cells_buffer, cl.cells
-    return cl
-end
-
-# Pass 2 worker body: copies particle data and writes `CompactCell`s for
-# `new_pos in positions`. Each `new_pos`'s destination range in `cl.particles`
-# and `cl.cells_buffer` is disjoint from every other's (fixed by Pass 1), so
-# this is safe to call concurrently for disjoint `positions` ranges.
-function _compact_particles_range!(cl::CellList{N,T}, positions) where {N,T}
-    for new_pos in positions
-        cell_index = cl.compact_source[new_pos]
-        cell = cl.build_cells[cell_index]
-        np = cell.n_particles
-        offset = cl.compact_offset[new_pos]
-        if np > 0
-            copyto!(cl.particles, offset + 1, cell.particles, 1, np)
-        end
-        cl.cells_buffer[new_pos] = CompactCell{N,T}(
-            linear_index=cell.linear_index,
-            cartesian_index=cell.cartesian_index,
-            center=cell.center,
-            contains_real=cell.contains_real,
-            n_particles=np,
-            offset=offset,
-            particles=view(cl.particles, offset+1:offset+np),
-        )
-    end
-    return nothing
-end
-
-# Phase 2b, Pass A worker body (periodic parallel build): for each cell index
-# `i in positions`, resize its `build_particles`/`particles` scratch buffer
-# if needed and update its `n_particles`/`contains_real` fields from `aux`.
-# Independent across cells (each `i` is only ever touched by one worker), so
-# safe to call concurrently for disjoint `positions` ranges. Does not touch
-# `cell_indices_real` — that's a prefix sum over the `contains_real` flags
-# this sets, done afterward in a cheap serial pass once every cell has been
-# updated.
-function _finalize_cells_range!(cl::CellList{N,T}, aux::AuxThreaded{N,T}, positions) where {N,T}
-    for i in positions
-        li = cl.build_cells[i].linear_index
-        np = aux.total_np[li]
-        if np > length(cl.build_cells[i].particles)
-            resize!(cl.build_cells[i].particles, np)
-        end
-        cell = cl.build_cells[i]
-        @set! cell.n_particles = np
-        @set! cell.contains_real = (aux.contains_real_flags[li] == 2)  # 2 = has real particles
-        cl.build_cells[i] = cell
-    end
-    return nothing
+    return _update_cell_list!(x, box, cl; parallel, validate_coordinates)
 end
 
 #=
     CellList(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box{UnitCellType,N,T};
         parallel::Bool=true,
         nbatches::Tuple{Int,Int}=(0,0),
@@ -723,36 +251,20 @@ end
 Function that will initialize a `CellListPair` structure from scratch, given two vectors
 of particle coordinates and a `Box`, which contain the size of the system, cutoff, etc.
 
-## Example
-
-```julia-repl
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
-
-julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
-
-julia> cl = CellList(x,y,box)
-CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
-   10000 particles in the reference vector.
-   961 cells with real particles of target vector.
-
-```
-
 =#
 function CellList(
-    x::ParticleSystemPositions,
-    y::ParticleSystemPositions,
-    box::Box{UnitCellType,N,T};
-    parallel::Bool=true,
-    nbatches::Tuple{Int,Int}=(0, 0),
-    validate_coordinates::F=_validate_coordinates,
-) where {UnitCellType,N,T,F<:Function}
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
+        box::Box{UnitCellType, N, T};
+        parallel::Bool = true,
+        nbatches::Tuple{Int, Int} = (0, 0),
+        validate_coordinates::F = _validate_coordinates,
+    ) where {UnitCellType, N, T, F <: Function}
     isnothing(validate_coordinates) || validate_coordinates(x)
     isnothing(validate_coordinates) || validate_coordinates(y)
     ref_list = CellList(x, box; parallel, validate_coordinates)
     target_list = CellList(y, box; parallel, validate_coordinates)
-    cl_pair = CellListPair{N,T}(ref_list, target_list)
+    cl_pair = CellListPair{N, T}(ref_list, target_list)
     cl_pair = set_number_of_batches!(cl_pair, nbatches; parallel)
     return cl_pair
 end
@@ -761,651 +273,407 @@ end
     UpdateCellList!(
         x::ParticleSystemPositions,
         box::Box,
-        cl:CellList;
+        cl::CellList;
         parallel=true,
-        validate_coordinates::Function=_validate_coordinates
+        validate_coordinates::Function=_validate_coordinates,
     )
 
 Function that will update a previously allocated `CellList` structure, given new
-updated particle positions. This function will allocate new threaded auxiliary
-arrays in parallel calculations. To preallocate these auxiliary arrays, use
-the `UpdateCellList!(x,box,cl,aux)` method instead. 
-
-The `validate_coordinates` function is called before the update of the cell list, and
-should throw an error if the coordinates are invalid. By default, this function 
-throws an error if some coordinates are missing or are NaN. Set to `nothing` to disable
-this check, or provide a custom function.
-
-## Example
-
-```julia-repl
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
-
-julia> cl = CellList(x,box);
-
-julia> box = Box([260,260,260],10);
-
-julia> x = [ 260*rand(SVector{3,Float64}) for i in 1:1000 ];
-
-julia> UpdateCellList!(x,box,cl); # update lists
-
-```
-
-=#
-function UpdateCellList!(
-    x::ParticleSystemPositions,
-    box::Box{<:PeriodicCellType},
-    cl::CellList;
-    parallel::Bool=true,
-    validate_coordinates::F=_validate_coordinates,
-) where {F<:Function}
-    if x.updated[]
-        cl = if parallel
-            aux = AuxThreaded(cl)
-            UpdateCellList!(x, box, cl, aux; parallel, validate_coordinates)
-        else
-            UpdateCellList!(x, box, cl, nothing; parallel, validate_coordinates)
-        end
-        cl = update_number_of_batches!(cl; parallel)
-    end
-    x.updated[] = false
-    return cl
-end
-
-#=
-    UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        box::Box,
-        cl::CellList{N,T},
-        aux::Union{Nothing,AuxThreaded{N,T}};
-        parallel::Bool=true,
-        validate_coordinates::Function=_validate_coordinates
-    ) where {N,T}
-
-Function that updates the cell list `cl` new coordinates `x` and possibly a new
-box `box`, and receives a preallocated `aux` structure of auxiliary vectors for
-threaded cell list construction. Given a preallocated `aux` vector, allocations in
-this function should be minimal, only associated with the spawning threads, or
-to expansion of the cell lists if the number of cells or number of particles 
-increased. 
-
-## Example
-
-```julia-repl
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
-
-julia> cl = CellList(x,box);
-
-julia> aux = CellListMap.AuxThreaded(cl)
-CellListMap.AuxThreaded{3, Float64}
- Auxiliary arrays for nthreads = 8
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:100000 ];
-
-julia> UpdateCellList!(x,box,cl,aux)
-CellList{3, Float64}
-  100000 real particles.
-  15599 cells with real particles.
-  125699 particles in computing box, including images.
-
-```
-
-To illustrate the expected amount of allocations, which are a consequence
-of thread spawning only:
-
-```julia-repl
-julia> using BenchmarkTools
-
-julia> @btime UpdateCellList!(\$x,\$box,\$cl,\$aux)
-  16.384 ms (41 allocations: 3.88 KiB)
-CellList{3, Float64}
-  100000 real particles.
-  15599 cells with real particles.
-  125699 particles in computing box, including images.
-
-julia> @btime UpdateCellList!(\$x,\$box,\$cl,\$aux,parallel=false)
-  20.882 ms (0 allocations: 0 bytes)
-CellList{3, Float64}
-  100000 real particles.
-  15603 cells with real particles.
-  125896 particles in computing box, including images.
-
-```
-
-=#
-function UpdateCellList!(
-    x::ParticleSystemPositions,
-    box::Box{<:PeriodicCellType},
-    cl::CellList{N,T},
-    aux::Union{Nothing,AuxThreaded{N,T}};
-    parallel::Bool=true,
-    validate_coordinates::F=_validate_coordinates,
-) where {N,T,F<:Function}
-
-    # validate coordinates
-    isnothing(validate_coordinates) || validate_coordinates(x)
-
-    # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
-    if length(x) > 0 && (length(x[begin]) != size(box.input_unit_cell.matrix, 1))
-        n1 = length(x[begin])
-        n2 = size(box.input_unit_cell.matrix, 1)
-        throw(
-            DimensionMismatch(
-                """\n 
-                    Positions have dimension $n1, but the unit cell has dimension $n2.
-
-                """
-            )
-        )
-    end
-
-    # Add particles to cell list
-    _nbatches = nbatches(cl, :build)
-    if !parallel || _nbatches == 1
-        reset!(cl, box, length(x))
-        add_particles!(x, box, 0, cl)
-    else
-        # Reset cell list
-        reset!(cl, box, 0)
-
-        # Phase 1: build per-thread cell lists in parallel (no locking). Work-queue
-        # scheduled: the particle range is split into many small `Consecutive`
-        # chunks, and a fixed pool of `_nbatches` worker tasks (one per scratch
-        # list in `aux.lists`, so memory stays what it was) pulls chunks on demand
-        # from a shared atomic counter, instead of each worker owning one fixed,
-        # equal-sized range. This is Phase 1's analogue of the `batch`/
-        # `_pairwise_parallel!` work-queue in self.jl/cross.jl — it exists because
-        # Phase 1 (not the map/traversal step) is where most wall time goes for
-        # build-dominated workloads (e.g. a fresh `ParticleSystem` per call), so a
-        # straggling worker here (e.g. one scheduled on a slow core, on
-        # performance/efficiency hybrid CPUs) isn't rebalanced by the map-step fix
-        # alone — see PERFORMANCE_NOTES_pairwise_scaling.md. Phases 2/3 below
-        # already iterate per-worker over however many cells each worker actually
-        # ended up with, so they automatically inherit this balancing without
-        # further changes.
-        n_chunks = _n_workqueue_chunks(_nbatches, length(x))
-        chunks = collect(index_chunks(1:length(x); n = n_chunks, split = Consecutive()))
-        next_chunk = Atomic{Int}(1)
-        avg_share = length(x) ÷ _nbatches
-        @sync for ibatch in eachindex(aux.lists)
-            @spawn begin
-                # Reset before pulling any chunk so stale data from a previous
-                # call (when this batch had particles) cannot leak into Phase 2,
-                # even if this worker ends up pulling zero chunks.
-                aux.lists[ibatch] = reset!(aux.lists[ibatch], box, avg_share)
-                while true
-                    ic = atomic_add!(next_chunk, 1)
-                    ic > length(chunks) && break
-                    prange = chunks[ic]
-                    isempty(prange) && continue
-                    xt = @view(x[prange])
-                    aux.lists[ibatch] = add_particles!(xt, box, prange[begin] - 1, aux.lists[ibatch])
-                end
-            end
-        end
-
-        # Phase 2: Parallel cell count accumulation using per-batch sparse storage.
-        cl.n_real_particles = length(x)
-        number_of_cells = cl.number_of_cells
-        if length(aux.total_np) < number_of_cells
-            resize!(aux.total_np, number_of_cells)
-            resize!(aux.contains_real_flags, number_of_cells)
-        end
-        fill!(aux.total_np, 0)
-        fill!(aux.contains_real_flags, 0)
-
-        # Parallel phase: each batch writes its per-cell data to aux.total_np
-        # using its cells' linear indices. Since different batches may touch
-        # the same cell, we use atomic adds.
-        @sync for ibatch in eachindex(aux.lists)
-            @spawn begin
-                list = aux.lists[ibatch]
-                resize!(aux.thread_cell_offsets[ibatch], list.n_cells_with_particles)
-                for icell in 1:list.n_cells_with_particles
-                    aux_cell = list.build_cells[icell]
-                    li = aux_cell.linear_index
-                    # Non-atomic write to per-batch offset storage
-                    aux.thread_cell_offsets[ibatch][icell] = aux_cell.n_particles
-                    # Atomic add to total count (cells are spread across linear index space,
-                    # so contention is low for uniformly distributed particles)
-                    ptr = pointer(aux.total_np) + (li - 1) * sizeof(Int)
-                    while true
-                        old_val = unsafe_load(ptr)
-                        _, success = Core.Intrinsics.atomic_pointerreplace(ptr, old_val, old_val + aux_cell.n_particles, :sequentially_consistent, :sequentially_consistent)
-                        success && break
-                    end
-                    # Atomic max for contains_real (2 = has real)
-                    if aux_cell.contains_real
-                        ptr_cr = pointer(aux.contains_real_flags) + (li - 1) * sizeof(Int)
-                        while true
-                            old_val = unsafe_load(ptr_cr)
-                            old_val >= 2 && break
-                            _, success = Core.Intrinsics.atomic_pointerreplace(ptr_cr, old_val, 2, :sequentially_consistent, :sequentially_consistent)
-                            success && break
-                        end
-                    end
-                end
-            end
-        end
-
-        # Serial sum of n_particles
-        for ibatch in eachindex(aux.lists)
-            cl.n_particles += aux.lists[ibatch].n_particles
-        end
-
-        # Cell initialization: scan total_np for non-zero entries
-        # Compute geometry from linear_index using box dimensions
-        nc = box.nc
-        for li in 1:number_of_cells
-            aux.total_np[li] == 0 && continue
-            cl.n_cells_with_particles += 1
-            cl.cell_indices[li] = cl.n_cells_with_particles
-            cell_index = cl.n_cells_with_particles
-            cartesian_idx = cell_cartesian_indices(nc, li)
-            center = cell_center(cartesian_idx, box)
-            if cell_index > length(cl.build_cells)
-                push!(
-                    cl.build_cells, Cell{N,T}(
-                        linear_index=li,
-                        cartesian_index=cartesian_idx,
-                        center=center,
-                        contains_real=false,
-                        n_particles=0,
-                        particles=Vector{ParticleWithIndex{N,T}}(undef, 0),
-                    )
-                )
-            else
-                cell = cl.build_cells[cell_index]
-                @set! cell.linear_index = li
-                @set! cell.cartesian_index = cartesian_idx
-                @set! cell.center = center
-                @set! cell.contains_real = false
-                @set! cell.n_particles = 0
-                cl.build_cells[cell_index] = cell
-            end
-        end
-
-        # Phase 2b: Finalise cells and pre-size particle vectors. Split into a
-        # parallel per-cell update pass (Pass A: field updates and resizing,
-        # independent across cells, work-queue scheduled like
-        # `_compact_particles!`) and a cheap serial prefix sum (Pass B: rank
-        # among cells that contain real particles, to fill
-        # `cell_indices_real`) — same two-pass structure as
-        # `_compact_particles!`, for the same reason: Pass A's per-cell work
-        # was previously running entirely on one thread regardless of
-        # `nbatches`.
-        if _nbatches <= 1 || cl.n_cells_with_particles == 0
-            _finalize_cells_range!(cl, aux, 1:cl.n_cells_with_particles)
-        else
-            n_chunks_2b = _n_workqueue_chunks(_nbatches, cl.n_real_particles)
-            chunks_2b = collect(index_chunks(1:cl.n_cells_with_particles; n = n_chunks_2b, split = Consecutive()))
-            next_chunk_2b = Atomic{Int}(1)
-            @sync for _ in 1:_nbatches
-                @spawn begin
-                    while true
-                        ic = atomic_add!(next_chunk_2b, 1)
-                        ic > length(chunks_2b) && break
-                        _finalize_cells_range!(cl, aux, chunks_2b[ic])
-                    end
-                end
-            end
-        end
-        # Pass B (serial, cheap: only reads the `contains_real` flag Pass A just set).
-        for i in 1:cl.n_cells_with_particles
-            if cl.build_cells[i].contains_real
-                cl.n_cells_with_real_particles += 1
-                if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-                    push!(cl.cell_indices_real, i)
-                else
-                    cl.cell_indices_real[cl.n_cells_with_real_particles] = i
-                end
-            end
-        end
-
-        # Phase 3: Compute offsets in parallel, then scatter in parallel.
-        # Offset computation uses the same atomic-fetch-and-add technique as
-        # Phase 2's count accumulation (each (ibatch,icell) pair contributing
-        # to a shared cell `li` atomically claims an exclusive sub-range of
-        # that cell's particle slots) — this was previously a serial
-        # O(n_cell_batch_pairs) loop over all batches regardless of
-        # `nbatches`.
-        fill!(aux.total_np, 0)  # Reuse as running offset counter
-        @sync for ibatch in eachindex(aux.lists)
-            @spawn begin
-                list = aux.lists[ibatch]
-                offsets = aux.thread_cell_offsets[ibatch]
-                for icell in 1:list.n_cells_with_particles
-                    aux_cell = list.build_cells[icell]
-                    li = aux_cell.linear_index
-                    np = aux_cell.n_particles
-                    ptr = pointer(aux.total_np) + (li - 1) * sizeof(Int)
-                    local old_val
-                    while true
-                        old_val = unsafe_load(ptr)
-                        _, success = Core.Intrinsics.atomic_pointerreplace(ptr, old_val, old_val + np, :sequentially_consistent, :sequentially_consistent)
-                        success && break
-                    end
-                    offsets[icell] = old_val
-                end
-            end
-        end
-
-        # Parallel scatter: each batch copies its particles using pre-computed offsets
-        @sync for ibatch in eachindex(aux.lists)
-            @spawn begin
-                list = aux.lists[ibatch]
-                for icell in 1:list.n_cells_with_particles
-                    aux_cell = list.build_cells[icell]
-                    li = aux_cell.linear_index
-                    target_cell_idx = cl.cell_indices[li]
-                    particles_dst = cl.build_cells[target_cell_idx].particles
-                    offset = aux.thread_cell_offsets[ibatch][icell]
-                    for ip in 1:aux_cell.n_particles
-                        particles_dst[offset+ip] = aux_cell.particles[ip]
-                    end
-                end
-            end
-        end
-    end
-
-    # allocate, or update the auxiliary projected_particles arrays
-    maxnp = 0
-    for i in 1:cl.n_cells_with_particles
-        maxnp = max(maxnp, cl.build_cells[i].n_particles)
-    end
-    for i in eachindex(cl.projected_particles)
-        if maxnp > length(cl.projected_particles[i])
-            resize!(cl.projected_particles[i], maxnp)
-        end
-    end
-
-    # Compact all cells' particles into one contiguous, cell-order buffer,
-    # for cache-friendly traversal (see `_compact_particles!`).
-    _compact_particles!(cl)
-
-    # set updated to false, to indicate that the cell list was constructed
-    # for these coordinates.
-    x.updated[] = false
-    return cl
-end
-
-#=
-    add_particles!(x,box,ishift,cl::CellList{N,T}) where {N,T}
-
-# Extended help
-
-Add all particles in vector `x` to the cell list `cl`. `ishift` is the shift in particle
-index, meaning that particle `i` of vector `x` corresponds to the particle with original
-index `i+ishift`. The shift is used to construct cell lists from fractions of the original
-set of particles in parallel list construction.  
-
-=#
-function add_particles!(x, box, ishift, cl::CellList{N,T}) where {N,T}
-    for ip in eachindex(x)
-        xp = x[ip]
-        # This converts the coordinates to static arrays, if necessary
-        p = SVector{N,T}(ntuple(i -> xp[i], Val(N)))
-        p = box.rotation * wrap_to_first(p, box.input_unit_cell.matrix)
-        add_particle_to_celllist!(ishift + ip, p, box, cl) # add real particle
-        replicate_particle!(ishift + ip, p, box, cl) # add virtual particles to border cells
-    end
-    return cl
-end
-
-
-# Deal with corner cases where a real particle is found in the exact bundary of real box.
-# This cannot happen because then running over the neighboring boxes can cause an
-# invalid access to an index of a cell.
-function real_particle_border_case(cartesian_index::CartesianIndex{N}, box) where {N}
-    cidxs = ntuple(i -> cartesian_index[i], Val(N))
-    for i in 1:N
-        if cidxs[i] == box.lcell
-            @set! cidxs[i] += 1
-        end
-        if cidxs[i] == box.nc[i] - box.lcell + 1
-            @set! cidxs[i] -= 1
-        end
-    end
-    return CartesianIndex{N}(cidxs)
-end
-
-#=
-    add_particle_to_celllist!(
-        ip,
-        x::SVector{N,T},
-        box,
-        cl::CellList{N,T};
-        real_particle::Bool=true
-    ) where {N,T}
-
-# Extended help
-
-Adds one particle to the cell lists, updating all necessary arrays.
-
-=#
-function add_particle_to_celllist!(
-    ip,
-    x::SVector{N,T},
-    box,
-    cl::CellList{N,T};
-    real_particle::Bool=true
-) where {N,T}
-
-    # Increase the counter of number of particles of this list
-    cl.n_particles += 1
-    # Cell of this particle
-    cartesian_index = particle_cell(x, box)
-    if real_particle
-        cartesian_index = real_particle_border_case(cartesian_index, box)
-    end
-
-    # Linear index of the cell
-    linear_index = cell_linear_index(box.nc, cartesian_index)
-
-    # Check if this is the first particle of this cell, if it is,
-    # initialize a new cell, or reset a previously allocated one
-    cell_index = cl.cell_indices[linear_index]
-
-    if cell_index == 0
-        cl.n_cells_with_particles += 1
-        cell_index = cl.n_cells_with_particles
-        cl.cell_indices[linear_index] = cell_index
-        if cell_index > length(cl.build_cells)
-            particles_sizehint = cl.n_real_particles ÷ prod(box.nc)
-            push!(cl.build_cells, Cell{N,T}(cartesian_index, box, sizehint=particles_sizehint))
-        else
-            cell = cl.build_cells[cell_index]
-            @set! cell.linear_index = linear_index
-            @set! cell.cartesian_index = cartesian_index
-            @set! cell.center = cell_center(cell.cartesian_index, box)
-            @set! cell.contains_real = false
-            @set! cell.n_particles = 0
-            cl.build_cells[cell_index] = cell
-        end
-    end
-
-    # Increase particle counter for this cell
-    cell = cl.build_cells[cell_index]
-    @set! cell.n_particles += 1
-
-    #
-    # Cells with real particles are annotated to be run over
-    #
-    if real_particle && (!cell.contains_real)
-        @set! cell.contains_real = true
-        cl.n_cells_with_real_particles += 1
-        if cl.n_cells_with_real_particles > length(cl.cell_indices_real)
-            push!(cl.cell_indices_real, cell_index)
-        else
-            cl.cell_indices_real[cl.n_cells_with_real_particles] = cell_index
-        end
-    end
-
-    #
-    # Add particle to cell list
-    #
-    p = ParticleWithIndex(ip, real_particle, x)
-    if cell.n_particles > length(cell.particles)
-        push!(cell.particles, p)
-    else
-        cell.particles[cell.n_particles] = p
-    end
-
-    #
-    # Update (imutable) cell in list
-    #
-    cl.build_cells[cell_index] = cell
-
-    return cl
-end
-
-#=
-    UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
-        box::Box,
-        cl:CellListPair,
-        parallel=true,
-        validate_coordinates::Function=_validate_coordinates
-    )
-
-Function that will update a previously allocated `CellListPair` structure, given
-updated particle positions, for example. This method will allocate new 
-`aux` threaded auxiliary arrays. For a non-allocating version, see the 
-`UpdateCellList!(x,y,box,cl,aux)` method.
+updated particle positions. The cell lists are only updated if the positions were
+flagged as updated, in which case the number of batches for parallel computations
+(which depends on the number of particles) is also updated.
 
 The `validate_coordinates` function is called before the update of the cell list, and
 should throw an error if the coordinates are invalid. By default, this function
 throws an error if some coordinates are missing or are NaN. Set to `nothing` to disable
 this check, or provide a custom function.
 
-```jlcodetest
-julia> using CellListMap, StaticArrays
-
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(SVector{3,Float64}) for i in 1:1000 ];
-
-julia> y = [ 250*rand(SVector{3,Float64}) for i in 1:10000 ];
-
-julia> cl = CellList(x,y,box);
-
-julia> UpdateCellList!(x,y,box,cl); # update lists
-```
-
 =#
 function UpdateCellList!(
-    x::ParticleSystemPositions,
-    y::ParticleSystemPositions,
-    box::Box{<:PeriodicCellType},
-    cl_pair::CellListPair;
-    parallel::Bool=true,
-    kargs...
-)
-    cl_pair = if parallel
-        aux = AuxThreaded(cl_pair)
-        UpdateCellList!(x, y, box, cl_pair, aux; parallel, kargs...)
-    else
-        UpdateCellList!(x, y, box, cl_pair, nothing; parallel, kargs...)
+        x::ParticleSystemPositions,
+        box::Box,
+        cl::CellList;
+        parallel::Bool = true,
+        validate_coordinates::F = _validate_coordinates,
+    ) where {F <: Function}
+    if x.updated[]
+        cl = _update_cell_list!(x, box, cl; parallel, validate_coordinates)
+        cl = update_number_of_batches!(cl; parallel)
     end
-    cl_pair = update_number_of_batches!(cl_pair; parallel)
-    return cl_pair
+    return cl
+end
+
+# Unconditional update of the cell list (does not update the number of batches).
+function _update_cell_list!(
+        x::ParticleSystemPositions,
+        box::Box{UnitCellType, N},
+        cl::CellList{N, T};
+        parallel::Bool = true,
+        validate_coordinates::F = _validate_coordinates,
+    ) where {UnitCellType, N, T, F <: Function}
+    isnothing(validate_coordinates) || validate_coordinates(x)
+    # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
+    if length(x) > 0 && (length(x[begin]) != size(box.input_unit_cell.matrix, 1))
+        n1 = length(x[begin])
+        n2 = size(box.input_unit_cell.matrix, 1)
+        throw(
+            DimensionMismatch(
+                """\n
+                    Positions have dimension $n1, but the unit cell has dimension $n2.
+
+                """
+            )
+        )
+    end
+    cl.n_real_particles = length(x)
+    cl.number_of_cells = prod(box.nc)
+    _update_offsets!(cl, box)
+    _build!(cl, x, box; parallel)
+    # set updated to false, to indicate that the cell list was constructed
+    # for these coordinates.
+    x.updated[] = false
+    return cl
+end
+
+#
+# Update the offsets of neighboring cells, if the box changed since they were computed.
+#
+function _update_offsets!(cl::CellList, box::Box)
+    key = hash((box.input_unit_cell.matrix, box.cutoff, box.nc, box.n_search))
+    if key != cl.offsets_key
+        _cell_offsets!(cl.offsets_half, cl.offsets_full, box)
+        _offset_axes!(cl.axes_half, cl.offsets_half, box)
+        _offset_axes!(cl.axes_full, cl.offsets_full, box)
+        cl.offsets_key = key
+    end
+    return cl
+end
+
+#
+# Unit vectors (in cartesian coordinates, without units) connecting the centers of two
+# computing cells separated by each offset. All computing cells are identical parallelepipeds,
+# thus these vectors depend only on the offsets.
+#
+#
+# The projection filter is only used for standard floating point types: for other number types
+# (e.g. dual numbers or numbers with uncertainties) the axes are set to zero, which disables
+# the filter (all candidate pairs are computed).
+#
+function _offset_axes!(axes::Vector{SVector{N, Float64}}, offsets::Vector{SVector{N, Int}}, box::Box{UnitCellType, N, T}) where {UnitCellType, N, T}
+    resize!(axes, length(offsets))
+    m = box.input_unit_cell.matrix ./ oneunit(T)
+    if !(eltype(m) <: Base.IEEEFloat)
+        fill!(axes, zero(SVector{N, Float64}))
+        return axes
+    end
+    for (k, o) in enumerate(offsets)
+        d = SVector{N, Float64}(m * (o ./ box.nc))
+        axes[k] = iszero(o) ? zero(SVector{N, Float64}) : d / norm(d)
+    end
+    return axes
+end
+
+# Per-batch projection buffer (created on first use)
+function _projection_buffer(cl::CellList{N, T}, ibatch::Int) where {N, T}
+    while length(cl.projection_buffers) < ibatch
+        push!(cl.projection_buffers, Tuple{T, Int}[])
+    end
+    return cl.projection_buffers[ibatch]
+end
+
+#
+# Fractional-coordinate cell of a particle, its coordinates wrapped into the unit cell,
+# and the lattice translation applied by the wrapping, such that
+# wrapped == x + unitcell * shift.
+#
+@inline function _locate(x::SVector{N, T}, box::Box{PeriodicCell, N, T}) where {N, T}
+    (; nc) = box
+    m = box.input_unit_cell.matrix
+    f = box.inv_unit_cell * ((x - box.origin) ./ oneunit(T))
+    fl = floor.(f)
+    fw = f - fl
+    # Boundary coordinates belong to the lower boundary
+    at_upper = fw .== one(eltype(f))
+    fw = ifelse.(at_upper, zero(eltype(f)), fw)
+    fl = ifelse.(at_upper, fl .+ one(eltype(f)), fl)
+    c = min.(floor.(Int, fw .* nc), nc .- 1)
+    shift = SVector{N, Int32}(Int32.(-fl))
+    wrapped = x + m * shift
+    return _cell_linear_index(c, nc), wrapped, shift
+end
+
+# Non-periodic systems: particles are inside the box, no wrapping
+@inline function _locate(x::SVector{N, T}, box::Box{NonPeriodicCell, N, T}) where {N, T}
+    (; nc) = box
+    f = box.inv_unit_cell * ((x - box.origin) ./ oneunit(T))
+    c = clamp.(floor.(Int, f .* nc), 0, nc .- 1)
+    return _cell_linear_index(c, nc), x, zero(SVector{N, Int32})
+end
+
+# Linear index (1-based) of a cell given its 0-based cartesian indices
+@inline function _cell_linear_index(c::SVector{N, Int}, nc::SVector{N, Int}) where {N}
+    li = c[N]
+    for d in (N - 1):-1:1
+        li = li * nc[d] + c[d]
+    end
+    return li + 1
+end
+
+# 0-based cartesian indices of a cell given its (1-based) linear index.
+# (Written without mutating a variable captured by a closure, which would be
+# heap-allocated on every call.)
+@inline function _cell_cartesian_index(li::Int, nc::SVector{N, Int}) where {N}
+    return SVector{N, Int}(ntuple(d -> rem(div(li - 1, _cell_stride(nc, d)), nc[d]), Val(N)))
+end
+
+# Number of cells spanned by a unit step of the cartesian index `d` in the linear index
+@inline function _cell_stride(nc::SVector{N, Int}, d::Int) where {N}
+    s = 1
+    for k in 1:(d - 1)
+        s *= nc[k]
+    end
+    return s
+end
+
+#=
+    _build!(cl, x, box; parallel)
+
+# Extended help
+
+Builds the cell lists by a counting sort of the particles by cell: (1) computes the cell,
+wrapped coordinates, and wrap shift of each particle, and counts the particles in each cell;
+(2) computes the first index of each cell (prefix sum of the counts); (3) scatters the particles
+into the cell-sorted arrays. The particles of each cell are kept in the order of their indices.
+
+In parallel, each batch handles a consecutive range of particles, and keeps its own counts per
+cell. The prefix sum over (cell, batch) then gives each batch its own write positions in each
+cell, such that all steps run in parallel, and the result is identical to the serial build.
+
+=#
+function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; parallel::Bool) where {N, T}
+    n = length(x)
+    ncell = cl.number_of_cells
+    # Cell indices and positions in the sorted arrays are stored as Int32
+    if n >= typemax(Int32) || ncell >= typemax(Int32)
+        throw(ArgumentError("The number of particles ($n) and of cells ($ncell) must be smaller than $(typemax(Int32))."))
+    end
+    resize!(cl.cell_of, n)
+    resize!(cl.wrapped, n)
+    resize!(cl.wrap_shift, n)
+    resize!(cl.particles, n)
+    resize!(cl.shifts, n)
+    resize!(cl.cell_start, ncell + 1)
+    _nbatches = parallel ? nbatches(cl, :build) : 1
+    nb_sort = _nbatches_counting_sort(_nbatches, n, ncell)
+    if nb_sort == 1
+        _build_serial!(cl, x, box, _nbatches)
+    else
+        _build_parallel!(cl, x, box, nb_sort)
+    end
+    # Indices of the nonempty cells (branchless: most cells may be empty or not)
+    nonempty_cells = resize!(cl.nonempty_cells, ncell)
+    k = 0
+    @inbounds for c in 1:ncell
+        nonempty_cells[k + 1] = c
+        k += cl.cell_start[c + 1] > cl.cell_start[c]
+    end
+    resize!(nonempty_cells, k)
+    return cl
+end
+
+#
+# Number of batches of the parallel counting sort (1 means the serial counting sort).
+# Each batch keeps one count per cell, thus the number of batches is reduced for
+# systems with many cells per particle, to bound the memory to COUNTING_SORT_MAX_COUNTS_PER_PARTICLE
+# counts per particle. If that leaves less than half of the batches, the serial sort is faster,
+# because then the particles are located with fewer threads. For small systems, the overhead
+# of the additional passes over the data is larger than the gain.
+#
+const COUNTING_SORT_MIN_PARTICLES = 2^16
+const COUNTING_SORT_MAX_COUNTS_PER_PARTICLE = 8
+function _nbatches_counting_sort(_nbatches::Int, n::Int, ncell::Int)
+    n < COUNTING_SORT_MIN_PARTICLES && return 1
+    nb = min(_nbatches, COUNTING_SORT_MAX_COUNTS_PER_PARTICLE * n ÷ max(1, ncell))
+    return nb < max(2, _nbatches ÷ 2) ? 1 : nb
+end
+
+# Serial counting sort (the particles are located in parallel if _nbatches > 1)
+function _build_serial!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, _nbatches::Int) where {N, T}
+    n = length(x)
+    ncell = cl.number_of_cells
+    if _nbatches == 1 || n == 0
+        _locate_range!(cl, x, box, 1:n)
+    else
+        n_chunks = _n_workqueue_chunks(_nbatches, n)
+        chunks = collect(index_chunks(1:n; n = n_chunks, split = Consecutive()))
+        next_chunk = Atomic{Int}(1)
+        tasks = Vector{Task}(undef, _nbatches)
+        for ibatch in 1:_nbatches
+            tasks[ibatch] = @spawn begin
+                while true
+                    ic = atomic_add!($next_chunk, 1)
+                    ic > length($chunks) && break
+                    _locate_range!($cl, $x, $box, $chunks[ic])
+                end
+            end
+        end
+        foreach(wait, tasks)
+    end
+    # Count particles per cell, and compute the first index of each cell
+    cell_start = cl.cell_start
+    fill!(cell_start, 0)
+    @inbounds for i in 1:n
+        cell_start[cl.cell_of[i] + 1] += 1
+    end
+    cell_start[1] = 1
+    @inbounds for c in 1:ncell
+        cell_start[c + 1] += cell_start[c]
+    end
+    # Scatter particles into the cell-sorted arrays
+    write_pos = resize!(cl.write_pos, ncell)
+    copyto!(write_pos, 1, cell_start, 1, ncell)
+    _scatter_range!(cl, write_pos, 0, 1:n)
+    return cl
+end
+
+function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, _nbatches::Int) where {N, T}
+    n = length(x)
+    ncell = cl.number_of_cells
+    # Each batch must have at least one particle
+    _nbatches = min(_nbatches, n)
+    # counts[(ib - 1) * ncell + c]: number of particles of batch ib in cell c, and later the
+    # position where batch ib writes its next particle of cell c.
+    counts = resize!(cl.write_pos, ncell * _nbatches)
+    particle_ranges = index_chunks(1:n; n = _nbatches, split = Consecutive())
+    cell_ranges = index_chunks(1:ncell; n = _nbatches, split = Consecutive())
+    # 1. Locate and count the particles of each batch
+    @sync for (ib, range) in enumerate(particle_ranges)
+        @spawn _locate_and_count!($cl, $x, $box, $counts, ($ib - 1) * $ncell, $range)
+    end
+    # 2. Prefix sum over (cell, batch), in cell-major order: first the number of
+    # particles in each range of cells, then the positions within each range.
+    range_count = zeros(Int, _nbatches)
+    @sync for (ir, crange) in enumerate(cell_ranges)
+        @spawn $range_count[$ir] = _count_cell_range($counts, $ncell, $_nbatches, $crange)
+    end
+    @sync for (ir, crange) in enumerate(cell_ranges)
+        first_index = 1 + sum(view(range_count, 1:(ir - 1)); init = 0)
+        @spawn _write_positions!($cl, $counts, $_nbatches, $crange, $first_index)
+    end
+    cl.cell_start[ncell + 1] = n + 1
+    # 3. Scatter the particles of each batch
+    @sync for (ib, range) in enumerate(particle_ranges)
+        @spawn _scatter_range!($cl, $counts, ($ib - 1) * $ncell, $range)
+    end
+    return cl
+end
+
+function _locate_and_count!(cl::CellList, x::ParticleSystemPositions, box::Box, counts::Vector{Int32}, offset::Int, range)
+    ncell = cl.number_of_cells
+    fill!(view(counts, (offset + 1):(offset + ncell)), zero(Int32))
+    _locate_range!(cl, x, box, range)
+    @inbounds for i in range
+        counts[offset + cl.cell_of[i]] += one(Int32)
+    end
+    return counts
+end
+
+function _count_cell_range(counts::Vector{Int32}, ncell::Int, _nbatches::Int, crange)
+    s = 0
+    @inbounds for ib in 1:_nbatches
+        offset = (ib - 1) * ncell
+        for c in crange
+            s += counts[offset + c]
+        end
+    end
+    return s
+end
+
+# Replaces the counts of the cells of `crange` by the write positions of each batch,
+# and sets the first index of each cell.
+function _write_positions!(cl::CellList, counts::Vector{Int32}, _nbatches::Int, crange, first_index::Int)
+    ncell = cl.number_of_cells
+    p = first_index
+    @inbounds for c in crange
+        cl.cell_start[c] = p
+        for ib in 1:_nbatches
+            k = (ib - 1) * ncell + c
+            count = counts[k]
+            counts[k] = p % Int32
+            p += count
+        end
+    end
+    return cl
+end
+
+# Scatter the particles of `range` into the cell-sorted arrays, given the write
+# positions `write_pos[offset + c]` of each cell `c`.
+function _scatter_range!(cl::CellList, write_pos::Vector{Int32}, offset::Int, range)
+    @inbounds for i in range
+        k = offset + cl.cell_of[i]
+        p = write_pos[k]
+        write_pos[k] = p + one(Int32)
+        cl.particles[p] = ParticleWithIndex(i, cl.wrapped[i])
+        cl.shifts[p] = cl.wrap_shift[i]
+    end
+    return cl
+end
+
+function _locate_range!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, range) where {N, T}
+    @inbounds for i in range
+        xi = x[i]
+        # This converts the coordinates to static arrays of the type of the cell list, if necessary
+        p = SVector{N, T}(ntuple(k -> xi[k], Val(N)))
+        c, cl.wrapped[i], cl.wrap_shift[i] = _locate(p, box)
+        cl.cell_of[i] = c % Int32
+    end
+    return cl
 end
 
 #=
     UpdateCellList!(
-        x::AbstractVector{<:AbstractVector},
-        y::AbstractVector{<:AbstractVector},
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
         box::Box,
-        cl_pair::CellListPair,
-        aux::Union{Nothing,AuxThreaded};
-        parallel::Bool=true,
-        validate_coordinates::Function=_validate_coordinates
+        cl_pair::CellListPair;
+        parallel=true,
+        validate_coordinates::Function=_validate_coordinates,
     )
 
-This function will update the `cl_pair` structure that contains the cell lists
-for disjoint sets of particles. It receives the preallocated `aux` structure to
-avoid reallocating auxiliary arrays necessary for the threaded construct of the
-lists. 
-
-## Example
-
-```julia-repl
-julia> using CellListMap
-
-julia> box = Box([250,250,250],10);
-
-julia> x = [ 250*rand(3) for i in 1:50_000 ];
-
-julia> y = [ 250*rand(3) for i in 1:10_000 ];
-
-julia> cl = CellList(x,y,box)
-CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
-   50000 particles in the reference vector.
-   7381 cells with real particles of target vector.
-
-julia> aux = CellListMap.AuxThreaded(cl)
-CellListMap.AuxThreaded{3, Float64}
- Auxiliary arrays for nthreads = 8
-
-julia> x = [ 250*rand(3) for i in 1:50_000 ];
-
-julia> y = [ 250*rand(3) for i in 1:10_000 ];
-
-julia> UpdateCellList!(x,y,box,cl,aux)
-CellList{3, Float64}
-  10000 real particles.
-  7358 cells with real particles.
-  12591 particles in computing box, including images.
-
-```
-
-The allocations in the above calls are a consequence of the thread spawning only:
-
-```julia-repl
-julia> using BenchmarkTools
-
-julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux)
-  715.661 μs (41 allocations: 3.88 KiB)
-CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
-   50000 particles in the reference vector.
-   7414 cells with real particles of target vector.
-
-julia> @btime UpdateCellList!(\$x,\$y,\$box,\$cl,\$aux,parallel=false)
-   13.042 ms (0 allocations: 0 bytes)
- CellListMap.CellListPair{Vector{SVector{3, Float64}}, 3, Float64}
-    50000 particles in the reference vector.
-    15031 cells with real particles of target vector.
-
-```
+Function that will update a previously allocated `CellListPair` structure, given
+updated particle positions. Only the lists of the sets for which the positions were
+flagged as updated are updated, and the number of batches for parallel computations
+is updated accordingly.
 
 =#
 function UpdateCellList!(
-    x::ParticleSystemPositions,
-    y::ParticleSystemPositions,
-    box::Box{<:PeriodicCellType},
-    cl_pair::CellListPair{N,T},
-    aux::Union{Nothing,AuxThreadedPair};
-    parallel::Bool=true,
-    validate_coordinates::F=_validate_coordinates,
-) where {N,T,F<:Function}
-    isnothing(validate_coordinates) || validate_coordinates(x)
-    isnothing(validate_coordinates) || validate_coordinates(y)
-    ref_aux = isnothing(aux) ? nothing : aux.ref_list
-    target_aux = isnothing(aux) ? nothing : aux.target_list
-    ref_list = cl_pair.ref_list
-    target_list = cl_pair.target_list
-    if x.updated[]
-        UpdateCellList!(x, box, ref_list, ref_aux; parallel, validate_coordinates)
-        x.updated[] = false
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
+        box::Box,
+        cl_pair::CellListPair;
+        parallel::Bool = true,
+        validate_coordinates::F = _validate_coordinates,
+    ) where {F <: Function}
+    x_updated, y_updated = x.updated[], y.updated[]
+    ref_list = x_updated ? _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates) : cl_pair.ref_list
+    target_list = y_updated ? _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates) : cl_pair.target_list
+    cl_pair = CellListPair(ref_list, target_list)
+    if x_updated || y_updated
+        cl_pair = update_number_of_batches!(cl_pair; parallel)
     end
-    if y.updated[]
-        UpdateCellList!(y, box, target_list, target_aux; parallel, validate_coordinates)
-        y.updated[] = false
-    end
-    return CellListPair{N,T}(ref_list, target_list)
+    return cl_pair
+end
+
+# Unconditional update of both cell lists (does not update the number of batches).
+function _update_cell_list!(
+        x::ParticleSystemPositions,
+        y::ParticleSystemPositions,
+        box::Box,
+        cl_pair::CellListPair{N, T};
+        parallel::Bool = true,
+        validate_coordinates::F = _validate_coordinates,
+    ) where {N, T, F <: Function}
+    ref_list = _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates)
+    target_list = _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates)
+    return CellListPair{N, T}(ref_list, target_list)
 end

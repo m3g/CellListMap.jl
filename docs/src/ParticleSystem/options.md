@@ -40,7 +40,7 @@ MinimumDistance(783, 497, 0.007213710914619913)
 
 Displaying a progress bar: for very long runs, the user might want to see the progress of the computation. Use the `show_progress` keyword parameter of the `pairwise!` function for that.
 
-For example, we execute the computation above, but with much more particles:
+For example, we execute the computation above, but with many more particles:
 
 ```julia-repl
 julia> xpositions = rand(SVector{3,Float64},10^6);
@@ -102,7 +102,7 @@ julia> system = ParticleSystem(
            lcell=2,
        );
 ```
-Most times using `lcell=1` (default) or `lcell=2` will provide the optimal performance. For very dense systems, or systems for which the number of particles within the cutoff is very large, larger values of `lcell` may improve the performance. To be tested by the user.
+Most times using `lcell=1` (default) will provide the optimal performance. Larger values of `lcell` may improve the performance only if the cells contain many hundreds of particles (cells have sides of about the cutoff), as for dense systems with large cutoffs. To be tested by the user.
 
 !!! note
     The number of cells in which the particles will be classified is, for each dimension `lcell*length/cutoff`.

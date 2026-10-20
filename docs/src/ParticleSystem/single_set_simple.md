@@ -48,8 +48,7 @@ to set the type of the output variable, here a `Float64`. This value is stored i
 the `output` field, but it is, by default, reset to `zero(typeof(output))` when
 calling the `pairwise!` function.
 
-To use the initial value provided and *accumulate* on top of it in the call to `pairwise!`, 
-the `reset=false` option must be provided, as:
+To *accumulate* on top of an initial value in the call to `pairwise!`, the `reset=false` option must be provided, as:
 
 ```@example energy
 pairwise!(energy, system; reset=false)

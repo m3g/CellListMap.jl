@@ -46,7 +46,7 @@ julia> x = rand(SVector{3,Float64}, 10^4);
 julia> system = InPlaceNeighborList(xpositions=x, cutoff=0.1, unitcell=[1,1,1])
 InPlaceNeighborList with types:
 CellList{3, Float64}
-Box{OrthorhombicCell, 3, Float64, Float64, 9}
+Box{PeriodicCell, 3, Float64, Float64, 9}
 Current list buffer length: 0
 
 julia> neighborlist!(system)
@@ -279,7 +279,7 @@ julia> neighborlist(xpositions=x, cutoff=8.0, unitcell=[21.0, 21.0, 21.0], paral
  (2, 10, 4.797620518224583)
  (2, 24, 7.593879787917076)
  ⋮
- (68, 38, 7.409287768713663)
+ (68, 88, 7.254140595181658)
  (68, 90, 7.8758006026725464)
 ```
 

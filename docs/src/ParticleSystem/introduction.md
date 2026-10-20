@@ -14,25 +14,26 @@ function f(pair, output)
 end
 ```
 
-where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2` and `d`, which here we
+where `pair` is a `NeighborPair` object, containing fields `i`, `j`, `x`, `y`, `d2`, `d` and `shift`, which here we
 extract from the object using [destructuring syntax](https://docs.julialang.org/en/v1/manual/functions/#Property-destructuring). 
 
-`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (a minimum-image set of positions), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
+`x` and `y` are the positions of the particles, already wrapped relative to each other according to the periodic boundary conditions (`y` is the position of the image of particle `j` within the cutoff of `x`, which is the minimum image unless the unit cell is smaller than twice the cutoff; see [Unit cell size and cutoff](@ref)), `i` and `j` are the indexes of the particles in the arrays of coordinates, `d2` is the squared distance between the particles, `d` is the distance, and `output` is the variable to be computed. 
 
 !!! info
     #### Details of the mapped function interface
 
     The `pair` input of the function contains the  data that the user may use to update the `output` variable.
-    The `NeighborPair` object contains fields `x`, `y`, `i`, `j`, `d2` and the lazily computed `d`, meaning:
+    The `NeighborPair` object contains fields `x`, `y`, `i`, `j`, `d2`, `shift`, and the lazily computed `d`, meaning:
 
     |  Input/Output |  Type   |  Meaning   |
     |:----------------:|:-------:|:-----------|
     | `x`              |  `SVector`   |  The coordinates of particle `i` of the pair.  |
-    | `y`              |  `SVector`   |  The coordinates of particle `j` of the pair (minimum-image relative to `x`).  |
+    | `y`              |  `SVector`   |  The coordinates of the image of particle `j` within the cutoff of `x` (the minimum image, unless the unit cell is smaller than twice the cutoff; see [Unit cell size and cutoff](@ref)).  |
     | `i`              |  `Int`       |  Index of first particle in the original array of coordinates. |
     | `j`              |  `Int`       |  Index of second particle in the original array of coordinates. |
     | `d2`             |  `<:Real`    |  Squared distance between the particles. |
-    | `d`             |  `<:Real`    |  Squared distance between the particles (computed lazily). |
+    | `d`             |  `<:Real`    |  Distance between the particles (computed lazily). |
+    | `shift`          |  `SVector{N,Int}` |  Lattice translation of particle `j` relative to particle `i` (see [Unit cell size and cutoff](@ref)). |
     | `output`         |  user defined   |  the name of the variable to be updated.  |
 
     **Notes:** `x` and `y` may be 2D or 3D vectors, depending on the dimension of the system. The type of
@@ -52,8 +53,16 @@ The figure below illustrates the meaning of the coordinates in a `NeighborPair` 
 Here $$\vec{x}$$ and $$\vec{y}_0$$ are the coordinates as provided by the user, which in this case fall inside the 
 reference unitcell. But the image $$\vec{y}$$ of $$\vec{y}_0$$ is closer to $$\vec{x}$$. The `NeighborPair` object
 will contain the coordinates `pair.x ==`$$\vec{x}$$ and `pair.y ==`$$\vec{y}$$, such that `pair.y - pair.x` will be
-tipicaly the vector used, for example, to compute the force between the particles. Also, `pair.d == norm(pair.y - pair.y)`
-and corresponds to the norm of $$\vec{y} - \vec{x}$$, as represented in the figure. 
+typically the vector used, for example, to compute the force between the particles. Also, `pair.d == norm(pair.y - pair.x)`
+and corresponds to the norm of $$\vec{y} - \vec{x}$$, as represented in the first figure. 
+
+The second figure illustrates the case of a cutoff greater than the size of the cell. Then, more than one image of 
+particle `j` may be within the cutoff of particle `i`, and the same pair `(i, j)` is reported once for each of these 
+images. In every case, `pair.x` is the position of particle `i` (wrapped into the unit cell), `pair.y` is the position 
+of the corresponding image of particle `j`, and `pair.d` is the distance between them. A particle may also be within 
+the cutoff of its own images, in which case pairs with `pair.i == pair.j` are reported (once for each pair of opposite 
+images). The image is identified by `pair.shift`, and repeated pairs may occur whenever the unit cell is smaller than 
+twice the cutoff (see [Unit cell size and cutoff](@ref)).
 
 ### Basic examples
 
@@ -133,18 +142,37 @@ After construction, use [`update!`](@ref) to change coordinates, cutoff, unit ce
 
 ### Properties
 
-The following properties can be read from a `ParticleSystem` object using dot notation:
+The following properties of a `ParticleSystem` object can be read using dot notation:
 
-| Property | Read | Write | Description |
-|:---------|:----:|:-----:|:------------|
-| `xpositions` | ✓ | — | Coordinates of the first (or only) set of particles, as an array-like object. Individual elements can be set by indexing (`sys.xpositions[i] = ...`). |
-| `positions` | ✓ | — | Alias for `xpositions`. |
-| `ypositions` | ✓ | — | Coordinates of the second set of particles (two-set systems only). |
-| `cutoff` | ✓ | ✓ | Current cutoff distance. Assignment updates the internal box. |
-| `unitcell` | ✓ | ✓ | Current unit cell as a matrix. Assignment updates the internal box. |
-| `parallel` | ✓ | ✓ | Whether multi-threading is enabled. |
-| `output` | ✓ | ✓ | The output variable of the computation. |
-| `OutputName` | ✓ | — | Read-only alias for `output` using the name given in `output_name`. For example, `sys.energy` if `output_name=:energy`. |
+| Property | Description |
+|:---------|:------------|
+| `xpositions` | Coordinates of the first (or only) set of particles, as a vector of `SVector`s. It can be mutated in place (see below). |
+| `positions` | Alias for `xpositions`. |
+| `ypositions` | Coordinates of the second set of particles (two-set systems only). It can be mutated in place (see below). |
+| `cutoff` | Current cutoff distance. |
+| `unitcell` | Current unit cell, as a matrix. |
+| `parallel` | Whether multi-threading is enabled. |
+| `output` | The output variable of the computation. |
+| `OutputName` | Alias for `output` using the name given in `output_name`. For example, `sys.energy` if `output_name=:energy`. |
+
+The cutoff, the unit cell, and the parallelization flag are modified with the [`update!`](@ref)
+function (see [Updating the system](@ref)).
+
+The position arrays can be mutated in place, and also resized, with the usual array
+operations. The elements must be `SVector`s:
+
+- `sys.xpositions[i] = SVector(...)` sets the position of one particle;
+- `sys.xpositions .= x` copies the positions of a vector `x` of the same length;
+- `push!`, `append!`, `resize!` and `empty!` change the number of particles.
+
+Any of these marks the cell lists as outdated, and they are rebuilt automatically in the next
+call to `pairwise!`. To replace the positions by an array of any of the supported input types
+(for example a `(D,N)` matrix), with any number of particles, use [`update!`](@ref).
+
+!!! warning
+    If the number of particles changes, an `output` that depends on the number of particles
+    (for example, an array of forces) must be resized accordingly with `resize_output!`.
+    See [Updating coordinates](@ref).
 
 For example, using the system defined in the example above:
 
@@ -160,11 +188,9 @@ system.cutoff # read current cutoff
 system.unitcell # read current unit cell
 ```
 
-Writable properties can be assigned directly:
+The cutoff, unit cell, and parallelization flag are modified with `update!`:
 
 ```@example ps_intro
-system.cutoff = 0.2
-system.unitcell = [2, 2, 2]
-system.parallel = false
+update!(system; cutoff = 0.2, unitcell = [2, 2, 2], parallel = false)
 system
 ```

@@ -103,26 +103,6 @@ Returns `x`, `y`, `sides` and `cutoff`.
         return output
     end
 
-    #=
-    view_celllist_particles(cl::CellList)
-
-# Extended help
-
-Auxiliary function to view the particles of a computing box, including images created
-for computing purposes.
-
-=#
-    function view_celllist_particles(cl::CellListMap.CellList{N, T}) where {N, T}
-        x = SVector{N, T}[]
-        for icell in 1:cl.n_cells_with_particles
-            cell = cl.cells[icell]
-            for ip in 1:cell.n_particles
-                p = cell.particles[ip]
-                push!(x, p.coordinates)
-            end
-        end
-        return x
-    end
 
     test_map2(box, cl; parallel = true) =
         CellListMap._pairwise!(
@@ -164,14 +144,14 @@ for computing purposes.
             show_progress = true,
             lcell = 1,
             parallel = false,
-            UnitCellType = CellListMap.OrthorhombicCell
+            shape = :orthorhombic
         )
         local x, box
         ntrial = 0
         show_progress && (p = Progress(10000, 0.5))
         while ntrial < 2000
             unit_cell_matrix = zeros(SMatrix{N, N, Float64})
-            if UnitCellType == CellListMap.OrthorhombicCell
+            if shape == :orthorhombic
                 for i in 1:N
                     @set! unit_cell_matrix[i, i] = -10 + 20 * rand()
                 end
@@ -182,20 +162,20 @@ for computing purposes.
             end
             cutoff = 1 + rand()
             try
-                if !(CellListMap.check_unit_cell(unit_cell_matrix, cutoff, printerr = false))
+                if !(CellListMap.check_unit_cell(unit_cell_matrix, cutoff))
                     continue
                 end
             catch
                 return false, unit_cell_matrix, cutoff
             end
             box = try
-                if UnitCellType == CellListMap.OrthorhombicCell
+                if shape == :orthorhombic
                     box = CellListMap.Box([unit_cell_matrix[i, i] for i in 1:N], cutoff, lcell = lcell)
                 else
                     box = CellListMap.Box(unit_cell_matrix, cutoff, lcell = lcell)
                 end
             catch
-                return false, CellListMap.UnitCellType, (unit_cell_matrix, cutoff, lcell)
+                return false, shape, (unit_cell_matrix, cutoff, lcell)
             end
             if prod(box.nc) > 100000
                 continue
@@ -221,12 +201,7 @@ for computing purposes.
             else
 
             end
-            if parallel
-                aux = CellListMap.AuxThreaded(cl)
-                cl = CellListMap.UpdateCellList!(PSP(x), box, cl, aux, parallel = parallel)
-            else
-                cl = CellListMap.UpdateCellList!(PSP(x), box, cl, parallel = parallel)
-            end
+            cl = CellListMap.UpdateCellList!(PSP(x), box, cl, parallel = parallel)
             if !(test_map(box, cl, parallel = parallel) ≈ test_naive(x, box))
                 show_progress && println("FOUND PROBLEMATIC SETUP.")
                 return false, x, box
@@ -236,7 +211,7 @@ for computing purposes.
         return true, nothing, nothing
     end
 
-    function test_random_cells(::Type{T}) where {T}
+    function test_random_cells(shape::Symbol)
         for N in 2:3,
                 M in rand(10:20),
                 parallel in [false, true],
@@ -244,7 +219,7 @@ for computing purposes.
 
             test = check_random_cells(
                 N, M,
-                UnitCellType = T,
+                shape = shape,
                 parallel = parallel,
                 lcell = lcell,
                 show_progress = false
@@ -297,238 +272,6 @@ for computing purposes.
         return x
     end
 
-    function get_particles(cl::CellListMap.CellList{N, T}) where {N, T}
-        real = SVector{N, T}[]
-        ghost = SVector{N, T}[]
-        for cell in cl.cells
-            for i in 1:cell.n_particles
-                p = cell.particles[i]
-                if p.real
-                    push!(real, p.coordinates)
-                else
-                    push!(ghost, p.coordinates)
-                end
-            end
-        end
-        return real, ghost
-    end
-
-    #=
-    draw_computing_cell(x,box::Box{UnitCellType,2}) where UnitCellType
-    draw_computing_cell(cl::CellList,box::Box{UnitCellType,2},x) where UnitCellType
-
-This function creates a plot of the computing cell, in two dimensions.
-
-=#
-    function draw_computing_cell(
-            x, box::CellListMap.Box{UnitCellType, 2};
-            parallel = true,
-            xticks = nothing,
-            yticks = nothing
-        ) where {UnitCellType}
-        cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
-        return draw_computing_cell(cl, box; xticks = xticks, yticks = yticks)
-    end
-    function draw_computing_cell(
-            cl::CellListMap.CellList, box::CellListMap.Box{UnitCellType, 2};
-            xticks = nothing,
-            yticks = nothing,
-            x = nothing
-        ) where {UnitCellType}
-        real, ghost = get_particles(cl)
-        plt = Main.plot()
-        vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
-        Main.scatter!(plt, Tuple.(real), label = :none, color = :green, markeralpha = 1)
-        Main.scatter!(plt, Tuple.(ghost), label = :none, color = :brown, markeralpha = 0.3)
-        Main.plot!(plt, Tuple.(vertices), color = :blue, linewidth = 2, label = :none)
-        if !isnothing(x)
-            x_wrapped = wrap_to_first.(x, Ref(box.input_unit_cell.matrix))
-            x_rotated = Ref(box.rotation) .* x_wrapped
-            Main.scatter!(plt, Tuple.(wrap_to_first.(x_rotated, Ref(box.aligned_unit_cell.matrix))), color = :red, label = :none)
-        end
-        xmin, xmax = cell_limits(box.aligned_unit_cell.matrix)
-        xmin = xmin .- 3 * box.cell_size
-        xmax = xmax .+ 3 * box.cell_size
-        isnothing(xticks) && (xticks = (round.(digits = 3, xmin[1]:box.cell_size[1]:xmax[1])))
-        isnothing(yticks) && (yticks = (round.(digits = 3, xmin[2]:box.cell_size[2]:xmax[2])))
-        Main.plot!(
-            plt,
-            aspect_ratio = 1, framestyle = :box, xrotation = 60,
-            xlims = (xmin[1], xmax[1]),
-            ylims = (xmin[2], xmax[2]),
-            xticks = xticks,
-            yticks = yticks,
-            title = "cell_sizes = $(box.cell_size)",
-            titlefontsize = 8,
-        )
-        return plt
-    end
-
-    #=
-    draw_computing_cell(x,box::Box{UnitCellType,3}) where UnitCellType
-
-This function creates a plot of the computing cell, in three dimensions.
-
-=#
-    function draw_computing_cell(x, box::CellListMap.Box{UnitCellType, 3}; parallel = true) where {UnitCellType}
-        cl = CellListMap.CellList(PSP(x), box, parallel = parallel)
-        vertices = draw_cell_vertices(box.aligned_unit_cell.matrix)
-        p = view_celllist_particles(cl)
-        plt = Main.plot()
-        Main.plot!(plt, Tuple.(vertices), label = :none)
-        Main.scatter!(plt, Tuple.(p), label = :none, markeralpha = 0.3)
-        x_rotated = Ref(box.rotation) .* x
-        Main.scatter!(plt, Tuple.(wrap_to_first.(x_rotated, Ref(box.aligned_unit_cell.matrix))), label = :none, markeralpha = 0.3)
-        lims = Vector{Float64}[]
-        xmin, xmax = cell_limits(box.aligned_unit_cell.matrix)
-        xmin = xmin .- box.cell_size
-        xmax = xmax .+ box.cell_size
-        Main.plot!(
-            plt,
-            aspect_ratio = 1, framestyle = :box, xrotation = 60, yrotation = -70, zrotation = 0,
-            xlims = (xmin[1], xmax[1]),
-            ylims = (xmin[2], xmax[2]),
-            zlims = (xmin[3], xmax[3]),
-            xticks = (round.(digits = 3, xmin[1]:box.cell_size[1]:xmax[1])),
-            yticks = (round.(digits = 3, xmin[2]:box.cell_size[2]:xmax[2])),
-            zticks = (round.(digits = 3, xmin[3]:box.cell_size[3]:xmax[3])),
-            bgcolor = :black,
-            fgcolor = :white,
-            size = (800, 800),
-        )
-        return plt
-    end
-
-
-    function compare_cells(cl1::CellListMap.CellList{N, T}, cl2::CellListMap.CellList) where {N, T}
-
-        if cl1.n_cells_with_real_particles != cl2.n_cells_with_real_particles
-            println("Error: n_cells_with_real_particles differ")
-        end
-        if cl1.n_particles != cl2.n_particles
-            println("Error: n_particles differ")
-        end
-        for i in 1:cl1.n_cells_with_particles
-            linear_index =
-                j = findfirst(
-                isequal(cl1.cell_indices[i]),
-                @view(cl2.cell_indices[1:cl2.n_cells_with_particles])
-            )
-            if isnothing(j)
-                println(" Warning: cells_with_particles: Could not find index $(cl1.cell_indices[i])")
-                break
-            end
-        end
-        for i in 1:cl1.n_cells_with_real_particles
-            j = findfirst(
-                isequal(cl1.cell_indices_real[i]),
-                @view(cl2.cell_indices_real[1:cl2.n_cells_with_real_particles])
-            )
-            if isnothing(j)
-                println(" Warning: cells_with_real_particles: Could not find index $(cl1.cell_indices_real[i])")
-                break
-            end
-        end
-        if length(cl1.projected_particles) != length(cl2.projected_particles)
-            println("Error: length of project_particles differ.")
-        end
-        ncheck = 0
-        nparticle_check = 0
-        if length(cl1.cells) != length(cl2.cells)
-            println("Error: lengths of cells lists differ")
-        else
-            differ = false
-            for i in 1:cl1.n_cells_with_particles
-                if differ
-                    break
-                end
-                ncheck += 1
-                ci = cl1.cells[i]
-                j = findfirst(c -> c.linear_index == ci.linear_index, cl2.cells)
-                if isnothing(j)
-                    println("Error: linear index of $(ci.linear_index) not found.")
-                    differ = true
-                else
-                    cj = cl2.cells[j]
-                    if ci.cartesian_index != cj.cartesian_index
-                        println("Error: cartesian_index differ")
-                        differ = true
-                    end
-                    if !(ci.center ≈ cj.center)
-                        println("Error: centers differ")
-                        differ = true
-                    end
-                    if ci.contains_real != cj.contains_real
-                        println("Error: contains_real differ")
-                        differ = true
-                    end
-                    if ci.n_particles != cj.n_particles
-                        println("Error: n_particles differ")
-                        differ = true
-                    end
-                    for p1 in ci.particles
-                        j = findfirst(p -> p.index == p1.index, cj.particles)
-                        if isnothing(j)
-                            println("Error: could not find particle in cl2.")
-                            @show p1
-                            differ = true
-                        else
-                            nparticle_check += 1
-                            p2 = cj.particles[j]
-                            if p1 != p2
-                                println("Error: particles differ. ")
-                                @show p1
-                                @show p2
-                                differ = true
-                                break
-                            end
-                        end
-                        differ && break
-                    end
-                    if sum(p -> p.index, ci.particles[1:ci.n_particles]) !=
-                            sum(p -> p.index, cj.particles[1:cj.n_particles])
-                        println("Error: particles of cells differ")
-                        differ = true
-                    end
-                    if differ
-                        println("Error: on cell with linear_index: $(ci.linear_index)")
-                    end
-                end
-            end
-        end
-        println(" Checked $ncheck of $(cl1.n_cells_with_particles) cells.")
-        println(" Checked $nparticle_check of $(cl1.n_particles) particles.")
-    end
-
-    function check_cl(cl, box; mark)
-        for i in 1:(cl.n_cells_with_particles - 1)
-            cellᵢ = cl.cells[i]
-            for j in (i + 1):cl.n_cells_with_particles
-                cellⱼ = cl.cells[j]
-                for ip in 1:cellᵢ.n_particles
-                    xᵢ = cellᵢ.particles[ip]
-                    for jp in 1:cellⱼ.n_particles
-                        xⱼ = cellⱼ.particles[jp]
-                        if norm(xᵢ.coordinates - xⱼ.coordinates) ≈ 0
-                            println("duplicate found:")
-                            @show mark
-                            @show Threads.threadid()
-                            @show i, j, cellᵢ.linear_index, cellⱼ.linear_index
-                            @show cellᵢ.n_particles
-                            @show cellⱼ.n_particles
-                            @show xᵢ
-                            @show xⱼ
-                            @show particle_cell(xᵢ.coordinates, box)
-                            @show particle_cell(xⱼ.coordinates, box)
-                            @show cell_linear_index(box.nc, particle_cell(xᵢ.coordinates, box))
-                            @show cell_linear_index(box.nc, particle_cell(xⱼ.coordinates, box))
-                            error()
-                        end
-                    end
-                end
-            end
-        end
-    end
 
     # Create a set of random particles with an atomic density similar to that
     # of water at room temperature and pressure.

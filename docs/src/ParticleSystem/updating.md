@@ -98,12 +98,15 @@ The same applies to `xpositions` (for which `positions` is an alias), and `yposi
 ```julia
 update!(system; unitcell=SVector(1.2, 1.2, 1.2)) # orthorhombic
 
-update!(system; unitcell=[1.2 0.0 0.0; 0.0 1.2 0.0; 0.0 0.0 1.2]) # triclinic
+update!(system; unitcell=[1.2 0.0 0.0; 0.5 1.2 0.0; 0.0 0.0 1.2]) # triclinic
 ```
 
+The unit cell of a periodic system can be updated to any other unit cell, given either as a vector
+of sides (orthorhombic cells) or as a matrix of lattice vectors (any cell), independently of how the 
+unit cell was provided when the system was constructed.
+
 !!! note
-    - The unit cell type (orthorhombic or triclinic) cannot be changed after construction.
-    - The unit cell of non-periodic systems (initialized with `nothing`) cannot be updated.
+    The unit cell of non-periodic systems (initialized with `nothing`) cannot be updated.
 
 ## Updating the cutoff
 

@@ -45,13 +45,13 @@ of the particles is roughly homogeneous. For highly heterogeneous systems distan
 ## Quick start: computing neighbor lists
 
 The simplest use case of `CellListMap` is to compute the list of neighboring particles within a cutoff distance.
-This can be implemented as a particular usage case of `CellListMap`, but given its generality it is provided as an independent interface: the `neighborlist` function:
+This can be implemented as a particular usage case of `CellListMap`, but given how commonly used it is, we provide a dedicated interface: the `neighborlist` function:
 
 An example of the application of the `neighborlist` function follows:
 
 ```@example nb_quick
 using CellListMap
- x = rand(3, 10_000); # 10,000 particles in 3D
+x = rand(3, 10_000); # 10,000 particles in 3D
 neighborlist(positions=x, cutoff=0.01) # cutoff of 0.01
 ```
 
@@ -84,7 +84,8 @@ pairwise!(energy, sys)
 
 Note that in the above example the `pairwise!` method is performing a sum of the computation of `energy` over all neighboring pairs of particles. 
 
-If you are familiar with Julia, the `do` syntax also provides a readable format for the `pairwise!` application:
+If you are familiar with Julia, the `do` syntax also provides an alternative `pairwise!` application which incorporates the
+definition of the mapped function:
 ```@example ps_quick
 pairwise!(sys) do pair, u 
     u += 1/pair.d

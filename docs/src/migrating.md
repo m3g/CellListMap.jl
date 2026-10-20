@@ -93,10 +93,11 @@ end
 ```
 
 The `NeighborPair` object contains the fields:
-- `x`, `y`: positions of the two particles (minimum-image convention applied)
+- `x`, `y`: positions of the two particles (`y` is the image of particle `j` within the cutoff of `x`: the minimum image, unless the unit cell is smaller than twice the cutoff)
 - `i`, `j`: indices of the particles in the original arrays
 - `d2`: squared distance between the particles
 - `d`: distance between the particles (**lazily computed** - only calculated when accessed)
+- `shift`: lattice translation of particle `j` relative to particle `i` (new; see [Unit cell size and cutoff](@ref))
 
 The lazy computation of `d` is particularly useful when your function only needs the squared distance `d2`, avoiding unnecessary `sqrt` calls.
 

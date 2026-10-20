@@ -52,7 +52,7 @@ function pairwise_velocities(
     positions = reshape(reinterpret(SVector{3, T}, positions), n)
     velocities = reshape(reinterpret(SVector{3, T}, velocities), n)
 
-    box = CellListMap.Box(Lbox, r_max, UnitCellType = CellListMap.OrthorhombicCell, lcell = lcell)
+    box = CellListMap.Box(Lbox, r_max, lcell = lcell)
     cl = CellListMap.CellList(positions, box, parallel = parallel, nbatches = nbatches)
     hist = (zeros(Int, length(rbins) - 1), zeros(T, length(rbins) - 1))
 

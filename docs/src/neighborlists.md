@@ -11,8 +11,7 @@ and the corresponding distances.
 !!! note
     - When computing neighbor lists with cell-lists, it is possible for pairs of particles that are at a distance equal to the cutoff to either be included or excluded due to numerical rounding. As a result, these neighbor lists should only be utilized for calculating properties that vanish at the cutoff distance.
     - Positions and unit cells can be 2 or 3-dimensional.
-    - The order of the pairs in the output list is not guaranteed and may change, in particular,
-    for parallel executions.
+    - The order of the pairs in the output list is not guaranteed and may change, in particular, in parallel executions.
 
     
 ## Non-periodic systems
@@ -67,7 +66,7 @@ The `update!` function provides an interface to modify the coordinates, unitcell
 
 ## In-place computation of neighbor lists
 
-If neighbor lists are computed within a interactive scenario, it is interesting preallocate all the necessary data and just update the lists at every iteration. This can be achieved by constructing the `InPlaceNeighborList` object in advance. The performance gain of performing the operations in place might vary and may not be important for single runs, as the allocations do not dominate the computing time. 
+If neighbor lists are computed in an iterative loop, it is interesting preallocate all the necessary data and just update the lists at every iteration. This can be achieved by constructing the `InPlaceNeighborList` object in advance. The performance gain of performing the operations in place might vary and may not be important for single runs, as the allocations do not dominate the computing time. 
 
 We can illustrate with an example where sucessive computations of the neighborlists are performed:
 
@@ -84,7 +83,7 @@ julia> system = InPlaceNeighborList(
        )
 InPlaceNeighborList with types: 
 CellListMap.CellList{3, Float64}
-CellListMap.Box{CellListMap.OrthorhombicCell, 3, Float64, Float64, 9, Float64}
+CellListMap.Box{CellListMap.PeriodicCell, 3, Float64, Float64, 9, Float64}
 Current list buffer length: 0
 
 julia> @b neighborlist!($system)
@@ -97,7 +96,7 @@ Note that the initial buffer length has size `0`. The first time the neighbor li
 julia> update!(system; positions=rand(3,100000)) # new positions
 InPlaceNeighborList with types: 
 CellListMap.CellList{3, Float64}
-CellListMap.Box{CellListMap.OrthorhombicCell, 3, Float64, Float64, 9, Float64}
+CellListMap.Box{CellListMap.PeriodicCell, 3, Float64, Float64, 9, Float64}
 Current list buffer length: 20939808
 
 julia> @b neighborlist!($system)
@@ -110,6 +109,19 @@ julia> @b neighborlist!($system)
       the buffers become large enough to accommodate the possible variations of the computation.
 
 For parallel runs, the allocations are minimal, but some small auxiliary data is required for the launching of multiple threads. We illustrate here the convergence of the allocations to the minimum required for multi-threaded calculations.
+
+### Output
+
+The neighbor list is a `Vector{Tuple{Int,Int,T}}`, where each element `(i, j, d)` contains
+the indices of the two particles and their distance `d`. The floating-point type `T` is
+promoted from the `cutoff` and `unitcell` types.
+
+If the unit cell is small relative to the cutoff (distances between opposite faces
+smaller than twice the cutoff), the list contains one entry for each periodic image
+within the cutoff: the same pair `(i, j)` may appear more than once, and pairs with
+`i == j` (a particle and its own image) may appear. See [Unit cell size and cutoff](@ref).
+
+All neighborlist functions return this vector directly. 
 
 ## Options
 
@@ -124,12 +136,3 @@ For parallel runs, the allocations are minimal, but some small auxiliary data is
 | `parallel` | `Bool` | `true` | Enable multi-threading for the computation. |
 | `show_progress` | `Bool` | `false` | Display a progress bar during computation. Only available for `InPlaceNeighborList` / `neighborlist!`. |
 | `nbatches` | `Tuple{Int,Int}` | `(0,0)` | Number of batches used in parallelization (see [Number of batches](@ref Number-of-batches)). |
-
-### Output
-
-The neighbor list is a `Vector{Tuple{Int,Int,T}}`, where each element `(i, j, d)` contains
-the indices of the two particles and their distance `d`. The floating-point type `T` is
-promoted from the `cutoff` and `unitcell` types.
-
-All neighborlist functions return this vector directly. 
-

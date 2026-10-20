@@ -52,9 +52,9 @@ Note that since `MinimumDistance` is immutable, copying it is the same as return
 Also, resetting the minimum distance consists of setting its `d` field to `+Inf`. And, finally,
 reducing the threaded distances consists of keeping the pair with the shortest distance.
 
-## Cross-interactions with two cell lists
+## Building the system
 
-Next, we build the system. Here we choose to provide both sets of particles to the `ParticleSystem` constructor, which means that cell lists will be built for both sets:
+Next, we build the system, providing the two sets of particles as `xpositions` and `ypositions`:
 
 ```@example mind
 xpositions = rand(SVector{3,Float64},1000);

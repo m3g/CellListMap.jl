@@ -97,12 +97,6 @@ end
     @test CellListMap.nbatches(cl_pair, :map) == CellListMap.nbatches(cl_pair.ref_list, :map)
 end
 
-@testitem "set_idxs! error on nbatches mismatch" begin
-    using CellListMap
-    idxs = [1:10, 11:20]
-    @test_throws ArgumentError CellListMap.set_idxs!(idxs, 100, 3)
-end
-
 @testitem "UpdateCellList! for CellListPair" setup = [Testing] begin
     using CellListMap, StaticArrays
     x = rand(SVector{3,Float64}, 100)
@@ -158,33 +152,43 @@ end
     @test_throws DimensionMismatch CellListMap.CellList(PSP(x), box)
 end
 
-@testitem "real_particle_border_case" begin
+@testitem "parallel counting sort" begin
     using CellListMap, StaticArrays
-    # Test that particles at exact boundaries are handled correctly
-    # The function adjusts cell indices at the boundary cells (lcell and nc - lcell + 1)
-
-    # Create a box where we can control the boundary conditions
-    box = CellListMap.Box([1.0, 1.0, 1.0], 0.1, lcell=1)
-
-    # Test lower boundary case: particle at cell index == lcell should be moved to lcell + 1
-    cartesian_index = CartesianIndex(box.lcell, box.lcell + 1, box.lcell + 2)
-    result = CellListMap.real_particle_border_case(cartesian_index, box)
-    @test result[1] == box.lcell + 1  # was at lcell, moved to lcell + 1
-    @test result[2] == box.lcell + 1  # unchanged
-    @test result[3] == box.lcell + 2  # unchanged
-
-    # Test upper boundary case: particle at cell index == nc - lcell + 1 should be moved to nc - lcell
-    upper_boundary = box.nc[1] - box.lcell + 1
-    cartesian_index = CartesianIndex(upper_boundary, box.lcell + 1, box.lcell + 2)
-    result = CellListMap.real_particle_border_case(cartesian_index, box)
-    @test result[1] == upper_boundary - 1  # was at upper boundary, moved down
-    @test result[2] == box.lcell + 1       # unchanged
-    @test result[3] == box.lcell + 2       # unchanged
-
-    # Test both boundaries in different dimensions
-    cartesian_index = CartesianIndex(box.lcell, box.nc[2] - box.lcell + 1, box.lcell + 5)
-    result = CellListMap.real_particle_border_case(cartesian_index, box)
-    @test result[1] == box.lcell + 1                # lower boundary adjusted
-    @test result[2] == box.nc[2] - box.lcell        # upper boundary adjusted
-    @test result[3] == box.lcell + 5                # unchanged (not at boundary)
+    PSP = CellListMap.ParticleSystemPositions
+    # Number of batches of the counting sort
+    @test CellListMap._nbatches_counting_sort(8, 10_000, 100) == 1
+    @test CellListMap._nbatches_counting_sort(8, 10^6, 10^5) == 8
+    @test CellListMap._nbatches_counting_sort(8, 10^6, 2 * 10^6) == 4
+    @test CellListMap._nbatches_counting_sort(8, 10^6, 3 * 10^6) == 1
+    @test CellListMap._nbatches_counting_sort(1, 10^6, 10^5) == 1
+    # The parallel build must be identical to the serial one (called directly, to
+    # run independently of the number of threads)
+    function same_build(x, box)
+        cl = CellListMap.CellList(PSP(x), box; parallel = false)
+        ref = deepcopy(cl)
+        for nb in (2, 3, 8)
+            CellListMap._build_parallel!(cl, PSP(x), box, nb)
+            cl.particles == ref.particles || return false
+            cl.shifts == ref.shifts || return false
+            cl.cell_start == ref.cell_start || return false
+        end
+        return true
+    end
+    x = [10 * rand(SVector{3, Float64}) .- 2 for _ in 1:5000]
+    @test same_build(x, CellListMap.Box([8, 8, 8], 1.0))
+    @test same_build(x, CellListMap.Box([8, 8, 8], 1.0; lcell = 2))
+    @test same_build(x, CellListMap.Box([8 1 0; 0 8 1; 0 0 8], 1.0))
+    @test same_build(x, CellListMap.Box(CellListMap.limits(PSP(x)), 1.0))
+    x = [10 * rand(SVector{2, Float64}) for _ in 1:5000]
+    @test same_build(x, CellListMap.Box([10, 10], 0.5))
+    @test same_build(x[1:3], CellListMap.Box([10, 10], 0.5))
+    # Through UpdateCellList!, with enough particles to use the parallel sort
+    x = [50 * rand(SVector{3, Float64}) for _ in 1:CellListMap.COUNTING_SORT_MIN_PARTICLES]
+    box = CellListMap.Box([50, 50, 50], 2.0)
+    cl_serial = CellListMap.CellList(PSP(x), box; parallel = false)
+    cl_parallel = CellListMap.CellList(PSP(x), box; parallel = true)
+    @test cl_parallel.particles == cl_serial.particles
+    @test cl_parallel.shifts == cl_serial.shifts
+    @test cl_parallel.cell_start == cl_serial.cell_start
+    @test cl_parallel.nonempty_cells == cl_serial.nonempty_cells
 end
