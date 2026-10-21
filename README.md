@@ -47,15 +47,13 @@ julia> Pkg.add("CellListMap")
 The package provides an interface to compute a generic function for each pair of particles closer 
 than a cutoff, using general periodic boundary conditions. Parallel and serial implementations can be used.
 
-## Some benchmarks
-
-### Neighbor lists
+## Benchmarks
 
 Time required to compute the list of all pairs of particles within a cutoff (the indices of the particles and their distance), with CellListMap's `neighborlist` function and with other popular Julia and Python packages. The particles are uniformly distributed in a periodic cubic box, and the cutoff is 10 Å. In the first figure, the density is the atomic density of water (0.1 atoms/Å³), and the size of the box grows with the number of particles. In the second figure, the volume is fixed (100³ Å³), so the density goes from 1/10 to 5 times that of water. Each package was run up to the system size for which a single call takes about one minute. Julia packages are shown with solid lines, and Python packages with dashed lines.
 
-<img src="https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/b_nl_cd.png">
+<img src="docs/src/assets/b_nl_cd.png">
 
-<img src="https://raw.githubusercontent.com/m3g/CellListMap.jl/main/docs/src/assets/b_nl_cv.png">
+<img src="docs/src/assets/b_nl_cv.png">
 
 At the density of water and with 10⁶ particles, CellListMap.jl was about 3.4 times faster than the fastest serial alternative (scipy), and about 5 times faster than the fastest parallel alternative (vesin).
 
@@ -71,17 +69,7 @@ The benchmark compares the packages in the terrain for which cell lists are desi
 - Every package used its default parameters, except for the choices described above. The times are the best of up to three runs (only one run if it took more than 5 s). The coordinates are `Float64` in every case, and Python packages receive NumPy arrays and run compiled code.
 - These benchmarks were run on an Intel(R) Core(TM) i9-14900KF, with all runs restricted to the same 8 physical performance cores. We used Julia 1.13.2 and Python 3.12.3.
 
-The scripts are available in the [`benchmarks/neighborlist_comparison`](https://github.com/m3g/CellListMap.jl/tree/main/benchmarks/neighborlist_comparison) directory.
-
-### Pairwise velocities
-
-The goal here is to provide a good implementation of cell lists. We compare it with the implementation of the nice cython/python [halotools](https://github.com/astropy/halotools) package, in the computation of an histogram of mean pairwise velocities. 
-
-<img src="https://m3g.github.io/CellListMap.jl/stable/assets/b_cd.png">
-
-<img src="https://m3g.github.io/CellListMap.jl/stable/assets/b_cv.png">
-
-The full test is available [at this](https://github.com/lmiq/PairVelocities) repository. And we kindly thank [Carolina Cuesta](https://github.com/florpi) for providing the example. These benchmarks were run on an Intel(R) Core(TM) i7-12700, using 8 CPUs. 
+The scripts are available in the [`benchmarks/neighborlist_comparison`](benchmarks/neighborlist_comparison) directory.
 
 ## Citation
 
