@@ -173,14 +173,18 @@ function _update!(sys::ParticleSystem2, ::Type{CellList})
     n_particles_changed = 
         (length(sys.xpositions) != n_real_particles(sys, :ref)) ||
         (length(sys.ypositions) != n_real_particles(sys, :target))
-    sys.private.cell_list = _update_cell_list!(
-        sys.xpositions,
-        sys.ypositions,
-        box(sys),
-        celllist(sys);
-        parallel = sys.parallel,
-        validate_coordinates = sys.validate_coordinates,
+    # Only the lists of the sets whose positions changed are rebuilt: in typical
+    # uses one of the sets is fixed (and may be much larger than the other).
+    cl = celllist(sys)
+    ref_list = !updated(sys, :x) ? cl.ref_list : _update_cell_list!(
+        sys.xpositions, box(sys), cl.ref_list;
+        parallel = sys.parallel, validate_coordinates = sys.validate_coordinates, outer = true,
     )
+    target_list = !updated(sys, :y) ? cl.target_list : _update_cell_list!(
+        sys.ypositions, box(sys), cl.target_list;
+        parallel = sys.parallel, validate_coordinates = sys.validate_coordinates,
+    )
+    sys.private.cell_list = CellListPair(ref_list, target_list)
     if n_particles_changed
         _old_nbatches = get_nbatches(sys)
         sys.private.cell_list = update_number_of_batches!(celllist(sys); parallel = sys.parallel)

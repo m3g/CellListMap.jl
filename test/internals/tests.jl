@@ -697,3 +697,41 @@ end
 @testitem "test_pathological2D" setup = [Testing] begin
     @test test_pathological() == (nothing, nothing)
 end
+
+@testitem "small reference lists" begin
+    using CellListMap, StaticArrays
+    using CellListMap: ParticleSystemPositions, Box, CellList, _update_cell_list!
+    # The construction of small lists that are only iterated over (reference lists of
+    # CellListPairs) gives the same lists as the counting sort, at the entries that are read
+    for unitcell in ([10.0, 10.0, 10.0], [10.0 3.0 0.0; 0.0 10.0 2.0; 0.0 0.0 10.0])
+        box = Box(unitcell, 0.5)
+        for n in (0, 1, 5, 20)
+            # coordinates outside the unit cell, such that some particles are wrapped
+            x = ParticleSystemPositions(SVector{3, Float64}[30 .* v .- 10 for v in rand(SVector{3, Float64}, n)])
+            cl_full = _update_cell_list!(x, box, CellList(x, box; parallel = false); parallel = false)
+            x.updated[] = true
+            cl_small = _update_cell_list!(x, box, CellList(x, box; parallel = false); parallel = false, outer = true)
+            @test 64 * n < cl_small.number_of_cells # the small construction was used
+            @test cl_small.nonempty_cells == cl_full.nonempty_cells
+            @test all(c -> cl_small.cell_start[c] == cl_full.cell_start[c] && cl_small.cell_start[c + 1] == cl_full.cell_start[c + 1], cl_full.nonempty_cells)
+            @test [(p.index, p.coordinates) for p in cl_small.particles] == [(p.index, p.coordinates) for p in cl_full.particles]
+            @test cl_small.shifts == cl_full.shifts
+        end
+    end
+    # Pairwise computations with a small first set (small reference list) are equal
+    # to those with the sets swapped (both lists constructed by the counting sort)
+    f(pair, out) = out + pair.d + sum(pair.shift)
+    y = 10 .* rand(SVector{3, Float64}, 2000)
+    # in periodic systems, coordinates outside the unit cell, such that some particles are wrapped
+    newx(unitcell) = SVector{3, Float64}[isnothing(unitcell) ? 10 .* v : 30 .* v .- 10 for v in rand(SVector{3, Float64}, 5)]
+    for unitcell in ([10.0, 10.0, 10.0], [10.0 3.0 0.0; 0.0 10.0 2.0; 0.0 0.0 10.0], nothing)
+        sys_small = ParticleSystem(xpositions = newx(unitcell), ypositions = y, unitcell = unitcell, cutoff = 1.0, output = 0.0)
+        for _ in 1:5
+            x = newx(unitcell)
+            update!(sys_small; xpositions = x)
+            sys_swapped = ParticleSystem(xpositions = y, ypositions = x, unitcell = unitcell, cutoff = 1.0, output = 0.0)
+            g(pair, out) = out + pair.d - sum(pair.shift) # shifts are reversed when the sets are swapped
+            @test pairwise!(f, sys_small) ≈ pairwise!(g, sys_swapped)
+        end
+    end
+end

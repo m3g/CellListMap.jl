@@ -61,6 +61,7 @@ Base.@kwdef mutable struct CellList{N, T}
     wrapped::Vector{SVector{N, T}} = SVector{N, T}[]
     wrap_shift::Vector{SVector{N, Int32}} = SVector{N, Int32}[]
     write_pos::Vector{Int32} = Int32[]
+    sort_keys::Vector{Int} = Int[]
     " Offsets of neighboring cells: one of each {v,-v} (self-computations) and all of them (cross-computations). "
     offsets_half::Vector{SVector{N, Int}} = SVector{N, Int}[]
     offsets_full::Vector{SVector{N, Int}} = SVector{N, Int}[]
@@ -310,6 +311,7 @@ function _update_cell_list!(
         cl::CellList{N, T};
         parallel::Bool = true,
         validate_coordinates::F = _validate_coordinates,
+        outer::Bool = false,
     ) where {UnitCellType, N, T, F <: Function}
     isnothing(validate_coordinates) || validate_coordinates(x)
     # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
@@ -328,7 +330,7 @@ function _update_cell_list!(
     cl.n_real_particles = length(x)
     cl.number_of_cells = prod(box.nc)
     _update_offsets!(cl, box)
-    _build!(cl, x, box; parallel)
+    _build!(cl, x, box; parallel, outer)
     # set updated to false, to indicate that the cell list was constructed
     # for these coordinates.
     x.updated[] = false
@@ -449,8 +451,11 @@ In parallel, each batch handles a consecutive range of particles, and keeps its 
 cell. The prefix sum over (cell, batch) then gives each batch its own write positions in each
 cell, such that all steps run in parallel, and the result is identical to the serial build.
 
+If `outer` is `true`, the list is only iterated over (the reference list of a `CellListPair`),
+and lists with few particles relative to the number of cells are built by `_build_small!`.
+
 =#
-function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; parallel::Bool) where {N, T}
+function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; parallel::Bool, outer::Bool = false) where {N, T}
     n = length(x)
     ncell = cl.number_of_cells
     # Cell indices and positions in the sorted arrays are stored as Int32
@@ -463,6 +468,9 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
     resize!(cl.particles, n)
     resize!(cl.shifts, n)
     resize!(cl.cell_start, ncell + 1)
+    if outer && SMALL_LIST_CELLS_PER_PARTICLE * n < ncell
+        return _build_small!(cl, x, box)
+    end
     _nbatches = parallel ? nbatches(cl, :build) : 1
     nb_sort = _nbatches_counting_sort(_nbatches, n, ncell)
     if nb_sort == 1
@@ -478,6 +486,43 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
         k += cl.cell_start[c + 1] > cl.cell_start[c]
     end
     resize!(nonempty_cells, k)
+    return cl
+end
+
+#
+# Construction of a list that is only iterated over (the reference list of a `CellListPair`),
+# with few particles relative to the number of cells. The pairwise computation reads the
+# particles of each nonempty cell `c` of such a list as `particles[cell_start[c]:cell_start[c+1]-1]`,
+# and never reads `cell_start` at other cells. Thus, the particles are sorted by cell (keeping
+# the order of their indices within each cell), and `cell_start` is set only at the nonempty
+# cells and at the cells following them, at a cost that does not depend on the number of cells.
+# The other entries of `cell_start` are left as they were. The resulting `particles`, `shifts`
+# and `nonempty_cells` are identical to those of the counting sort.
+#
+const SMALL_LIST_CELLS_PER_PARTICLE = 64
+function _build_small!(cl::CellList, x::ParticleSystemPositions, box::Box)
+    n = length(x)
+    _locate_range!(cl, x, box, 1:n)
+    # Sorting keys: the cell index in the high bits, the particle index in the low bits
+    keys = resize!(cl.sort_keys, n)
+    @inbounds for i in 1:n
+        keys[i] = (Int(cl.cell_of[i]) << 32) | i
+    end
+    sort!(keys; alg = QuickSort)
+    nonempty_cells = resize!(cl.nonempty_cells, 0)
+    c_prev = 0
+    @inbounds for p in 1:n
+        c = keys[p] >> 32
+        i = keys[p] & 0xffffffff
+        cl.particles[p] = ParticleWithIndex(i, cl.wrapped[i])
+        cl.shifts[p] = cl.wrap_shift[i]
+        if c != c_prev
+            push!(nonempty_cells, c)
+            cl.cell_start[c] = p
+            c_prev = c
+        end
+        cl.cell_start[c + 1] = p + 1
+    end
     return cl
 end
 
@@ -655,25 +700,11 @@ function UpdateCellList!(
         validate_coordinates::F = _validate_coordinates,
     ) where {F <: Function}
     x_updated, y_updated = x.updated[], y.updated[]
-    ref_list = x_updated ? _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates) : cl_pair.ref_list
+    ref_list = x_updated ? _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates, outer = true) : cl_pair.ref_list
     target_list = y_updated ? _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates) : cl_pair.target_list
     cl_pair = CellListPair(ref_list, target_list)
     if x_updated || y_updated
         cl_pair = update_number_of_batches!(cl_pair; parallel)
     end
     return cl_pair
-end
-
-# Unconditional update of both cell lists (does not update the number of batches).
-function _update_cell_list!(
-        x::ParticleSystemPositions,
-        y::ParticleSystemPositions,
-        box::Box,
-        cl_pair::CellListPair{N, T};
-        parallel::Bool = true,
-        validate_coordinates::F = _validate_coordinates,
-    ) where {N, T, F <: Function}
-    ref_list = _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates)
-    target_list = _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates)
-    return CellListPair{N, T}(ref_list, target_list)
 end

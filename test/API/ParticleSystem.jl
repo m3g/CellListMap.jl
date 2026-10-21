@@ -360,6 +360,35 @@ end
 
 end
 
+@testitem "ParticleSystem2: only the updated set is rebuilt" begin
+    using StaticArrays
+    using CellListMap
+    x = rand(SVector{3, Float64}, 100)
+    y = rand(SVector{3, Float64}, 1000)
+    sys = ParticleSystem(xpositions = x, ypositions = y, unitcell = [1.0, 1.0, 1.0], cutoff = 0.1, output = 0.0)
+    target_coordinates() = [p.coordinates for p in CellListMap.celllist(sys).target_list.particles]
+    y_list = target_coordinates()
+    # Modify the second set without flagging it as updated (bypassing `setindex!`):
+    # the list of the second set must not be rebuilt when only the first set is updated
+    sys.ypositions.x .= rand(SVector{3, Float64}, 1000)
+    update!(sys; xpositions = rand(SVector{3, Float64}, 100))
+    CellListMap.UpdateParticleSystem!(sys)
+    @test target_coordinates() == y_list
+    # Results after updating only the first set are those of a new system
+    sys.ypositions.x .= y
+    xnew = rand(SVector{3, Float64}, 100)
+    update!(sys; xpositions = xnew)
+    f(pair, out) = out + pair.d
+    sys_new = ParticleSystem(xpositions = xnew, ypositions = y, unitcell = [1.0, 1.0, 1.0], cutoff = 0.1, output = 0.0)
+    @test pairwise!(f, sys) ≈ pairwise!(f, sys_new)
+    # Updating the second set rebuilds its list
+    ynew = rand(SVector{3, Float64}, 1000)
+    update!(sys; ypositions = ynew)
+    CellListMap.UpdateParticleSystem!(sys)
+    @test target_coordinates() != y_list
+    @test pairwise!(f, sys) ≈ pairwise!(f, ParticleSystem(xpositions = xnew, ypositions = ynew, unitcell = [1.0, 1.0, 1.0], cutoff = 0.1, output = 0.0))
+end
+
 @testitem "automatic nbatches update on ParticleSystem resize" begin
     using CellListMap, StaticArrays
 
