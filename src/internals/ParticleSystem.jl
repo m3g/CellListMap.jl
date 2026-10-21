@@ -178,7 +178,7 @@ function _update!(sys::ParticleSystem2, ::Type{CellList})
     cl = celllist(sys)
     ref_list = !updated(sys, :x) ? cl.ref_list : _update_cell_list!(
         sys.xpositions, box(sys), cl.ref_list;
-        parallel = sys.parallel, validate_coordinates = sys.validate_coordinates,
+        parallel = sys.parallel, validate_coordinates = sys.validate_coordinates, outer = true,
     )
     target_list = !updated(sys, :y) ? cl.target_list : _update_cell_list!(
         sys.ypositions, box(sys), cl.target_list;
