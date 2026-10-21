@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.8-DEV
+--------------
+
 Version 0.10.7
 --------------
 - ![FEATURE][badge-feature] Unit cells can be of any size relative to the cutoff. The previous requirement that the distances between opposite faces of the unit cell be greater than twice the cutoff was removed. For smaller cells, pairs are reported once for each periodic image within the cutoff (thus the same pair `(i, j)` may appear more than once, and `i == j` pairs, of a particle with its own images, may appear). For cells satisfying the previous requirement, results are unchanged.
