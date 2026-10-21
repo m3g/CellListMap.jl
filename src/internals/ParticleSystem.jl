@@ -89,15 +89,14 @@ end
 #=
     _reset_all_output!(output, output_threaded)
 
-Function that resets the output variable and the threaded copies of it.
+Function that resets the output variable. The threaded copies of it are reset
+by the worker tasks of the parallel computation, each one resetting its own copy
+(see `_batch!`), such that the copies are reset in parallel.
 
 =#
 function _reset_all_output!(output, output_threaded; reset::Bool)
     if reset
         output = reset_output!(output)
-    end
-    for i in eachindex(output_threaded)
-        output_threaded[i] = reset_output!(output_threaded[i])
     end
     return output
 end
