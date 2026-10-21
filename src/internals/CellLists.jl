@@ -708,17 +708,3 @@ function UpdateCellList!(
     end
     return cl_pair
 end
-
-# Unconditional update of both cell lists (does not update the number of batches).
-function _update_cell_list!(
-        x::ParticleSystemPositions,
-        y::ParticleSystemPositions,
-        box::Box,
-        cl_pair::CellListPair{N, T};
-        parallel::Bool = true,
-        validate_coordinates::F = _validate_coordinates,
-    ) where {N, T, F <: Function}
-    ref_list = _update_cell_list!(x, box, cl_pair.ref_list; parallel, validate_coordinates, outer = true)
-    target_list = _update_cell_list!(y, box, cl_pair.target_list; parallel, validate_coordinates)
-    return CellListPair{N, T}(ref_list, target_list)
-end
