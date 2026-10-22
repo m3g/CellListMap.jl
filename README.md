@@ -55,7 +55,7 @@ Time required to compute the list of all pairs of particles within a cutoff (the
 
 <img src="docs/src/assets/b_nl_cv.png">
 
-At the density of water and with 10⁶ particles, CellListMap.jl was about 3.4 times faster than the fastest serial alternative (scipy), and about 5 times faster than the fastest parallel alternative (vesin).
+At the density of water and with 10⁶ particles, CellListMap.jl was about 3.2 times faster than the fastest serial alternative (scipy), and about 4.5 times faster than the fastest parallel alternative (vesin).
 
 The benchmark compares the packages in the terrain for which cell lists are designed, so the following caveats apply:
 

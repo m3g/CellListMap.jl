@@ -10,12 +10,13 @@ scipy, vesin, freud and matscipy, used for the plots in the main README.
   exceeds 60 s.
 - `run_all.sh <python> <julia_project>`: runs everything, pinned to 8 physical cores
   (`taskset -c 0,2,...,14`; adjust `CORES` to your machine).
-- `plot.py`: writes `docs/src/assets/b_nl_cd.png` and `docs/src/assets/b_nl_cv.png`.
+- `plot.jl`: writes `docs/src/assets/b_nl_cd.png` and `docs/src/assets/b_nl_cv.png`.
 
 Environments used:
 
 ```bash
 python -m venv pyenv
-./pyenv/bin/pip install numpy scipy freud-analysis vesin matscipy matplotlib
-julia --project=jlenv -e 'using Pkg; Pkg.develop(path="../.."); Pkg.add(["NearestNeighbors","PointNeighbors","StaticArrays","JSON3"])'
+./pyenv/bin/pip install numpy scipy freud-analysis vesin matscipy
+julia --project=jlenv -e 'using Pkg; Pkg.develop(path="../.."); Pkg.add(["NearestNeighbors","PointNeighbors","StaticArrays","JSON3","Plots"])'
+julia --project=jlenv plot.jl
 ```
