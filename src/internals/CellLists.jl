@@ -261,8 +261,7 @@ function CellList(
         nbatches::Tuple{Int, Int} = (0, 0),
         validate_coordinates::F = _validate_coordinates,
     ) where {UnitCellType, N, T, F <: Function}
-    isnothing(validate_coordinates) || validate_coordinates(x)
-    isnothing(validate_coordinates) || validate_coordinates(y)
+    # The coordinates are validated in the construction of each list
     ref_list = CellList(x, box; parallel, validate_coordinates)
     target_list = CellList(y, box; parallel, validate_coordinates)
     cl_pair = CellListPair{N, T}(ref_list, target_list)
@@ -313,7 +312,11 @@ function _update_cell_list!(
         validate_coordinates::F = _validate_coordinates,
         outer::Bool = false,
     ) where {UnitCellType, N, T, F <: Function}
-    isnothing(validate_coordinates) || validate_coordinates(x)
+    # The default validation (no NaN coordinates) is done while the particles are located
+    # in the cells (see `_build!`), which runs in parallel, instead of in a separate serial pass.
+    if validate_coordinates !== _validate_coordinates
+        isnothing(validate_coordinates) || validate_coordinates(x)
+    end
     # Provide a better error message if the unit cell dimension does not match the dimension of the positions.
     if length(x) > 0 && (length(x[begin]) != size(box.input_unit_cell.matrix, 1))
         n1 = length(x[begin])
@@ -469,15 +472,20 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
     resize!(cl.shifts, n)
     resize!(cl.cell_start, ncell + 1)
     if outer && SMALL_LIST_CELLS_PER_PARTICLE * n < ncell
-        return _build_small!(cl, x, box)
+        valid = _build_small!(cl, x, box)
+        valid || _validate_coordinates(x)
+        return cl
     end
     _nbatches = parallel ? nbatches(cl, :build) : 1
     nb_sort = _nbatches_counting_sort(_nbatches, n, ncell)
-    if nb_sort == 1
+    valid = if nb_sort == 1
         _build_serial!(cl, x, box, _nbatches)
     else
         _build_parallel!(cl, x, box, nb_sort)
     end
+    # Invalid coordinates were found when locating the particles: throw the error of
+    # the default validation here, outside the parallel tasks.
+    valid || _validate_coordinates(x)
     # Indices of the nonempty cells (branchless: most cells may be empty or not)
     nonempty_cells = resize!(cl.nonempty_cells, ncell)
     k = 0
@@ -502,7 +510,7 @@ end
 const SMALL_LIST_CELLS_PER_PARTICLE = 64
 function _build_small!(cl::CellList, x::ParticleSystemPositions, box::Box)
     n = length(x)
-    _locate_range!(cl, x, box, 1:n)
+    valid = _locate_range!(cl, x, box, 1:n)
     # Sorting keys: the cell index in the high bits, the particle index in the low bits
     keys = resize!(cl.sort_keys, n)
     @inbounds for i in 1:n
@@ -523,7 +531,7 @@ function _build_small!(cl::CellList, x::ParticleSystemPositions, box::Box)
         end
         cl.cell_start[c + 1] = p + 1
     end
-    return cl
+    return valid
 end
 
 #
@@ -546,7 +554,7 @@ end
 function _build_serial!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, _nbatches::Int) where {N, T}
     n = length(x)
     ncell = cl.number_of_cells
-    if _nbatches == 1 || n == 0
+    valid = if _nbatches == 1 || n == 0
         _locate_range!(cl, x, box, 1:n)
     else
         n_chunks = _n_workqueue_chunks(_nbatches, n)
@@ -555,14 +563,17 @@ function _build_serial!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box
         tasks = Vector{Task}(undef, _nbatches)
         for ibatch in 1:_nbatches
             tasks[ibatch] = @spawn begin
+                valid_batch = true
                 while true
                     ic = atomic_add!($next_chunk, 1)
                     ic > length($chunks) && break
-                    _locate_range!($cl, $x, $box, $chunks[ic])
+                    valid_batch &= _locate_range!($cl, $x, $box, $chunks[ic])
                 end
+                valid_batch
             end
         end
-        foreach(wait, tasks)
+        # `mapreduce` (not `all`) to wait for all tasks
+        mapreduce(fetch, &, tasks)
     end
     # Count particles per cell, and compute the first index of each cell
     cell_start = cl.cell_start
@@ -578,7 +589,7 @@ function _build_serial!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box
     write_pos = resize!(cl.write_pos, ncell)
     copyto!(write_pos, 1, cell_start, 1, ncell)
     _scatter_range!(cl, write_pos, 0, 1:n)
-    return cl
+    return valid
 end
 
 function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, _nbatches::Int) where {N, T}
@@ -592,9 +603,12 @@ function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::B
     particle_ranges = index_chunks(1:n; n = _nbatches, split = Consecutive())
     cell_ranges = index_chunks(1:ncell; n = _nbatches, split = Consecutive())
     # 1. Locate and count the particles of each batch
-    @sync for (ib, range) in enumerate(particle_ranges)
+    tasks = [
         @spawn _locate_and_count!($cl, $x, $box, $counts, ($ib - 1) * $ncell, $range)
-    end
+            for (ib, range) in enumerate(particle_ranges)
+    ]
+    # `mapreduce` (not `all`) to wait for all tasks
+    valid = mapreduce(fetch, &, tasks)
     # 2. Prefix sum over (cell, batch), in cell-major order: first the number of
     # particles in each range of cells, then the positions within each range.
     range_count = zeros(Int, _nbatches)
@@ -610,17 +624,17 @@ function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::B
     @sync for (ib, range) in enumerate(particle_ranges)
         @spawn _scatter_range!($cl, $counts, ($ib - 1) * $ncell, $range)
     end
-    return cl
+    return valid
 end
 
 function _locate_and_count!(cl::CellList, x::ParticleSystemPositions, box::Box, counts::Vector{Int32}, offset::Int, range)
     ncell = cl.number_of_cells
     fill!(view(counts, (offset + 1):(offset + ncell)), zero(Int32))
-    _locate_range!(cl, x, box, range)
+    valid = _locate_range!(cl, x, box, range)
     @inbounds for i in range
         counts[offset + cl.cell_of[i]] += one(Int32)
     end
-    return counts
+    return valid
 end
 
 function _count_cell_range(counts::Vector{Int32}, ncell::Int, _nbatches::Int, crange)
@@ -664,15 +678,23 @@ function _scatter_range!(cl::CellList, write_pos::Vector{Int32}, offset::Int, ra
     return cl
 end
 
+# Returns `false` if invalid (NaN) coordinates were found. These particles are placed
+# at the origin, so that the build can complete, and the error is thrown by `_build!`.
 function _locate_range!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box, range) where {N, T}
+    valid = true
     @inbounds for i in range
         xi = x[i]
         # This converts the coordinates to static arrays of the type of the cell list, if necessary
         p = SVector{N, T}(ntuple(k -> xi[k], Val(N)))
+        # (a branch is faster than a branchless `ifelse` here)
+        if any(isnan, p)
+            valid = false
+            p = zero(p)
+        end
         c, cl.wrapped[i], cl.wrap_shift[i] = _locate(p, box)
         cl.cell_of[i] = c % Int32
     end
-    return cl
+    return valid
 end
 
 #=

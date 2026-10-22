@@ -552,6 +552,24 @@ end
     @test a == Allocs(0)
 end
 
+@testitem "update! xpositions parallel copy" begin
+    using CellListMap, StaticArrays
+    # Large enough for the copy of the positions to be run in parallel
+    n = 100_000
+    sys = ParticleSystem(xpositions=rand(SVector{3,Float64}, n), unitcell=[1, 1, 1], cutoff=0.05, output=0.0)
+    for parallel in (true, false)
+        x_sv = rand(SVector{3,Float64}, n)
+        update!(sys; xpositions=x_sv, parallel)
+        @test sys.xpositions.x == x_sv
+        x_vov = [rand(3) for _ in 1:n]
+        update!(sys; xpositions=x_vov, parallel)
+        @test sys.xpositions.x == SVector{3,Float64}.(x_vov)
+        x_mat = rand(3, n)
+        update!(sys; xpositions=x_mat, parallel)
+        @test sys.xpositions.x == SVector{3,Float64}.(eachcol(x_mat))
+    end
+end
+
 @testitem "ParticleSystem constructor type stability" begin
     using CellListMap
     using StaticArrays
