@@ -12,6 +12,7 @@ CellListMap.jl Changelog
 
 Version 0.10.8-DEV
 --------------
+- ![ENHANCEMENT][badge-enhancement] Faster parallel cell list updates: the default validation of the coordinates (no `NaN` values) is done while the particles are located in the cells, which runs in parallel, instead of in a separate serial pass, and the copy of the coordinates in `update!` is run in parallel for large systems (32k particles or more). This reduces the time of `update!(sys; xpositions = x, rebuild = true)` in parallel by ~20-30% (periodic systems with 110k and 1M particles, 14 threads). As a consequence, in parallel, same-size `update!`s of large systems allocate the (few) task objects of the copy.
 
 Version 0.10.7
 --------------

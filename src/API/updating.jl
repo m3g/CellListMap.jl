@@ -73,41 +73,67 @@ end
 
 # Internal helpers: update a ParticleSystemPositions from any supported coordinate type,
 # resizing if the number of particles changed. Each method copies element-wise into the
-# existing storage without allocating a temporary Vector{SVector}.
+# existing storage without allocating a temporary Vector{SVector}. The copy is split
+# in chunks run in parallel if `parallel == true` and the number of particles is large.
+
+# Minimum number of particles for the copy to be run in parallel (below this, the
+# cost of spawning the tasks is comparable to the cost of the copy)
+const PARALLEL_COPY_MIN_PARTICLES = 2^15
+
+# Calls `f(range)` for consecutive chunks of `1:n`, in parallel if `parallel == true`
+function _foreach_chunk(f::F, n::Int, parallel::Bool) where {F<:Function}
+    if !parallel || nthreads() == 1 || n < PARALLEL_COPY_MIN_PARTICLES
+        f(1:n)
+    else
+        @sync for range in index_chunks(1:n; n = nthreads(), split = Consecutive())
+            @spawn f($range)
+        end
+    end
+    return nothing
+end
 
 # Same element type: plain copy into psp.x
-function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractVector{SVector{N,T}}) where {N,T}
+function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractVector{SVector{N,T}}; parallel::Bool = false) where {N,T}
     n_new = length(new_x)
     if n_new != length(psp)
         resize!(psp, n_new)
     end
     psp.updated[] = true
-    copyto!(psp.x, new_x)
+    i0 = firstindex(new_x) - 1
+    _foreach_chunk(n_new, parallel) do range
+        copyto!(psp.x, first(range), new_x, i0 + first(range), length(range))
+    end
     return psp
 end
 
 # Vector of plain (non-SVector) vectors: construct SVectors element-wise
-function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractVector{<:AbstractVector}) where {N,T}
+function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractVector{<:AbstractVector}; parallel::Bool = false) where {N,T}
     n_new = length(new_x)
     if n_new != length(psp)
         resize!(psp, n_new)
     end
     psp.updated[] = true
-    for (j, x_i) in enumerate(new_x)
-        psp.x[j] = SVector{N,T}(x_i)
+    i0 = firstindex(new_x) - 1
+    _foreach_chunk(n_new, parallel) do range
+        for j in range
+            psp.x[j] = SVector{N,T}(new_x[i0 + j])
+        end
     end
     return psp
 end
 
 # (D, N) matrix: columns are particles
-function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractMatrix) where {N,T}
+function _update_positions!(psp::ParticleSystemPositions{N,T}, new_x::AbstractMatrix; parallel::Bool = false) where {N,T}
     n_new = size(new_x, 2)
     if n_new != length(psp)
         resize!(psp, n_new)
     end
     psp.updated[] = true
-    for (j, i) in enumerate(axes(new_x, 2))
-        psp.x[j] = SVector{N,T}(@view(new_x[:, i]))
+    i0 = firstindex(new_x, 2) - 1
+    _foreach_chunk(n_new, parallel) do range
+        for j in range
+            psp.x[j] = SVector{N,T}(@view(new_x[:, i0 + j]))
+        end
     end
     return psp
 end
@@ -187,8 +213,9 @@ function update!(
     if !isnothing(ypositions) && !(sys isa ParticleSystem2)
         throw(ArgumentError("ypositions can only be set for a two-set particle system"))
     end
-    !isnothing(xpositions) && _update_positions!(sys.xpositions, xpositions)
-    !isnothing(ypositions) && _update_positions!(sys.ypositions, ypositions)
+    _parallel = isnothing(parallel) ? sys.parallel : parallel
+    !isnothing(xpositions) && _update_positions!(sys.xpositions, xpositions; parallel = _parallel)
+    !isnothing(ypositions) && _update_positions!(sys.ypositions, ypositions; parallel = _parallel)
     !isnothing(cutoff) && _update_cutoff!(sys, cutoff)
     !isnothing(unitcell) && _update_unitcell!(sys, unitcell)
     !isnothing(parallel) && setfield!(sys, :parallel, parallel)

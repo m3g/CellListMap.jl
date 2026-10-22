@@ -139,6 +139,34 @@ end
     @test_throws "Invalid coordinates" ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
 end
 
+@testitem "celllists - validate coordinates in parallel builds" setup = [Testing] begin
+    using StaticArrays
+    # The default validation is done while locating the particles, thus the invalid
+    # coordinate must be detected by any of the tasks of the parallel builds: the
+    # parallel location of the serial counting sort (10_000 particles) and the
+    # parallel counting sort (100_000 particles).
+    for n in (10_000, 100_000), i in (1, n ÷ 2, n)
+        x = rand(SVector{3,Float64}, n)
+        x[i] = SVector(0.5, NaN, 0.5)
+        @test_throws "Invalid coordinates" ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.05, output=0.0)
+        x[i] = SVector(0.5, 0.5, 0.5)
+        sys = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.05, output=0.0)
+        x[i] = SVector(0.5, NaN, 0.5)
+        @test_throws "Invalid coordinates" update!(sys; xpositions=x, rebuild=true)
+        # the list is rebuilt on the next call after the coordinates are fixed
+        x[i] = SVector(0.5, 0.5, 0.5)
+        update!(sys; xpositions=x)
+        @test pairwise!((pair, out) -> out + 1, sys) == pairwise!((pair, out) -> out + 1,
+            ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.05, output=0, parallel=false))
+    end
+    # Reference list of a two-set system with few particles relative to the number of cells
+    y = rand(SVector{3,Float64}, 10_000)
+    x = rand(SVector{3,Float64}, 10)
+    sys = ParticleSystem(xpositions=x, ypositions=y, unitcell=[1, 1, 1], cutoff=0.05, output=0.0)
+    x[5] = SVector(0.5, NaN, 0.5)
+    @test_throws "Invalid coordinates" update!(sys; xpositions=x, rebuild=true)
+end
+
 @testitem "CellList dimension mismatch error" begin
     using CellListMap, StaticArrays
     PSP = CellListMap.ParticleSystemPositions
