@@ -1,7 +1,7 @@
 """
     pairwise!(
         f::Function, system::AbstractParticleSystem; 
-        show_progress=true, reset=true,
+        show_progress=nothing, reset=true,
     )
 
 Function that maps the `f` function into all pairs of particles of
@@ -52,7 +52,7 @@ julia> pairwise!((pair, output) -> output += 1 / (1 + pair.d), sys)
 function pairwise!(
         f::F,
         sys::AbstractParticleSystem;
-        show_progress::Bool = false,
+        show_progress::Union{Nothing,Bool} = nothing,
         reset::Bool = true,
     ) where {F <: Function}
     sys.output = _reset_all_output!(sys.output, output_threaded(sys); reset)

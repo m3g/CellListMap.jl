@@ -543,7 +543,7 @@ will print something like:
 Progress:  43%|█████████████████                    | ETA: 0:18:25
 ```
 
-Thus, besides being useful for following the progress of a long run, it is useful to test different values of `lcell` to tune the performance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. The default and recommended option for production runs is to use `show_progress=false`, because tracking the progress introduces a small overhead into the computation.
+Thus, besides being useful for following the progress of a long run, it is useful to test different values of `lcell` to tune the performance of the code, by looking at the estimated time to finish (ETA) and killing the execution after a sample run. The default and recommended option for production runs is not to set `show_progress` (it defaults to `nothing`), because tracking the progress introduces a small overhead into the computation.
 
 ## Some benchmarks
 

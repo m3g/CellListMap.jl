@@ -64,6 +64,10 @@ get_dim(::ParticleSystemPositions{N}) where {N} = N
 #
 # Auxiliary functions to control the exhibition of the progress meter
 #
+# `show_progress = nothing` (the default) is known at compile time, such that the
+# progress meter code is not even compiled (required for `juliac --trim`).
+_progress(::Nothing, n) = nothing
+_progress(show_progress::Bool, n) = show_progress ? Progress(n, dt = 1) : nothing
 _next!(::Nothing) = nothing
 _next!(p) = next!(p)
 

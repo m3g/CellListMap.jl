@@ -1,9 +1,9 @@
 #=
 Structure that contains the system information for neighborlist computations. All fields are internal.
 =#
-mutable struct InPlaceNeighborList{P}
+mutable struct InPlaceNeighborList{P,SP<:Union{Nothing,Bool}}
     sys::P
-    show_progress::Bool
+    show_progress::SP
 end
 
 # getters
@@ -19,7 +19,7 @@ get_cutoff(nb::InPlaceNeighborList) = nb.sys.cutoff
         cutoff::T,
         unitcell::Union{AbstractVecOrMat,Nothing}=nothing,
         parallel::Bool=true,
-        show_progress::Bool=false,
+        show_progress::Union{Nothing,Bool} = nothing,
     ) where {T}
 
 Function that initializes the `InPlaceNeighborList` structure, to be used for in-place
@@ -83,7 +83,7 @@ function InPlaceNeighborList(;
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
     validate_coordinates=_validate_coordinates,
-    show_progress::Bool=false,
+    show_progress::Union{Nothing,Bool} = nothing,
 )
     T = _promote_types(unitcell, cutoff)
     sys = ParticleSystem(;
@@ -231,7 +231,7 @@ end
         cutoff,
         unitcell=nothing,
         parallel=true,
-        show_progress=false,
+        show_progress=nothing,
         nbatches=(0,0),
     )
 
@@ -313,7 +313,7 @@ function neighborlist(;
     nbatches::Tuple{Int,Int}=(0, 0),
     lcell=1,
     validate_coordinates=_validate_coordinates,
-    show_progress::Bool=false,
+    show_progress::Union{Nothing,Bool} = nothing,
 )
     return neighborlist!(
         InPlaceNeighborList(; 

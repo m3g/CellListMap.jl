@@ -207,7 +207,7 @@ function ParticleSystem(;
 end
 
 import Base: getproperty, propertynames
-getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
+@inline getproperty(sys::AbstractParticleSystem, s::Symbol) = getproperty(sys, Val(s))
 getproperty(sys::AbstractParticleSystem, ::Val{S}) where {S} = getfield(sys, S)
 # public properties
 getproperty(sys::AbstractParticleSystem, ::Val{:positions}) = getfield(sys, :xpositions)
