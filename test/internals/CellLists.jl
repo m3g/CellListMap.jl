@@ -137,6 +137,18 @@ end
     x = rand(3, 100)
     x[2, 50] = NaN
     @test_throws "Invalid coordinates" ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0)
+    # Invalid coordinates found while building the cell lists throw the error of the
+    # default validation only if the default validation function is used: a custom
+    # function was already called before the build.
+    x = rand(SVector{3,Float64}, 100)
+    x[50] = SVector(1.0, NaN, 1.0)
+    @test_throws "Invalid coordinates" CellListMap._invalid_coordinates(CellListMap._validate_coordinates, x)
+    @test isnothing(CellListMap._invalid_coordinates((x) -> nothing, x))
+    sys = ParticleSystem(xpositions=x, unitcell=[1, 1, 1], cutoff=0.1, output=0.0, validate_coordinates=(x) -> nothing)
+    @test pairwise!((pair, out) -> out + 1, sys) >= 0
+    sys = ParticleSystem(xpositions=rand(SVector{3,Float64}, 100), unitcell=[1, 1, 1], cutoff=0.1, output=0.0, validate_coordinates=(x) -> nothing)
+    update!(sys; xpositions=x)
+    @test pairwise!((pair, out) -> out + 1, sys) >= 0
 end
 
 @testitem "celllists - validate coordinates in parallel builds" setup = [Testing] begin

@@ -333,7 +333,7 @@ function _update_cell_list!(
     cl.n_real_particles = length(x)
     cl.number_of_cells = prod(box.nc)
     _update_offsets!(cl, box)
-    _build!(cl, x, box; parallel, outer)
+    _build!(cl, x, box; parallel, outer, validate_coordinates)
     # set updated to false, to indicate that the cell list was constructed
     # for these coordinates.
     x.updated[] = false
@@ -458,7 +458,10 @@ If `outer` is `true`, the list is only iterated over (the reference list of a `C
 and lists with few particles relative to the number of cells are built by `_build_small!`.
 
 =#
-function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; parallel::Bool, outer::Bool = false) where {N, T}
+function _build!(
+        cl::CellList{N, T}, x::ParticleSystemPositions, box::Box;
+        parallel::Bool, outer::Bool = false, validate_coordinates::F = _validate_coordinates,
+    ) where {N, T, F} # F: specialize on `validate_coordinates`, which is only passed through
     n = length(x)
     ncell = cl.number_of_cells
     # Cell indices and positions in the sorted arrays are stored as Int32
@@ -473,7 +476,7 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
     resize!(cl.cell_start, ncell + 1)
     if outer && SMALL_LIST_CELLS_PER_PARTICLE * n < ncell
         valid = _build_small!(cl, x, box)
-        valid || _validate_coordinates(x)
+        valid || _invalid_coordinates(validate_coordinates, x)
         return cl
     end
     _nbatches = parallel ? nbatches(cl, :build) : 1
@@ -485,7 +488,7 @@ function _build!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box; paral
     end
     # Invalid coordinates were found when locating the particles: throw the error of
     # the default validation here, outside the parallel tasks.
-    valid || _validate_coordinates(x)
+    valid || _invalid_coordinates(validate_coordinates, x)
     # Indices of the nonempty cells (branchless: most cells may be empty or not)
     nonempty_cells = resize!(cl.nonempty_cells, ncell)
     k = 0
@@ -572,8 +575,9 @@ function _build_serial!(cl::CellList{N, T}, x::ParticleSystemPositions, box::Box
                 valid_batch
             end
         end
-        # `mapreduce` (not `all`) to wait for all tasks
-        mapreduce(fetch, &, tasks)
+        # `mapreduce` (not `all`) to wait for all tasks. (The result of `fetch` asserted,
+        # for the reduction to be type-stable.)
+        mapreduce(t -> fetch(t)::Bool, &, tasks)
     end
     # Count particles per cell, and compute the first index of each cell
     cell_start = cl.cell_start
@@ -607,23 +611,30 @@ function _build_parallel!(cl::CellList{N, T}, x::ParticleSystemPositions, box::B
         @spawn _locate_and_count!($cl, $x, $box, $counts, ($ib - 1) * $ncell, $range)
             for (ib, range) in enumerate(particle_ranges)
     ]
-    # `mapreduce` (not `all`) to wait for all tasks
-    valid = mapreduce(fetch, &, tasks)
+    # `mapreduce` (not `all`) to wait for all tasks. (The result of `fetch` asserted,
+    # for the reduction to be type-stable.)
+    valid = mapreduce(t -> fetch(t)::Bool, &, tasks)
     # 2. Prefix sum over (cell, batch), in cell-major order: first the number of
     # particles in each range of cells, then the positions within each range.
+    # (Explicit vectors of tasks, rather than `@sync`, which waits on untyped tasks.)
     range_count = zeros(Int, _nbatches)
-    @sync for (ir, crange) in enumerate(cell_ranges)
+    tasks = [
         @spawn $range_count[$ir] = _count_cell_range($counts, $ncell, $_nbatches, $crange)
-    end
-    @sync for (ir, crange) in enumerate(cell_ranges)
-        first_index = 1 + sum(view(range_count, 1:(ir - 1)); init = 0)
-        @spawn _write_positions!($cl, $counts, $_nbatches, $crange, $first_index)
-    end
+            for (ir, crange) in enumerate(cell_ranges)
+    ]
+    foreach(wait, tasks)
+    tasks = [
+        @spawn _write_positions!($cl, $counts, $_nbatches, $crange, $(1 + sum(view(range_count, 1:(ir - 1)); init = 0)))
+            for (ir, crange) in enumerate(cell_ranges)
+    ]
+    foreach(wait, tasks)
     cl.cell_start[ncell + 1] = n + 1
     # 3. Scatter the particles of each batch
-    @sync for (ib, range) in enumerate(particle_ranges)
+    tasks = [
         @spawn _scatter_range!($cl, $counts, ($ib - 1) * $ncell, $range)
-    end
+            for (ib, range) in enumerate(particle_ranges)
+    ]
+    foreach(wait, tasks)
     return valid
 end
 

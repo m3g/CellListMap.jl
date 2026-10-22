@@ -18,7 +18,7 @@
         cl::Union{CellList,CellListPair};
         parallel::Bool=true,
         output_threaded=nothing,
-        show_progress::Bool=false
+        show_progress::Union{Nothing,Bool} = nothing
     )
 
 This function will run over every pair of particles which are closer than
@@ -43,7 +43,7 @@ function _pairwise!(
         f::F, output, box::Box, cl::Union{CellList, CellListPair};
         parallel::Bool = true,
         output_threaded = nothing,
-        show_progress::Bool = false,
+        show_progress::Union{Nothing,Bool} = nothing,
     ) where {F} # Needed for specialization for this function (avoids some allocations)
     if parallel
         output = _pairwise_parallel!(f, output, box, cl; output_threaded, show_progress)
@@ -59,11 +59,11 @@ _outer_list(cl::CellListPair) = cl.ref_list
 
 function _pairwise_serial!(
         f::F, output, box::Box, cl::Union{CellList, CellListPair};
-        show_progress::Bool = false
+        show_progress::Union{Nothing,Bool} = nothing
     ) where {F}
     cells = _outer_list(cl).nonempty_cells
     buffer = _projection_buffer(_outer_list(cl), 1)
-    p = show_progress ? Progress(length(cells), dt = 1) : nothing
+    p = _progress(show_progress, length(cells))
     for c in cells
         output = _cell_pairs!(f, output, box, cl, c, buffer)
         _next!(p)
@@ -97,14 +97,14 @@ end
 function _pairwise_parallel!(
         f::F, output, box::Box, cl::Union{CellList, CellListPair};
         output_threaded = nothing,
-        show_progress::Bool = false
+        show_progress::Union{Nothing,Bool} = nothing
     ) where {F}
     _nbatches = nbatches(cl, :map)
     if isnothing(output_threaded)
         output_threaded = [deepcopy(output) for _ in 1:_nbatches]
     end
     cells = _outer_list(cl).nonempty_cells
-    p = show_progress ? Progress(length(cells), dt = 1) : nothing
+    p = _progress(show_progress, length(cells))
     n_chunks = _n_workqueue_chunks(_nbatches, _outer_list(cl).n_real_particles)
     chunks = collect(index_chunks(1:length(cells); n = n_chunks, split = Consecutive()))
     next_chunk = Atomic{Int}(1)

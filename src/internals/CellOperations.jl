@@ -20,6 +20,13 @@ function _validate_coordinates(x)
     return nothing
 end
 
+# Called if invalid (NaN) coordinates were found while locating the particles: throws
+# the error of the default validation. With a custom validation function (called before
+# the build), or with the validation disabled (`nothing`), nothing is done (the invalid
+# particles are placed at the origin, see `_locate_range!`).
+_invalid_coordinates(::typeof(_validate_coordinates), x) = _validate_coordinates(x)
+_invalid_coordinates(validate_coordinates, x) = nothing
+
 
 #=
     fastmod1(x)

@@ -85,9 +85,9 @@ function _foreach_chunk(f::F, n::Int, parallel::Bool) where {F<:Function}
     if !parallel || nthreads() == 1 || n < PARALLEL_COPY_MIN_PARTICLES
         f(1:n)
     else
-        @sync for range in index_chunks(1:n; n = nthreads(), split = Consecutive())
-            @spawn f($range)
-        end
+        # (An explicit vector of tasks, rather than `@sync`, which waits on untyped tasks.)
+        tasks = [@spawn f($range) for range in index_chunks(1:n; n = nthreads(), split = Consecutive())]
+        foreach(wait, tasks)
     end
     return nothing
 end

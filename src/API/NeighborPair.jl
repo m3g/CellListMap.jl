@@ -42,7 +42,7 @@ NeighborPair(i, j, x::SVector{N, T}, y::SVector{N, T}, d2) where {N, T} =
     NeighborPair(i, j, x, y, d2, zero(SVector{N, Int}))
 
 import Base: getproperty, propertynames
-getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))
+@inline getproperty(p::NeighborPair, s::Symbol) = getproperty(p, Val(s))
 getproperty(p::NeighborPair, ::Val{S}) where {S} = getfield(p, S)
 # Lazy computation of the distance
 getproperty(p::NeighborPair, ::Val{:d}) = sqrt(getfield(p, :d2))

@@ -12,6 +12,8 @@ CellListMap.jl Changelog
 
 Version 0.10.9-DEV
 --------------
+- ![ENHANCEMENT][badge-enhancement] `pairwise!` (and the rest of the `ParticleSystem` path) can be compiled with `juliac --trim`: `show_progress` defaults to `nothing` (`Union{Nothing,Bool}`), such that the progress meter code is not compiled unless requested (`show_progress = true`/`false` work as before), the cell list construction waits on its tasks with typed results instead of `@sync`, and the `getproperty(sys, ::Symbol)` and `getproperty(pair, ::Symbol)` methods are inlined.
+- ![BUGFIX][badge-bugfix] With a custom `validate_coordinates` function, or with `validate_coordinates = nothing`, `NaN` coordinates no longer throw the error of the default validation while building the cell lists (`nothing` now disables the check, as documented).
 
 Version 0.10.8
 --------------

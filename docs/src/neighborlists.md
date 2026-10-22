@@ -134,5 +134,5 @@ All neighborlist functions return this vector directly.
 | `cutoff` | `Number` | — (required) | Cutoff distance. Pairs within this distance are included in the list. |
 | `unitcell` | vector or matrix | `nothing` | Unit cell sides (orthorhombic, as a vector) or unit cell matrix (triclinic). If `nothing`, the system is treated as non-periodic. |
 | `parallel` | `Bool` | `true` | Enable multi-threading for the computation. |
-| `show_progress` | `Bool` | `false` | Display a progress bar during computation. Only available for `InPlaceNeighborList` / `neighborlist!`. |
+| `show_progress` | `Union{Nothing,Bool}` | `nothing` | Display a progress bar during computation (`true`). With `nothing` the progress meter code is not compiled at all (as required by `juliac --trim`). Only available for `InPlaceNeighborList` / `neighborlist!`. |
 | `nbatches` | `Tuple{Int,Int}` | `(0,0)` | Number of batches used in parallelization (see [Number of batches](@ref Number-of-batches)). |
