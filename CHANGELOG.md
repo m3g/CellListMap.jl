@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.10-DEV
+--------------
+
 Version 0.10.9
 --------------
 - ![ENHANCEMENT][badge-enhancement] `pairwise!` (and the rest of the `ParticleSystem` path) can be compiled with `juliac --trim`: `show_progress` defaults to `nothing` (`Union{Nothing,Bool}`), such that the progress meter code is not compiled unless requested (`show_progress = true`/`false` work as before), the cell list construction waits on its tasks with typed results instead of `@sync`, and the `getproperty(sys, ::Symbol)` and `getproperty(pair, ::Symbol)` methods are inlined.
