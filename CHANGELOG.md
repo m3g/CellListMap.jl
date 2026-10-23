@@ -10,6 +10,9 @@ CellListMap.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 0.10.11-DEV
+---------------
+
 Version 0.10.10
 ---------------
 - ![INFO][badge-info] The test files (NAMD and Gromacs simulations) are no longer part of the package installation: they are a lazy artifact (from [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles)), downloaded when needed, and obtained with `CellListMap.test_file(name)`, which is available after `using LazyArtifacts` (a package extension). The `CellListMap.argon_pdb_file` constant used in the examples is replaced by `CellListMap.test_file("cubic.pdb")`.
