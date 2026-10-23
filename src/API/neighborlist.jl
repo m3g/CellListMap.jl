@@ -252,9 +252,9 @@ Computes the list of pairs of particles closer to each other than `cutoff`.
 Compute the neighborlist within a set of Argon atoms, non-periodic:
 
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
-julia> using CellListMap, PDBTools
+julia> using CellListMap, PDBTools, LazyArtifacts
 
-julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
+julia> x = positions(read_pdb(CellListMap.test_file("cubic.pdb")));
 
 julia> neighborlist(xpositions=x, cutoff=8.0, parallel=false)
 857-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -269,9 +269,9 @@ julia> neighborlist(xpositions=x, cutoff=8.0, parallel=false)
 And now, considering the system periodic:
 
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
-julia> using CellListMap, PDBTools
+julia> using CellListMap, PDBTools, LazyArtifacts
 
-julia> x = coor(read_pdb(CellListMap.argon_pdb_file));
+julia> x = positions(read_pdb(CellListMap.test_file("cubic.pdb")));
 
 julia> neighborlist(xpositions=x, cutoff=8.0, unitcell=[21.0, 21.0, 21.0], parallel=false)
 1143-element Vector{Tuple{Int64, Int64, Float64}}:
@@ -286,11 +286,11 @@ julia> neighborlist(xpositions=x, cutoff=8.0, unitcell=[21.0, 21.0, 21.0], paral
 For cross-pair neighbor lists between two sets:
 
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s""
-julia> using CellListMap, PDBTools
+julia> using CellListMap, PDBTools, LazyArtifacts
 
-julia> x = coor(read_pdb(CellListMap.argon_pdb_file, "index <= 50"));
+julia> x = positions(read_pdb(CellListMap.test_file("cubic.pdb"), "index <= 50"));
 
-julia> y = coor(read_pdb(CellListMap.argon_pdb_file, "index > 50"));
+julia> y = positions(read_pdb(CellListMap.test_file("cubic.pdb"), "index > 50"));
 
 julia> CellListMap.neighborlist(xpositions=x, ypositions=y, cutoff=8.0, parallel=false)
 439-element Vector{Tuple{Int64, Int64, Float64}}:

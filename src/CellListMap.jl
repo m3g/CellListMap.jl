@@ -53,7 +53,10 @@ include("./API/neighborlist.jl")
 # Precompilation tools
 include("./internals/precompile.jl")
 
-# Test file used in some doc strings and example blocs
-const argon_pdb_file = joinpath("$(@__DIR__)/../test/applications/gromacs/argon/cubic.pdb")
+# test_file(name): path of the test file `name` (e.g. "cubic.pdb", the argon system used in
+# the examples). The test files are a lazy artifact (see Artifacts.toml), downloaded on the
+# first call. The method is defined in the TestFilesExt extension, loaded with
+# `using LazyArtifacts`.
+function test_file end
 
 end # module

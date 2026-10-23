@@ -9,8 +9,8 @@ For example, here we read the coordinates of Argon atoms from a PDB file. The co
 vector of `SVector`s. We then compute an "energy", which in this case is simply the sum of `1/d` over all pair of particles, within a cutoff.
 
 ```@example energy
-using CellListMap, PDBTools
-argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
+using CellListMap, PDBTools, LazyArtifacts
+argon_coordinates = positions(read_pdb(CellListMap.test_file("cubic.pdb")))
 system = ParticleSystem(
     xpositions=argon_coordinates,
     unitcell=[21.0,21.0,21.0],
@@ -81,7 +81,7 @@ Now, let us setup the system with the new type of output variable, which will be
 
 ```@example energy
 using PDBTools
-argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
+argon_coordinates = positions(read_pdb(CellListMap.test_file("cubic.pdb")))
 system = ParticleSystem(
     xpositions=argon_coordinates,
     unitcell=[21.0, 21.0, 21.0],

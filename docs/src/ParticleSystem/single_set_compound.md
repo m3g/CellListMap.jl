@@ -21,7 +21,7 @@ must be defined. It can be followed for the computation of other general propert
     than for the arrays.
 
 ```julia
-using CellListMap, StaticArrays, PDBTools
+using CellListMap, StaticArrays, PDBTools, LazyArtifacts
 ```
 
 The computation of energies and forces in a single call is an interesting example for the definition of a custom `output` type and the required interface functions.
@@ -90,7 +90,7 @@ end
 To finally define the system and compute the properties:
 
 ```julia
-argon_coordinates = coor(read_pdb(CellListMap.argon_pdb_file))
+argon_coordinates = positions(read_pdb(CellListMap.test_file("cubic.pdb")))
 
 system = ParticleSystem(
     xpositions = argon_coordinates,

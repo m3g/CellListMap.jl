@@ -14,18 +14,25 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
+[weakdeps]
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+
+[extensions]
+TestFilesExt = "LazyArtifacts"
+
 [compat]
 Aqua = "0.8.5"
 BenchmarkTools = "1.4"
 Chemfiles = "0.10.31"
 ChunkSplitters = "3.1.0"
-Compat = "4.14.0"
+Compat = "4.18.1"
 Documenter = "1.2.1"
 ForwardDiff = "0.10.13"
+LazyArtifacts = "1.10"
 LinearAlgebra = "1.10"
 Measurements = "2.11"
 NearestNeighbors = "0.4.16"
-PDBTools = "3"
+PDBTools = "3.25.2"
 Pkg = "1"
 PrecompileTools = "1.2.1"
 ProgressMeter = "1.6"
@@ -44,6 +51,7 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
@@ -55,4 +63,4 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
-test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua", "Documenter", "PDBTools", "Pkg", "ShowMethodTesting"]
+test = ["Test", "TestItemRunner", "Chemfiles", "NearestNeighbors", "ForwardDiff", "Unitful", "Measurements", "BenchmarkTools", "Aqua", "Documenter", "LazyArtifacts", "PDBTools", "Pkg", "ShowMethodTesting"]

@@ -5,6 +5,8 @@
     using Setfield: @set!
     using CellListMap: ParticleSystem1, ParticleSystem2
     using CellListMap: reset_output!
+    using LazyArtifacts # loads the extension that defines test_file
+    using CellListMap: test_file
 
     export pathological_coordinates
     export map_naive!
@@ -16,6 +18,7 @@
     export simple_test
     export PSP
     export f1, f2, _f1, _f2
+    export test_file
 
     const PSP = CellListMap.ParticleSystemPositions
 
