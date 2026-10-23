@@ -110,12 +110,12 @@ the particles that are within the cutoff:
 ```jldoctest ;filter = r"(\\d*)\\.(\\d)\\d+" => s"\\1.\\2"
 julia> using CellListMap, LazyArtifacts
 
-julia> using PDBTools: read_pdb, coor
+julia> using PDBTools: read_pdb, positions
 
-julia> positions = coor(read_pdb(CellListMap.test_file("cubic.pdb")));
+julia> x = positions(read_pdb(CellListMap.test_file("cubic.pdb")));
 
 julia> sys = ParticleSystem(
-           xpositions = positions,
+           xpositions = x,
            unitcell = [21.0, 21.0, 21.0],
            cutoff = 8.0,
            output = 0.0,
@@ -129,9 +129,9 @@ julia> pairwise!((pair,output) -> output += pair.d2, sys)
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{2})\\d+" => s"\\1.\\2"
 julia> using CellListMap, PDBTools, LazyArtifacts
 
-julia> xpositions = coor(read_pdb(CellListMap.test_file("cubic.pdb")))[1:50];
+julia> xpositions = positions(read_pdb(CellListMap.test_file("cubic.pdb")))[1:50];
 
-julia> ypositions = coor(read_pdb(CellListMap.test_file("cubic.pdb")))[51:100];
+julia> ypositions = positions(read_pdb(CellListMap.test_file("cubic.pdb")))[51:100];
 
 julia> sys = ParticleSystem(
            xpositions = xpositions,

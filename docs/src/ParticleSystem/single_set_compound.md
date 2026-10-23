@@ -90,7 +90,7 @@ end
 To finally define the system and compute the properties:
 
 ```julia
-argon_coordinates = coor(read_pdb(CellListMap.test_file("cubic.pdb")))
+argon_coordinates = positions(read_pdb(CellListMap.test_file("cubic.pdb")))
 
 system = ParticleSystem(
     xpositions = argon_coordinates,

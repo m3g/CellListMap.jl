@@ -31,9 +31,9 @@ are in Angstroms, while the box size and cutoff are defined in nanometers:
 
 ```@example units
 using CellListMap, Unitful, PDBTools, LazyArtifacts
-positions = coor(read_pdb(CellListMap.test_file("cubic.pdb")))u"Å"
+x = positions(read_pdb(CellListMap.test_file("cubic.pdb")))u"Å"
 system = ParticleSystem(
-    positions = positions,
+    positions = x,
     cutoff = 0.8u"nm",
     unitcell = [2.1,2.1,2.1]u"nm",
     output = 0.0u"nm^2",
@@ -48,7 +48,7 @@ pairwise!((pair, out) -> out += pair.d2, system)
 
 ```@example units
 cutoff = 0.8u"nm";
-neighborlist(xpositions=positions, cutoff=cutoff)
+neighborlist(xpositions=x, cutoff=cutoff)
 ```
 
 ## Automatic differentiation
