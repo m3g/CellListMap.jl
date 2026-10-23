@@ -1,6 +1,9 @@
 import Pkg; Pkg.add("Documenter")
 using Documenter
 using CellListMap
+using LazyArtifacts
+# Download the test files before the doctests, so that the download messages are not part of their output
+CellListMap.test_file("cubic.pdb")
 ENV["LINES"] = 10
 ENV["COLUMNS"] = 120
 ENV["GKSwstype"] = "nul"
