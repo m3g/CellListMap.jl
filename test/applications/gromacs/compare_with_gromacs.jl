@@ -1,4 +1,4 @@
-@testitem "compare_with_gromacs.jl" begin
+@testitem "compare_with_gromacs.jl" setup=[Testing] begin
 
     using Test
     import Chemfiles
@@ -45,17 +45,15 @@
         error("Could not find LJ (SR) in $file")
     end
 
-    dir = "$(@__DIR__)/argon"
-
-    minimal = grep_energy("$dir/minimal.log")
-    cubic = grep_energy("$dir/cubic.log")
-    dodecahedral = grep_energy("$dir/dodecahedron.log")
-    octahedral = grep_energy("$dir/octahedron.log")
+    minimal = grep_energy(test_file("minimal.log"))
+    cubic = grep_energy(test_file("cubic.log"))
+    dodecahedral = grep_energy(test_file("dodecahedron.log"))
+    octahedral = grep_energy(test_file("octahedron.log"))
     for lcell in [1, 2, 3]
-        @test test_newcl("$dir/minimal.xtc", lcell) ≈ minimal rtol = 1.0e-5
-        @test test_newcl("$dir/cubic.xtc", lcell) ≈ cubic rtol = 1.0e-5
-        @test test_newcl("$dir/dodecahedron.xtc", lcell) ≈ dodecahedral rtol = 1.0e-5
-        @test test_newcl("$dir/octahedron.xtc", lcell) ≈ octahedral rtol = 1.0e-5
+        @test test_newcl(test_file("minimal.xtc"), lcell) ≈ minimal rtol = 1.0e-5
+        @test test_newcl(test_file("cubic.xtc"), lcell) ≈ cubic rtol = 1.0e-5
+        @test test_newcl(test_file("dodecahedron.xtc"), lcell) ≈ dodecahedral rtol = 1.0e-5
+        @test test_newcl(test_file("octahedron.xtc"), lcell) ≈ octahedral rtol = 1.0e-5
     end
 
 end

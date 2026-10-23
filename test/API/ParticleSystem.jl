@@ -237,7 +237,7 @@ end
     @test a == Allocs(0)
 
     # Update cutoff of non-periodic systems
-    x = coor(read_pdb(CellListMap.argon_pdb_file))
+    x = coor(read_pdb(CellListMap.test_file("cubic.pdb")))
     sys1 = ParticleSystem(xpositions = x, cutoff = 8.0, output = 0.0)
     @test CellListMap.unitcelltype(sys1) == CellListMap.NonPeriodicCell
     @test sys1.unitcell ≈ [35.63 0.0 0.0; 0.0 35.76 0.0; 0.0 0.0 35.79] atol = 1.0e-2

@@ -1,8 +1,0 @@
-# Test files, from https://github.com/m3g/MolSimTestFiles (downloaded only when needed)
-[celllistmap_test_files]
-git-tree-sha1 = "2172353f9482e449e654fe5c6c550d97566374c1"
-lazy = true
-
-    [[celllistmap_test_files.download]]
-    url = "https://github.com/m3g/MolSimTestFiles/releases/download/celllistmap-v1/celllistmap.tar.gz"
-    sha256 = "5ac0a853bd0bc5d02866e651679f064ead39b3a559a19b07e89467f48e1932b8"

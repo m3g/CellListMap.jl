@@ -167,9 +167,9 @@ In this example we show how to obtain the minimum distance among argon atoms
 in a simulation box.
 
 ```jldoctest ;filter = r"(\\d*)\\.(\\d{4})\\d+" => s"\\1.\\2"
-julia> using CellListMap, PDBTools
+julia> using CellListMap, PDBTools, LazyArtifacts
 
-julia> positions = coor(read_pdb(CellListMap.argon_pdb_file));
+julia> positions = coor(read_pdb(CellListMap.test_file("cubic.pdb")));
 
 julia> struct MinimumDistance d::Float64 end # Custom output type
 

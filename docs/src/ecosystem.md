@@ -30,8 +30,8 @@ Here we compute the square of the distances of the particles within the cutoff, 
 are in Angstroms, while the box size and cutoff are defined in nanometers:
 
 ```@example units
-using CellListMap, Unitful, PDBTools
-positions = coor(read_pdb(CellListMap.argon_pdb_file))u"Å"
+using CellListMap, Unitful, PDBTools, LazyArtifacts
+positions = coor(read_pdb(CellListMap.test_file("cubic.pdb")))u"Å"
 system = ParticleSystem(
     positions = positions,
     cutoff = 0.8u"nm",
