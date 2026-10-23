@@ -2,7 +2,7 @@
 # Compare with NAMD results, calculations performed through the
 # ParticleSystem interface
 #
-@testitem "ParticleSystem_vs_NAMD.jl" begin
+@testitem "ParticleSystem_vs_NAMD.jl" setup=[Testing] begin
 
     using Test
     import Chemfiles
@@ -49,7 +49,6 @@
         return u ≈ correct
     end
 
-    dir = @__DIR__
 
     lcell = 1
 
@@ -57,11 +56,11 @@
 
     unit_cell = [50.0, 50.0, 50.0]
     correct = 32230.01699504111
-    @test with_ParticleSystem("$dir/o1.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o1.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 70.0, 50.0]
     correct = 1093.7225407797744
-    @test with_ParticleSystem("$dir/o2.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o2.dcd"), unit_cell, correct, lcell)
 
     # Orthorhombic but rotated
 
@@ -71,7 +70,7 @@
         0.0 50.0 50.0
     ]
     correct = 1724.3195067566828
-    @test with_ParticleSystem("$dir/o3.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o3.dcd"), unit_cell, correct, lcell)
 
     unit_cell = transpose(
         [
@@ -81,7 +80,7 @@
         ]
     )
     correct = 1754.0802503953591
-    @test with_ParticleSystem("$dir/o4.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o4.dcd"), unit_cell, correct, lcell)
 
     unit_cell = transpose(
         [
@@ -91,11 +90,11 @@
         ]
     )
     correct = 1765.1389457850137
-    @test with_ParticleSystem("$dir/o5.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o5.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 80.0, 80.0]
     correct = -158.04751357760088
-    @test with_ParticleSystem("$dir/o6.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o6.dcd"), unit_cell, correct, lcell)
 
     # Some triclinic cells
 
@@ -105,7 +104,7 @@
         0.0 40.0 80.0
     ]
     correct = -116.53213607052128
-    @test with_ParticleSystem("$dir/t1.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("t1.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [
         50.0 0.0 0.0
@@ -113,13 +112,13 @@
         0.0 50.0 50.0
     ]
     correct = 32096.48839031735
-    @test with_ParticleSystem("$dir/t2.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("t2.dcd"), unit_cell, correct, lcell)
 
     #
     # Check cell list updating routine
     #
 
-    coordinates = getcoor("$dir/o1.dcd")
+    coordinates = getcoor(test_file("o1.dcd"))
     unit_cell = [
         50.0 0.0 0.0
         0.0 50.0 0.0
@@ -139,7 +138,7 @@
     @test u ≈ correct
 
 
-    coordinates = getcoor("$dir/o2.dcd")
+    coordinates = getcoor(test_file("o2.dcd"))
     unit_cell = [80.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 50.0]
     correct = 1093.7225407797744
 
@@ -157,11 +156,11 @@
 
     unit_cell = [50.0, 50.0, 50.0]
     correct = 32230.01699504111
-    @test with_ParticleSystem("$dir/o1.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o1.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 70.0, 50.0]
     correct = 1093.7225407797744
-    @test with_ParticleSystem("$dir/o2.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o2.dcd"), unit_cell, correct, lcell)
 
     # Orthorhombic but rotated
 
@@ -171,7 +170,7 @@
         0.0 50.0 50.0
     ]
     correct = 1724.3195067566828
-    @test with_ParticleSystem("$dir/o3.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o3.dcd"), unit_cell, correct, lcell)
 
     unit_cell = transpose(
         [
@@ -181,7 +180,7 @@
         ]
     )
     correct = 1754.0802503953591
-    @test with_ParticleSystem("$dir/o4.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o4.dcd"), unit_cell, correct, lcell)
 
     unit_cell = transpose(
         [
@@ -191,11 +190,11 @@
         ]
     )
     correct = 1765.1389457850137
-    @test with_ParticleSystem("$dir/o5.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o5.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 80.0, 80.0]
     correct = -158.04751357760088
-    @test with_ParticleSystem("$dir/o6.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("o6.dcd"), unit_cell, correct, lcell)
 
     # Some triclinic cells
 
@@ -205,7 +204,7 @@
         0.0 40.0 80.0
     ]
     correct = -116.53213607052128
-    @test with_ParticleSystem("$dir/t1.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("t1.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [
         50.0 0.0 0.0
@@ -213,13 +212,13 @@
         0.0 50.0 50.0
     ]
     correct = 32096.48839031735
-    @test with_ParticleSystem("$dir/t2.dcd", unit_cell, correct, lcell)
+    @test with_ParticleSystem(test_file("t2.dcd"), unit_cell, correct, lcell)
 
     #
     # Check cell list updating routine
     #
 
-    coordinates = getcoor("$dir/o1.dcd")
+    coordinates = getcoor(test_file("o1.dcd"))
     unit_cell = [
         50.0 0.0 0.0
         0.0 50.0 0.0
@@ -236,7 +235,7 @@
     u = pairwise!((pair, u) -> lj_NE(pair.d2, u), system)
     @test u ≈ correct
 
-    coordinates = getcoor("$dir/o2.dcd")
+    coordinates = getcoor(test_file("o2.dcd"))
     unit_cell = [80.0 0.0 0.0; 0.0 70.0 0.0; 0.0 0.0 50.0]
     correct = 1093.7225407797744
     system.xpositions .= copy_to_svector(coordinates)

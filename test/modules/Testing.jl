@@ -5,6 +5,8 @@
     using Setfield: @set!
     using CellListMap: ParticleSystem1, ParticleSystem2
     using CellListMap: reset_output!
+    import LazyArtifacts # must be loaded for lazy artifacts
+    using LazyArtifacts: @artifact_str
 
     export pathological_coordinates
     export map_naive!
@@ -16,6 +18,10 @@
     export simple_test
     export PSP
     export f1, f2, _f1, _f2
+    export test_file
+
+    # Test files: a lazy artifact (see test/Artifacts.toml), downloaded on the first call
+    test_file(name::AbstractString) = joinpath(artifact"celllistmap_test_files", name)
 
     const PSP = CellListMap.ParticleSystemPositions
 

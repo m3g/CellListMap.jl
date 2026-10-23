@@ -69,18 +69,17 @@
         return [A B C]
     end
 
-    dir = @__DIR__
 
     lcell = 1
 
     # Some orthorhombic cells
     unit_cell = [50.0, 50.0, 50.0]
     correct = 32230.01699504111
-    @test test_newcl("$dir/o1.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o1.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 70.0, 50.0]
     correct = 1093.7225407797744
-    @test test_newcl("$dir/o2.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o2.dcd"), unit_cell, correct, lcell)
 
     # Orthorhombic but rotated
     #! format: off
@@ -89,14 +88,14 @@
                  0.0 50.0 50.0]
     #! format: on
     correct = 1724.3195067566828
-    @test test_newcl("$dir/o3.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o3.dcd"), unit_cell, correct, lcell)
     #! format: off
     unit_cell = transpose([70.7107     0.0    0.0
                            35.3553 61.2372    0.0
                            35.3553 20.4124 57.735])
     #! format: on
     correct = 1754.0802503953591
-    @test test_newcl("$dir/o4.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o4.dcd"), unit_cell, correct, lcell)
 
     #! format off
     unit_cell = transpose(
@@ -108,11 +107,11 @@
     )
     #! format on
     correct = 1765.1389457850137
-    @test test_newcl("$dir/o5.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o5.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 80.0, 80.0]
     correct = -158.04751357760088
-    @test test_newcl("$dir/o6.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o6.dcd"), unit_cell, correct, lcell)
 
     # Some triclinic cells
     #! format: off
@@ -121,7 +120,7 @@
                   0.0 40.0 80.0]
     #! format: on
     correct = -116.53213607052128
-    @test test_newcl("$dir/t1.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("t1.dcd"), unit_cell, correct, lcell)
 
     #! format: off
     unit_cell = [50.0  0.0  0.0
@@ -129,13 +128,13 @@
                   0.0 50.0 50.0]
     #! format: on
     correct = 32096.48839031735
-    @test test_newcl("$dir/t2.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("t2.dcd"), unit_cell, correct, lcell)
 
     #
     # Check cell list updating routine
     #
     sys = ParticleSystem(
-        xpositions=getcoor("$dir/o1.dcd"),
+        xpositions=getcoor(test_file("o1.dcd")),
         #! format: off
         unitcell = [50.0  0.0  0.0
                      0.0 50.0  0.0
@@ -148,13 +147,13 @@
     correct = 32230.01699504111
     @test u ≈ correct
 
-    sys.xpositions .= getcoor("$dir/o2.dcd")
+    sys.xpositions .= getcoor(test_file("o2.dcd"))
     update!(sys; unitcell=[80.0, 70.0, 50.0])
     u = pairwise!(lj_NE, sys)
     correct = 1093.7225407797744
     @test u ≈ correct
 
-    sys.xpositions .= getcoor("$dir/t1.dcd")
+    sys.xpositions .= getcoor(test_file("t1.dcd"))
     #! format: off
     unit_cell = [80.0  0.0 30.0
                  30.0 80.0  0.0
@@ -170,11 +169,11 @@
 
     unit_cell = [50.0, 50.0, 50.0]
     correct = 32230.01699504111
-    @test test_newcl("$dir/o1.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o1.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 70.0, 50.0]
     correct = 1093.7225407797744
-    @test test_newcl("$dir/o2.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o2.dcd"), unit_cell, correct, lcell)
 
     # Orthorhombic but rotated
     unit_cell = [
@@ -183,7 +182,7 @@
         0.0 50.0 50.0
     ]
     correct = 1724.3195067566828
-    @test test_newcl("$dir/o3.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o3.dcd"), unit_cell, correct, lcell)
 
     #! format: off
     unit_cell = transpose([70.7107     0.0    0.0
@@ -191,7 +190,7 @@
                            35.3553 20.4124 57.735])
     #! format: on
     correct = 1754.0802503953591
-    @test test_newcl("$dir/o4.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o4.dcd"), unit_cell, correct, lcell)
 
     #! format: off
     unit_cell = transpose([70.7107     0.0    0.0
@@ -199,11 +198,11 @@
                            35.3553 20.4124 57.735])
     #! format: on
     correct = 1765.1389457850137
-    @test test_newcl("$dir/o5.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o5.dcd"), unit_cell, correct, lcell)
 
     unit_cell = [80.0, 80.0, 80.0]
     correct = -158.04751357760088
-    @test test_newcl("$dir/o6.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("o6.dcd"), unit_cell, correct, lcell)
 
     # Some triclinic cells
 
@@ -213,7 +212,7 @@
                   0.0 40.0 80.0]
     #! format: on
     correct = -116.53213607052128
-    @test test_newcl("$dir/t1.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("t1.dcd"), unit_cell, correct, lcell)
 
     #! format: off
     unit_cell = [50.0  0.0  0.0
@@ -221,13 +220,13 @@
                   0.0 50.0 50.0]
     #! format: on
     correct = 32096.48839031735
-    @test test_newcl("$dir/t2.dcd", unit_cell, correct, lcell)
+    @test test_newcl(test_file("t2.dcd"), unit_cell, correct, lcell)
 
     #
     # Check cell list updating routine
     #
     sys = ParticleSystem(
-        xpositions=getcoor("$dir/o1.dcd"),
+        xpositions=getcoor(test_file("o1.dcd")),
         #! format: off
         unitcell = [ 50.0  0.0  0.0
                       0.0 50.0  0.0
@@ -241,13 +240,13 @@
     correct = 32230.01699504111
     @test u ≈ correct
 
-    sys.xpositions .= getcoor("$dir/o2.dcd")
+    sys.xpositions .= getcoor(test_file("o2.dcd"))
     update!(sys; unitcell=[80.0, 70.0, 50.0])
     correct = 1093.7225407797744
     u = pairwise!(lj_NE, sys)
     @test u ≈ correct
 
-    sys.xpositions .= getcoor("$dir/t1.dcd")
+    sys.xpositions .= getcoor(test_file("t1.dcd"))
     #! format: off
     update!(sys; unitcell=[80.0  0.0 30.0
                             30.0 80.0  0.0
